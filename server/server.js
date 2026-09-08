@@ -6002,7 +6002,7 @@ app.get('/api/partner/wallet/methods', authenticatePartner, function(req, res) {
     var labels = {
         sepa:         { label: 'Virement SEPA (IBAN)', icon: 'fa-building-columns', fields: ['holder','iban','bic'] },
         paypal:       { label: 'PayPal',               icon: 'fa-paypal',           fields: ['email'] },
-        wise:         { label: 'Wise',                 icon: 'fa-globe',            fields: ['email'] },
+        wise:         { label: 'Wise (virement bancaire)', icon: 'fa-globe',         fields: ['holder','iban','bic'] },
         payoneer:     { label: 'Payoneer',             icon: 'fa-credit-card',      fields: ['email'] },
         wave:         { label: 'Wave',                 icon: 'fa-mobile-screen',    fields: ['phone'] },
         orange_money: { label: 'Orange Money',         icon: 'fa-mobile-screen',    fields: ['phone'] },
@@ -6068,12 +6068,25 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
         withdrawals.push(withdrawal);
         saveWithdrawals(withdrawals);
 
-        // Auto-virement Wise pour retraits SEPA si le partenaire a un wiseRecipientId
+        // Auto-virement Wise pour retraits SEPA si le partenaire a un wiseRecipientId — sinon,
+        // s'il vient de saisir son IBAN dans CE formulaire de retrait, on l'enregistre à la
+        // volée (il n'existe pas de page "coordonnées bancaires" séparée dans l'app : ce
+        // formulaire est le seul endroit où le prestataire les renseigne).
         if ((method === 'sepa' || method === 'wise') && WISE_TOKEN) {
             try {
                 var _wdPartners = loadPartners();
                 var _wdPartner  = _wdPartners.find(function(p) { return p.id === partnerId; });
                 var _wdRecipId  = _wdPartner && _wdPartner.wiseRecipientId;
+                if (!_wdRecipId && details.iban && details.holder) {
+                    var _wdRegResult = await registerPartnerWiseBankDetails(partnerId, {
+                        accountHolderName: details.holder, iban: details.iban, bic: details.bic
+                    });
+                    if (_wdRegResult.ok && _wdRegResult.wiseRecipientId) {
+                        _wdRecipId = _wdRegResult.wiseRecipientId;
+                        _wdPartners = loadPartners();
+                        _wdPartner  = _wdPartners.find(function(p) { return p.id === partnerId; });
+                    }
+                }
                 if (_wdRecipId) {
                     var _wdProfileId = await _wiseGetProfileId();
                     var _wdCurrency  = (_wdPartner.bankDetails && _wdPartner.bankDetails.currency) || 'EUR';
@@ -6099,13 +6112,21 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
             }
         }
 
-        // Auto-virement PayPal si le partenaire a enregistré son email PayPal (même principe que Wise)
+        // Auto-virement PayPal si le partenaire a enregistré son email PayPal — sinon, s'il
+        // vient de le saisir dans CE formulaire de retrait, on l'enregistre à la volée (même
+        // raison que pour Wise : pas de page profil séparée pour ça dans l'app).
         var _wdPaypalSent = false;
         if (method === 'paypal') {
             try {
                 var _wdPpPartners = loadPartners();
-                var _wdPpPartner  = _wdPpPartners.find(function(p) { return p.id === partnerId; });
+                var _wdPpIdxProfile = _wdPpPartners.findIndex(function(p) { return p.id === partnerId; });
+                var _wdPpPartner  = _wdPpIdxProfile !== -1 ? _wdPpPartners[_wdPpIdxProfile] : null;
                 var _wdPpEmail    = _wdPpPartner && _wdPpPartner.payout_paypal_email;
+                if (!_wdPpEmail && details.email && _wdPpIdxProfile !== -1) {
+                    _wdPpPartners[_wdPpIdxProfile].payout_paypal_email = details.email.trim();
+                    savePartners(_wdPpPartners);
+                    _wdPpEmail = details.email.trim();
+                }
                 if (_wdPpEmail) {
                     var _wdPpResult = await triggerPayPalPayouts([{
                         recipient_email: _wdPpEmail, amount: amount, currency: 'EUR',
@@ -6146,8 +6167,11 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
         if (details.bic)  _wdDetails += ' / BIC : ' + details.bic;
         if (details.holder) _wdDetails += '<br>Titulaire : ' + details.holder;
         if (details.email)  _wdDetails += '<br>Email : ' + details.email;
-        var _wdNeedsTopup = (method === 'sepa' || method === 'wise') && !req.partner.wiseRecipientId;
-        var _wdPaypalNoEmail = method === 'paypal' && !req.partner.payout_paypal_email;
+        // Relire le partenaire à jour : l'enregistrement à la volée (IBAN/PayPal) ci-dessus a pu
+        // modifier wiseRecipientId / payout_paypal_email depuis le chargement initial (req.partner).
+        var _wdFreshPartner = loadPartners().find(function(p) { return p.id === partnerId; }) || req.partner;
+        var _wdNeedsTopup = (method === 'sepa' || method === 'wise') && !_wdFreshPartner.wiseRecipientId;
+        var _wdPaypalNoEmail = method === 'paypal' && !_wdFreshPartner.payout_paypal_email;
         var _wdAlertHtml = _wdNeedsTopup
             ? '<p style="background:#fef3c7;padding:12px;border-radius:6px;"><strong>⚠️ Action requise</strong> : ce prestataire n\'a pas encore de wiseRecipientId — le virement ne partira pas automatiquement.<br>1. Enregistrez son IBAN via <code>/api/admin/wise/retry-recipient/' + req.partner.id + '</code><br>2. Puis relancez via <code>/api/admin/withdrawals/' + withdrawal.id + '/retry</code></p>'
             : (method === 'sepa' || method === 'wise')
@@ -6156,7 +6180,7 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
                     ? '<p style="background:#fef3c7;padding:12px;border-radius:6px;"><strong>⚠️ Action requise</strong> : ce prestataire n\'a pas encore enregistré d\'email PayPal — le virement ne partira pas automatiquement. Demandez-lui de le renseigner dans son profil, puis relancez via <code>/api/admin/withdrawals/' + withdrawal.id + '/retry</code></p>'
                 : method === 'paypal'
                     ? (_wdPaypalSent
-                        ? '<p style="background:#d1fae5;padding:12px;border-radius:6px;">✅ Virement PayPal déclenché automatiquement vers ' + req.partner.payout_paypal_email + '.</p>'
+                        ? '<p style="background:#d1fae5;padding:12px;border-radius:6px;">✅ Virement PayPal déclenché automatiquement vers ' + _wdFreshPartner.payout_paypal_email + '.</p>'
                         : '<p style="background:#fee2e2;padding:12px;border-radius:6px;"><strong>⚠️ Échec du virement PayPal automatique</strong> — vérifiez le solde PayPal Business et relancez via <code>/api/admin/withdrawals/' + withdrawal.id + '/retry</code></p>')
                 : '<p>Vérifiez le traitement du retrait dans le dashboard admin.</p>';
 
@@ -22426,6 +22450,13 @@ app.listen(PORT, async () => {
     if (process.env.NODE_ENV !== 'production') {
         await initTestAccounts();
     }
+});
+// ── FIN callback app.listen — tout ce qui suit est de nouveau au niveau module (routes,
+// fonctions Wise, etc.). Avant ce correctif, l'accolade fermante manquait ici : ~750 lignes
+// (intégration Wise complète, plusieurs endpoints admin) étaient accidentellement imbriquées
+// à l'intérieur du callback de démarrage, les rendant inaccessibles depuis tout code extérieur
+// (ex: WISE_TOKEN, _wiseTransfer, registerPartnerWiseBankDetails introuvables depuis
+// /api/partner/wallet/withdraw → ReferenceError, tous les virements Wise échouaient).
 
 // ── PROMOTIONS ────────────────────────────────────────────────────────────────
 
@@ -22683,51 +22714,65 @@ async function _wiseTransfer(profileId, recipientId, amount, currency, reference
 
 // ── Partenaire : enregistrer ses coordonnées bancaires ────────
 
+// Enregistre les coordonnées bancaires d'un prestataire et crée/rafraîchit le "recipient"
+// Wise correspondant. Extrait en fonction partagée car le formulaire de retrait
+// (POST /api/partner/wallet/withdraw) est en pratique le SEUL endroit où un prestataire
+// renseigne ses coordonnées — il n'existe pas de page "profil bancaire" séparée dans
+// l'app qui appelle cet endpoint indépendamment. Sans cette factorisation, un retrait
+// Wise ne pouvait jamais aboutir : wiseRecipientId n'était jamais posé.
+async function registerPartnerWiseBankDetails(partnerId, info) {
+    if (!info.accountHolderName || !info.iban) return { ok: false, error: 'Nom du titulaire et IBAN requis' };
+    var iban = (info.iban || '').replace(/\s/g, '').toUpperCase();
+
+    var partners = loadPartners();
+    var idx = partners.findIndex(function(p) { return p.id === partnerId; });
+    if (idx === -1) return { ok: false, error: 'Partenaire introuvable' };
+
+    var wiseRecipientId = partners[idx].wiseRecipientId || null;
+    var wiseError = null;
+    if (WISE_TOKEN) {
+        try {
+            var profileId = await _wiseGetProfileId();
+            var recipient = await _wiseCreateRecipient(profileId, {
+                accountHolderName: info.accountHolderName,
+                iban: iban,
+                bic: info.bic || '',
+                currency: info.currency || 'EUR',
+                legalType: info.legalType || 'PRIVATE'
+            });
+            if (recipient.id) {
+                wiseRecipientId = recipient.id;
+                console.log('[WISE] Récipiendaire créé:', wiseRecipientId, 'pour', partners[idx].email);
+            }
+        } catch(wiseErr) {
+            wiseError = wiseErr.message;
+            console.error('[WISE RECIPIENT]', wiseErr.message);
+        }
+    }
+
+    partners[idx].bankDetails = {
+        accountHolderName: info.accountHolderName,
+        iban: iban,
+        bic: info.bic || '',
+        currency: info.currency || 'EUR',
+        country: info.country || '',
+        updatedAt: new Date().toISOString()
+    };
+    if (wiseRecipientId) partners[idx].wiseRecipientId = wiseRecipientId;
+    savePartners(partners);
+
+    return { ok: true, wiseRecipientId: wiseRecipientId, wiseError: wiseError };
+}
+
 app.post('/api/partner/bank-details', authenticatePartner, async function(req, res) {
     try {
         var b = req.body;
-        if (!b.accountHolderName || !b.iban) return res.status(400).json({ error: 'Nom du titulaire et IBAN requis' });
-        var iban = (b.iban || '').replace(/\s/g, '').toUpperCase();
-
-        var partners = loadPartners();
-        var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
-        if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
-
-        // Créer le récipiendaire Wise si token configuré
-        var wiseRecipientId = partners[idx].wiseRecipientId || null;
-        var wiseError = null;
-        if (WISE_TOKEN) {
-            try {
-                var profileId = await _wiseGetProfileId();
-                var recipient = await _wiseCreateRecipient(profileId, {
-                    accountHolderName: b.accountHolderName,
-                    iban: iban,
-                    bic: b.bic || '',
-                    currency: b.currency || 'EUR',
-                    legalType: b.legalType || 'PRIVATE'
-                });
-                if (recipient.id) {
-                    wiseRecipientId = recipient.id;
-                    console.log('[WISE] Récipiendaire créé:', wiseRecipientId, 'pour', partners[idx].email);
-                }
-            } catch(wiseErr) {
-                wiseError = wiseErr.message;
-                console.error('[WISE RECIPIENT]', wiseErr.message);
-            }
-        }
-
-        partners[idx].bankDetails = {
-            accountHolderName: b.accountHolderName,
-            iban: iban,
-            bic: b.bic || '',
-            currency: b.currency || 'EUR',
-            country: b.country || '',
-            updatedAt: new Date().toISOString()
-        };
-        if (wiseRecipientId) partners[idx].wiseRecipientId = wiseRecipientId;
-        savePartners(partners);
-
-        res.json({ ok: true, wiseLinked: !!wiseRecipientId, wiseError: wiseError || undefined });
+        var result = await registerPartnerWiseBankDetails(req.partner.id, {
+            accountHolderName: b.accountHolderName, iban: b.iban, bic: b.bic,
+            currency: b.currency, country: b.country, legalType: b.legalType
+        });
+        if (!result.ok) return res.status(400).json({ error: result.error });
+        res.json({ ok: true, wiseLinked: !!result.wiseRecipientId, wiseError: result.wiseError || undefined });
     } catch(e) {
         console.error('[BANK DETAILS]', e.message);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -23105,8 +23150,6 @@ setInterval(runWeeklyAutoPayouts, 60 * 60 * 1000); // vérification toutes les h
 // Route inconnue (404) — doit rester APRÈS toutes les routes app.get/post/put/delete
 app.use((req, res) => {
     res.status(404).json({ error: 'Route introuvable' });
-});
-
 });
 
 
