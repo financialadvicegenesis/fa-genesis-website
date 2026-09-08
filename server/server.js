@@ -17033,6 +17033,7 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
         // GENESIS SAFE™ : capturer le PI maintenant que le client valide.
         // Le PI est resté en requires_capture depuis le checkout → le client pouvait annuler instantanément.
         // La capture débite maintenant la carte et place l'argent sur Stripe GENESIS.
+        var _vdCaptureFailed = false;
         var _vdPiId = order.stripe_deposit_pi_id;
         if (_vdPiId && order.deposit_authorized === true && !order.deposit_paid) {
             try {
@@ -17041,7 +17042,11 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
                 order = getOrderById(orderId); // recharger après update
                 console.log('[VALIDATE] GENESIS SAFE™ — PI capturé sur validation client:', _vdPiId);
             } catch(_capErr) {
+                // Carte refusée, autorisation expirée, etc. — l'argent n'a PAS été prélevé.
+                // order.deposit_paid reste false : c'est le signal utilisé plus bas pour bloquer
+                // tout versement au prestataire (sinon on le paierait avec de l'argent jamais reçu).
                 console.error('[VALIDATE] Erreur capture PI:', _capErr.message);
+                _vdCaptureFailed = true;
             }
         }
         var _vdBalPiId = order.stripe_balance_pi_id;
@@ -17053,10 +17058,12 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
                 console.log('[VALIDATE] GENESIS SAFE™ — PI solde capturé sur validation client:', _vdBalPiId);
             } catch(_capBalErr) {
                 console.error('[VALIDATE] Erreur capture PI solde:', _capBalErr.message);
+                _vdCaptureFailed = true;
             }
         }
 
-        // Marquer la prestation comme validée
+        // Marquer la prestation comme validée — indépendant du succès de la capture : le client a
+        // fait sa part (confirmé la livraison), même si le prélèvement a un problème technique.
         var updates = {
             client_validated: true,
             client_validated_at: new Date().toISOString(),
@@ -17067,9 +17074,17 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
         closePartnerRequestForOrder(order);
 
         // ── Créditer le wallet partenaire ───────────────────────────────────────────────
-        // L'argent était capturé depuis la carte client (dans /complete ou /publish).
-        // Il sort maintenant de Stripe GENESIS vers le partenaire.
-        try {
+        // CRITIQUE : ne JAMAIS créditer le prestataire tant que order.deposit_paid n'est pas
+        // confirmé true (capture Stripe réussie maintenant, OU déjà payé avant — ex. PayPal en
+        // capture immédiate). Sans cette vérification, un échec de capture (carte refusée,
+        // autorisation expirée) paierait quand même le prestataire avec de l'argent jamais reçu.
+        if (_vdCaptureFailed || order.deposit_paid !== true) {
+            console.error('[VALIDATE] Capture non confirmée pour commande', orderId, '— versement prestataire BLOQUÉ, notification admin envoyée');
+            notifyUser(null, 'admin', 'refund_manual',
+                '🚨 URGENT — Paiement non prélevé à la validation',
+                'Commande ' + orderId + ' validée par le client, mais le prélèvement Stripe a échoué ou n\'a jamais eu lieu (carte refusée, autorisation expirée...). AUCUN versement au prestataire n\'a été déclenché — il faut d\'abord récupérer le paiement manuellement (nouvelle tentative de prélèvement ou nouveau lien de paiement) avant de déclencher le virement.',
+                '/admin.html#payouts');
+        } else try {
             var _vdAllDisps = loadDispatches();
             var _vdDispIdx = _vdAllDisps.findIndex(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
             var _vdDisp = _vdDispIdx !== -1 ? _vdAllDisps[_vdDispIdx] : null;
