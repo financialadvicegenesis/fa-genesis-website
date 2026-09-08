@@ -5695,12 +5695,11 @@ app.get('/api/client/wallet', function(req, res) {
             var withdrawReason = canWithdraw
                 ? (partnerInactive ? 'Le prestataire n\'est pas disponible' : 'Le prestataire n\'a pas encore accepté la mission')
                 : null;
-            // Remboursement possible dès que des fonds sont retenus en escrow (held > 0).
-            // On ne filtre plus sur partner_paid_out ici : la branche isSplit corrigée garantit
-            // que held=0 quand le partenaire a déjà été payé (acompte → released).
-            // L'endpoint /cancel-refund gère lui-même toute logique métier de blocage.
+            // Remboursement possible dès que des fonds sont retenus en escrow (held > 0),
+            // mais plus une fois la prestation validée — l'endpoint /cancel-refund le refuse
+            // désormais explicitement dans ce cas, donc le bouton ne doit plus être proposé.
             var _hasCapturable = order.deposit_paid === true || order.deposit_authorized === true;
-            var canCancelRefund = held > 0;
+            var canCancelRefund = held > 0 && !_clientValidated;
             var _balDue = (parseFloat(order.balance_amount) || 0) > 0
                 && order.deposit_paid === true
                 && !order.balance_paid
