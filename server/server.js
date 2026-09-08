@@ -15071,6 +15071,8 @@ app.get('/api/partner/projects', authenticatePartner, (req, res) => {
                     client_validated: order.client_validated === true,
                     partner_paid_out: order.partner_paid_out === true,
                     auto_payment_release_at: order.auto_payment_release_at || null,
+                    revision_requested: order.revision_requested === true,
+                    revision_note: order.revision_note || null,
                     client_name: order.client_info
                         ? (order.client_info.first_name + ' ' + (order.client_info.last_name || '').charAt(0) + '.')
                         : 'Client'
@@ -15121,7 +15123,12 @@ app.post('/api/partner/projects/:orderId/livrables', authenticatePartner, functi
 
         var order = getOrderById(orderId);
         if (!order) return res.status(404).json({ error: 'Commande introuvable' });
-        if (order.partner_completed || order.delivery_confirmed) return res.status(400).json({ error: 'La prestation est déjà livrée' });
+        // Le prestataire peut ajouter/modifier des livrables à tout moment tant que la
+        // mission n'est pas définitivement close (validée par le client ou annulée) —
+        // même après avoir déjà livré, pour corriger une erreur ou compléter le travail.
+        if (order.client_validated || order.status === 'cancelled' || order.status === 'refunded') {
+            return res.status(400).json({ error: 'Cette mission est terminée — impossible d\'ajouter un nouveau livrable.' });
+        }
 
         var now = new Date().toISOString();
         var newLiv = ensureLivrableFields({
@@ -15188,20 +15195,34 @@ app.post('/api/partner/livrables/:id/publish', authenticatePartner, function(req
                     auto_payment_release_at: autoReleaseAt,
                     status: 'pending_client_validation'
                 });
+            } else if (order.revision_requested) {
+                // Le prestataire vient de publier un livrable (nouveau ou mis à jour) suite à
+                // une demande de révision au niveau commande — on la considère traitée.
+                updateOrder(order.id, { revision_requested: false, revision_cleared_at: new Date().toISOString() });
+                var revClientEmail = order.client_info && order.client_info.email;
+                if (revClientEmail) {
+                    notifyUser(revClientEmail, 'client', 'revision_addressed', '✏️ Révision traitée',
+                        'Votre prestataire a mis à jour les livrables suite à votre demande de révision pour « ' + (order.product_name || 'votre prestation') + ' ». Merci de vérifier et valider.',
+                        '/app.html#tab:reservations');
+                }
             }
         }
         res.json({ ok: true });
     } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
-// DELETE /api/partner/livrables/:id — supprimer un brouillon
+// DELETE /api/partner/livrables/:id — supprimer un livrable (brouillon ou déjà publié,
+// tant que le client n'a pas définitivement validé la prestation)
 app.delete('/api/partner/livrables/:id', authenticatePartner, function(req, res) {
     try {
         var livrables = loadLivrables();
         var idx = livrables.findIndex(function(l) { return l.id === req.params.id; });
         if (idx === -1) return res.status(404).json({ error: 'Livrable introuvable' });
         if (livrables[idx].owner_partner_id !== req.partner.id) return res.status(403).json({ error: 'Non autorisé' });
-        if (livrables[idx].workflow_status === 'PUBLISHED') return res.status(400).json({ error: 'Un livrable publié ne peut pas être supprimé' });
+        var dOrder = getOrderById(livrables[idx].order_id);
+        if (dOrder && dOrder.client_validated) {
+            return res.status(400).json({ error: 'Cette mission est validée — impossible de supprimer un livrable.' });
+        }
         livrables.splice(idx, 1);
         saveLivrables(livrables);
         res.json({ ok: true });
@@ -15252,7 +15273,9 @@ app.get('/api/partner/dispatches', authenticatePartner, function(req, res) {
                 auto_payment_release_at: ord ? (ord.auto_payment_release_at || null) : null,
                 total_amount: ord ? (ord.total_amount || ord.deposit_amount || d.amount) : d.amount,
                 payment_tier: ord ? (ord.payment_tier || null) : null,
-                client_name: (ord && ord.client_info) ? ((ord.client_info.prenom || '') + ' ' + (ord.client_info.nom || '')).trim() : null
+                client_name: (ord && ord.client_info) ? ((ord.client_info.prenom || '') + ' ' + (ord.client_info.nom || '')).trim() : null,
+                revision_requested: !!(ord && ord.revision_requested === true),
+                revision_note: ord ? (ord.revision_note || null) : null
             });
         }).sort(function(a, b) { return new Date(b.accepted_at || b.created_at) - new Date(a.accepted_at || a.created_at); });
 
@@ -15517,9 +15540,12 @@ app.post('/api/partner/dispatches/:id/upload-photo', authenticatePartner, functi
             return res.json({ success: true, created: true, livrable: newLiv });
         } else {
             var liv = livrables[livIdx];
-            if (liv.workflow_status === 'PUBLISHED') {
-                return res.status(400).json({ error: 'Livrable déjà publié, modification impossible' });
+            var uploadOrder = getOrderById(orderId);
+            if (uploadOrder && uploadOrder.client_validated) {
+                return res.status(400).json({ error: 'Cette mission est validée — modification impossible.' });
             }
+            // Modifier un livrable déjà publié le repasse en brouillon (PENDING_PARTNER) —
+            // le prestataire doit le republier pour que le client voie la nouvelle version.
             if (!liv.versions) liv.versions = [];
             liv.versions.push({
                 version_number: liv.versions.length + 1,
@@ -15858,11 +15884,15 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
                 out.pending_client_validation = orderForReq ? (orderForReq.pending_client_validation === true) : false;
                 out.client_validated = orderForReq ? (orderForReq.client_validated === true) : false;
                 out.auto_payment_release_at = orderForReq ? (orderForReq.auto_payment_release_at || null) : null;
-                // Révision demandée par le client
+                // Révision demandée par le client — soit au niveau d'un livrable précis
+                // (REVISION_REQUESTED), soit au niveau de la commande entière (bouton
+                // "Demander une révision" du suivi client). Les deux doivent remonter ici,
+                // sinon le partenaire ne voit jamais la demande faite via le suivi commande.
                 var revisionLiv = livrablesForReq.find(function(l) { return l.workflow_status === 'REVISION_REQUESTED'; });
-                out.has_revision_requested = !!revisionLiv;
+                var orderRevisionRequested = !!(orderForReq && orderForReq.revision_requested);
+                out.has_revision_requested = !!revisionLiv || orderRevisionRequested;
                 out.revision_livrable_id = revisionLiv ? revisionLiv.id : null;
-                out.revision_note = revisionLiv ? (revisionLiv.client_revision_note || '') : '';
+                out.revision_note = revisionLiv ? (revisionLiv.client_revision_note || '') : (orderRevisionRequested ? (orderForReq.revision_note || '') : '');
                 out.display_status = computeMissionDisplayStatus(r, dispatchForReq, orderForReq, livrablesForReq, hasReviewForReq);
                 return out;
             });

@@ -676,8 +676,21 @@ function partnerTrackingCard(d){
     +'<div class="track-card-partner">'+(d.client_name?esc(d.client_name):'Client GENESIS')+'</div>'
     +'</div></div>'
     +tl.html
+    +_revisionBannerHtml(d.revision_requested, d.revision_note)
     +safeBlock
     +actionBtn
+    +'</div>';
+}
+
+// Bandeau révision demandée — même logique côté missions dispatch et projets assignés.
+// Répondre = modifier/ajouter un livrable puis le republier (autorisé à tout moment,
+// même après une première livraison) ; publier lève automatiquement la demande.
+function _revisionBannerHtml(revisionRequested, revisionNote){
+  if(!revisionRequested) return '';
+  return '<div style="margin:12px 16px;padding:12px 14px;background:rgba(245,158,11,.08);border:1.5px solid #f59e0b;border-radius:10px;">'
+    +'<div style="font-size:12px;font-weight:800;color:#f59e0b;margin-bottom:6px;"><i class="fa-solid fa-rotate-left" style="margin-right:6px;"></i>Révision demandée par le client</div>'
+    +(revisionNote ? '<div style="font-size:12px;color:#ccc;line-height:1.6;margin-bottom:8px;font-style:italic;">"'+esc(revisionNote)+'"</div>' : '')
+    +'<div style="font-size:11px;color:var(--muted);line-height:1.6;">Modifiez, remplacez ou ajoutez un livrable ci-dessous puis republiez-le — le client sera notifié et la demande sera automatiquement levée.</div>'
     +'</div>';
 }
 
@@ -713,7 +726,8 @@ function projectCard(p, livrables, showLivSection){
     +'<div class="track-card-service">'+esc(order.product_name||'Projet')+'</div>'
     +'<div class="track-card-partner">'+(order.client_name?esc(order.client_name)+' · ':'')+'Démarré le '+fmt(order.start_date||order.created_at)+'</div>'
     +'</div></div>'
-    +tl.html;
+    +tl.html
+    +_revisionBannerHtml(order.revision_requested, order.revision_note);
 
   // ── Bandeau GENESIS SAFE™ en attente de validation client ──
   if(isCompleted && !isPartnerPaidOut && !isValidated && !isBalancePaid){
@@ -758,33 +772,32 @@ function projectCard(p, livrables, showLivSection){
           +'<span class="pill '+(isPublished?'pill-green':'pill-yellow')+'" style="font-size:10px">'+(isPublished?'Publié':'Brouillon')+'</span>'
           +'</div></div>'
           +(!isPublished ? '<button onclick="_publishLivrable(\''+esc(l.id)+'\',\''+esc(orderId)+'\')" style="flex-shrink:0;border:none;background:rgba(34,197,94,.12);color:#22c55e;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;font-weight:700"><i class="fa-solid fa-paper-plane"></i> Publier</button>' : '')
-          +(!isPublished ? '<button onclick="_deleteLivrable(\''+esc(l.id)+'\',\''+esc(orderId)+'\')" style="flex-shrink:0;border:none;background:transparent;color:var(--muted);padding:6px 8px;font-size:13px;cursor:pointer;margin-left:2px"><i class="fa-solid fa-trash"></i></button>' : '')
+          +'<button onclick="_deleteLivrable(\''+esc(l.id)+'\',\''+esc(orderId)+'\')" style="flex-shrink:0;border:none;background:transparent;color:var(--muted);padding:6px 8px;font-size:13px;cursor:pointer;margin-left:2px" title="Supprimer"><i class="fa-solid fa-trash"></i></button>'
           +'</div>';
       });
     } else {
       html += '<div style="font-size:12px;color:var(--muted);font-style:italic">Aucun livrable déposé.</div>';
     }
 
-    // Formulaire d'ajout (masqué par défaut)
-    if(!isCompleted){
-      html += '<div id="livform-'+orderId+'" style="display:none;margin-top:10px">'
-        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'
-        +'<button onclick="_livSetType(\''+orderId+'\',\'link\')" id="livt-'+orderId+'-link" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-link"></i> Lien</button>'
-        +'<button onclick="_livSetType(\''+orderId+'\',\'file\')" id="livt-'+orderId+'-file" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-file-arrow-up"></i> Fichier</button>'
-        +'<button onclick="_livSetType(\''+orderId+'\',\'text\')" id="livt-'+orderId+'-text" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-align-left"></i> Texte</button>'
-        +'<button onclick="_livSetType(\''+orderId+'\',\'video\')" id="livt-'+orderId+'-video" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-video"></i> Vidéo</button>'
-        +'</div>'
-        +'<input id="livtitle-'+orderId+'" placeholder="Titre du livrable…" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;box-sizing:border-box;margin-bottom:6px">'
-        +'<div id="livfields-'+orderId+'">'
-          +'<input id="livurl-'+orderId+'" placeholder="URL (https://…)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;box-sizing:border-box">'
-        +'</div>'
-        +'<div style="display:flex;gap:8px;margin-top:8px">'
-        +'<button onclick="_submitLivrable(\''+orderId+'\')" style="flex:1;padding:10px;background:var(--gold);color:#000;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer"><i class="fa-solid fa-plus"></i> Ajouter</button>'
-        +'<button onclick="document.getElementById(\'livform-'+orderId+'\').style.display=\'none\'" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);cursor:pointer;font-size:13px"><i class="fa-solid fa-xmark"></i></button>'
-        +'</div>'
-        +'</div>'
-        +'<button onclick="_toggleLivForm(\''+orderId+'\')" style="margin-top:10px;width:100%;padding:9px;border:1px dashed var(--gold);border-radius:10px;background:transparent;color:var(--gold);cursor:pointer;font-size:13px;font-weight:600"><i class="fa-solid fa-plus"></i> Déposer un livrable</button>';
-    }
+    // Formulaire d'ajout — toujours disponible tant que le client n'a pas validé (même
+    // après avoir déjà déclaré la livraison), pour corriger ou compléter un livrable.
+    html += '<div id="livform-'+orderId+'" style="display:none;margin-top:10px">'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'
+      +'<button onclick="_livSetType(\''+orderId+'\',\'link\')" id="livt-'+orderId+'-link" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-link"></i> Lien</button>'
+      +'<button onclick="_livSetType(\''+orderId+'\',\'file\')" id="livt-'+orderId+'-file" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-file-arrow-up"></i> Fichier</button>'
+      +'<button onclick="_livSetType(\''+orderId+'\',\'text\')" id="livt-'+orderId+'-text" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-align-left"></i> Texte</button>'
+      +'<button onclick="_livSetType(\''+orderId+'\',\'video\')" id="livt-'+orderId+'-video" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-video"></i> Vidéo</button>'
+      +'</div>'
+      +'<input id="livtitle-'+orderId+'" placeholder="Titre du livrable…" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;box-sizing:border-box;margin-bottom:6px">'
+      +'<div id="livfields-'+orderId+'">'
+        +'<input id="livurl-'+orderId+'" placeholder="URL (https://…)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;box-sizing:border-box">'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:8px">'
+      +'<button onclick="_submitLivrable(\''+orderId+'\')" style="flex:1;padding:10px;background:var(--gold);color:#000;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer"><i class="fa-solid fa-plus"></i> Ajouter</button>'
+      +'<button onclick="document.getElementById(\'livform-'+orderId+'\').style.display=\'none\'" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);cursor:pointer;font-size:13px"><i class="fa-solid fa-xmark"></i></button>'
+      +'</div>'
+      +'</div>'
+      +'<button onclick="_toggleLivForm(\''+orderId+'\')" style="margin-top:10px;width:100%;padding:9px;border:1px dashed var(--gold);border-radius:10px;background:transparent;color:var(--gold);cursor:pointer;font-size:13px;font-weight:600"><i class="fa-solid fa-plus"></i> '+(isCompleted ? 'Ajouter un autre livrable' : 'Déposer un livrable')+'</button>';
     html += '</div>';
   }
 
@@ -875,7 +888,7 @@ function _publishLivrable(livId, oid){
   }).catch(function(){ showToast('Erreur réseau'); });
 }
 function _deleteLivrable(livId, oid){
-  if(!confirm('Supprimer ce brouillon ?')) return;
+  if(!confirm('Supprimer ce livrable ? Le client ne le verra plus.')) return;
   fetch(API+'/api/partner/livrables/'+livId, {
     method:'DELETE', headers:{'Authorization':'Bearer '+_token}
   }).then(function(r){ return r.json(); }).then(function(d){

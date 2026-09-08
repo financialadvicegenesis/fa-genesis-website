@@ -16293,9 +16293,11 @@ function _ptnrRenderEngagedMissionCard(r){
       ? '<div style="margin-top:10px;background:rgba(245,158,11,.06);border:1.5px solid #f59e0b;border-radius:10px;padding:12px;">'
         +'<div style="font-size:12px;font-weight:800;color:#f59e0b;margin-bottom:6px;"><i class="fa-solid fa-rotate-left" style="margin-right:6px;"></i>Révision demandée par le client</div>'
         +(r.revision_note?'<div style="font-size:12px;color:#ccc;line-height:1.6;margin-bottom:10px;font-style:italic;">"'+_escHtml(r.revision_note)+'"</div>':'')
-        +'<textarea id="rev-reply-'+r.id+'" placeholder="Message au client (optionnel)…" style="width:100%;min-height:55px;padding:8px;border-radius:8px;border:1px solid #3a3a3a;background:#111;color:#fff;font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>'
-        +'<button onclick="_ptnrSubmitRevision(\''+r.revision_livrable_id+'\',\''+r.id+'\')" style="margin-top:8px;width:100%;background:linear-gradient(135deg,#1a3a1a,#16532b);border:1.5px solid #22c55e;border-radius:10px;padding:10px;color:#22c55e;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
-        +'<i class="fa-solid fa-paper-plane"></i> Soumettre la révision</button>'
+        +(r.revision_livrable_id
+          ? '<textarea id="rev-reply-'+r.id+'" placeholder="Message au client (optionnel)…" style="width:100%;min-height:55px;padding:8px;border-radius:8px;border:1px solid #3a3a3a;background:#111;color:#fff;font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>'
+            +'<button onclick="_ptnrSubmitRevision(\''+r.revision_livrable_id+'\',\''+r.id+'\')" style="margin-top:8px;width:100%;background:linear-gradient(135deg,#1a3a1a,#16532b);border:1.5px solid #22c55e;border-radius:10px;padding:10px;color:#22c55e;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
+            +'<i class="fa-solid fa-paper-plane"></i> Soumettre la révision</button>'
+          : '<div style="font-size:11px;color:#aaa;line-height:1.6;">Modifiez, remplacez ou ajoutez un livrable ci-dessous puis republiez-le — le client sera automatiquement notifié et la demande de révision sera levée.</div>')
         +'</div>'
       : '')
     +(r.partner_completed && !r.client_validated
@@ -16368,7 +16370,7 @@ function _ptnrLoadOrderLivrables(oid){
           +'<div style="margin-top:3px"><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;'+(isPublished?'background:rgba(34,197,94,.15);color:#22c55e':'background:rgba(255,215,0,.1);color:#FFD700')+';">'+(isPublished?'Publié':'Brouillon')+'</span></div>'
         +'</div>'
         +(!isPublished ? '<button onclick="_ptnrPublishPtnrLiv(\''+l.id+'\',\''+oid+'\')" style="flex-shrink:0;border:none;background:rgba(34,197,94,.12);color:#22c55e;border-radius:7px;padding:5px 9px;font-size:11px;cursor:pointer;font-weight:700"><i class="fa-solid fa-paper-plane"></i></button>' : '')
-        +(!isPublished ? '<button onclick="_ptnrDeletePtnrLiv(\''+l.id+'\',\''+oid+'\')" style="flex-shrink:0;border:none;background:transparent;color:#555;padding:5px 7px;font-size:12px;cursor:pointer;margin-left:2px"><i class="fa-solid fa-trash"></i></button>' : '')
+        +'<button onclick="_ptnrDeletePtnrLiv(\''+l.id+'\',\''+oid+'\')" style="flex-shrink:0;border:none;background:transparent;color:#555;padding:5px 7px;font-size:12px;cursor:pointer;margin-left:2px" title="Supprimer"><i class="fa-solid fa-trash"></i></button>'
         +'</div>';
     }).join('');
   }).catch(function(){ container.innerHTML = '<div style="font-size:12px;color:#555">Erreur de chargement</div>'; });
@@ -16447,7 +16449,7 @@ function _ptnrPublishPtnrLiv(livId, oid){
   }).catch(function(){ showToast('Erreur de connexion','Réessayez','error'); });
 }
 function _ptnrDeletePtnrLiv(livId, oid){
-  if(!confirm('Supprimer ce brouillon ?')) return;
+  if(!confirm('Supprimer ce livrable ? Le client ne le verra plus.')) return;
   _ptnrFetch('/api/partner/livrables/'+livId,'DELETE',null).then(function(res){
     if(res&&res.error){ showToast('Erreur',res.error,'error'); return; }
     showToast('Supprimé','','success');
