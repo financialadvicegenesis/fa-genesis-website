@@ -4398,6 +4398,51 @@ app.post('/api/admin/payouts/dedupe', function(req, res) {
 });
 
 /**
+ * POST /api/admin/wallets/relabel-rebuilt?apply=true
+ * Corrige rétroactivement la description des transactions déjà créées par une exécution
+ * précédente de /rebuild-from-payouts (identifiables via leur champ rebuilt_at), qui
+ * portaient le libellé technique "Reconstruction depuis historique des versements (PAY-XXX)"
+ * — les remplace par le format standard "Mission : <nom> — Acompte/Solde final/Mensualité"
+ * utilisé partout ailleurs, en repartant du order_id stocké sur chaque transaction.
+ */
+app.post('/api/admin/wallets/relabel-rebuilt', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var apply = req.query.apply === 'true';
+        var orders = loadOrders();
+        var wallets = loadWallets();
+        var changed = 0;
+        var report = [];
+
+        wallets.forEach(function(w) {
+            if (!Array.isArray(w.transactions)) return;
+            w.transactions.forEach(function(t) {
+                if (!t.rebuilt_at) return; // seulement les transactions issues du rebuild
+                var ord = orders.find(function(o) { return o.id === t.order_id; });
+                var name = ord ? (ord.product_name || 'Prestation') : 'Prestation';
+                var suffix = t.stage === 'balance' ? ' — Solde final' : (t.stage || '').indexOf('installment') === 0 ? ' — Mensualité' : ' — Acompte';
+                var newDesc = 'Mission : ' + name + suffix;
+                if (t.description !== newDesc) {
+                    report.push({ partner_id: w.partner_id, id: t.id, before: t.description, after: newDesc });
+                    if (apply) t.description = newDesc;
+                    changed++;
+                }
+            });
+        });
+
+        if (apply && changed > 0) {
+            saveWallets(wallets);
+            console.log('[WALLET-RELABEL] Appliqué —', changed, 'description(s) corrigée(s).');
+        }
+
+        res.json({ success: true, applied: apply, changed: changed, report: report });
+    } catch (err) {
+        console.error('[WALLET-RELABEL] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/admin/wallets/rebuild-from-payouts?apply=true
  * Reconstruit balance_available de CHAQUE wallet partenaire à partir de payouts.json
  * (source de vérité toujours correctement sauvegardée/restaurée sur MongoDB) moins les
@@ -4423,6 +4468,13 @@ app.post('/api/admin/wallets/rebuild-from-payouts', function(req, res) {
         });
         var withdrawals = loadWithdrawals();
         var existingWallets = loadWallets();
+        var _rfpOrders = loadOrders();
+        function _rfpDesc(p) {
+            var ord = _rfpOrders.find(function(o) { return o.id === p.order_id; });
+            var name = ord ? (ord.product_name || 'Prestation') : 'Prestation';
+            var suffix = p.stage === 'balance' ? ' — Solde final' : (p.stage || '').indexOf('installment') === 0 ? ' — Mensualité' : ' — Acompte';
+            return 'Mission : ' + name + suffix;
+        }
 
         // Sécurité : des payouts de test (fixtures créées lors de sessions de débogage local
         // pointant par erreur vers la base de production) peuvent avoir des partner_id
@@ -4466,7 +4518,7 @@ app.post('/api/admin/wallets/rebuild-from-payouts', function(req, res) {
                         id: 'WTX-REBUILD-' + p.id,
                         type: 'credit',
                         amount: parseFloat(p.amount || 0),
-                        description: 'Reconstruction depuis historique des versements (' + p.id + ')',
+                        description: _rfpDesc(p),
                         order_id: p.order_id,
                         dispatch_id: p.dispatch_id,
                         stage: p.stage,
