@@ -4333,6 +4333,93 @@ app.post('/api/admin/orders/:orderId/reconcile-record', function(req, res) {
 });
 
 /**
+ * POST /api/admin/testing/reset-account?apply=true
+ * Body: { partner_id, client_email }
+ * Supprime TOUTES les commandes/missions/versements/wallet liés à CE partenaire et/ou CE
+ * client de test uniquement (jamais rien d'autre) : orders, dispatches, payouts,
+ * partner_requests, partner_assignments, livrables, et remet à zéro (ou supprime) le wallet
+ * du partenaire. Portée strictement limitée aux identifiants fournis — sert à repartir
+ * d'un état propre après une session de test/débogage. Sans ?apply=true : simulation,
+ * renvoie ce qui SERAIT supprimé sans rien modifier.
+ */
+app.post('/api/admin/testing/reset-account', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var apply = req.query.apply === 'true';
+        var partnerId = req.body.partner_id || null;
+        var clientEmail = (req.body.client_email || '').toLowerCase().trim() || null;
+        if (!partnerId && !clientEmail) {
+            return res.status(400).json({ error: 'partner_id et/ou client_email requis — refus de tout supprimer sans filtre.' });
+        }
+
+        var allOrders = loadOrders();
+        var matchedOrders = allOrders.filter(function(o) {
+            var matchesPartner = partnerId && o.partner_id === partnerId;
+            var matchesClient = clientEmail && o.client_info && (o.client_info.email || '').toLowerCase().trim() === clientEmail;
+            return matchesPartner || matchesClient;
+        });
+        var orderIds = matchedOrders.map(function(o) { return o.id; });
+
+        var allDispatches = loadDispatches();
+        var matchedDispatches = allDispatches.filter(function(d) {
+            return orderIds.indexOf(d.order_id) !== -1
+                || (partnerId && (d.claimed_by_partner_id === partnerId || d.partner_id === partnerId));
+        });
+        var dispatchIds = matchedDispatches.map(function(d) { return d.id; });
+
+        var allPayouts = loadPayouts();
+        var matchedPayouts = allPayouts.filter(function(p) {
+            return orderIds.indexOf(p.order_id) !== -1 || (partnerId && p.partner_id === partnerId);
+        });
+
+        var allRequests = loadPartnerRequests();
+        var matchedRequests = allRequests.filter(function(r) {
+            return orderIds.indexOf(r.order_id) !== -1 || (partnerId && r.partner_id === partnerId);
+        });
+
+        var allAssignments = loadPartnerAssignments();
+        var matchedAssignments = allAssignments.filter(function(a) {
+            return orderIds.indexOf(a.order_id) !== -1 || (partnerId && a.partner_id === partnerId);
+        });
+
+        var allLivrables = loadLivrables();
+        var matchedLivrables = allLivrables.filter(function(l) { return orderIds.indexOf(l.order_id) !== -1; });
+
+        var wallet = partnerId ? loadWallets().find(function(w) { return w.partner_id === partnerId; }) : null;
+
+        var summary = {
+            orders: matchedOrders.map(function(o) { return o.id; }),
+            dispatches: dispatchIds,
+            payouts: matchedPayouts.map(function(p) { return p.id; }),
+            partner_requests: matchedRequests.map(function(r) { return r.id; }),
+            partner_assignments: matchedAssignments.map(function(a) { return a.id; }),
+            livrables: matchedLivrables.map(function(l) { return l.id; }),
+            wallet_reset: !!wallet,
+            wallet_balance_before: wallet ? wallet.balance_available : null
+        };
+
+        if (apply) {
+            if (orderIds.length) saveOrders(allOrders.filter(function(o) { return orderIds.indexOf(o.id) === -1; }));
+            if (dispatchIds.length) saveDispatches(allDispatches.filter(function(d) { return dispatchIds.indexOf(d.id) === -1; }));
+            if (summary.payouts.length) savePayouts(allPayouts.filter(function(p) { return summary.payouts.indexOf(p.id) === -1; }));
+            if (summary.partner_requests.length) savePartnerRequests(allRequests.filter(function(r) { return summary.partner_requests.indexOf(r.id) === -1; }));
+            if (summary.partner_assignments.length) savePartnerAssignments(allAssignments.filter(function(a) { return summary.partner_assignments.indexOf(a.id) === -1; }));
+            if (summary.livrables.length) saveLivrables(allLivrables.filter(function(l) { return summary.livrables.indexOf(l.id) === -1; }));
+            if (wallet) {
+                var wallets = loadWallets().filter(function(w) { return w.partner_id !== partnerId; });
+                saveWallets(wallets);
+            }
+            console.log('[TEST-RESET] Compte réinitialisé — partner_id:', partnerId, 'client_email:', clientEmail, summary);
+        }
+
+        res.json({ success: true, applied: apply, summary: summary });
+    } catch (err) {
+        console.error('[TEST-RESET] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * GET /api/admin/payouts/by-partner/:partnerId
  * Diagnostic en lecture seule : liste tous les payouts enregistrés pour un partner_id
  * donné, avec la commande associée quand elle existe encore. Sert à vérifier l'origine
