@@ -4307,6 +4307,95 @@ app.post('/api/admin/orders/:orderId/reconcile-record', function(req, res) {
 });
 
 /**
+ * POST /api/admin/wallets/rebuild-from-payouts?apply=true
+ * Reconstruit balance_available de CHAQUE wallet partenaire à partir de payouts.json
+ * (source de vérité toujours correctement sauvegardée/restaurée sur MongoDB) moins les
+ * retraits déjà effectués — nécessaire car persistent-store.js n'incluait pas 'wallets'/
+ * 'withdrawals' dans sa liste de restauration au démarrage (corrigé), ce qui a pu faire
+ * perdre le contenu réel de wallets.json à chaque redéploiement Render tout en laissant
+ * payouts.json intact. Sans ?apply=true : mode simulation, ne modifie rien, renvoie juste
+ * le rapport avant/après pour vérification humaine avant application.
+ */
+app.post('/api/admin/wallets/rebuild-from-payouts', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var apply = req.query.apply === 'true';
+        var payouts = loadPayouts();
+        var withdrawals = loadWithdrawals();
+        var existingWallets = loadWallets();
+
+        var creditsByPartner = {};
+        payouts.forEach(function(p) {
+            if (p.status !== 'wallet_credited' && p.status !== 'sent') return;
+            if (!p.partner_id) return;
+            (creditsByPartner[p.partner_id] = creditsByPartner[p.partner_id] || []).push(p);
+        });
+
+        var withdrawnByPartner = {};
+        withdrawals.forEach(function(w) {
+            if (w.status !== 'completed' && w.status !== 'paid' && w.status !== 'sent') return;
+            withdrawnByPartner[w.partner_id] = (withdrawnByPartner[w.partner_id] || 0) + parseFloat(w.amount || 0);
+        });
+
+        var newWallets = existingWallets.map(function(w) { return Object.assign({}, w); });
+        var report = [];
+
+        Object.keys(creditsByPartner).forEach(function(partnerId) {
+            var idx = newWallets.findIndex(function(w) { return w.partner_id === partnerId; });
+            var existing = idx !== -1 ? newWallets[idx] : null;
+            var rebuiltTxns = existing && Array.isArray(existing.transactions) ? existing.transactions.slice() : [];
+
+            var totalCredited = 0;
+            creditsByPartner[partnerId].forEach(function(p) {
+                totalCredited += parseFloat(p.amount || 0);
+                var alreadyThere = rebuiltTxns.some(function(t) {
+                    return t.type === 'credit' && t.order_id === p.order_id && t.stage === p.stage;
+                });
+                if (!alreadyThere) {
+                    rebuiltTxns.push({
+                        id: 'WTX-REBUILD-' + p.id,
+                        type: 'credit',
+                        amount: parseFloat(p.amount || 0),
+                        description: 'Reconstruction depuis historique des versements (' + p.id + ')',
+                        order_id: p.order_id,
+                        dispatch_id: p.dispatch_id,
+                        stage: p.stage,
+                        status: 'available',
+                        created_at: p.sent_at || p.created_at,
+                        rebuilt_at: new Date().toISOString()
+                    });
+                }
+            });
+
+            var withdrawn = withdrawnByPartner[partnerId] || 0;
+            var correctBalance = parseFloat((totalCredited - withdrawn).toFixed(2));
+            var currentBalance = existing ? parseFloat(existing.balance_available || 0) : 0;
+
+            if (!existing) {
+                newWallets.push({ partner_id: partnerId, balance_available: correctBalance, balance_pending: 0, currency: 'EUR', transactions: rebuiltTxns });
+                report.push({ partner_id: partnerId, before: 0, after: correctBalance, action: 'created' });
+            } else if (Math.abs(currentBalance - correctBalance) > 0.01) {
+                newWallets[idx].balance_available = correctBalance;
+                newWallets[idx].transactions = rebuiltTxns;
+                report.push({ partner_id: partnerId, before: currentBalance, after: correctBalance, action: 'corrected' });
+            } else {
+                report.push({ partner_id: partnerId, before: currentBalance, after: correctBalance, action: 'unchanged' });
+            }
+        });
+
+        if (apply) {
+            saveWallets(newWallets);
+            console.log('[WALLET-REBUILD] Appliqué —', report.filter(function(r){return r.action!=='unchanged';}).length, 'wallet(s) corrigé(s)/créé(s).');
+        }
+
+        res.json({ success: true, applied: apply, report: report });
+    } catch (err) {
+        console.error('[WALLET-REBUILD] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/admin/orders/:orderId/force-refund
  * Override admin de /cancel-refund : mêmes mécaniques (clawback wallet + remboursement
  * Stripe/PayPal + annulation dispatch), mais sans les garde-fous de libre-service client
