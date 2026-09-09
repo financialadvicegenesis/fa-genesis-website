@@ -1540,6 +1540,20 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
 }));
 
+// Empêcher toute mise en cache HTTP conditionnelle (ETag → 304 Not Modified) sur l'API.
+// Express génère un ETag par défaut sur chaque res.json() ; si le navigateur (ou le
+// Service Worker de l'app, qui gère déjà mal les réponses 206 — voir sw.js) envoie une
+// requête conditionnelle qui matche, le serveur répond 304 SANS CORPS. Si cette réponse
+// n'est pas correctement reconstituée avec le corps mis en cache (ex. via un Service
+// Worker au comportement non standard), le fetch() du frontend reçoit un corps vide et
+// response.json() lève une exception silencieuse — vue côté utilisateur comme "Erreur de
+// chargement" alors que le serveur a bien répondu avec les bonnes données. Une API
+// dynamique (wallet, commandes, etc.) ne doit de toute façon jamais être mise en cache.
+app.use('/api', function(req, res, next) {
+    res.set('Cache-Control', 'no-store');
+    next();
+});
+
 // Stripe webhooks nécessitent le raw body pour vérifier la signature.
 // Ces routes doivent être déclarées AVANT express.json().
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
