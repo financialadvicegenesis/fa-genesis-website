@@ -4466,6 +4466,50 @@ app.get('/api/admin/payouts/by-partner/:partnerId', function(req, res) {
 });
 
 /**
+ * POST /api/admin/data/:collection/dedupe?apply=true
+ * Généralise /api/admin/payouts/dedupe à toute collection écrite fréquemment et donc
+ * potentiellement touchée par le même bug de persistToCloud() non sérialisé (corrigé en
+ * d84f135, mais le stock de doublons accumulé AVANT ce correctif reste dans les fichiers
+ * tant qu'il n'est pas nettoyé). orders.json en particulier est écrit à chaque updateOrder()
+ * — donc potentiellement bien plus touché que payouts.json. Dédoublonne par `id` en gardant
+ * une seule occurrence. Sans ?apply=true : simulation.
+ */
+var _DEDUPE_COLLECTIONS = {
+    orders: { load: loadOrders, save: saveOrders },
+    dispatches: { load: loadDispatches, save: saveDispatches },
+    payouts: { load: loadPayouts, save: savePayouts },
+    livrables: { load: loadLivrables, save: saveLivrables },
+    partner_requests: { load: loadPartnerRequests, save: savePartnerRequests },
+    partner_assignments: { load: loadPartnerAssignments, save: savePartnerAssignments }
+};
+app.post('/api/admin/data/:collection/dedupe', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var coll = _DEDUPE_COLLECTIONS[req.params.collection];
+        if (!coll) return res.status(400).json({ error: 'Collection inconnue. Valeurs possibles : ' + Object.keys(_DEDUPE_COLLECTIONS).join(', ') });
+        var apply = req.query.apply === 'true';
+        var raw = coll.load();
+        var seen = {};
+        var deduped = [];
+        raw.forEach(function(item) {
+            if (!item || !item.id) { deduped.push(item); return; } // pas d'id → on ne peut pas dédoublonner, on garde
+            if (seen[item.id]) return;
+            seen[item.id] = true;
+            deduped.push(item);
+        });
+        var removed = raw.length - deduped.length;
+        if (apply && removed > 0) {
+            coll.save(deduped);
+            console.log('[DATA-DEDUPE]', req.params.collection, '— Appliqué —', removed, 'doublon(s) supprimé(s), ', deduped.length, 'restant(s).');
+        }
+        res.json({ success: true, collection: req.params.collection, applied: apply, raw_count: raw.length, deduped_count: deduped.length, duplicates_removed: removed });
+    } catch (err) {
+        console.error('[DATA-DEDUPE] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/admin/payouts/dedupe?apply=true
  * Nettoie payouts.json des doublons exacts (même id) accumulés par le bug de
  * persistToCloud() non sérialisé (deleteMany+insertMany concurrents — voir
