@@ -599,6 +599,19 @@ function getWithdrawalMethodsForCountry(country) {
     return ['paypal','wise','payoneer'];
 }
 
+// Montant RÉELLEMENT crédité au wallet du partenaire pour l'acompte d'une commande — et non
+// le montant brut payé par le client. À utiliser pour tout clawback (cancel-refund,
+// force-refund) : debitPartnerWallet() échouait systématiquement pour "solde insuffisant" en
+// essayant de reprendre order.deposit_amount (100% du prix client) alors que le partenaire n'a
+// jamais reçu que sa part après commission (75% par défaut) — trouvé en testant l'annulation
+// d'une commande Acompte+Solde où le clawback échouait à chaque fois.
+function _partnerDepositShare(order, dispatch) {
+    if (dispatch && parseFloat(dispatch.partner_deposit_amount) > 0) return parseFloat(dispatch.partner_deposit_amount);
+    var partnerPct = (dispatch && dispatch.partner_pct) || 75;
+    var depositAmt = parseFloat(order.deposit_amount || order.total_amount || 0);
+    return parseFloat((depositAmt * partnerPct / 100).toFixed(2));
+}
+
 // Débite le wallet GENESIS d'un prestataire (clawback lors d'un remboursement client).
 // Retourne {ok:true} si le solde était suffisant, {ok:false, balance:X} sinon.
 function debitPartnerWallet(partnerId, amount, description, orderId) {
@@ -1288,6 +1301,15 @@ async function releaseOnHoldPayouts(dispatchId) {
                 savePayouts(latest);
             }
             if (_relWalletOk) {
+                // IMPORTANT : sans ceci, order.partner_paid_out restait false après une résolution
+                // de litige — inoffensif pour l'affichage du wallet client (qui se base directement
+                // sur le statut du payout depuis le correctif de _computeClientWallet), mais
+                // dangereux pour cancel-refund : celui-ci ne bloque que les litiges OUVERTS, pas
+                // résolus, et décide s'il faut reprendre l'argent au prestataire (clawback) en
+                // lisant CE champ. Sans la mise à jour, un client pourrait encore annuler après
+                // résolution du litige et être remboursé sans que l'argent déjà versé au
+                // prestataire ne soit repris.
+                if (p.order_id) updateOrder(p.order_id, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
                 notifyUser(p.partner_email, 'partner', 'wallet_credited', '💰 Litige résolu — versement débloqué',
                     '+' + p.amount.toFixed(2) + '€ viennent d\'être ajoutés à votre Wallet GENESIS suite à la résolution du litige.',
                     '#partner:livrables');
@@ -2999,7 +3021,17 @@ async function checkAutoPaymentRelease() {
 
                 var _arPayoutOk = false; // true seulement si l'argent a réellement été versé/crédité
                 if (_arDisp) {
-                    _arPayoutOk = await processDispatchPayout(_arDisp, 'deposit');
+                    // Même correctif que dans validate-delivery (voir son commentaire détaillé) :
+                    // pour une commande Acompte + Solde, l'acompte est déjà versé au partenaire
+                    // depuis l'acceptation de la mission — sans ce second appel en stage 'balance',
+                    // le solde capturé automatiquement ci-dessus (7j) ne serait jamais crédité.
+                    var _arHasBalance = parseFloat(_o.balance_amount || 0) > 0;
+                    var _arDepositOk = await processDispatchPayout(_arDisp, 'deposit');
+                    var _arBalanceOk = true;
+                    if (_arHasBalance && _o.balance_paid === true) {
+                        _arBalanceOk = await processDispatchPayout(_arDisp, 'balance');
+                    }
+                    _arPayoutOk = _arDepositOk && _arBalanceOk;
                     if (_arPayoutOk) {
                         // Sortir la mission de la liste "en cours" côté partenaire — validée et payée.
                         _arDisps[_arDispIdx].mission_status = 'completed';
@@ -4747,7 +4779,7 @@ app.post('/api/admin/orders/:orderId/force-refund', async function(req, res) {
         if (_clawbackNeeded && dispatch) {
             var _clawbackPartnerId = dispatch.claimed_by_partner_id || dispatch.partner_id;
             if (_clawbackPartnerId) {
-                var _clawAmt = parseFloat(order.deposit_amount || order.total_amount || 0);
+                var _clawAmt = _partnerDepositShare(order, dispatch);
                 var _clawResult = debitPartnerWallet(_clawbackPartnerId, _clawAmt,
                     'Clawback — remboursement admin (' + orderId + ')', orderId);
                 _clawbackOk = _clawResult.ok;
@@ -4876,7 +4908,7 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
         if (_clawbackNeeded && dispatch) {
             _clawbackPartnerId = dispatch.claimed_by_partner_id || dispatch.partner_id;
             if (_clawbackPartnerId) {
-                var _clawAmt = parseFloat(order.deposit_amount || order.total_amount || 0);
+                var _clawAmt = _partnerDepositShare(order, dispatch);
                 var _clawResult = debitPartnerWallet(_clawbackPartnerId, _clawAmt,
                     'Clawback — annulation par client (' + orderId + ')', orderId);
                 _clawbackOk = _clawResult.ok;
@@ -5861,9 +5893,63 @@ async function refundClientOrder(order) {
             }
         } catch(e) { console.error('[REFUND] Stripe deposit erreur:', e.message); }
     }
+
+    // GENESIS SAFE™ — Acompte + Solde : le solde a sa PROPRE autorisation/PaymentIntent,
+    // totalement distincte de celle de l'acompte traitée ci-dessus. Sans ce bloc, annuler une
+    // commande dont le solde est encore autorisé (cas normal avant validation — voir
+    // stripe_balance_pi_id / paypal_balance_authorization_id) laissait cette réservation
+    // active sur la carte/compte du client indéfiniment, malgré le message "aucun montant ne
+    // sera débité" — trouvé en testant l'annulation d'une commande Acompte+Solde.
+    var balanceAmount = parseFloat(order.balance_amount || 0);
+    var balanceRefunded = balanceAmount <= 0; // rien à faire s'il n'y a pas de solde sur cette commande
+    if (!balanceRefunded && order.paypal_balance_authorization_id && !order.balance_paid) {
+        try {
+            await _paypalVoidAuthorization(order.paypal_balance_authorization_id);
+            balanceRefunded = true;
+            console.log('[REFUND] Autorisation PayPal solde annulée (libération instantanée):', order.paypal_balance_authorization_id);
+        } catch(e) { console.error('[REFUND] PayPal solde void erreur:', e.message); }
+    }
+    if (!balanceRefunded && order.paypal_balance_capture_id) {
+        try {
+            var ppBalToken = await getPayPalAccessToken();
+            var ppBalResp = await fetch(PAYPAL_BASE + '/v2/payments/captures/' + order.paypal_balance_capture_id + '/refund', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + ppBalToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: { value: balanceAmount.toFixed(2), currency_code: 'EUR' } })
+            });
+            var ppBalResult = await ppBalResp.json();
+            if (ppBalResult.status === 'COMPLETED' || ppBalResult.status === 'PENDING') { balanceRefunded = true; }
+            else { console.error('[REFUND] PayPal solde réponse inattendue:', JSON.stringify(ppBalResult)); }
+        } catch(e) { console.error('[REFUND] PayPal solde erreur:', e.message); }
+    }
+    if (!balanceRefunded && order.stripe_balance_pi_id) {
+        try {
+            if (!order.balance_paid) {
+                var stripeBalCancel = await scp.cancelPaymentIntent(order.stripe_balance_pi_id);
+                if (stripeBalCancel && stripeBalCancel.status === 'canceled') {
+                    balanceRefunded = true;
+                    console.log('[REFUND] Stripe PI solde annulé (libération instantanée):', order.stripe_balance_pi_id);
+                } else {
+                    console.error('[REFUND] Stripe solde cancel réponse inattendue:', JSON.stringify(stripeBalCancel));
+                }
+            } else {
+                var stripeBalRefundAmt = Math.round(balanceAmount * 100);
+                var stripeBalRef = await scp.createRefund({ paymentIntentId: order.stripe_balance_pi_id, amount: stripeBalRefundAmt });
+                if (stripeBalRef && (stripeBalRef.status === 'succeeded' || stripeBalRef.status === 'pending')) {
+                    balanceRefunded = true;
+                    console.log('[REFUND] Stripe solde remboursé (capturé):', stripeBalRef.id);
+                } else {
+                    console.error('[REFUND] Stripe solde réponse inattendue:', JSON.stringify(stripeBalRef));
+                }
+            }
+        } catch(e) { console.error('[REFUND] Stripe solde erreur:', e.message); }
+    }
+    refunded = refunded && balanceRefunded;
+
     updateOrder(order.id, {
         status: 'refunded',
         deposit_paid: false,
+        balance_paid: false,
         refunded_at: new Date().toISOString(),
         refund_method: (order.paypal_capture_id || order.paypal_authorization_id) ? 'paypal' : (order.stripe_deposit_pi_id ? 'stripe' : 'manual'),
         refund_reason: 'Refus prestataire',
@@ -18008,7 +18094,26 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
                 // prestataire a été réellement crédité. On ne doit JAMAIS marquer
                 // partner_paid_out=true (ni sortir la mission de "en cours") sans cette
                 // confirmation, sinon le système affiche "payé" alors qu'aucun argent n'a bougé.
-                var _payoutOk = await processDispatchPayout(_vdDisp, 'deposit');
+                //
+                // Commande Acompte + Solde (tier 'custom'/'large') : l'acompte est déjà versé au
+                // partenaire dès l'ACCEPTATION de la mission (voir /claim et /accept, qui
+                // appellent déjà processDispatchPayout(dispatch,'deposit') pour tout tier ≠
+                // 'small'). Sans ce bloc, l'appel ci-dessous en stage 'deposit' tombait sur la
+                // protection anti-doublon interne de processDispatchPayout() (qui trouve le
+                // versement d'acompte déjà existant et répond true sans rien faire de plus) — le
+                // SOLDE fraîchement capturé au-dessus n'était donc JAMAIS crédité au wallet du
+                // partenaire : l'argent quittait la carte du client, arrivait chez Stripe GENESIS,
+                // et restait bloqué là indéfiniment, sans version ni alerte. On déclenche donc
+                // explicitement un second versement en stage 'balance' quand un solde existe et
+                // vient d'être capturé — processDispatchPayout() reste idempotent dans tous les
+                // cas (rien à payer deux fois si un des deux versements existait déjà).
+                var _vdHasBalance = parseFloat(order.balance_amount || 0) > 0;
+                var _vdDepositOk = await processDispatchPayout(_vdDisp, 'deposit');
+                var _vdBalanceOk = true;
+                if (_vdHasBalance && order.balance_paid === true) {
+                    _vdBalanceOk = await processDispatchPayout(_vdDisp, 'balance');
+                }
+                var _payoutOk = _vdDepositOk && _vdBalanceOk;
                 if (_payoutOk) {
                     updateOrder(orderId, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
                     // Sortir la mission de la liste "en cours" côté partenaire — validée et payée.
