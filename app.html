@@ -14269,6 +14269,14 @@ function _pbBuildAndShowContract(){
       : '<div style="font-size:11px;color:#aaa;line-height:1.7;">Le paiement de <strong style="color:#FFD700;">'+depositEur+'</strong> est sécurisé sur le portefeuille GENESIS SAFE™ et retenu jusqu\'à confirmation de livraison par le client. En cas de litige, FA GENESIS intervient comme médiateur neutre.</div>')+
     '</div>'+
 
+    '<div class="pb-ctr-section">'+
+    '<div class="pb-ctr-sh">Annulation et remboursement</div>'+
+    '<div style="font-size:11px;color:#aaa;line-height:1.7;">Tant que le client n\'a pas validé la bonne réception de la prestation, il peut annuler sa commande à tout moment '+
+    'et obtenir le remboursement intégral des sommes déjà versées'+(_isSplitPayment?' (y compris l\'acompte déjà transmis au prestataire)':'')+'. '+
+    'Une fois la prestation validée par le client (ou réputée acceptée faute de réponse sous 7 jours), l\'annulation en libre-service n\'est plus possible ; '+
+    'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure.</div>'+
+    '</div>'+
+
     '<div style="border-top:1px solid #181818;padding-top:10px;font-size:10px;color:#444;line-height:1.6;">'+
     'Ce contrat est conclu conformément au droit français et aux CGU de FA GENESIS. La signature électronique ci-dessous a valeur juridique conformément au règlement eIDAS (UE) n°910/2014. Tout litige sera soumis à la juridiction compétente du lieu du prestataire.'+
     '</div>';
@@ -14276,12 +14284,37 @@ function _pbBuildAndShowContract(){
   var body=document.getElementById('pb-ctr-body'); if(body) body.innerHTML=html;
   // Stocker la ref pour l'envoi serveur
   if(body) body.dataset.ref=ref;
-  // Reset champs signature
-  var si=document.getElementById('pb-sign-input'); if(si) si.value='';
-  var sc=document.getElementById('pb-sign-check'); if(sc) sc.checked=false;
+  // Reset champs signature — la lecture du contrat doit être explicitement approuvée
+  // (bouton "LU ET APPROUVÉ") avant que la saisie du nom, la case à cocher et le bouton
+  // de signature ne deviennent utilisables. _pbApproved est revérifié côté client dans
+  // _pbSignAndProceed() pour ne pas dépendre uniquement de l'état disabled des champs.
+  _pbApproved = false;
+  var ab=document.getElementById('pb-approve-btn');
+  if(ab){ ab.disabled=false; ab.className='cwb-btn'; ab.style.background='#1a1a1a'; ab.style.borderColor='#FFD700'; ab.style.color='#FFD700';
+    ab.innerHTML='<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>LU ET APPROUVÉ'; }
+  var si=document.getElementById('pb-sign-input'); if(si){ si.value=''; si.disabled=true; }
+  var sc=document.getElementById('pb-sign-check'); if(sc){ sc.checked=false; sc.disabled=true; }
   var se=document.getElementById('pb-sign-err'); if(se){se.style.display='none';se.textContent='';}
-  var sb=document.getElementById('pb-sign-btn'); if(sb){sb.disabled=false;sb.innerHTML='<i class="fa-solid fa-pen-nib" style="margin-right:6px;"></i>SIGNER ET PAYER →';}
+  var sb=document.getElementById('pb-sign-btn'); if(sb){sb.disabled=true;sb.innerHTML='<i class="fa-solid fa-pen-nib" style="margin-right:6px;"></i>SIGNER ET PAYER →';}
   var cs=document.getElementById('pb-contract-screen'); if(cs) cs.style.display='block';
+  // Ramener le lecteur en haut du contrat pour qu'il le parcoure avant d'approuver.
+  var doc=document.getElementById('pb-ctr-body'); if(doc) doc.scrollTop=0;
+}
+
+// Doit être cliqué avant de pouvoir signer/payer — voir _pbBuildAndShowContract() et
+// _pbSignAndProceed(). Déverrouille la saisie du nom, la case à cocher et le bouton de
+// signature une fois le client confirmé avoir lu le contrat (dont l'article annulation/
+// remboursement ajouté ci-dessus).
+var _pbApproved = false;
+function _pbApproveContract(){
+  _pbApproved = true;
+  var ab=document.getElementById('pb-approve-btn');
+  if(ab){ ab.disabled=true; ab.style.background='#0a2a0a'; ab.style.borderColor='#22c55e'; ab.style.color='#22c55e';
+    ab.innerHTML='<i class="fa-solid fa-check-double" style="margin-right:6px;"></i>APPROUVÉ ✓'; }
+  var si=document.getElementById('pb-sign-input'); if(si) si.disabled=false;
+  var sc=document.getElementById('pb-sign-check'); if(sc) sc.disabled=false;
+  var sb=document.getElementById('pb-sign-btn'); if(sb) sb.disabled=false;
+  var se=document.getElementById('pb-sign-err'); if(se){se.style.display='none';se.textContent='';}
 }
 
 function _pbSignAndProceed(){
@@ -14290,6 +14323,7 @@ function _pbSignAndProceed(){
   var se=document.getElementById('pb-sign-err');
   var sb=document.getElementById('pb-sign-btn');
   var name=(si&&si.value||'').trim();
+  if(!_pbApproved){if(se){se.textContent='Merci de cliquer sur "Lu et approuvé" après avoir pris connaissance du contrat.';se.style.display='block';} return;}
   if(!name){if(se){se.textContent='Merci de saisir votre prénom et nom.';se.style.display='block';} return;}
   if(!sc||!sc.checked){if(se){se.textContent='Merci de cocher la case pour accepter le contrat.';se.style.display='block';} return;}
   if(se) se.style.display='none';
@@ -14309,7 +14343,8 @@ function _pbSignAndProceed(){
       serviceLabel:_pbService.label,
       servicePrice:parseFloat(_pbService.price||_pbService.priceNum||0),
       depositAmount:_pbDepositAmount||0,
-      signatureName:name
+      signatureName:name,
+      accepted:true
     })
   }).then(function(r){return r.json();}).then(function(res){
     if(!res.ok) throw new Error(res.error||'Erreur enregistrement contrat');
@@ -15757,15 +15792,20 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div class="pb-ctr-doc" id="pb-ctr-body"></div>
         <div class="pb-sign-wrap">
           <div class="pb-sign-lbl"><i class="fa-solid fa-file-signature" style="margin-right:6px;"></i>Signature électronique</div>
+          <div class="cwb-actions" style="grid-template-columns:1fr;margin-bottom:10px;">
+            <button class="cwb-btn" id="pb-approve-btn" onclick="_pbApproveContract()" style="background:#1a1a1a;border:1.5px solid #FFD700;color:#FFD700;">
+              <i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>LU ET APPROUVÉ
+            </button>
+          </div>
           <div class="pb-sign-hint">Tapez votre prénom et nom pour signer</div>
-          <input class="ptnr-input" id="pb-sign-input" type="text" placeholder="Prénom Nom" autocomplete="name" style="margin-bottom:8px;">
+          <input class="ptnr-input" id="pb-sign-input" type="text" placeholder="Prénom Nom" autocomplete="name" style="margin-bottom:8px;" disabled>
           <label class="pb-sign-chk" for="pb-sign-check">
-            <input type="checkbox" id="pb-sign-check">
-            J'ai lu et j'accepte l'ensemble des termes du contrat ci-dessus
+            <input type="checkbox" id="pb-sign-check" disabled>
+            J'ai lu et j'accepte l'ensemble des termes du contrat ci-dessus, y compris les conditions d'annulation et de remboursement
           </label>
           <div id="pb-sign-err" style="display:none;background:#1a0000;border:1px solid #3a0000;border-radius:8px;padding:8px 12px;color:#ff7070;font-size:11px;margin-bottom:8px;"></div>
           <div class="cwb-actions" style="grid-template-columns:1fr;margin-bottom:6px;">
-            <button class="cwb-btn cwb-btn-yellow" id="pb-sign-btn" onclick="_pbSignAndProceed()">
+            <button class="cwb-btn cwb-btn-yellow" id="pb-sign-btn" onclick="_pbSignAndProceed()" disabled>
               <i class="fa-solid fa-pen-nib" style="margin-right:6px;"></i>SIGNER ET PAYER →
             </button>
           </div>

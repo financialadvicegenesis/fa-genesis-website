@@ -5353,6 +5353,13 @@ app.post('/api/contracts/sign', function(req, res) {
         if (!b.contractRef || !b.partnerId || !b.serviceLabel || !b.signatureName) {
             return res.status(400).json({ error: 'Champs requis manquants' });
         }
+        // Le client doit avoir explicitement cliqué "Lu et approuvé" ET coché la case
+        // d'acceptation avant que le formulaire ne devienne utilisable côté frontend
+        // (voir _pbApproveContract()/_pbSignAndProceed() dans app.html) — revérifié ici
+        // car le frontend seul n'est pas une garantie suffisante.
+        if (b.accepted !== true) {
+            return res.status(400).json({ error: 'Vous devez lire et approuver le contrat avant de signer.' });
+        }
 
         var contracts = loadContracts();
         var now = new Date().toISOString();
@@ -5372,6 +5379,8 @@ app.post('/api/contracts/sign', function(req, res) {
             service_price:    parseFloat(b.servicePrice) || 0,
             deposit_amount:   parseFloat(b.depositAmount) || 0,
             signature_name:   b.signatureName,
+            terms_accepted:   true,
+            signed_ip:        req.ip || (req.connection && req.connection.remoteAddress) || null,
             signed_at:        now,
             created_at:       now,
             order_id:         null,

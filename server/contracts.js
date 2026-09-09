@@ -177,12 +177,12 @@ var SERVICE_CLAUSES = [
     {
         id: 'obligations_client',
         title: 'Article 4 — Obligations du Client',
-        body: 'Le Client s\'engage à : (1) fournir au Prestataire les informations et éléments nécessaires à la réalisation de la prestation dans des délais raisonnables ; (2) régler les montants dus selon l\'échéancier GENESIS SAFE™ ; (3) valider ou contester la livraison dans un délai de 3 jours ouvrés — à défaut, la livraison sera réputée acceptée et les fonds libérés automatiquement ; (4) utiliser les livrables dans le respect de la propriété intellectuelle.'
+        body: 'Le Client s\'engage à : (1) fournir au Prestataire les informations et éléments nécessaires à la réalisation de la prestation dans des délais raisonnables ; (2) régler les montants dus selon l\'échéancier GENESIS SAFE™ ; (3) valider ou contester la livraison dans un délai de 7 jours — à défaut, la livraison sera réputée acceptée et les fonds libérés automatiquement ; (4) utiliser les livrables dans le respect de la propriété intellectuelle.'
     },
     {
         id: 'annulation',
         title: 'Article 5 — Annulation et remboursement',
-        body: 'En cas d\'annulation par le Client après paiement de l\'acompte mais avant le début de la prestation, l\'acompte (30 %) est retenu conformément à la politique d\'annulation FA GENESIS. En cas d\'annulation par le Prestataire, les montants versés sont remboursés intégralement au Client. En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.'
+        body: 'Tant que le Client n\'a pas validé la bonne exécution de la prestation, il peut annuler sa commande à tout moment et obtenir le remboursement intégral des sommes déjà versées, y compris un éventuel acompte déjà transmis au Prestataire — qu\'un livrable ait ou non été publié entre-temps. Une fois la prestation validée par le Client (ou réputée acceptée à l\'expiration du délai de l\'article 4), l\'annulation en libre-service n\'est plus possible ; seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. En cas d\'annulation par le Prestataire, les montants versés sont remboursés intégralement au Client. En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.'
     },
     {
         id: 'pi',
@@ -293,8 +293,10 @@ function _buildPaymentSection(order) {
             'Les mensualités sont encaissées par FA GENESIS et versées directement au Prestataire dès réception, sans période d\'escrow. ' +
             'Le non-paiement d\'une mensualité avant sa date d\'échéance entraîne la suspension de la prestation jusqu\'à régularisation.';
         article4extra = 'régler chaque mensualité à la date d\'échéance figurant au présent contrat ;';
-        article5 = 'En cas d\'annulation par le Client après paiement de la première mensualité, ' +
-            'les mensualités déjà versées au Prestataire sont acquises à titre d\'indemnité. ' +
+        article5 = 'Tant que le Client n\'a pas validé la bonne exécution de la prestation, il peut annuler sa commande à tout moment ' +
+            'et obtenir le remboursement intégral des mensualités déjà versées, y compris la première. ' +
+            'Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ' +
+            'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ' +
             'En cas d\'annulation par le Prestataire, les mensualités versées sont remboursées intégralement au Client. ' +
             'En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.';
 
@@ -316,8 +318,10 @@ function _buildPaymentSection(order) {
             'Le solde de ' + soldePct + '% (' + parseFloat(soldeInst.amount).toFixed(2) + ' €) est conservé en escrow par GENESIS SAFE™ et libéré uniquement après confirmation de livraison par le Client, ' +
             'ou à l\'expiration d\'un délai de 7 jours suivant la déclaration de fin de prestation par le Prestataire, si le Client ne formule aucune contestation.';
         article4extra = 'régler le solde de la prestation conformément à l\'échéancier GENESIS SAFE™ ;';
-        article5 = 'En cas d\'annulation par le Client après versement de l\'acompte mais avant le début effectif de la prestation, ' +
-            'l\'acompte est retenu par le Prestataire à titre d\'indemnité d\'immobilisation. ' +
+        article5 = 'Tant que le Client n\'a pas validé la bonne exécution de la prestation, il peut annuler sa commande à tout moment ' +
+            'et obtenir le remboursement intégral des sommes déjà versées, y compris l\'acompte déjà transmis au Prestataire. ' +
+            'Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ' +
+            'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ' +
             'En cas d\'annulation par le Prestataire, les montants versés sont remboursés intégralement au Client. ' +
             'En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.';
 
@@ -338,8 +342,10 @@ function _buildPaymentSection(order) {
             'livraison finale (30 %) à la remise et validation des livrables définitifs. ' +
             'Aucun versement au Prestataire n\'intervient avant validation de chaque étape par le Client.';
         article4extra = 'régler les montants dus selon l\'échéancier GENESIS SAFE™ et valider chaque jalon ;';
-        article5 = 'En cas d\'annulation par le Client après paiement de l\'acompte mais avant le début de la prestation, ' +
-            'l\'acompte (30 %) est retenu à titre d\'indemnité conformément à la politique FA GENESIS. ' +
+        article5 = 'Tant que le Client n\'a pas validé la bonne exécution de la prestation, il peut annuler sa commande à tout moment ' +
+            'et obtenir le remboursement intégral des sommes déjà versées, y compris l\'acompte (30 %) déjà transmis au Prestataire. ' +
+            'Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ' +
+            'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ' +
             'En cas d\'annulation par le Prestataire, les montants versés sont remboursés intégralement au Client. ' +
             'En cas de litige sur la qualité d\'un livrable, la procédure de médiation FA GENESIS s\'applique en priorité.';
 
@@ -352,8 +358,10 @@ function _buildPaymentSection(order) {
             'À défaut de confirmation ou de contestation dans un délai de 7 jours suivant la déclaration de fin de prestation par le Prestataire, ' +
             'les fonds sont automatiquement libérés. Aucun versement au Prestataire n\'intervient avant ce délai.';
         article4extra = 'confirmer ou contester la livraison dans un délai de 7 jours suivant la notification de fin de prestation ;';
-        article5 = 'En cas d\'annulation par le Client après paiement et avant le début effectif de la prestation, ' +
-            'une indemnité peut être retenue selon les règles de la plateforme FA GENESIS. ' +
+        article5 = 'Tant que le Client n\'a pas validé la bonne réception de la prestation, il peut annuler sa commande à tout moment ' +
+            'et obtenir le remboursement intégral du paiement déjà effectué. ' +
+            'Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ' +
+            'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ' +
             'En cas d\'annulation par le Prestataire, le paiement est remboursé intégralement au Client. ' +
             'En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.';
     }
