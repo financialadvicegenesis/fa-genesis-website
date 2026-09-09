@@ -6372,7 +6372,19 @@ function _computeClientWallet(clientEmail) {
             var hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
             if (hasPaidInst) {
                 order.installments.forEach(function(inst) {
-                    if (!inst.paid) return;
+                    if (!inst.paid) {
+                        // Tranche pas encore payée : pour un solde déjà AUTORISÉ (carte réservée
+                        // GENESIS SAFE™, capture différée à la livraison) — cas "Acompte + Solde" —
+                        // l'argent est déjà réellement bloqué sur la carte du client, donc affiché
+                        // "en escrow" plutôt que de disparaître silencieusement du portefeuille.
+                        // Une mensualité future d'un plan "plusieurs fois" (stage installment_N,
+                        // jamais pré-autorisée) reste volontairement exclue : rien n'a encore été
+                        // prélevé, il n'y a donc rien à sécuriser pour l'instant.
+                        if (inst.stage === 'balance' && (order.balance_authorized === true || order.balance_payment_ready)) {
+                            held += parseFloat(inst.amount) || 0;
+                        }
+                        return;
+                    }
                     var payout = payouts.find(function(p) {
                         return p.order_id === order.id && p.stage === inst.stage;
                     });
