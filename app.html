@@ -9786,8 +9786,13 @@ function _fetchAndRenderCommandes(){
         // sinon la ligne reste "supprimable" (et non cliquable pour voir le détail) pendant
         // toute la durée de l'escrow, jusqu'à la validation.
         var _canDelete = !(r.deposit_paid || r.deposit_authorized) || _dsKey==='pending_acceptance';
+        // Commande terminée : le client peut aussi la supprimer de sa liste (masquage propre à
+        // sa vue — les données réelles restent intactes côté admin/prestataire).
+        var _canHide = !_canDelete && (_dsKey==='completed' || _dsKey==='reviewed');
         var _deleteBtn = _canDelete
           ? "<button onclick='event.stopPropagation();_cancelUnpaidOrder(\""+r.order_id+"\",\""+r.id+"\")' style='background:none;border:none;padding:6px;cursor:pointer;color:#555;flex-shrink:0;' title='Supprimer'><i class='fa-solid fa-trash-can' style='font-size:14px;'></i></button>"
+          : _canHide
+          ? "<button onclick='event.stopPropagation();_hideCompletedOrder(\""+r.id+"\")' style='background:none;border:none;padding:6px;cursor:pointer;color:#555;flex-shrink:0;' title='Supprimer'><i class='fa-solid fa-trash-can' style='font-size:14px;'></i></button>"
           : "<i class='fa-solid fa-chevron-right' style='color:#444;font-size:12px;flex-shrink:0;'></i>";
         return "<div class='espace-card' style='padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;' onclick='"+(_canDelete?'':'showOrderDetail(\"'+r.id+'\")')+"'>"
           +_avatarHtml
@@ -9834,6 +9839,24 @@ function _cancelUnpaidOrder(orderId, requestId){
       _fetchAndRenderCommandes();
     } else {
       showToast('Erreur',res.error||'Impossible d\'annuler.','error');
+    }
+  }).catch(function(){
+    showToast('Erreur réseau','Réessayez.','error');
+  });
+}
+
+function _hideCompletedOrder(requestId){
+  if(!requestId||!USER||!USER._token) return;
+  if(!confirm('Supprimer cette commande de votre liste ? Vos données de paiement restent conservées.')) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/my-requests/'+requestId+'/hide',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token}
+  }).then(function(r){return r.json();}).then(function(res){
+    if(res.success){
+      showToast('Commande supprimée','Elle n\'apparaît plus dans votre liste.','success');
+      _fetchAndRenderCommandes();
+    } else {
+      showToast('Erreur',res.error||'Impossible de supprimer.','error');
     }
   }).catch(function(){
     showToast('Erreur réseau','Réessayez.','error');
@@ -16475,8 +16498,14 @@ function _ptnrRenderEngagedMissionCard(r){
   var contractDlBtn = r.contract_id
     ? '<a href="'+(window.FA_GENESIS_API||API)+'/api/contracts/'+r.contract_id+'/pdf" target="_blank" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#1a1200;border:1px solid #3d2e00;border-radius:8px;padding:8px 12px;color:#FFD700;font-size:12px;font-weight:700;text-decoration:none;"><i class="fa-solid fa-file-contract"></i> Télécharger le contrat signé</a>'
     : '';
+  // Mission terminée : le prestataire peut aussi la supprimer de sa liste (masquage propre à
+  // sa vue — versements/historique restent intacts côté admin/client).
+  var _ptnrCanHide = (statusKey==='completed' || statusKey==='reviewed');
   return '<div class="dispatch-card" id="request-'+r.id+'">'
-    +'<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+    +'<div class="dispatch-title" style="flex:1;min-width:0;">'+r.client_name+' — '+r.service_label+'</div>'
+    +(_ptnrCanHide ? '<button onclick="_ptnrHideMission(\''+r.id+'\')" style="background:none;border:none;padding:6px;cursor:pointer;color:#555;flex-shrink:0;" title="Supprimer"><i class="fa-solid fa-trash-can" style="font-size:14px;"></i></button>' : '')
+    +'</div>'
     +contractDlBtn
     +(r.payment_tier === 'small' ? '<div style="font-size:11px;color:#6dbf6d;font-weight:700;margin-bottom:6px;"><i class="fas fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — fonds versés à la livraison confirmée</div>' : '')
     +(isCancelled ? '<div style="font-size:12px;color:#f87171;font-weight:800;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:8px 12px;margin-bottom:8px;"><i class="fa-solid fa-ban" style="margin-right:6px;"></i>Mission annulée par le client — la livraison ne peut plus être confirmée.</div>' : '')
@@ -16701,6 +16730,21 @@ function _ptnrMarkDelivered(dispatchId){
         _ptnrLoadMissions();
       } else {
         showToast(res.error||'Erreur','Réessayez','error');
+      }
+    }).catch(function(){
+      showToast('Erreur de connexion','Réessayez','error');
+    });
+  });
+}
+
+function _ptnrHideMission(requestId){
+  _showFloatingConfirm('Supprimer cette mission de votre liste ? Vos versements restent conservés.', function(){
+    _ptnrFetch('/api/partner/requests/'+requestId+'/hide','POST',{}).then(function(res){
+      if(res && res.success){
+        showToast('Mission supprimée','Elle n\'apparaît plus dans votre liste.','success');
+        _ptnrLoadMissions();
+      } else {
+        showToast('Erreur', (res && res.error) || 'Impossible de supprimer.', 'error');
       }
     }).catch(function(){
       showToast('Erreur de connexion','Réessayez','error');

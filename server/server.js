@@ -16883,13 +16883,55 @@ app.get('/api/my-requests', function(req, res) {
                     : null;
                 return out;
             })
-            // Exclure les commandes annulées/remboursées de la liste client
+            // Exclure les commandes annulées/remboursées, et celles que le client a masquées
+            // lui-même (bouton "Supprimer" — masquage propre à sa vue, ne touche pas aux
+            // données réelles : l'admin et le prestataire continuent de les voir).
             .filter(function(out) {
+                if (out.hidden_by_client === true) return false;
                 return !out.display_status || out.display_status.key !== 'cancelled';
             });
         res.json({ requests: requests });
     } catch(e) {
         console.error('[PARTNER-REQUEST] Erreur liste client:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/my-requests/:requestId/hide
+ * Le client masque une commande TERMINÉE de sa liste "Mes commandes" — ne supprime aucune
+ * donnée réelle (paiement, historique), juste un indicateur d'affichage propre à sa vue.
+ * Refusé pour toute commande encore active (en cours de préparation/livraison/litige) afin
+ * qu'un client ne perde jamais le suivi d'une mission qui n'est pas terminée.
+ */
+app.post('/api/my-requests/:requestId/hide', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var requests = loadPartnerRequests();
+        var idx = requests.findIndex(function(r) { return r.id === req.params.requestId; });
+        if (idx === -1) return res.status(404).json({ error: 'Commande introuvable.' });
+        var r = requests[idx];
+        if ((r.client_email || '').toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Accès non autorisé.' });
+        }
+
+        var dispatch = r.order_id ? loadDispatches().find(function(d) { return d.order_id === r.order_id; }) : null;
+        var order = r.order_id ? getOrderById(r.order_id) : null;
+        var livrables = order ? loadLivrables().filter(function(l) { return l.order_id === order.id; }) : [];
+        var hasReview = !!(dispatch && loadPartnerReviews().some(function(rv) { return rv.dispatchId === dispatch.id; }));
+        var displayStatus = computeMissionDisplayStatus(r, dispatch, order, livrables, hasReview);
+        if (!displayStatus || (displayStatus.key !== 'completed' && displayStatus.key !== 'reviewed')) {
+            return res.status(400).json({ error: 'Seule une commande terminée peut être supprimée de la liste.' });
+        }
+
+        requests[idx].hidden_by_client = true;
+        requests[idx].hidden_by_client_at = new Date().toISOString();
+        savePartnerRequests(requests);
+        res.json({ success: true });
+    } catch(e) {
+        console.error('[MY-REQUESTS-HIDE] Erreur:', e.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -16933,7 +16975,10 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
                 // liste du prestataire — 'completed' ne sert qu'à débloquer une future commande
                 // pour la même prestation (cf alreadyActive dans POST /api/partner-requests),
                 // pas à masquer l'historique des missions déjà réalisées.
+                // hidden_by_partner : masquage volontaire par le prestataire lui-même (bouton
+                // "Supprimer" sur une mission terminée) — ne touche à aucune donnée réelle.
                 return r.partner_id === req.partner.id
+                    && r.hidden_by_partner !== true
                     && ['pending', 'accepted', 'proposed', 'signed', 'completed'].indexOf(r.status) !== -1;
             })
             .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); })
@@ -16966,6 +17011,39 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
         res.json({ requests: requests });
     } catch(e) {
         console.error('[PARTNER-REQUEST] Erreur liste partenaire:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/requests/:id/hide
+ * Le prestataire masque une mission TERMINÉE de sa liste — ne supprime aucune donnée réelle
+ * (versement, historique), juste un indicateur d'affichage propre à sa vue. Refusé pour toute
+ * mission encore active.
+ */
+app.post('/api/partner/requests/:id/hide', authenticatePartner, function(req, res) {
+    try {
+        var requests = loadPartnerRequests();
+        var idx = requests.findIndex(function(r) { return r.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Mission introuvable.' });
+        var r = requests[idx];
+        if (r.partner_id !== req.partner.id) return res.status(403).json({ error: 'Accès non autorisé.' });
+
+        var dispatch = r.order_id ? loadDispatches().find(function(d) { return d.order_id === r.order_id; }) : null;
+        var order = r.order_id ? getOrderById(r.order_id) : null;
+        var livrables = order ? loadLivrables().filter(function(l) { return l.order_id === order.id; }) : [];
+        var hasReview = !!(dispatch && loadPartnerReviews().some(function(rv) { return rv.dispatchId === dispatch.id; }));
+        var displayStatus = computeMissionDisplayStatus(r, dispatch, order, livrables, hasReview);
+        if (!displayStatus || (displayStatus.key !== 'completed' && displayStatus.key !== 'reviewed')) {
+            return res.status(400).json({ error: 'Seule une mission terminée peut être supprimée de la liste.' });
+        }
+
+        requests[idx].hidden_by_partner = true;
+        requests[idx].hidden_by_partner_at = new Date().toISOString();
+        savePartnerRequests(requests);
+        res.json({ success: true });
+    } catch(e) {
+        console.error('[PARTNER-REQUEST-HIDE] Erreur:', e.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
