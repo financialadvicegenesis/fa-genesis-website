@@ -4307,6 +4307,38 @@ app.post('/api/admin/orders/:orderId/reconcile-record', function(req, res) {
 });
 
 /**
+ * GET /api/admin/payouts/by-partner/:partnerId
+ * Diagnostic en lecture seule : liste tous les payouts enregistrés pour un partner_id
+ * donné, avec la commande associée quand elle existe encore. Sert à vérifier l'origine
+ * d'un solde avant d'appliquer /api/admin/wallets/rebuild-from-payouts (ex. détecter des
+ * payouts de test ayant fui vers la base de production).
+ */
+app.get('/api/admin/payouts/by-partner/:partnerId', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var partnerId = req.params.partnerId;
+        var payouts = loadPayouts().filter(function(p) { return p.partner_id === partnerId; });
+        var orders = loadOrders();
+        var enriched = payouts.map(function(p) {
+            var ord = orders.find(function(o) { return o.id === p.order_id; });
+            return Object.assign({}, p, {
+                order_exists: !!ord,
+                order_product_name: ord ? ord.product_name : null,
+                order_total_amount: ord ? ord.total_amount : null,
+                order_created_at: ord ? ord.created_at : null
+            });
+        });
+        var total = enriched.reduce(function(sum, p) {
+            return (p.status === 'wallet_credited' || p.status === 'sent') ? sum + parseFloat(p.amount || 0) : sum;
+        }, 0);
+        res.json({ ok: true, partner_id: partnerId, count: enriched.length, total_credited: parseFloat(total.toFixed(2)), payouts: enriched });
+    } catch (err) {
+        console.error('[ADMIN-PAYOUTS-BY-PARTNER] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/admin/wallets/rebuild-from-payouts?apply=true
  * Reconstruit balance_available de CHAQUE wallet partenaire à partir de payouts.json
  * (source de vérité toujours correctement sauvegardée/restaurée sur MongoDB) moins les
@@ -4320,14 +4352,25 @@ app.post('/api/admin/wallets/rebuild-from-payouts', function(req, res) {
     if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     try {
         var apply = req.query.apply === 'true';
+        var includeTest = req.query.include_test === 'true';
         var payouts = loadPayouts();
         var withdrawals = loadWithdrawals();
         var existingWallets = loadWallets();
 
+        // Sécurité : des payouts de test (fixtures créées lors de sessions de débogage local
+        // pointant par erreur vers la base de production) peuvent avoir des partner_id
+        // reconnaissables (contenant "TEST"). On les exclut par défaut du calcul pour ne
+        // jamais créditer un faux solde énorme — ?include_test=true pour les inclure quand
+        // même si un admin a vérifié qu'ils sont légitimes.
+        var excludedTestPayouts = [];
         var creditsByPartner = {};
         payouts.forEach(function(p) {
             if (p.status !== 'wallet_credited' && p.status !== 'sent') return;
             if (!p.partner_id) return;
+            if (!includeTest && /test/i.test(p.partner_id)) {
+                excludedTestPayouts.push(p);
+                return;
+            }
             (creditsByPartner[p.partner_id] = creditsByPartner[p.partner_id] || []).push(p);
         });
 
@@ -4388,7 +4431,15 @@ app.post('/api/admin/wallets/rebuild-from-payouts', function(req, res) {
             console.log('[WALLET-REBUILD] Appliqué —', report.filter(function(r){return r.action!=='unchanged';}).length, 'wallet(s) corrigé(s)/créé(s).');
         }
 
-        res.json({ success: true, applied: apply, report: report });
+        res.json({
+            success: true,
+            applied: apply,
+            report: report,
+            excluded_test_payouts_count: excludedTestPayouts.length,
+            excluded_test_payouts: excludedTestPayouts.map(function(p) {
+                return { id: p.id, partner_id: p.partner_id, order_id: p.order_id, amount: p.amount, status: p.status, created_at: p.created_at };
+            })
+        });
     } catch (err) {
         console.error('[WALLET-REBUILD] Erreur:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
