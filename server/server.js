@@ -2140,6 +2140,23 @@ function notifyUser(email, role, type, title, body, link) {
     }
 }
 
+// Sécurité anti-détournement de versement : à appeler chaque fois que les coordonnées de
+// versement d'un partenaire (RIB, PayPal, Wise) sont enregistrées ou modifiées, pour que le
+// prestataire soit alerté (in-app + email) même si le mot de passe a été compromis autrement.
+function _alertPayoutDestinationChanged(partner, methodLabel, summary, isFirstTime) {
+    try {
+        notifyUser(partner.email, 'partner',
+            isFirstTime ? 'payout_destination_set' : 'payout_destination_changed',
+            isFirstTime ? '✅ Coordonnées de versement enregistrées' : '⚠️ Coordonnées de versement modifiées',
+            isFirstTime ? ('Vos coordonnées ' + methodLabel + ' ont été enregistrées.') : ('Vos coordonnées ' + methodLabel + ' ont été modifiées. Si ce n\'est pas vous, contactez-nous immédiatement.'),
+            '#partner:profile');
+        emailService.sendPayoutDestinationChangedEmail(partner.email, partner.prenom, methodLabel, summary, isFirstTime)
+            .catch(function(e) { console.error('[PAYOUT-ALERT] Email:', e.message); });
+    } catch(e) {
+        console.error('[PAYOUT-ALERT] Erreur:', e);
+    }
+}
+
 // Identifie l'utilisateur courant (admin JWT, partenaire ou client) a partir du token Bearer,
 // pour les routes communes aux 3 roles (notifications, litiges).
 function resolveCurrentIdentity(req) {
@@ -7067,6 +7084,8 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
                         _wdRecipId = _wdRegResult.wiseRecipientId;
                         _wdPartners = loadPartners();
                         _wdPartner  = _wdPartners.find(function(p) { return p.id === partnerId; });
+                        var _wdIbanMasked = '••••' + details.iban.slice(-4);
+                        _alertPayoutDestinationChanged(_wdPartner, 'Wise (' + _wdIbanMasked + ')', details.holder + ' — ' + _wdIbanMasked, true);
                     }
                 }
                 if (_wdRecipId) {
@@ -7108,6 +7127,7 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
                     _wdPpPartners[_wdPpIdxProfile].payout_paypal_email = details.email.trim();
                     savePartners(_wdPpPartners);
                     _wdPpEmail = details.email.trim();
+                    _alertPayoutDestinationChanged(_wdPpPartners[_wdPpIdxProfile], 'PayPal', _wdPpEmail, true);
                 }
                 if (_wdPpEmail) {
                     var _wdPpResult = await triggerPayPalPayouts([{
@@ -17329,16 +17349,33 @@ app.post('/api/client/set-availability', function(req, res) {
 });
 
 // POST /api/partner/profile/set-paypal — partenaire enregistre son email PayPal pour recevoir les versements
-app.post('/api/partner/profile/set-paypal', authenticatePartner, function(req, res) {
+app.post('/api/partner/profile/set-paypal', authenticatePartner, async function(req, res) {
     try {
         var paypalEmail = (req.body.paypal_email || '').trim();
         if (!paypalEmail || !paypalEmail.includes('@')) return res.status(400).json({ error: 'Email PayPal invalide' });
         var partners = loadPartners();
         var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
         if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+
+        // Anti-détournement : si un email PayPal de versement existe déjà, on exige la
+        // confirmation du mot de passe actuel avant de le remplacer (sinon un attaquant en
+        // possession d'une session volée pourrait rediriger les versements du prestataire).
+        var _existingPaypal = partners[idx].payout_paypal_email;
+        var _isFirstTime = !_existingPaypal;
+        if (_existingPaypal) {
+            var _currentPw = req.body.currentPassword || '';
+            if (!_currentPw) return res.status(400).json({ error: 'Mot de passe actuel requis pour modifier vos coordonnées de versement.' });
+            var _pwValid = await bcrypt.compare(_currentPw, partners[idx].password);
+            if (!_pwValid) {
+                console.warn('[PAYPAL-SET] Mot de passe incorrect fourni pour', req.partner.email);
+                return res.status(403).json({ error: 'Mot de passe actuel incorrect.' });
+            }
+        }
+
         partners[idx].payout_paypal_email = paypalEmail;
         partners[idx].updatedAt = new Date().toISOString();
         savePartners(partners);
+        _alertPayoutDestinationChanged(partners[idx], 'PayPal', paypalEmail, _isFirstTime);
         res.json({ success: true, paypal_email: paypalEmail });
     } catch(e) {
         console.error('[PAYPAL-SET] Erreur:', e);
@@ -17347,7 +17384,7 @@ app.post('/api/partner/profile/set-paypal', authenticatePartner, function(req, r
 });
 
 // POST /api/partner/profile/set-rib — partenaire enregistre son IBAN/BIC pour virement bancaire
-app.post('/api/partner/profile/set-rib', authenticatePartner, function(req, res) {
+app.post('/api/partner/profile/set-rib', authenticatePartner, async function(req, res) {
     try {
         var iban     = (req.body.iban || '').replace(/\s/g, '').toUpperCase();
         var bic      = (req.body.bic  || '').replace(/\s/g, '').toUpperCase();
@@ -17358,6 +17395,21 @@ app.post('/api/partner/profile/set-rib', authenticatePartner, function(req, res)
         var partners = loadPartners();
         var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
         if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+
+        // Anti-détournement : si un RIB existe déjà, on exige la confirmation du mot de passe
+        // actuel avant de le remplacer (cf. set-paypal ci-dessus pour le raisonnement).
+        var _existingIban = partners[idx].payout_iban;
+        var _isFirstTime = !_existingIban;
+        if (_existingIban) {
+            var _currentPw = req.body.currentPassword || '';
+            if (!_currentPw) return res.status(400).json({ error: 'Mot de passe actuel requis pour modifier vos coordonnées de versement.' });
+            var _pwValid = await bcrypt.compare(_currentPw, partners[idx].password);
+            if (!_pwValid) {
+                console.warn('[RIB-SET] Mot de passe incorrect fourni pour', req.partner.email);
+                return res.status(403).json({ error: 'Mot de passe actuel incorrect.' });
+            }
+        }
+
         partners[idx].payout_iban      = iban;
         partners[idx].payout_bic       = bic;
         partners[idx].payout_titulaire = titulaire;
@@ -17365,6 +17417,7 @@ app.post('/api/partner/profile/set-rib', authenticatePartner, function(req, res)
         savePartners(partners);
         // Masquer l'IBAN dans la réponse (ne renvoyer que les 4 derniers chiffres)
         var ibanMasked = '••••' + iban.slice(-4);
+        _alertPayoutDestinationChanged(partners[idx], 'RIB (' + ibanMasked + ')', titulaire + ' — ' + ibanMasked, _isFirstTime);
         res.json({ success: true, iban_masked: ibanMasked, bic: bic, titulaire: titulaire });
     } catch(e) {
         console.error('[RIB-SET] Erreur:', e);
@@ -23946,11 +23999,34 @@ async function registerPartnerWiseBankDetails(partnerId, info) {
 app.post('/api/partner/bank-details', authenticatePartner, async function(req, res) {
     try {
         var b = req.body;
+
+        // Anti-détournement : si des coordonnées Wise existent déjà, on exige la confirmation
+        // du mot de passe actuel avant de les remplacer (cf. set-paypal/set-rib).
+        var _bdPartners = loadPartners();
+        var _bdIdx = _bdPartners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (_bdIdx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        var _bdExisting = _bdPartners[_bdIdx].wiseRecipientId || (_bdPartners[_bdIdx].bankDetails && _bdPartners[_bdIdx].bankDetails.iban);
+        var _bdIsFirstTime = !_bdExisting;
+        if (_bdExisting) {
+            var _bdCurrentPw = b.currentPassword || '';
+            if (!_bdCurrentPw) return res.status(400).json({ error: 'Mot de passe actuel requis pour modifier vos coordonnées de versement.' });
+            var _bdPwValid = await bcrypt.compare(_bdCurrentPw, _bdPartners[_bdIdx].password);
+            if (!_bdPwValid) {
+                console.warn('[BANK DETAILS] Mot de passe incorrect fourni pour', req.partner.email);
+                return res.status(403).json({ error: 'Mot de passe actuel incorrect.' });
+            }
+        }
+
         var result = await registerPartnerWiseBankDetails(req.partner.id, {
             accountHolderName: b.accountHolderName, iban: b.iban, bic: b.bic,
             currency: b.currency, country: b.country, legalType: b.legalType
         });
         if (!result.ok) return res.status(400).json({ error: result.error });
+        var _bdFresh = loadPartners().find(function(p) { return p.id === req.partner.id; });
+        if (_bdFresh) {
+            var _bdIbanMasked = b.iban ? '••••' + String(b.iban).replace(/\s/g,'').slice(-4) : '';
+            _alertPayoutDestinationChanged(_bdFresh, 'Wise (' + _bdIbanMasked + ')', (b.accountHolderName || '') + ' — ' + _bdIbanMasked, _bdIsFirstTime);
+        }
         res.json({ ok: true, wiseLinked: !!result.wiseRecipientId, wiseError: result.wiseError || undefined });
     } catch(e) {
         console.error('[BANK DETAILS]', e.message);

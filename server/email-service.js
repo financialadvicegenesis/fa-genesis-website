@@ -2082,6 +2082,66 @@ async function sendCapacityLimitedEventEmail(clientEmail, prenom, eventTitle, ev
     }
 }
 
+/**
+ * Envoi d'email générique {to, subject, html} — utilisé par les endpoints qui composent
+ * eux-mêmes leur HTML plutôt que de passer par un template dédié de ce module.
+ */
+async function sendEmail(opts) {
+    try {
+        if (!transporter) { initializeTransporter(); }
+        var mailOptions = {
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: opts.to,
+            replyTo: opts.replyTo || (process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER),
+            subject: opts.subject,
+            html: opts.html
+        };
+        var result = await transporter.sendMail(mailOptions);
+        return { success: true, messageId: result.messageId };
+    } catch(e) {
+        console.warn('[SEND_EMAIL] Échec envoi:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SÉCURITÉ : COORDONNÉES DE VERSEMENT MODIFIÉES → ALERTE AU PRESTATAIRE
+// ─────────────────────────────────────────────────────────────────────────────
+async function sendPayoutDestinationChangedEmail(partnerEmail, partnerPrenom, methodLabel, detailsSummary, isFirstTime) {
+    try {
+        if (!transporter) { initializeTransporter(); }
+        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER;
+        var name = partnerPrenom || 'Prestataire';
+        var content;
+        if (isFirstTime) {
+            content = '<h2 style="color:#FFD700;font-size:22px;margin:0 0 12px;">✅ Coordonnées de versement enregistrées</h2>'
+                + '<p style="color:#ccc;font-size:15px;line-height:1.7;margin:0 0 16px;">Bonjour ' + name + ',</p>'
+                + '<p style="color:#ccc;font-size:15px;line-height:1.7;margin:0 0 16px;">Vos coordonnées de versement (' + methodLabel + ') viennent d\'être enregistrées sur votre compte FA GENESIS :</p>'
+                + '<p style="background:#1a1a1a;border-radius:8px;padding:14px 16px;color:#FFD700;font-size:14px;font-weight:700;margin:0 0 16px;">' + detailsSummary + '</p>'
+                + '<p style="color:#888;font-size:13px;line-height:1.6;margin:0;">Si vous n\'êtes pas à l\'origine de cette action, contactez-nous immédiatement à ' + adminEmail + '.</p>';
+        } else {
+            content = '<h2 style="color:#ef4444;font-size:22px;margin:0 0 12px;">⚠️ Vos coordonnées de versement ont été modifiées</h2>'
+                + '<p style="color:#ccc;font-size:15px;line-height:1.7;margin:0 0 16px;">Bonjour ' + name + ',</p>'
+                + '<p style="color:#ccc;font-size:15px;line-height:1.7;margin:0 0 16px;">Les coordonnées utilisées pour vous verser vos gains (' + methodLabel + ') viennent d\'être modifiées sur votre compte FA GENESIS :</p>'
+                + '<p style="background:#1a1a1a;border-radius:8px;padding:14px 16px;color:#FFD700;font-size:14px;font-weight:700;margin:0 0 16px;">' + detailsSummary + '</p>'
+                + '<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 16px;color:#991b1b;font-size:14px;line-height:1.6;margin:0 0 16px;"><strong>Ce n\'est pas vous ?</strong> Votre compte est peut-être compromis. Changez immédiatement votre mot de passe et contactez-nous à ' + adminEmail + '.</p>';
+        }
+        var html = getEmailTemplate(content, isFirstTime ? 'Coordonnées de versement enregistrées' : 'Alerte sécurité — coordonnées de versement modifiées');
+        var mailOptions = {
+            from: '"FA GENESIS Sécurité" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: partnerEmail,
+            replyTo: adminEmail,
+            subject: isFirstTime ? '✅ Coordonnées de versement enregistrées — FA GENESIS' : '⚠️ Coordonnées de versement modifiées — FA GENESIS',
+            html: html
+        };
+        var result = await transporter.sendMail(mailOptions);
+        return { success: true, messageId: result.messageId };
+    } catch(e) {
+        console.warn('[PAYOUT_CHANGED_EMAIL] Échec envoi:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CONTRAT SIGNÉ → EMAIL AU PRESTATAIRE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2175,7 +2235,9 @@ module.exports = {
     sendLevelUpEmail,
     sendCapacityLimitedEventEmail,
     sendInstallmentReminderEmail,
-    sendContractSignedToPartnerEmail
+    sendContractSignedToPartnerEmail,
+    sendPayoutDestinationChangedEmail,
+    sendEmail
 };
 
 // ============================================================
