@@ -6376,9 +6376,14 @@ function _computeClientWallet(clientEmail) {
                     var payout = payouts.find(function(p) {
                         return p.order_id === order.id && p.stage === inst.stage;
                     });
-                    // 'sent' = transféré automatiquement via Stripe Connect
+                    // 'sent' = transféré automatiquement via Stripe Connect (Transfer direct)
                     // 'pending_admin' = transfert manuel en cours par l'équipe GENESIS
-                    if (payout && (payout.status === 'sent' || payout.status === 'pending_admin')) {
+                    // 'wallet_credited' = modèle GENESIS SAFE™ standard (Fiverr-like) — l'argent est
+                    // sorti de Stripe GENESIS et crédité au wallet interne du partenaire ; c'était
+                    // manquant ici, ce qui laissait TOUTE commande à paiement unique (installments à
+                    // une seule entrée, cas standard) affichée "en escrow" indéfiniment après
+                    // validation, alors même que order.partner_paid_out était bien passé à true.
+                    if (payout && (payout.status === 'sent' || payout.status === 'pending_admin' || payout.status === 'wallet_credited')) {
                         released += parseFloat(inst.amount) || 0;
                     } else {
                         held += parseFloat(inst.amount) || 0;
@@ -6683,7 +6688,9 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
 
             var hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
             // 'sent' = transféré via Stripe Connect ; 'pending_admin' = en cours traitement GENESIS
-            function _isReleased(p) { return p.status === 'sent' || p.status === 'pending_admin'; }
+            // 'wallet_credited' = modèle GENESIS SAFE™ standard — voir le même correctif dans
+            // _computeClientWallet() ci-dessus pour le détail du bug que ça corrige.
+            function _isReleased(p) { return p.status === 'sent' || p.status === 'pending_admin' || p.status === 'wallet_credited'; }
 
             if (hasPaidInst) {
                 order.installments.forEach(function(inst) {
