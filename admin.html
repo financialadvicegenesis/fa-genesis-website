@@ -1520,6 +1520,18 @@
                     <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
                 </div>
 
+                <!-- ── Retraits prestataires (Wise/SEPA/PayPal) ── -->
+                <div style="margin-top:32px;">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                        <h3 style="font-size:16px;font-weight:900;color:#00B9FF;margin:0;"><i class="fas fa-hand-holding-dollar" style="margin-right:8px;"></i>RETRAITS PRESTATAIRES</h3>
+                        <span id="partnerWithdrawalsBadge" style="display:none;background:#ef4444;color:#fff;border-radius:50px;padding:2px 8px;font-size:11px;font-weight:800;"></span>
+                    </div>
+                    <div style="font-size:11px;color:#888;margin-bottom:12px;">Le montant affiché est déjà net de commission (la réduction liée au badge a été appliquée au moment du versement dans le wallet du prestataire, pas ici) — badge et taux affichés à titre de contrôle. Pour un virement fait "à la main" (ex. Boursorama → Wise), cliquez "Marquer comme envoyé" une fois le virement réellement effectué.</div>
+                    <div id="partnerWithdrawalsList" style="color:#e0e0e0;">
+                        <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
+                    </div>
+                </div>
+
                 <!-- ── Retraits GENESIS SAFE™ clients (virements manuels) ── -->
                 <div style="margin-top:32px;">
                     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
@@ -2077,6 +2089,7 @@
             } else if (section === 'payouts') {
                 if (payoutsEl) payoutsEl.style.display = 'block';
                 loadPendingPayouts();
+                loadPartnerWithdrawals();
                 loadClientWithdrawals();
             } else if (section === 'litiges') {
                 if (litigesEl) litigesEl.style.display = 'block';
@@ -7136,6 +7149,91 @@
             var badgeEl = document.getElementById('adminNotifBadge');
             if (listEl) listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">Toutes les notifications sont lues</div>';
             if (badgeEl) badgeEl.style.display = 'none';
+        }
+
+        // ── RETRAITS PRESTATAIRES (Wise/SEPA/PayPal) ─────────
+        var _pwStatusMeta = {
+            pending:    { label: 'En attente',        color: '#f59e0b' },
+            processing: { label: 'En cours (Wise)',   color: '#60a5fa' },
+            sent:       { label: 'Envoyé ✓',           color: '#22c55e' },
+            failed:     { label: 'Échec',              color: '#ef4444' }
+        };
+        var _pwBadgeMeta = {
+            fondateur: { label: 'Fondateur', color: '#c084fc' },
+            elite:     { label: 'Élite',     color: '#a78bfa' },
+            or:        { label: 'Or',        color: '#FFD700' },
+            argent:    { label: 'Argent',    color: '#cbd5e1' },
+            bronze:    { label: 'Bronze',    color: '#d97706' }
+        };
+        function loadPartnerWithdrawals() {
+            var el = document.getElementById('partnerWithdrawalsList');
+            var badge = document.getElementById('partnerWithdrawalsBadge');
+            if (!el) return;
+            el.innerHTML = '<p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>';
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/withdrawals', { headers: { 'Authorization': 'Bearer ' + tok } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var list = (data.withdrawals || []).filter(function(w) { return w.status !== 'sent'; });
+                    if (badge) {
+                        if (list.length > 0) { badge.textContent = list.length; badge.style.display = 'inline-block'; }
+                        else { badge.style.display = 'none'; }
+                    }
+                    if (!list.length) {
+                        el.innerHTML = '<div style="padding:24px;text-align:center;color:#555;font-size:14px;border:1px solid rgba(0,185,255,.15);border-radius:10px;"><i class="fas fa-check-circle" style="color:#22c55e;font-size:24px;display:block;margin-bottom:8px;"></i>Aucun retrait prestataire en attente</div>';
+                        return;
+                    }
+                    var html = '';
+                    list.forEach(function(w) {
+                        var dateStr = w.created_at ? new Date(w.created_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                        var st = _pwStatusMeta[w.status] || { label: w.status, color: '#888' };
+                        var bd = _pwBadgeMeta[w.partner_badge] || { label: 'Bronze (défaut)', color: '#d97706' };
+                        var det = w.details || {};
+                        html += '<div style="background:#0d0d0d;border:1.5px solid rgba(0,185,255,.2);border-radius:14px;padding:18px 20px;margin-bottom:14px;">';
+                        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px;">';
+                        html += '<div>';
+                        html += '<div style="font-weight:900;font-size:15px;color:#e0e0e0;">' + (w.partner_name || 'Prestataire') + '</div>';
+                        html += '<div style="font-size:11px;color:#666;margin-top:3px;">' + (w.partner_email || '') + (dateStr ? ' · ' + dateStr : '') + '</div>';
+                        html += '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">';
+                        html += '<span style="background:' + bd.color + '22;color:' + bd.color + ';border:1px solid ' + bd.color + '55;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;">' + bd.label + ' — ' + (100 - w.partner_commission_pct) + '% part prestataire</span>';
+                        html += '<span style="background:' + st.color + '22;color:' + st.color + ';border:1px solid ' + st.color + '55;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;">' + st.label + '</span>';
+                        html += '<span style="background:#1a1a1a;color:#aaa;border:1px solid #333;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;text-transform:uppercase;">' + (w.method || '') + '</span>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '<div style="text-align:right;"><div style="font-size:26px;font-weight:900;color:#00B9FF;">' + parseFloat(w.amount || 0).toFixed(2) + ' €</div><div style="font-size:11px;color:#888;">Net à envoyer</div></div>';
+                        html += '</div>';
+                        html += '<div style="background:#111;border-radius:8px;padding:12px 14px;margin-bottom:14px;line-height:1.8;">';
+                        if (w.method === 'paypal') {
+                            html += '<div style="font-size:12px;color:#aaa;"><span style="color:#00B9FF;font-weight:700;">Email PayPal :</span> ' + (det.email || '—') + '</div>';
+                        } else {
+                            html += '<div style="font-size:12px;color:#aaa;"><span style="color:#00B9FF;font-weight:700;">Titulaire :</span> ' + (det.holder || '—') + '</div>';
+                            html += '<div style="font-size:13px;color:#e0e0e0;font-weight:700;letter-spacing:1px;"><span style="color:#00B9FF;font-weight:700;font-size:11px;">IBAN :</span> ' + (det.iban || '—') + '</div>';
+                            if (det.bic) html += '<div style="font-size:12px;color:#aaa;"><span style="color:#00B9FF;font-weight:700;">BIC :</span> ' + det.bic + '</div>';
+                        }
+                        if (w.wise_error) html += '<div style="font-size:11px;color:#ef4444;margin-top:6px;"><i class="fas fa-triangle-exclamation" style="margin-right:4px;"></i>Erreur Wise auto : ' + w.wise_error + '</div>';
+                        if (w.error) html += '<div style="font-size:11px;color:#ef4444;margin-top:6px;"><i class="fas fa-triangle-exclamation" style="margin-right:4px;"></i>' + w.error + '</div>';
+                        html += '</div>';
+                        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
+                        html += '<button onclick="_markPartnerWithdrawalSent(\'' + w.id + '\')" style="background:linear-gradient(135deg,#14532d,#16a34a);border:none;border-radius:8px;padding:9px 18px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;"><i class="fas fa-check" style="margin-right:6px;"></i>Marquer comme envoyé</button>';
+                        html += '</div>';
+                        html += '</div>';
+                    });
+                    el.innerHTML = html;
+                }).catch(function() {
+                    el.innerHTML = '<div style="color:#f03e3e;padding:12px;">Impossible de charger les retraits prestataires.</div>';
+                });
+        }
+
+        function _markPartnerWithdrawalSent(id) {
+            if (!confirm('Confirmer que ce virement a bien été envoyé au prestataire ?')) return;
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/withdrawals/' + id + '/mark-sent', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.ok) { loadPartnerWithdrawals(); }
+                else { alert(d.error || 'Erreur'); }
+            }).catch(function() { alert('Erreur réseau'); });
         }
 
         // ── RETRAITS GENESIS SAFE™ CLIENTS (virements manuels) ─────────

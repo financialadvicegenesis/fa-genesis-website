@@ -6833,7 +6833,11 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
         function calcOrderAmounts(order) {
             var held = 0;
             var released = 0;
-            var partnerPct = 75; // défaut 75% partenaire, 25% FA GENESIS
+            // Taux réel selon le badge du partenaire (Bronze 75%, Argent 78%, Or 81%, Élite 85%)
+            // — un taux fixe à 75% ici afficherait un montant sous-estimé à tout partenaire
+            // ayant un badge supérieur à Bronze, alors que le versement réel (processDispatchPayout,
+            // qui lit dispatch.partner_pct calculé au même endroit) applique bien la réduction.
+            var partnerPct = 100 - getBenefitsForBadge(getPartnerBadge(req.partner)).commissionPct;
 
             var hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
             // 'sent' = transféré via Stripe Connect ; 'pending_admin' = en cours traitement GENESIS
@@ -24156,7 +24160,62 @@ app.get('/api/admin/withdrawals', function(req, res) {
         var status = req.query.status || null;
         if (status) wdrs = wdrs.filter(function(w) { return w.status === status; });
         wdrs.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
-        res.json({ ok: true, count: wdrs.length, withdrawals: wdrs });
+
+        // Enrichissement : le montant du retrait (w.amount) est DÉJÀ net de commission — la
+        // réduction liée au badge du partenaire a été appliquée en amont, au moment du
+        // versement dans le wallet (voir processDispatchPayout / dispatch.partner_pct), pas
+        // ici. On ajoute quand même le badge et le taux qui s'est appliqué à titre
+        // informatif/de contrôle, pour qu'un admin effectuant un virement manuel (Boursorama
+        // → Wise) puisse vérifier d'un coup d'œil que le montant à envoyer est cohérent avec
+        // le badge affiché du partenaire, sans avoir à recalculer quoi que ce soit lui-même.
+        var partners = loadPartners();
+        var enriched = wdrs.map(function(w) {
+            var p = partners.find(function(x) { return x.id === w.partner_id; });
+            var badge = p ? getPartnerBadge(p) : null;
+            var benefits = getBenefitsForBadge(badge);
+            return Object.assign({}, w, {
+                partner_name: p ? ((p.prenom || '') + ' ' + (p.nom || '')).trim() || p.email : null,
+                partner_badge: badge,
+                partner_commission_pct: benefits.commissionPct,
+                partner_share_pct: 100 - benefits.commissionPct
+            });
+        });
+
+        res.json({ ok: true, count: enriched.length, withdrawals: enriched });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * POST /api/admin/withdrawals/:id/mark-sent
+ * Confirmation manuelle qu'un retrait a été envoyé "à la main" (ex. virement Boursorama →
+ * Wise déclenché hors API, ou tout autre cas où l'automatisation Wise/PayPal n'a pas pu
+ * s'exécuter). Ne débite rien de plus côté wallet — le solde a déjà été débité au moment de
+ * la demande de retrait (POST /api/partner/wallet/withdraw) ; ceci ne fait que refléter dans
+ * l'historique qu'un virement réel a bien eu lieu, pour la traçabilité admin.
+ */
+app.post('/api/admin/withdrawals/:id/mark-sent', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var wdrs = loadWithdrawals();
+        var idx = wdrs.findIndex(function(w) { return w.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Retrait introuvable' });
+        if (wdrs[idx].status === 'sent') return res.status(400).json({ error: 'Déjà marqué comme envoyé.' });
+
+        wdrs[idx].status = 'sent';
+        wdrs[idx].processed_at = new Date().toISOString();
+        wdrs[idx].note = (req.body && req.body.note) || 'Virement manuel confirmé par admin';
+        saveWithdrawals(wdrs);
+
+        var partners = loadPartners();
+        var p = partners.find(function(x) { return x.id === wdrs[idx].partner_id; });
+        if (p && (p.email || p.contact_email)) {
+            notifyUser(p.email || p.contact_email, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
+                'Votre retrait de ' + wdrs[idx].amount.toFixed(2) + ' € a été envoyé.', '#partner:versements');
+        }
+
+        res.json({ ok: true, withdrawal: wdrs[idx] });
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
