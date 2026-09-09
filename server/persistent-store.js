@@ -154,10 +154,35 @@ async function restoreAllFromCloud(dataDir) {
 /**
  * Persister une collection entière dans MongoDB
  * Appelé à chaque saveX() dans server.js
+ *
+ * IMPORTANT — sérialisation par collection : deleteMany()+insertMany() n'est PAS atomique.
+ * server.js appelle souvent saveX() plusieurs fois de suite très rapidement (ex.
+ * processDispatchPayout() sauvegarde payouts.json une fois pour créer l'entrée, puis une
+ * seconde fois pour mettre à jour son statut) — sans sérialisation, deux appels
+ * persistToCloud() concurrents pour LA MÊME collection peuvent s'entrelacer
+ * (deleteManyA, deleteManyB, insertManyA, insertManyB) et faire ACCUMULER des doublons au
+ * lieu de remplacer proprement le contenu. C'est exactement ce qui a fait grossir
+ * payouts.json à plus de 1500 entrées dupliquées pour un seul partenaire. On maintient donc
+ * une file d'attente par nom de collection : chaque appel attend que le précédent (sur la
+ * même collection) soit terminé avant de faire son propre deleteMany+insertMany.
  */
+var _persistQueues = {};
 async function persistToCloud(collectionName, data) {
     if (!connected || !db) return false;
 
+    var prev = _persistQueues[collectionName] || Promise.resolve();
+    var next = prev.then(function() {
+        return _doPersist(collectionName, data);
+    }, function() {
+        // Un échec précédent ne doit pas bloquer les persistances suivantes de cette collection.
+        return _doPersist(collectionName, data);
+    });
+    // Éviter que la chaîne ne grossisse indéfiniment en mémoire si une persistance échoue.
+    _persistQueues[collectionName] = next.catch(function() {});
+    return next;
+}
+
+async function _doPersist(collectionName, data) {
     try {
         var collection = db.collection(collectionName);
 

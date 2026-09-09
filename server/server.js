@@ -4317,7 +4317,16 @@ app.get('/api/admin/payouts/by-partner/:partnerId', function(req, res) {
     if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     try {
         var partnerId = req.params.partnerId;
-        var payouts = loadPayouts().filter(function(p) { return p.partner_id === partnerId; });
+        var rawPayouts = loadPayouts().filter(function(p) { return p.partner_id === partnerId; });
+        // payouts.json a pu accumuler des doublons exacts (même id) suite au bug de
+        // persistToCloud() non sérialisé — on dédoublonne par id pour un total fiable,
+        // tout en signalant le taux de duplication brut pour diagnostic.
+        var seenIds = {};
+        var payouts = rawPayouts.filter(function(p) {
+            if (seenIds[p.id]) return false;
+            seenIds[p.id] = true;
+            return true;
+        });
         var orders = loadOrders();
         var enriched = payouts.map(function(p) {
             var ord = orders.find(function(o) { return o.id === p.order_id; });
@@ -4331,9 +4340,45 @@ app.get('/api/admin/payouts/by-partner/:partnerId', function(req, res) {
         var total = enriched.reduce(function(sum, p) {
             return (p.status === 'wallet_credited' || p.status === 'sent') ? sum + parseFloat(p.amount || 0) : sum;
         }, 0);
-        res.json({ ok: true, partner_id: partnerId, count: enriched.length, total_credited: parseFloat(total.toFixed(2)), payouts: enriched });
+        res.json({
+            ok: true, partner_id: partnerId,
+            raw_count: rawPayouts.length, deduped_count: enriched.length,
+            duplicates_found: rawPayouts.length - enriched.length,
+            total_credited: parseFloat(total.toFixed(2)), payouts: enriched
+        });
     } catch (err) {
         console.error('[ADMIN-PAYOUTS-BY-PARTNER] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/payouts/dedupe?apply=true
+ * Nettoie payouts.json des doublons exacts (même id) accumulés par le bug de
+ * persistToCloud() non sérialisé (deleteMany+insertMany concurrents — voir
+ * persistent-store.js, corrigé). Garde une seule occurrence par id. Sans ?apply=true :
+ * simulation, ne modifie rien.
+ */
+app.post('/api/admin/payouts/dedupe', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var apply = req.query.apply === 'true';
+        var raw = loadPayouts();
+        var seen = {};
+        var deduped = [];
+        raw.forEach(function(p) {
+            if (seen[p.id]) return;
+            seen[p.id] = true;
+            deduped.push(p);
+        });
+        var removed = raw.length - deduped.length;
+        if (apply && removed > 0) {
+            savePayouts(deduped);
+            console.log('[PAYOUTS-DEDUPE] Appliqué —', removed, 'doublon(s) supprimé(s), ', deduped.length, 'payout(s) restant(s).');
+        }
+        res.json({ success: true, applied: apply, raw_count: raw.length, deduped_count: deduped.length, duplicates_removed: removed });
+    } catch (err) {
+        console.error('[PAYOUTS-DEDUPE] Erreur:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -4353,7 +4398,15 @@ app.post('/api/admin/wallets/rebuild-from-payouts', function(req, res) {
     try {
         var apply = req.query.apply === 'true';
         var includeTest = req.query.include_test === 'true';
-        var payouts = loadPayouts();
+        // Défense contre les doublons exacts (même id) accumulés dans payouts.json par le
+        // bug de persistToCloud() non sérialisé (voir /api/admin/payouts/dedupe) — sans ça
+        // un payout dupliqué 100x compterait 100x dans le solde reconstruit.
+        var _seenPayoutIds = {};
+        var payouts = loadPayouts().filter(function(p) {
+            if (_seenPayoutIds[p.id]) return false;
+            _seenPayoutIds[p.id] = true;
+            return true;
+        });
         var withdrawals = loadWithdrawals();
         var existingWallets = loadWallets();
 
