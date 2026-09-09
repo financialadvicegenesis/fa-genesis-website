@@ -1160,9 +1160,20 @@ async function processDispatchPayout(dispatch, stage) {
 
         // Idempotence : ne pas créer un 2ème payout si un existe déjà pour ce dispatch+stage (non failed).
         // Un doublon signifie que le versement a déjà été traité avec succès auparavant → true.
+        // IMPORTANT : pour toute étape "non-acompte" (balance / installment_2 / installment_3…),
+        // le calcul ci-dessus verse TOUJOURS le même montant "solde restant total" (pTotal -
+        // pDeposit) — il ne sait pas répartir entre plusieurs tranches intermédiaires. Une
+        // comparaison stricte sur la valeur exacte de `stage` laisserait passer un second
+        // versement du même solde si deux étapes différentes (ex. installment_2 puis
+        // installment_3, palier "large" legacy) déclenchaient chacune un appel — d'où la
+        // vérification élargie à "n'importe quelle étape non-acompte déjà versée" plutôt que
+        // "cette étape précise déjà versée".
         var _existingPayouts = loadPayouts();
+        var _isDepositStage = (stage === 'deposit' || stage === 'installment_1');
         var _duplicate = _existingPayouts.find(function(p) {
-            return p.dispatch_id === dispatch.id && p.stage === stage && p.status !== 'failed';
+            if (p.dispatch_id !== dispatch.id || p.status === 'failed') return false;
+            var _pIsDeposit = (p.stage === 'deposit' || p.stage === 'installment_1');
+            return _isDepositStage ? _pIsDeposit : !_pIsDeposit;
         });
         if (_duplicate) {
             console.log('[PAYOUT] Doublon ignoré — dispatch ' + dispatch.id + ' stage ' + stage + ' déjà enregistré (' + _duplicate.id + ')');
@@ -4008,15 +4019,18 @@ app.post('/api/orders/create', (req, res) => {
                 var _psoN = Math.max(2, Math.min(8, parseInt(service.installment_count) || 2));
                 psoInstallments = generateUserInstallmentPlan(psoTotal, _psoN);
             } else {
-                // Rétrocompatibilité : anciens services sans payment_mode
-                var psoDepositPct = service.deposit_pct != null ? service.deposit_pct : null;
-                psoPaymentTier = psoDepositPct != null ? 'custom' : (psoTotal <= 300 ? 'small' : 'large');
-                var psoRequestedInstallments = parseInt(partnerServiceOrder.requestedInstallments) || 1;
-                var psoClientType = (clientInfo && clientInfo.clientType) || 'particulier';
-                var psoValidatedInstallments = validateInstallments(psoRequestedInstallments, service.max_installments || 1, psoClientType);
-                psoInstallments = psoValidatedInstallments > 1
-                    ? generateUserInstallmentPlan(psoTotal, psoValidatedInstallments)
-                    : (psoDepositPct != null ? generatePartnerSplit(psoTotal, psoDepositPct) : [{ stage: 'deposit', amount: psoTotal }]);
+                // Service sans payment_mode explicite (créé avant l'introduction des 3 modes
+                // officiels, ou jamais reconfiguré par le prestataire). Retombait historiquement
+                // sur le palier "30/40/30" (payment_tier='large' — versement intermédiaire
+                // jamais réellement implémenté côté Stripe, un seul solde combiné à la
+                // validation finale) ou sur un plan de mensualités choisi par le CLIENT au
+                // moment du paiement plutôt que fixé par le prestataire. Retiré à la demande
+                // explicite du métier : chaque prestataire définit désormais lui-même son mode
+                // de paiement (paiement unique / acompte+solde / plusieurs fois) sur sa fiche
+                // service. À défaut d'un choix explicite, le paiement intégral est le mode par
+                // défaut le plus simple et le plus sûr.
+                psoPaymentTier = 'small';
+                psoInstallments = [{ number:1, key:'paiement', label:'Paiement intégral — GENESIS SAFE™', amount:psoTotal, stage:'deposit', paid:false, paid_at:null, due_date:null, milestone_required:null }];
             }
             const psoDeposit = psoInstallments[0].amount;
             const psoBalance = psoInstallments.length > 1

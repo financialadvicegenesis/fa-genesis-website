@@ -339,9 +339,10 @@ function _buildPaymentSection(order) {
             '<tr style="border-top:2px solid #000;background:#fff8e1;"><td style="padding:8px 12px;font-weight:700;">Total TTC</td>' +
             '<td style="text-align:right;font-weight:900;padding:8px 12px;">' + totalAmount.toFixed(2) + ' €</td></tr>';
         article2 = 'Le paiement est sécurisé par GENESIS SAFE™ et réparti en trois tranches : ' +
-            'acompte (30 %) à la commande, livrable intermédiaire (40 %) après validation par le Client du premier jalon, ' +
-            'livraison finale (30 %) à la remise et validation des livrables définitifs. ' +
-            'Aucun versement au Prestataire n\'intervient avant validation de chaque étape par le Client.';
+            'acompte (30 %) à la commande — versé directement au Prestataire dès qu\'il accepte la mission, à titre de capital de démarrage — ' +
+            'livrable intermédiaire (40 %) conservé en escrow par GENESIS SAFE™ et libéré après validation par le Client du premier jalon, ' +
+            'livraison finale (30 %) conservée en escrow et libérée à la remise et validation des livrables définitifs (ou à l\'expiration d\'un délai de 7 jours sans contestation du Client). ' +
+            'Seul l\'acompte est versé sans attendre de validation ; les deux tranches suivantes ne sont versées au Prestataire qu\'après validation de l\'étape correspondante par le Client.';
         article4extra = 'régler les montants dus selon l\'échéancier GENESIS SAFE™ et valider chaque jalon ;';
         article5 = 'Tant que le Client n\'a pas validé la bonne exécution de la prestation, il peut annuler sa commande à tout moment ' +
             'et obtenir le remboursement intégral des sommes déjà versées, y compris l\'acompte (30 %) déjà transmis au Prestataire. ' +
