@@ -513,7 +513,13 @@ function loadPartnerRequests() {
 function savePartnerRequests(data) {
     try {
         fs.writeFileSync(PARTNER_REQUESTS_FILE, JSON.stringify(data, null, 2), 'utf8');
-        persistentStore.persistToCloud('partner-requests', data).catch(function(e) {});
+        // Nom de collection Mongo aligné sur le nom du fichier local réel (partner_requests.json,
+        // underscore) — restoreAllFromCloud() dans persistent-store.js écrit toujours vers
+        // <nom_collection>.json au démarrage, donc un nom de collection différent du fichier
+        // réel (c'était 'partner-requests' avec un tiret) restaurerait vers un fichier que le
+        // reste du code ne lit jamais, laissant partner_requests.json — LA source de "Mes
+        // commandes" côté client ET "Mes missions" côté partenaire — vide après un redéploiement.
+        persistentStore.persistToCloud('partner_requests', data).catch(function(e) {});
     } catch(e) { console.error('[PARTNER-REQUEST] Erreur sauvegarde:', e); }
 }
 // Une fois une commande réellement terminée (validée client ou auto-libération), on clôture
