@@ -1755,17 +1755,29 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                                 && (d.claimed_by_partner_id || d.partner_id);
                         });
                         if (_whDisp) {
+                            // IMPORTANT : marquer partner_paid_out=true après un versement réussi ici,
+                            // sinon cancel-refund (qui décide s'il faut reprendre l'argent au
+                            // prestataire en lisant CE champ) ne déclenche jamais le clawback pour ce
+                            // paiement direct (partner_installments notamment) — un client pourrait
+                            // être remboursé par Stripe sans que le wallet déjà crédité au prestataire
+                            // ne soit repris, causant une perte sèche pour la plateforme.
                             if (stage === 'deposit' || stage === 'installment_1') {
                                 // GENESIS SAFE™ (small ≤ 300€) : bloqué jusqu'à la livraison.
                                 // partner_installments : mensualité versée directement.
                                 var _whPayTier = orders[oIdx] ? (orders[oIdx].payment_tier || 'small') : 'small';
                                 if (_whPayTier !== 'small' && (_whDisp.status === 'accepted' || _whDisp.mission_status === 'in_progress')) {
-                                    try { await processDispatchPayout(_whDisp, stage); }
+                                    try {
+                                        var _whPayoutOk = await processDispatchPayout(_whDisp, stage);
+                                        if (_whPayoutOk) updateOrder(orderId, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
+                                    }
                                     catch(pe) { console.error('[STRIPE-WH] Payout acompte error:', pe.message); }
                                 }
                             } else {
                                 // balance : verser le solde immédiatement
-                                try { await processDispatchPayout(_whDisp, stage); }
+                                try {
+                                    var _whBalPayoutOk = await processDispatchPayout(_whDisp, stage);
+                                    if (_whBalPayoutOk) updateOrder(orderId, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
+                                }
                                 catch(pe) { console.error('[STRIPE-WH] Payout error (' + stage + '):', pe.message); }
                             }
                         }

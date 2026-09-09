@@ -293,10 +293,11 @@ function _buildPaymentSection(order) {
             'Les mensualités sont encaissées par FA GENESIS et versées directement au Prestataire dès réception, sans période d\'escrow. ' +
             'Le non-paiement d\'une mensualité avant sa date d\'échéance entraîne la suspension de la prestation jusqu\'à régularisation.';
         article4extra = 'régler chaque mensualité à la date d\'échéance figurant au présent contrat ;';
-        article5 = 'Tant que le Client n\'a pas validé la bonne exécution de la prestation, il peut annuler sa commande à tout moment ' +
-            'et obtenir le remboursement intégral des mensualités déjà versées, y compris la première. ' +
-            'Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ' +
-            'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ' +
+        article5 = 'Tant que seule la première mensualité a été réglée, le Client peut annuler sa commande à tout moment ' +
+            'et en obtenir le remboursement intégral. Le Client peut à tout moment cesser de régler les mensualités suivantes, ' +
+            'ce qui entraîne la suspension de la prestation conformément à l\'article 2 ; les mensualités déjà réglées à ce moment-là ' +
+            'restent acquises au Prestataire au titre du travail déjà engagé, sauf décision contraire de l\'équipe FA GENESIS après examen de la situation. ' +
+            'Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible. ' +
             'En cas d\'annulation par le Prestataire, les mensualités versées sont remboursées intégralement au Client. ' +
             'En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.';
 

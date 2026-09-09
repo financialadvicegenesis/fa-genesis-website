@@ -14227,6 +14227,12 @@ function _pbBuildAndShowContract(){
   var _balRaw=(parseFloat(service.price||service.priceNum||0)-(_pbDepositAmount||0))||0;
   var balEur=_balRaw.toFixed(2)+' €';
   var _isSplitPayment = _balRaw > 0.001;
+  // Trois modes de paiement réels configurés par le prestataire — le contrat doit décrire
+  // celui qui s'applique VRAIMENT à ce service, pas juste "payé en une fois" vs "en deux fois"
+  // (voir _pbRenderBreakdown ci-dessous pour le calcul des montants correspondants).
+  var _isInstallments = service.payment_mode === 'installments';
+  var _pbN = _isInstallments ? Math.max(2, Math.min(8, parseInt(service.installment_count) || 2)) : 1;
+  var _pbInstallLabel = _pbN + ' mensualités d\'environ ' + depositEur + ' (dernière mensualité ajustée au centime près) — la première à la signature, les suivantes automatiquement chaque mois';
 
   var commits=_PB_TYPE_COMMITS[(partner.partner_type||'').toLowerCase()]||_PB_DEFAULT_COMMITS;
   var cHtml=commits.map(function(c){return '<div class="pb-ctr-c">'+c+'</div>';}).join('');
@@ -14255,26 +14261,36 @@ function _pbBuildAndShowContract(){
     '<div class="pb-ctr-section">'+
     '<div class="pb-ctr-sh">Engagements du client</div>'+
     '<div class="pb-ctr-c">Fournir toutes les informations et éléments nécessaires à la réalisation de la prestation</div>'+
-    (_isSplitPayment
+    (_isInstallments
+      ? '<div class="pb-ctr-c">Régler <strong style="color:#FFD700;">'+_pbInstallLabel+'</strong></div>'
+      : _isSplitPayment
       ? '<div class="pb-ctr-c">Verser l\'acompte de <strong style="color:#FFD700;">'+depositEur+'</strong> à la commande, puis le solde de <strong style="color:#FFD700;">'+balEur+'</strong> après livraison</div>'
       : '<div class="pb-ctr-c">Verser le paiement intégral de <strong style="color:#FFD700;">'+depositEur+'</strong> à la commande</div>')+
     '<div class="pb-ctr-c">Valider la livraison ou formuler des retours précis dans un délai de 7 jours calendaires</div>'+
-    (_isSplitPayment ? '<div class="pb-ctr-c">Respecter la propriété intellectuelle du prestataire avant règlement intégral du solde</div>' : '')+
+    (_isInstallments ? '<div class="pb-ctr-c">Régler chaque mensualité à son échéance — un défaut de paiement entraîne la suspension de la prestation jusqu\'à régularisation</div>' : '')+
+    (_isSplitPayment && !_isInstallments ? '<div class="pb-ctr-c">Respecter la propriété intellectuelle du prestataire avant règlement intégral du solde</div>' : '')+
     '</div>'+
 
     '<div class="pb-ctr-section">'+
     '<div class="pb-ctr-sh">Paiement sécurisé — GENESIS SAFE™</div>'+
-    (_isSplitPayment
+    (_isInstallments
+      ? '<div style="font-size:11px;color:#aaa;line-height:1.7;">Le paiement est échelonné en <strong style="color:#FFD700;">'+_pbInstallLabel+'</strong>. Les mensualités sont encaissées par FA GENESIS et versées directement au prestataire dès réception, sans période d\'escrow. En cas de litige, FA GENESIS intervient comme médiateur neutre.</div>'
+      : _isSplitPayment
       ? '<div style="font-size:11px;color:#aaa;line-height:1.7;">L\'acompte de <strong style="color:#FFD700;">'+depositEur+'</strong> est versé à la signature. Le solde de <strong style="color:#FFD700;">'+balEur+'</strong> est retenu par FA GENESIS et débloqué au prestataire uniquement après confirmation de livraison par le client. En cas de litige, FA GENESIS intervient comme médiateur neutre.</div>'
       : '<div style="font-size:11px;color:#aaa;line-height:1.7;">Le paiement de <strong style="color:#FFD700;">'+depositEur+'</strong> est sécurisé sur le portefeuille GENESIS SAFE™ et retenu jusqu\'à confirmation de livraison par le client. En cas de litige, FA GENESIS intervient comme médiateur neutre.</div>')+
     '</div>'+
 
     '<div class="pb-ctr-section">'+
     '<div class="pb-ctr-sh">Annulation et remboursement</div>'+
-    '<div style="font-size:11px;color:#aaa;line-height:1.7;">Tant que le client n\'a pas validé la bonne réception de la prestation, il peut annuler sa commande à tout moment '+
-    'et obtenir le remboursement intégral des sommes déjà versées'+(_isSplitPayment?' (y compris l\'acompte déjà transmis au prestataire)':'')+'. '+
-    'Une fois la prestation validée par le client (ou réputée acceptée faute de réponse sous 7 jours), l\'annulation en libre-service n\'est plus possible ; '+
-    'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure.</div>'+
+    (_isInstallments
+      ? '<div style="font-size:11px;color:#aaa;line-height:1.7;">Tant que seule la première mensualité a été réglée, le client peut annuler sa commande à tout moment '+
+        'et en obtenir le remboursement intégral. Il peut aussi, à tout moment, cesser de régler les mensualités suivantes — la prestation est alors suspendue ; '+
+        'les mensualités déjà réglées à ce moment-là restent acquises au prestataire au titre du travail déjà engagé, sauf décision contraire de l\'équipe FA GENESIS après examen de la situation. '+
+        'Une fois la prestation validée par le client, l\'annulation en libre-service n\'est plus possible.</div>'
+      : '<div style="font-size:11px;color:#aaa;line-height:1.7;">Tant que le client n\'a pas validé la bonne réception de la prestation, il peut annuler sa commande à tout moment '+
+        'et obtenir le remboursement intégral des sommes déjà versées'+(_isSplitPayment?' (y compris l\'acompte déjà transmis au prestataire)':'')+'. '+
+        'Une fois la prestation validée par le client (ou réputée acceptée faute de réponse sous 7 jours), l\'annulation en libre-service n\'est plus possible ; '+
+        'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure.</div>')+
     '</div>'+
 
     '<div style="border-top:1px solid #181818;padding-top:10px;font-size:10px;color:#444;line-height:1.6;">'+
@@ -14503,11 +14519,37 @@ function _pbRenderBreakdown(n, total){
   var holdMsg=document.getElementById('pb-hold-msg');
   var sb=document.getElementById('pb-pay-btn');
 
+  // Le prestataire fixe le mode de paiement de son service (payment_mode) — le montant
+  // affiché ET réellement débité doit refléter CE mode, pas un calcul générique. Avant ce
+  // correctif, cette fonction ignorait totalement payment_mode/deposit_pct/installment_count
+  // et appliquait toujours "paiement intégral si ≤300€, sinon acompte à 30% fixe" — ce qui
+  // pouvait facturer le mauvais montant pour un service en mode "Acompte + solde" avec un
+  // deposit_pct personnalisé, ou pour un service en mode "plusieurs fois" (dont le nombre de
+  // mensualités n'était même jamais pris en compte ici).
+  var _pbMode = _pbService && _pbService.payment_mode;
+  if (_pbMode === 'installments' && n <= 1) {
+    n = Math.max(2, Math.min(8, parseInt(_pbService.installment_count) || 2));
+  }
+
   if(n <= 1){
     // GENESIS SAFE™ split classique
-    var isSmall = total <= 300;
-    var deposit = isSmall ? total : Math.round(total*0.30);
-    var tranche2 = isSmall ? 0 : Math.round(total*0.40);
+    var isSmall, deposit;
+    if (_pbMode === 'deposit_balance') {
+      // Même formule que generatePartnerSplit() côté serveur — arrondi au centime, pas à
+      // l'euro, pour que le montant affiché corresponde exactement à ce que la commande
+      // enregistrera et à ce qui sera réellement débité.
+      var _pbPct = Math.max(0, Math.min(100, parseFloat(_pbService.deposit_pct != null ? _pbService.deposit_pct : 30) || 30));
+      isSmall = false;
+      deposit = Math.round(total * _pbPct / 100 * 100) / 100;
+    } else if (_pbMode === 'single') {
+      isSmall = true;
+      deposit = total;
+    } else {
+      // Rétrocompatibilité : anciens services créés avant l'introduction de payment_mode.
+      isSmall = total <= 300;
+      deposit = isSmall ? total : Math.round(total*0.30);
+    }
+    var tranche2 = isSmall ? 0 : Math.round((total - deposit) * 100) / 100;
     _pbDepositAmount = deposit;
     var amt=document.getElementById('pb-deposit-amt'); if(amt) amt.textContent=deposit+' €';
     var amtL=document.getElementById('pb-deposit-amt-large'); if(amtL) amtL.textContent=deposit+' €';
