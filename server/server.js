@@ -1145,35 +1145,45 @@ async function processDispatchPayout(dispatch, stage) {
                 paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
             }
         } else {
-            // 'balance' : solde restant (total – deposit)
-            var pTotal   = parseFloat(dispatch.partner_total_amount  || 0);
-            var pDeposit = parseFloat(dispatch.partner_deposit_amount || 0);
-            paidAmount = parseFloat((pTotal - pDeposit).toFixed(2));
-            var _orderTotal  = order ? parseFloat(order.total_amount  || 0) : 0;
-            var _depositAmt  = order ? parseFloat(order.deposit_amount || 0) : 0;
-            stageTotal = order ? parseFloat(order.balance_amount || (_orderTotal - _depositAmt)) : 0;
-            if (paidAmount <= 0 && stageTotal > 0) {
+            // Toute étape non-acompte : 'balance' (2 tranches) ou 'installment_2'/'installment_3'/…
+            // (3+ tranches — palier "plusieurs fois" ou legacy "large"). On paie UNIQUEMENT la
+            // part du prestataire sur CETTE tranche précise, jamais "tout ce qu'il reste" —
+            // sinon un plan à 3+ mensualités verserait au prestataire la totalité du solde dès
+            // le 2ème versement, avant même que le client ait fini de payer les suivantes.
+            // Source de vérité : le montant CLIENT exact de cette tranche dans
+            // order.installments (généré par generateUserInstallmentPlan/generatePartnerSplit/
+            // generateGenesisSplit), au prorata du pourcentage partenaire.
+            var _stageInst = order && Array.isArray(order.installments)
+                ? order.installments.find(function(i) { return i.stage === stage; })
+                : null;
+            if (_stageInst && parseFloat(_stageInst.amount) > 0) {
+                stageTotal = parseFloat(_stageInst.amount);
                 paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
+            } else {
+                // Repli : pas de détail par tranche disponible — verser tout le solde restant
+                // (comportement historique, correct uniquement pour un plan à exactement 2
+                // tranches, deposit + balance).
+                var pTotal   = parseFloat(dispatch.partner_total_amount  || 0);
+                var pDeposit = parseFloat(dispatch.partner_deposit_amount || 0);
+                paidAmount = parseFloat((pTotal - pDeposit).toFixed(2));
+                var _orderTotal  = order ? parseFloat(order.total_amount  || 0) : 0;
+                var _depositAmt  = order ? parseFloat(order.deposit_amount || 0) : 0;
+                stageTotal = order ? parseFloat(order.balance_amount || (_orderTotal - _depositAmt)) : 0;
+                if (paidAmount <= 0 && stageTotal > 0) {
+                    paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
+                }
             }
         }
         if (paidAmount <= 0) return false;
 
-        // Idempotence : ne pas créer un 2ème payout si un existe déjà pour ce dispatch+stage (non failed).
-        // Un doublon signifie que le versement a déjà été traité avec succès auparavant → true.
-        // IMPORTANT : pour toute étape "non-acompte" (balance / installment_2 / installment_3…),
-        // le calcul ci-dessus verse TOUJOURS le même montant "solde restant total" (pTotal -
-        // pDeposit) — il ne sait pas répartir entre plusieurs tranches intermédiaires. Une
-        // comparaison stricte sur la valeur exacte de `stage` laisserait passer un second
-        // versement du même solde si deux étapes différentes (ex. installment_2 puis
-        // installment_3, palier "large" legacy) déclenchaient chacune un appel — d'où la
-        // vérification élargie à "n'importe quelle étape non-acompte déjà versée" plutôt que
-        // "cette étape précise déjà versée".
+        // Idempotence : ne pas créer un 2ème payout si un existe déjà pour ce dispatch+stage
+        // EXACT (non failed) — chaque stage (installment_2, installment_3…) verse désormais un
+        // montant distinct et correctement scopé (voir ci-dessus), donc les bloquer les uns les
+        // autres serait à présent incorrect : seul un VRAI doublon de la même tranche précise
+        // doit être empêché.
         var _existingPayouts = loadPayouts();
-        var _isDepositStage = (stage === 'deposit' || stage === 'installment_1');
         var _duplicate = _existingPayouts.find(function(p) {
-            if (p.dispatch_id !== dispatch.id || p.status === 'failed') return false;
-            var _pIsDeposit = (p.stage === 'deposit' || p.stage === 'installment_1');
-            return _isDepositStage ? _pIsDeposit : !_pIsDeposit;
+            return p.dispatch_id === dispatch.id && p.stage === stage && p.status !== 'failed';
         });
         if (_duplicate) {
             console.log('[PAYOUT] Doublon ignoré — dispatch ' + dispatch.id + ' stage ' + stage + ' déjà enregistré (' + _duplicate.id + ')');
