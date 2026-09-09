@@ -6293,10 +6293,19 @@ app.get('/api/campagnes', function(req, res) {
 app.get('/api/client/wallet', function(req, res) {
     try {
         var token = (req.headers.authorization || '').replace('Bearer ', '');
-        var users = loadUsers();
         var user = findUserByToken(token);
         if (!user) return res.status(401).json({ error: 'Non autorisé' });
+        res.json(_computeClientWallet(user.email));
+    } catch(e) {
+        console.error('[CLIENT_WALLET]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
 
+// Extrait de l'endpoint ci-dessus pour être réutilisable par un outil de diagnostic admin
+// (GET /api/admin/debug/client-wallet/:email) sans avoir besoin du token du client.
+function _computeClientWallet(clientEmail) {
+    try {
         var orders = loadOrders();
         var payouts = loadPayouts();
         var partners = loadPartners();
@@ -6320,7 +6329,7 @@ app.get('/api/client/wallet', function(req, res) {
 
         var clientOrders = dedupFinal.filter(function(o) {
             if (!o.client_info || !o.client_info.email) return false;
-            if (o.client_info.email.toLowerCase() !== user.email.toLowerCase()) return false;
+            if (o.client_info.email.toLowerCase() !== clientEmail.toLowerCase()) return false;
             if (o.status === 'cancelled' || o.status === 'refunded') return false;
             // Inclure si deposit_authorized / balance_authorized (carte réservée GENESIS SAFE™), deposit_paid, balance_paid
             // ou si au moins une installment payée
@@ -6498,14 +6507,31 @@ app.get('/api/client/wallet', function(req, res) {
 
         orderRows.sort(function(a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
 
-        res.json({
+        return {
             ok: true,
             total_held: Math.round(totalHeld * 100) / 100,
             total_released_alltime: Math.round(totalReleased * 100) / 100,
             orders: orderRows
-        });
+        };
     } catch(e) {
         console.error('[CLIENT_WALLET]', e.message);
+        return { ok: false, error: 'Erreur serveur' };
+    }
+}
+
+/**
+ * GET /api/admin/debug/client-wallet/:email
+ * Diagnostic en lecture seule : rejoue exactement le calcul de /api/client/wallet pour
+ * l'email donné, sans avoir besoin du token de ce client — pour vérifier ce qu'un client
+ * voit réellement dans son Portefeuille GENESIS SAFE™ sans lui demander de rafraîchir/
+ * capturer d'écran.
+ */
+app.get('/api/admin/debug/client-wallet/:email', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        res.json(_computeClientWallet(req.params.email));
+    } catch (err) {
+        console.error('[ADMIN-CLIENT-WALLET-DEBUG] Erreur:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
