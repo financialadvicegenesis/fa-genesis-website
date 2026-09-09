@@ -9,7 +9,10 @@
     "allowNavigation": [
       "*.stripe.com",
       "*.stripe.network",
-      "fagenesis.com"
+      "fagenesis.com",
+      "www.fagenesis.com",
+      "fa-genesis-website.onrender.com",
+      "*.paypal.com"
     ]
   },
   "ios": {
