@@ -2888,8 +2888,16 @@ setInterval(checkInstallmentReminders, 24 * 60 * 60 * 1000);
 async function checkAutoPaymentRelease() {
     try {
         var now = Date.now();
+        // IMPORTANT — anti-écrasement concurrent : ce job tourne en tâche de fond et peut
+        // itérer sur plusieurs commandes avec de vrais appels réseau (Stripe/PayPal) entre
+        // chaque étape, ce qui laisse le temps à d'autres requêtes (ex. validate-delivery)
+        // de s'exécuter en parallèle. On NE DOIT JAMAIS garder un snapshot complet de
+        // `orders` en mémoire pour le réécrire en bloc à la fin (saveOrders(orders)) : cela
+        // écraserait silencieusement les écritures faites entre-temps par d'autres requêtes
+        // sur d'AUTRES commandes. Chaque changement est donc persisté immédiatement via
+        // updateOrder() (lecture-modification-écriture atomique et ciblée sur une seule
+        // commande) au lieu d'être accumulé dans le tableau `orders` local.
         var orders = loadOrders();
-        var modified = false;
 
         for (var _ari = 0; _ari < orders.length; _ari++) {
             var _o = orders[_ari];
@@ -2910,8 +2918,7 @@ async function checkAutoPaymentRelease() {
             });
             if (_arHasSent) {
                 // Payout déjà déclenché — juste marquer auto_released pour ne plus retraiter
-                orders[_ari].auto_released = true;
-                modified = true;
+                updateOrder(_o.id, { auto_released: true });
                 continue;
             }
 
@@ -2922,18 +2929,17 @@ async function checkAutoPaymentRelease() {
                 var _arPiId = _o.stripe_deposit_pi_id;
                 if (_arPiId && _o.deposit_authorized === true && _o.deposit_paid !== true) {
                     await scp.capturePaymentIntent(_arPiId);
-                    orders[_ari].deposit_paid    = true;
-                    orders[_ari].deposit_paid_at = new Date().toISOString();
-                    orders[_ari].paymentStatus   = 'deposit_paid';
-                    modified = true;
+                    var _arDepPaidAt = new Date().toISOString();
+                    updateOrder(_o.id, { deposit_paid: true, deposit_paid_at: _arDepPaidAt, paymentStatus: 'deposit_paid' });
+                    _o.deposit_paid = true; _o.deposit_paid_at = _arDepPaidAt; _o.paymentStatus = 'deposit_paid';
                     console.log('[AUTO-RELEASE] PI dépôt capturé automatiquement :', _arPiId);
                 }
                 var _arBalPiId = _o.stripe_balance_pi_id;
                 if (_arBalPiId && _o.balance_authorized === true && _o.balance_paid !== true) {
                     await scp.capturePaymentIntent(_arBalPiId);
-                    orders[_ari].balance_paid    = true;
-                    orders[_ari].balance_paid_at = new Date().toISOString();
-                    modified = true;
+                    var _arBalPaidAt = new Date().toISOString();
+                    updateOrder(_o.id, { balance_paid: true, balance_paid_at: _arBalPaidAt });
+                    _o.balance_paid = true; _o.balance_paid_at = _arBalPaidAt;
                     console.log('[AUTO-RELEASE] PI solde capturé automatiquement :', _arBalPiId);
                 }
                 // GENESIS SAFE™ pour PayPal : mêmes conditions, via une autorisation PayPal.
@@ -2943,20 +2949,17 @@ async function checkAutoPaymentRelease() {
                 var _arPpAuthId = _o.paypal_authorization_id;
                 if (_arPpAuthId && _o.deposit_authorized === true && _o.deposit_paid !== true) {
                     var _arPpCaptureId = await _paypalCaptureAuthorization(_arPpAuthId);
-                    orders[_ari].deposit_paid       = true;
-                    orders[_ari].deposit_paid_at    = new Date().toISOString();
-                    orders[_ari].paymentStatus      = 'deposit_paid';
-                    orders[_ari].paypal_capture_id  = _arPpCaptureId;
-                    modified = true;
+                    var _arPpDepPaidAt = new Date().toISOString();
+                    updateOrder(_o.id, { deposit_paid: true, deposit_paid_at: _arPpDepPaidAt, paymentStatus: 'deposit_paid', paypal_capture_id: _arPpCaptureId });
+                    _o.deposit_paid = true; _o.deposit_paid_at = _arPpDepPaidAt; _o.paymentStatus = 'deposit_paid'; _o.paypal_capture_id = _arPpCaptureId;
                     console.log('[AUTO-RELEASE] Autorisation PayPal dépôt capturée automatiquement :', _arPpAuthId);
                 }
                 var _arPpBalAuthId = _o.paypal_balance_authorization_id;
                 if (_arPpBalAuthId && _o.balance_authorized === true && _o.balance_paid !== true) {
                     var _arPpBalCaptureId = await _paypalCaptureAuthorization(_arPpBalAuthId);
-                    orders[_ari].balance_paid            = true;
-                    orders[_ari].balance_paid_at         = new Date().toISOString();
-                    orders[_ari].paypal_balance_capture_id = _arPpBalCaptureId;
-                    modified = true;
+                    var _arPpBalPaidAt = new Date().toISOString();
+                    updateOrder(_o.id, { balance_paid: true, balance_paid_at: _arPpBalPaidAt, paypal_balance_capture_id: _arPpBalCaptureId });
+                    _o.balance_paid = true; _o.balance_paid_at = _arPpBalPaidAt; _o.paypal_balance_capture_id = _arPpBalCaptureId;
                     console.log('[AUTO-RELEASE] Autorisation PayPal solde capturée automatiquement :', _arPpBalAuthId);
                 }
 
@@ -3033,18 +3036,22 @@ async function checkAutoPaymentRelease() {
                     }
                 }
 
-                // Marquer la commande comme auto-libérée
-                orders[_ari].auto_released         = true;
-                orders[_ari].auto_released_at      = new Date().toISOString();
-                orders[_ari].status                = 'completed';
-                orders[_ari].client_validated      = true; // considéré validé par délai
+                // Marquer la commande comme auto-libérée — écriture immédiate et ciblée
+                // (updateOrder) plutôt qu'accumulée dans `orders` pour éviter d'écraser des
+                // changements concurrents faits sur cette commande par une autre requête.
+                var _arFinalUpdates = {
+                    auto_released: true,
+                    auto_released_at: new Date().toISOString(),
+                    status: 'completed',
+                    client_validated: true, // considéré validé par délai
+                    pending_client_validation: false
+                };
                 if (_arPayoutOk) {
-                    orders[_ari].partner_paid_out    = true;
-                    orders[_ari].partner_paid_out_at = new Date().toISOString();
+                    _arFinalUpdates.partner_paid_out    = true;
+                    _arFinalUpdates.partner_paid_out_at = new Date().toISOString();
                 }
-                orders[_ari].pending_client_validation = false;
-                modified = true;
-                closePartnerRequestForOrder(orders[_ari]);
+                updateOrder(_o.id, _arFinalUpdates);
+                closePartnerRequestForOrder(Object.assign({}, _o, _arFinalUpdates));
 
                 // Notifier le client et le partenaire
                 var _arClientEmail  = _o.client_info && _o.client_info.email;
@@ -3068,7 +3075,6 @@ async function checkAutoPaymentRelease() {
             }
         }
 
-        if (modified) saveOrders(orders);
         console.log('[AUTO-RELEASE] Vérification terminée —', new Date().toLocaleString('fr-FR'));
     } catch(e) {
         console.error('[AUTO-RELEASE] Erreur globale:', e.message);
@@ -4238,6 +4244,64 @@ app.get('/api/admin/orders/:orderId/debug', function(req, res) {
         });
     } catch (err) {
         console.error('[ADMIN-ORDER-DEBUG] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/orders/:orderId/reconcile-record
+ * Corrige la FICHE commande quand elle a divergé de la réalité du paiement (bug de
+ * concurrence : un job de fond — ex. checkAutoPaymentRelease — a réécrit tout le fichier
+ * orders.json avec un instantané périmé pendant qu'une autre requête venait de valider
+ * cette commande, effaçant silencieusement client_validated/status/partner_paid_out alors
+ * que l'argent avait déjà réellement été capturé et versé au wallet du partenaire).
+ * Ne corrige QUE ce que des preuves concrètes (payout wallet_credited/sent, dispatch
+ * mission_status='completed') confirment déjà réellement arrivé — ne invente jamais un
+ * paiement qui n'a pas eu lieu.
+ */
+app.post('/api/admin/orders/:orderId/reconcile-record', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var orderId = req.params.orderId;
+        var order = getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Commande introuvable.' });
+
+        var dispatch = loadDispatches().find(function(d) { return d.order_id === orderId; }) || null;
+        var payout = loadPayouts().find(function(p) {
+            return p.order_id === orderId && p.stage === 'deposit' && (p.status === 'wallet_credited' || p.status === 'sent');
+        }) || null;
+        var dispatchCompleted = !!(dispatch && dispatch.mission_status === 'completed');
+
+        if (!payout && !dispatchCompleted) {
+            return res.status(400).json({ error: 'Aucune preuve de paiement/versement réel trouvée pour cette commande — réconciliation refusée par sécurité.' });
+        }
+
+        var updates = {};
+        if (payout && order.deposit_paid !== true) {
+            updates.deposit_paid    = true;
+            updates.deposit_paid_at = order.deposit_paid_at || payout.created_at;
+            updates.paymentStatus   = 'deposit_paid';
+        }
+        if (order.client_validated !== true) {
+            updates.client_validated       = true;
+            updates.client_validated_at    = order.client_validated_at || new Date().toISOString();
+            updates.pending_client_validation = false;
+            updates.status = 'completed';
+        }
+        if (payout && order.partner_paid_out !== true) {
+            updates.partner_paid_out    = true;
+            updates.partner_paid_out_at = payout.sent_at || payout.created_at;
+        }
+
+        if (Object.keys(updates).length === 0) {
+            return res.json({ success: true, message: 'Rien à corriger — la commande est déjà cohérente avec les preuves de paiement.', order: order });
+        }
+
+        updateOrder(orderId, updates);
+        console.log('[ADMIN-RECONCILE] Commande', orderId, 'réconciliée avec preuves réelles de paiement:', updates);
+        res.json({ success: true, applied: updates, order: getOrderById(orderId) });
+    } catch (err) {
+        console.error('[ADMIN-RECONCILE] Erreur:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
