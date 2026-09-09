@@ -2768,6 +2768,30 @@ a{text-decoration:none;color:inherit}
         </div>
       </div>
 
+      <!-- Biometric lock screen (native app only, session existante mais verrouillée) -->
+      <div id="ptnr-biolock-screen" style="display:none;">
+        <div class="ptnr-login-wrap">
+          <div class="ptnr-login-logo">GENESIS</div>
+          <div style="font-size:40px;color:#FFD700;margin:8px 0 4px;"><i class="fa-solid fa-lock"></i></div>
+          <div class="ptnr-login-title">Espace verrouillé</div>
+          <div class="ptnr-login-sub" id="ptnr-biolock-sub">Déverrouillez avec votre biométrie pour accéder à votre espace prestataire.</div>
+          <button class="ptnr-login-btn" id="ptnr-biolock-btn" onclick="_ptnrBiolockUnlock()"><i class="fa-solid fa-fingerprint" style="margin-right:8px;"></i>Déverrouiller</button>
+          <div class="ptnr-login-err" id="ptnr-biolock-err"></div>
+          <button class="ptnr-link-btn" onclick="_ptnrLogout()">Se déconnecter</button>
+        </div>
+      </div>
+
+      <!-- Proposition d'activation de la biométrie (une fois, après connexion/inscription) -->
+      <div id="ptnr-bio-optin-overlay" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;">
+        <div style="width:100%;max-width:480px;background:#111;border:1.5px solid #FFD70044;border-radius:20px 20px 0 0;padding:26px 22px calc(26px + var(--safe-bottom,0px));text-align:center;">
+          <div style="font-size:38px;color:#FFD700;margin-bottom:10px;"><i class="fa-solid fa-fingerprint"></i></div>
+          <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:8px;">Sécurisez votre espace prestataire</div>
+          <div style="font-size:13px;color:#aaa;line-height:1.6;margin-bottom:20px;">Activez le déverrouillage par biométrie pour empêcher toute personne ayant accès à votre téléphone d'ouvrir votre espace GENESIS — vos missions, votre wallet et vos coordonnées de versement.</div>
+          <button class="ptnr-login-btn" style="margin-bottom:8px;" onclick="_ptnrBioOptinAccept()">Activer</button>
+          <button class="ptnr-link-btn" onclick="_ptnrBioOptinDecline()">Plus tard</button>
+        </div>
+      </div>
+
       <!-- Register screen (in-app, no redirect to website) -->
       <div id="ptnr-register-screen" style="display:none;">
         <button class="w-back-btn" onclick="_ptnrRegBackToLogin()" aria-label="Retour">&#8249;</button>
@@ -12684,6 +12708,113 @@ function _ptnrClearSession(){
   localStorage.removeItem('fa_genesis_partner_profile_data');
 }
 
+// ── Verrouillage biométrique (Face ID / empreinte) de l'espace prestataire ────
+// Protège contre un tiers qui récupérerait le téléphone déverrouillé pendant que
+// le prestataire est déjà connecté à l'app (le jeton de session seul ne suffit
+// plus à afficher l'espace prestataire tant que la biométrie n'a pas été validée).
+var _ptnrBioUnlocked = false; // vrai après un déverrouillage réussi CE chargement de page
+
+function _ptnrIsNative(){
+  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+}
+
+function _ptnrBiometricEnabled(){
+  return localStorage.getItem('fa_genesis_partner_biometric_enabled') === 'true';
+}
+
+function _ptnrRequiresBiolock(){
+  if(_ptnrBioUnlocked) return false;
+  if(!_ptnrIsNative()) return false;
+  if(_ptnrSession && (_ptnrSession.partner_type==='admin'||_ptnrSession.role==='admin')) return false; // pas de coordonnées bancaires à protéger côté admin
+  return _ptnrBiometricEnabled();
+}
+
+function _ptnrBiolockUnlock(){
+  var btn = document.getElementById('ptnr-biolock-btn');
+  var errEl = document.getElementById('ptnr-biolock-err');
+  if(errEl) errEl.className = 'ptnr-login-err';
+  if(btn){ btn.disabled = true; }
+  function _done(ok, msg){
+    if(btn){ btn.disabled = false; }
+    if(ok){
+      _ptnrBioUnlocked = true;
+      nav('partner');
+    } else if(errEl){
+      errEl.textContent = msg || 'Authentification échouée.';
+      errEl.className = 'ptnr-login-err on';
+    }
+  }
+  if(!(window.FAGMobile && window.FAGMobile.authenticateBiometric)){
+    // Bridge natif pas encore prêt (rare, juste après le lancement de l'app) :
+    // on attend l'événement plutôt que de bloquer indéfiniment le prestataire.
+    document.addEventListener('fagmobile:ready', function(){ _ptnrBiolockUnlock(); }, { once:true });
+    if(btn){ btn.disabled = false; }
+    return;
+  }
+  window.FAGMobile.authenticateBiometric('Déverrouillez votre espace prestataire GENESIS').then(function(res){
+    _done(res.success, res.error);
+  }).catch(function(){ _done(false); });
+}
+
+// Réarme le verrou dès que l'app repasse en arrière-plan (voir mobile-bridge.js)
+document.addEventListener('fagmobile:backgrounded', function(){ _ptnrBioUnlocked = false; });
+
+// Proposition d'activation (une seule fois, juste après une connexion/inscription réussie)
+function _ptnrOfferBiometricOptIn(){
+  if(!_ptnrIsNative()) return;
+  if(localStorage.getItem('fa_genesis_partner_biometric_asked') === 'true') return;
+  if(!(window.FAGMobile && window.FAGMobile.checkBiometry)){
+    document.addEventListener('fagmobile:ready', _ptnrOfferBiometricOptIn, { once:true });
+    return;
+  }
+  window.FAGMobile.checkBiometry().then(function(info){
+    if(!info || !info.isAvailable) return;
+    var overlay = document.getElementById('ptnr-bio-optin-overlay');
+    if(overlay) overlay.style.display = 'flex';
+  });
+}
+
+function _ptnrBioOptinAccept(){
+  localStorage.setItem('fa_genesis_partner_biometric_asked', 'true');
+  localStorage.setItem('fa_genesis_partner_biometric_enabled', 'true');
+  _ptnrBioUnlocked = true; // déjà "déverrouillé" pour cette session : pas besoin de re-demander tout de suite
+  var overlay = document.getElementById('ptnr-bio-optin-overlay'); if(overlay) overlay.style.display = 'none';
+  showToast('Biométrie activée', 'Votre espace prestataire est désormais protégé.', 'success');
+}
+
+function _ptnrBioOptinDecline(){
+  localStorage.setItem('fa_genesis_partner_biometric_asked', 'true');
+  var overlay = document.getElementById('ptnr-bio-optin-overlay'); if(overlay) overlay.style.display = 'none';
+}
+
+// Bascule depuis les paramètres du profil (activer/désactiver après coup)
+function _ptnrToggleBiometric(enabled){
+  localStorage.setItem('fa_genesis_partner_biometric_asked', 'true');
+  if(!enabled){
+    localStorage.setItem('fa_genesis_partner_biometric_enabled', 'false');
+    showToast('Biométrie désactivée', '', 'info');
+    return;
+  }
+  var revert = function(){
+    var cb = document.getElementById('ptnr-biometric-toggle'); if(cb) cb.checked = false;
+  };
+  if(!(window.FAGMobile && window.FAGMobile.checkBiometry)){
+    revert();
+    showToast('Indisponible', 'La biométrie n\'est pas accessible pour le moment.', 'error');
+    return;
+  }
+  window.FAGMobile.checkBiometry().then(function(info){
+    if(!info || !info.isAvailable){
+      revert();
+      showToast('Biométrie non configurée', 'Configurez votre empreinte ou Face ID dans les réglages de votre téléphone d\'abord.', 'error');
+      return;
+    }
+    localStorage.setItem('fa_genesis_partner_biometric_enabled', 'true');
+    _ptnrBioUnlocked = true;
+    showToast('Biométrie activée', 'Votre espace prestataire est désormais protégé.', 'success');
+  }).catch(function(){ revert(); });
+}
+
 var _ptnrPendingProfileId = null; // profile being PIN-verified
 
 function _ptnrToggleForgot(){
@@ -12745,6 +12876,8 @@ function _ptnrLogin(){
         _ptnrShowScreen('admin'); return;
       }
       // Partner → go to profile selector
+      _ptnrBioUnlocked = true; // vient de prouver son identité par mot de passe
+      _ptnrOfferBiometricOptIn();
       _ptnrShowScreen('profiles');
       _ptnrLoadProfileSelector();
     } else {
@@ -12765,10 +12898,10 @@ function _ptnrTogglePass(){
 }
 
 function _ptnrShowScreen(name){
-  // name: 'login' | 'register' | 'admin' | 'profiles' | 'dash'
-  var screens = ['ptnr-login-screen','ptnr-register-screen','ptnr-admin-screen','ptnr-profile-screen','ptnr-dash-screen'];
+  // name: 'login' | 'biolock' | 'register' | 'admin' | 'profiles' | 'dash'
+  var screens = ['ptnr-login-screen','ptnr-biolock-screen','ptnr-register-screen','ptnr-admin-screen','ptnr-profile-screen','ptnr-dash-screen'];
   screens.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
-  var show = name==='login'?'ptnr-login-screen':name==='register'?'ptnr-register-screen':name==='admin'?'ptnr-admin-screen':name==='profiles'?'ptnr-profile-screen':'ptnr-dash-screen';
+  var show = name==='login'?'ptnr-login-screen':name==='biolock'?'ptnr-biolock-screen':name==='register'?'ptnr-register-screen':name==='admin'?'ptnr-admin-screen':name==='profiles'?'ptnr-profile-screen':'ptnr-dash-screen';
   var el = document.getElementById(show); if(el) el.style.display='';
   // Masquer la nav partenaire sur tous les écrans sauf le dashboard authentifié
   if(name !== 'dash') document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display='none'; });
@@ -12776,6 +12909,10 @@ function _ptnrShowScreen(name){
   if(name === 'login'){
     var eye=document.getElementById('ptnr-pass-eye'); if(eye) eye.innerHTML=EYE_OPEN_SVG;
     var p=document.getElementById('ptnr-pass'); if(p){p.value='';p.type='password';}
+  }
+  if(name === 'biolock'){
+    var errEl=document.getElementById('ptnr-biolock-err'); if(errEl) errEl.className='ptnr-login-err';
+    setTimeout(_ptnrBiolockUnlock, 200);
   }
 }
 
@@ -12839,6 +12976,8 @@ function _ptnrRegSubmit(){
       _ptnrSession = res.partner;
       localStorage.setItem('fa_genesis_partner_token', res.token);
       _ptnrSaveToCache(res.partner);
+      _ptnrBioUnlocked = true; // vient de créer son compte à l'instant
+      _ptnrOfferBiometricOptIn();
       _ptnrShowScreen('profiles');
       _ptnrLoadProfileSelector();
     } else {
@@ -13928,6 +14067,7 @@ if('serviceWorker' in navigator){
     _origNav(tab);
     if(tab === 'partner'){
       if(!_ptnrToken){ _ptnrShowScreen('login'); return; }
+      if(_ptnrRequiresBiolock()){ _ptnrShowScreen('biolock'); return; }
       if(_ptnrSession && (_ptnrSession.partner_type==='admin'||_ptnrSession.role==='admin')){ _ptnrShowScreen('admin'); return; }
       var profileId = localStorage.getItem('fa_genesis_partner_profile');
       if(_ptnrToken && profileId){
@@ -18043,11 +18183,21 @@ function _ptnrLoadProfil(){
     +pli('<i class="fa-solid fa-folder-open"></i>',       '#001418','Mes livrables',        null,"_ptnrNav('livrables')")
     +'</div></div>';
 
+  var bioRowHtml = '';
+  if(_ptnrIsNative()){
+    var bioChecked = _ptnrBiometricEnabled() ? ' checked' : '';
+    bioRowHtml = '<div class="plus-item">'
+      +'<div class="plus-item-ico" style="background:#0a1a1a"><i class="fa-solid fa-fingerprint"></i></div>'
+      +'<div class="plus-item-label">Déverrouillage biométrique</div>'
+      +'<label class="tgl"><input type="checkbox" id="ptnr-biometric-toggle"'+bioChecked+' onchange="_ptnrToggleBiometric(this.checked)"><span class="tgl-slider"></span></label>'
+      +'</div>';
+  }
   var monProfil = '<div class="plus-section">'
     +'<div class="plus-section-title">MON PROFIL</div>'
     +'<div class="plus-group">'
     +pli('<i class="fa-solid fa-circle-user"></i>',       '#1a1a00','Paramètres du profil', null,'_ptnrProfilEditParams()')
     +pli('<i class="fa-solid fa-clock"></i>',             '#14000a','Temps de réponse',     null,'_ptnrProfilEditResponseTime()')
+    +bioRowHtml
     +'</div></div>';
 
   var colleguesLabel = typeLabel.replace(/teur$/,'teurs').replace(/ste$/,'stes').replace(/er$/,'ers');

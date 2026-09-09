@@ -137,48 +137,37 @@
         }
     };
 
-    // ── Authentification biométrique ────────────────────────────────────────────
-    window.FAGMobile.biometricLogin = async function() {
+    // ── Authentification biométrique (Face ID / empreinte / iris) ────────────────
+    // Plugin natif @aparajita/capacitor-biometric-auth, appelé directement via son nom
+    // d'enregistrement natif (BiometricAuthNative) — comme pour tous les autres plugins de
+    // ce fichier, sans passer par son wrapper JS (non chargeable sans bundler ici).
+    // checkBiometry()/internalAuthenticate() sont des méthodes 100% natives, donc cet appel
+    // direct expose exactement le même comportement que le wrapper officiel.
+    window.FAGMobile.checkBiometry = async function() {
         try {
-            if (!Plugins.NativeBiometric) return { success: false, error: 'Plugin indisponible' };
-            var available = await Plugins.NativeBiometric.isAvailable();
-            if (!available.isAvailable) return { success: false, error: 'Biométrie non disponible sur cet appareil' };
-
-            await Plugins.NativeBiometric.verifyIdentity({
-                reason: 'Accédez à votre compte FA Genesis',
-                title: 'FA Genesis',
-                subtitle: 'Connexion sécurisée',
-                negativeButtonText: 'Annuler',
-                maxAttempts: 3
-            });
-            return { success: true };
+            if (!Plugins.BiometricAuthNative) return { isAvailable: false };
+            return await Plugins.BiometricAuthNative.checkBiometry();
         } catch(e) {
-            return { success: false, error: e.message || 'Biométrie annulée' };
+            return { isAvailable: false };
         }
     };
 
-    window.FAGMobile.saveBiometricCredentials = async function(email, token) {
+    window.FAGMobile.authenticateBiometric = async function(reason) {
         try {
-            if (!Plugins.NativeBiometric) return;
-            await Plugins.NativeBiometric.setCredentials({
-                username: email, password: token,
-                server: 'com.fagenesis.app'
+            if (!Plugins.BiometricAuthNative) return { success: false, error: 'Biométrie indisponible' };
+            await Plugins.BiometricAuthNative.internalAuthenticate({
+                reason: reason || 'Accédez à votre compte FA Genesis',
+                androidTitle: 'FA Genesis',
+                androidSubtitle: 'Déverrouillage sécurisé',
+                cancelTitle: 'Annuler',
+                // Autorise le repli sur le code PIN / schéma de l'appareil après plusieurs
+                // échecs biométriques, pour ne jamais bloquer totalement l'accès au compte.
+                allowDeviceCredential: true
             });
-        } catch(e) {}
-    };
-
-    window.FAGMobile.getBiometricCredentials = async function() {
-        try {
-            if (!Plugins.NativeBiometric) return null;
-            return await Plugins.NativeBiometric.getCredentials({ server: 'com.fagenesis.app' });
-        } catch(e) { return null; }
-    };
-
-    window.FAGMobile.deleteBiometricCredentials = async function() {
-        try {
-            if (!Plugins.NativeBiometric) return;
-            await Plugins.NativeBiometric.deleteCredentials({ server: 'com.fagenesis.app' });
-        } catch(e) {}
+            return { success: true };
+        } catch(e) {
+            return { success: false, error: (e && e.message) || 'Authentification annulée' };
+        }
     };
 
     // ── Caméra / Galerie ────────────────────────────────────────────────────────
@@ -226,6 +215,19 @@
                 window.history.back();
             } else {
                 Plugins.App.minimizeApp && Plugins.App.minimizeApp();
+            }
+        });
+    }
+
+    // ── Re-verrouillage biométrique au retour au premier plan ────────────────────
+    // Dès que l'app repasse en arrière-plan (verrouillage du téléphone, changement
+    // d'appli...), on prévient l'app.html pour qu'elle réarme l'écran de verrouillage
+    // biométrique du prestataire — sinon quelqu'un qui récupère le téléphone déverrouillé
+    // pendant que l'app tourne en arrière-plan retrouverait l'espace prestataire ouvert.
+    if (Plugins.App) {
+        Plugins.App.addListener('appStateChange', function(state) {
+            if (!state.isActive) {
+                document.dispatchEvent(new CustomEvent('fagmobile:backgrounded'));
             }
         });
     }

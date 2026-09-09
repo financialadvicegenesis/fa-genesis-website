@@ -11,15 +11,22 @@
     "cap:add:android": "npx cap add android"
   },
   "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "8.0.2",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "6.0.3",
     "@capacitor/core": "^6.0.0",
     "@capacitor/ios": "^6.0.0",
-    "@capacitor/android": "^6.0.0",
     "@capacitor/push-notifications": "^6.0.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.0.0"
   },
-  "keywords": ["pwa", "capacitor", "ios", "genesis"],
+  "keywords": [
+    "pwa",
+    "capacitor",
+    "ios",
+    "genesis"
+  ],
   "author": "FA GENESIS",
   "license": "UNLICENSED"
 }
