@@ -1085,6 +1085,18 @@ async function _handleFirstMissionCompleted(partner, allPartners) {
     }
 }
 
+// Libellé du type de versement pour l'affichage wallet/historique. Le stage technique
+// 'deposit' sert aussi bien pour un VRAI acompte (commande avec solde à venir) que pour un
+// paiement unique en une fois (tier 'small' : pas de solde) — dans ce second cas, appeler
+// ça "Acompte" est trompeur pour le client/partenaire puisqu'il n'y a rien d'autre à payer
+// ensuite. On distingue les deux via order.balance_amount (>0 seulement si un solde existe).
+function _paymentStageSuffix(stage, order) {
+    if (stage === 'balance') return ' — Solde final';
+    if ((stage || '').indexOf('installment') === 0) return ' — Mensualité';
+    var hasBalance = order && parseFloat(order.balance_amount) > 0;
+    return hasBalance ? ' — Acompte' : ' — Paiement';
+}
+
 // Crée les missions (dispatches) pour les partenaires externes d'une commande
 // Versement unitaire pour un dispatch accepté (acompte ou solde)
 // Retourne true UNIQUEMENT si le wallet du prestataire a été réellement crédité (ou l'était
@@ -1219,7 +1231,7 @@ async function processDispatchPayout(dispatch, stage) {
         // Pour l'acompte : libérer l'entrée pending créée à la commande.
         // Pour le solde / mensualités : créditer directement (pas de période pending).
         var _wDesc = 'Mission : ' + (dispatch.offer_name || (order && order.product_name) || 'Prestation')
-            + (stage === 'balance' ? ' — Solde final' : stage.startsWith('installment') ? ' — Mensualité' : ' — Acompte');
+            + _paymentStageSuffix(stage, order);
         var _partnerId = partner.id;
         var _dispId = dispatch.id;
         var _walletOk;
@@ -1377,7 +1389,7 @@ function createPartnerServiceDispatch(order) {
 
         // Afficher immédiatement l'acompte comme "En attente" dans le wallet du prestataire (modèle Fiverr)
         if (partnerDeposit > 0) {
-            var _pendingDesc = 'Mission : ' + (order.product_name || 'Prestation') + ' — Acompte (en attente)';
+            var _pendingDesc = 'Mission : ' + (order.product_name || 'Prestation') + _paymentStageSuffix('deposit', order) + ' (en attente)';
             var _durationDays = parseInt(order.duration_days) || 7;
             var _releaseDate = new Date(Date.now() + _durationDays * 24 * 60 * 60 * 1000).toISOString();
             addPendingWalletEntry(order.partner_id, partnerDeposit, _pendingDesc, order.id, dispatch.id, 'deposit', _releaseDate);
@@ -4399,11 +4411,13 @@ app.post('/api/admin/payouts/dedupe', function(req, res) {
 
 /**
  * POST /api/admin/wallets/relabel-rebuilt?apply=true
- * Corrige rétroactivement la description des transactions déjà créées par une exécution
- * précédente de /rebuild-from-payouts (identifiables via leur champ rebuilt_at), qui
- * portaient le libellé technique "Reconstruction depuis historique des versements (PAY-XXX)"
- * — les remplace par le format standard "Mission : <nom> — Acompte/Solde final/Mensualité"
- * utilisé partout ailleurs, en repartant du order_id stocké sur chaque transaction.
+ * Corrige rétroactivement la description de TOUTES les transactions crédit d'un wallet
+ * (issues du rebuild ou déjà présentes de longue date) pour appliquer la règle correcte :
+ * "Acompte" seulement quand la commande a réellement un solde à venir (order.balance_amount
+ * > 0), "Paiement" pour un paiement unique en une fois (tier 'small' notamment) — voir
+ * _paymentStageSuffix(). Avant ce correctif, TOUT versement de stage 'deposit' était
+ * étiqueté "Acompte" même pour un paiement intégral sans solde, ce qui trompait
+ * client/partenaire. Préserve le suffixe "(en attente)" des entrées encore pending.
  */
 app.post('/api/admin/wallets/relabel-rebuilt', function(req, res) {
     if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
@@ -4417,11 +4431,10 @@ app.post('/api/admin/wallets/relabel-rebuilt', function(req, res) {
         wallets.forEach(function(w) {
             if (!Array.isArray(w.transactions)) return;
             w.transactions.forEach(function(t) {
-                if (!t.rebuilt_at) return; // seulement les transactions issues du rebuild
+                if (t.type !== 'credit') return;
                 var ord = orders.find(function(o) { return o.id === t.order_id; });
                 var name = ord ? (ord.product_name || 'Prestation') : 'Prestation';
-                var suffix = t.stage === 'balance' ? ' — Solde final' : (t.stage || '').indexOf('installment') === 0 ? ' — Mensualité' : ' — Acompte';
-                var newDesc = 'Mission : ' + name + suffix;
+                var newDesc = 'Mission : ' + name + _paymentStageSuffix(t.stage, ord) + (t.status === 'pending' ? ' (en attente)' : '');
                 if (t.description !== newDesc) {
                     report.push({ partner_id: w.partner_id, id: t.id, before: t.description, after: newDesc });
                     if (apply) t.description = newDesc;
@@ -4472,8 +4485,7 @@ app.post('/api/admin/wallets/rebuild-from-payouts', function(req, res) {
         function _rfpDesc(p) {
             var ord = _rfpOrders.find(function(o) { return o.id === p.order_id; });
             var name = ord ? (ord.product_name || 'Prestation') : 'Prestation';
-            var suffix = p.stage === 'balance' ? ' — Solde final' : (p.stage || '').indexOf('installment') === 0 ? ' — Mensualité' : ' — Acompte';
-            return 'Mission : ' + name + suffix;
+            return 'Mission : ' + name + _paymentStageSuffix(p.stage, ord);
         }
 
         // Sécurité : des payouts de test (fixtures créées lors de sessions de débogage local
