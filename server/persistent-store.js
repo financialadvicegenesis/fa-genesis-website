@@ -36,6 +36,8 @@ var COLLECTIONS = [
     'settings',
     'push-subscriptions',
     'payouts',
+    'wallets',
+    'withdrawals',
     'genesis_projects',
     // Données critiques métier
     'actualites',
