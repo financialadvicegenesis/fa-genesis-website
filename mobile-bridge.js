@@ -35,6 +35,26 @@
                 return;
             }
 
+            // Créer le canal de notification AVANT tout enregistrement. Sur Android 8+ (API 26+),
+            // une notification FCM référençant un channelId qui n'existe pas sur l'appareil est
+            // silencieusement ignorée par le système — aucune erreur nulle part, la notification
+            // n'apparaît juste jamais. Le serveur envoie toujours channelId:'genesis_general'
+            // (voir server.js, sendFcmToUser) : ce canal doit donc exister ici, côté app.
+            if (IS_ANDROID && Plugins.PushNotifications.createChannel) {
+                try {
+                    await Plugins.PushNotifications.createChannel({
+                        id: 'genesis_general',
+                        name: 'GENESIS',
+                        description: 'Messages, missions, commandes et alertes GENESIS',
+                        importance: 4, // IMPORTANCE_HIGH : notification "heads-up" + son, comme les autres apps
+                        visibility: 1, // VISIBILITY_PUBLIC
+                        vibration: true
+                    });
+                } catch(chErr) {
+                    console.warn('[FAG Mobile] createChannel a échoué:', chErr.message);
+                }
+            }
+
             // Demander la permission (Android 13+ affiche la dialog système)
             var perm = await Plugins.PushNotifications.checkPermissions();
             if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
