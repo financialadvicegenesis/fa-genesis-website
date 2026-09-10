@@ -3474,6 +3474,23 @@ function welcomeBack(){
   if(w) w.style.display = 'none';
   showRoleChoice();
 }
+// ── NOTIFICATIONS PUSH CLIENT (app Android/iOS native) ──
+// pwa-init.js s'arrête immédiatement dans l'app native (il ne gère que le Web Push, pour
+// la PWA/le site) — contrairement au prestataire (_ptnrCheckPushStatus), aucun token FCM
+// n'était donc jamais enregistré pour un client connecté depuis l'app Android : messages,
+// confirmations de commande, etc. ne pouvaient jamais lui parvenir en push sur mobile.
+function _clientCheckNativePush(){
+  if(!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) return;
+  if(!USER || GUEST) return;
+  var uid = USER.id || USER._id;
+  if(!uid) return;
+  if(window.FAGMobile && window.FAGMobile.initPushNotifications){
+    window.FAGMobile.initPushNotifications(uid);
+  } else {
+    document.addEventListener('fagmobile:ready', function(){ window.FAGMobile.initPushNotifications(uid); }, { once:true });
+  }
+}
+
 function showApp(){
   var welcomeEl = document.getElementById('welcome');
   if(welcomeEl) welcomeEl.style.display = 'none';
@@ -3488,6 +3505,7 @@ function showApp(){
   appEl.style.display = 'flex';
   appEl.className = 'on';
   initApp();
+  _clientCheckNativePush();
   setTimeout(_restoreNavSession, 400);
   setTimeout(function(){ if(typeof _checkTutoPrompt==='function') _checkTutoPrompt(); }, 1200);
   // Retour depuis l'onboarding Stripe : ouvrir directement le Portefeuille partenaire
@@ -9390,10 +9408,20 @@ function loadChatMessages(partnerEmail){
     // Filtrer selon le type de conversation
     var list;
     if(partnerEmail){
-      // Conversation avec un partenaire précis
+      // Conversation avec un partenaire précis. La clé passée ici peut être soit l'email
+      // du partenaire (cas normal, ex: depuis la liste des conversations), soit son ID
+      // (quand la fiche publique du prestataire n'expose pas son email, par souci de
+      // confidentialité — voir _startMsgWithPartner). to_email est TOUJOURS résolu côté
+      // serveur avec la vraie adresse email du partenaire, quel que soit ce qui a été
+      // envoyé à l'origine (email ou ID) : on matche donc sur to_email/from_email EN PLUS
+      // de to_id, sinon un message envoyé depuis la fiche publique redevenait invisible
+      // dès qu'on rouvrait la conversation depuis la liste (clé = email, pas ID).
       var pe = partnerEmail.toLowerCase();
       list = allMsgs.filter(function(m){
-        var toPartner = (m.to_type==='partner' && m.to_id && m.to_id.toLowerCase()===pe);
+        var toPartner = (m.to_type==='partner') && (
+          (m.to_email && m.to_email.toLowerCase()===pe) ||
+          (m.to_id && String(m.to_id).toLowerCase()===pe)
+        );
         var fromPartner = (m.from_type==='partner' && m.from_email && m.from_email.toLowerCase()===pe);
         return toPartner || fromPartner;
       });

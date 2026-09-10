@@ -2133,8 +2133,24 @@ function notifyUser(email, role, type, title, body, link) {
             url: link || '/',
             tag: type || 'notif'
         };
+        // Web Push (PWA / navigateur) — inchangé.
         if (email) sendPushToUser(email, pushPayload);
         else if (role) sendPushToRole(role, pushPayload);
+
+        // FCM (app Android/iOS native) — jusqu'ici jamais déclenché depuis notifyUser(),
+        // donc AUCUNE notification (message, commande, retrait, badge...) n'atteignait un
+        // utilisateur de l'app native, même avec un token FCM correctement enregistré.
+        var fcmPayload = {
+            title: title || 'FA GENESIS',
+            body: body || '',
+            data: { url: link || '/', type: type || 'notif' }
+        };
+        if (email) {
+            var fcmUserId = _resolveUserIdForFcm(email, role);
+            if (fcmUserId) sendFcmToUser(fcmUserId, fcmPayload);
+        } else if (role) {
+            sendFcmToRole(role, fcmPayload);
+        }
     } catch(e) {
         console.error('[NOTIFY] Erreur notifyUser:', e);
     }
@@ -2754,6 +2770,43 @@ function saveFcmTokens(tokens) {
 }
 
 // Envoie une notification FCM à tous les tokens enregistrés pour un userId (best-effort)
+// Résout l'id interne (users.json ou partners.json selon le rôle) à partir d'un email,
+// pour pouvoir router une notification vers FCM (app Android/iOS native) — notifyUser()
+// ne prenait jusqu'ici en compte QUE le Web Push (VAPID), jamais FCM, alors que les tokens
+// FCM sont enregistrés par userId (voir /api/push/register), pas par email.
+function _resolveUserIdForFcm(email, role) {
+    if (!email) return null;
+    try {
+        if (role === 'partner') {
+            var p = loadPartners().find(function(x) { return x.email && x.email.toLowerCase() === email.toLowerCase(); });
+            return p ? p.id : null;
+        }
+        var u = loadUsers().find(function(x) { return x.email && x.email.toLowerCase() === email.toLowerCase(); });
+        return u ? u.id : null;
+    } catch(e) { return null; }
+}
+
+// Équivalent FCM de sendPushToRole : diffuse à tous les appareils natifs enregistrés
+// pour les utilisateurs du rôle donné (les tokens FCM ne stockent que userId, pas le rôle —
+// on croise donc avec users.json/partners.json pour retrouver les ids concernés).
+function sendFcmToRole(role, payload) {
+    if (!firebaseAdmin) return;
+    try {
+        var ids;
+        if (role === 'partner') ids = loadPartners().map(function(p) { return p.id; });
+        else if (role === 'client') ids = loadUsers().map(function(u) { return u.id; });
+        else return; // pas de diffusion FCM pour 'admin' (utilise l'espace web)
+        var idSet = {};
+        ids.forEach(function(id) { idSet[id] = true; });
+        var seen = {};
+        loadFcmTokens().forEach(function(t) {
+            if (!idSet[t.userId] || seen[t.userId]) return;
+            seen[t.userId] = true;
+            sendFcmToUser(t.userId, payload);
+        });
+    } catch(e) { console.error('[FCM] sendFcmToRole erreur:', e); }
+}
+
 function sendFcmToUser(userId, payload) {
     if (!firebaseAdmin || !userId) return;
     var tokens = loadFcmTokens().filter(function(t) { return t.userId === userId; });
