@@ -12185,7 +12185,7 @@ app.post('/api/messages', function(req, res) {
         if (toType === 'admin') {
             notifyUser(null, 'admin', 'message-client', 'Message de ' + senderDisplayName, content.substring(0, 100), '/app.html#open-admin');
         } else if (toType === 'partner' && toEmail) {
-            notifyUser(toEmail, 'partner', 'message-client', 'Message de ' + senderDisplayName, content.substring(0, 100), '/app.html#partner:messages');
+            notifyUser(toEmail, 'partner', 'message-client', 'Message de ' + senderDisplayName, content.substring(0, 100), '/app.html#partner:messages:' + encodeURIComponent(user.email));
         }
         res.json({ ok: true, message: newMsg });
     } catch (err) {

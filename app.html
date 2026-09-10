@@ -13704,6 +13704,18 @@ function _ptnrCancelSeance(id){
 
 // ── MESSAGES ──
 var _ptnrMsgAttachments = {}; // threadKey -> [{name,type,dataUrl}] en attente d'envoi
+var _ptnrPendingScrollThread = null; // email du client à faire défiler/surligner après le prochain chargement des messages
+
+function _ptnrScrollToThread(email){
+  var key = _ptnrThreadKey(email);
+  var input = document.getElementById('ptnr-reply-'+key);
+  var card = input ? input.closest('.ptnr-card') : null;
+  if(!card) return;
+  card.scrollIntoView({behavior:'smooth', block:'start'});
+  card.style.transition = 'box-shadow .3s';
+  card.style.boxShadow = '0 0 0 2px #FFD700';
+  setTimeout(function(){ card.style.boxShadow = ''; }, 2000);
+}
 
 function _ptnrThreadKey(email){ return String(email||'').replace(/[^a-z0-9]/gi, '_'); }
 
@@ -13761,6 +13773,10 @@ function _ptnrLoadMessages(){
       html += '</div>';
     });
     if(el) el.innerHTML = html;
+    if(_ptnrPendingScrollThread){
+      var _pst = _ptnrPendingScrollThread; _ptnrPendingScrollThread = null;
+      setTimeout(function(){ _ptnrScrollToThread(_pst); }, 100);
+    }
   }).catch(function(){ if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
 }
 
@@ -14017,6 +14033,15 @@ function _handleNotifHash(hash){
     } else {
       window._pendingNotifTicket = _tid;
     }
+    return;
+  }
+  // Message d'un client → ouvrir directement la conversation avec ce client précis
+  // (au lieu de juste l'onglet Messages en général), voir _ptnrScrollToThread.
+  var msgThreadMatch = hash.match(/^partner:messages:(.+)$/);
+  if(msgThreadMatch){
+    _ptnrPendingScrollThread = decodeURIComponent(msgThreadMatch[1]);
+    nav('partner');
+    setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('messages'); }, 500);
     return;
   }
   if(hash === 'open-admin'){
