@@ -2767,6 +2767,10 @@ function loadFcmTokens() {
 
 function saveFcmTokens(tokens) {
     try { fs.writeFileSync(FCM_TOKENS_FILE, JSON.stringify(tokens, null, 2), 'utf8'); } catch(e) {}
+    // CRITIQUE : sans cet appel, chaque token FCM enregistré (client ou prestataire) était
+    // perdu au redéploiement suivant — explique pourquoi les notifications push natives
+    // semblaient s'enregistrer puis ne plus jamais arriver après une mise à jour du serveur.
+    persistentStore.persistToCloud('fcm_tokens', tokens).catch(function(e) {});
 }
 
 // Envoie une notification FCM à tous les tokens enregistrés pour un userId (best-effort)

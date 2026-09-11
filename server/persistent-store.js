@@ -37,6 +37,7 @@ var COLLECTIONS = [
     'feedbacks',
     'settings',
     'push-subscriptions',
+    'fcm_tokens',
     'payouts',
     'wallets',
     'withdrawals',
