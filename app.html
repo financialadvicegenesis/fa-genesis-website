@@ -3799,6 +3799,24 @@ function _restoreNavSession(){
       setTimeout(function(){ _handleNotifHash(_dlh); }, 300);
       return;
     }
+    // Filet de sécurité : sur l'app native, ce lien est déposé par MainActivity.java depuis
+    // le code natif (pas par le bootstrap JS classique) — sur une connexion lente, la page
+    // peut ne pas encore l'avoir reçu à cet instant précis. On retente pendant quelques
+    // secondes avant d'abandonner, plutôt que de perdre silencieusement la navigation.
+    if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+      var _dlhTries = 0;
+      var _dlhPoll = setInterval(function(){
+        _dlhTries++;
+        if(window._pendingDeepLinkHash){
+          clearInterval(_dlhPoll);
+          var _dlh2 = window._pendingDeepLinkHash;
+          window._pendingDeepLinkHash = null;
+          _handleNotifHash(_dlh2);
+        } else if(_dlhTries >= 8){
+          clearInterval(_dlhPoll);
+        }
+      }, 500);
+    }
     // Nouvel utilisateur : ne jamais écraser l'accueil avant le prompt tutoriel
     if(USER && !localStorage.getItem(_tutoKey('c_done'))) return;
     var tab=sessionStorage.getItem('fa_nav_tab');
@@ -12707,7 +12725,11 @@ function _ptnrSaveToCache(session){
 }
 
 function _ptnrFetch(path, method, body){
-  var opts = {method: method || 'GET', headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+_ptnrToken}};
+  // Défense en profondeur : si la variable en mémoire n'a pas encore été (re)posée à ce stade
+  // précis (ex: appel déclenché très tôt après une navigation venue d'une notification native),
+  // on retombe sur localStorage plutôt que d'envoyer "Bearer null" et échouer silencieusement.
+  var _tok = _ptnrToken || localStorage.getItem('fa_genesis_partner_token') || '';
+  var opts = {method: method || 'GET', headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+_tok}};
   if(body) opts.body = JSON.stringify(body);
   return fetch(_ptnrApiUrl() + path, opts).then(function(r){
     return r.text().then(function(txt){ try{return JSON.parse(txt);}catch(e){throw new Error('Erreur serveur');} });
