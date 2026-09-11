@@ -2843,6 +2843,56 @@ function sendFcmToUser(userId, payload) {
     }
 }
 
+/**
+ * POST /api/admin/push/test-fcm — Diagnostic : envoie une notification FCM de test
+ * directement à un partenaire ou client précis, en court-circuitant tout le reste du
+ * pipeline (messages, notifyUser...) pour isoler immédiatement si le problème est côté
+ * serveur (Firebase, token jamais enregistré) ou côté téléphone (canal, permission, OS) —
+ * la réponse HTTP donne le diagnostic exact, pas besoin de chercher dans les logs.
+ */
+app.post('/api/admin/push/test-fcm', async function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var email = (req.body.email || '').trim().toLowerCase();
+        var role = req.body.role === 'client' ? 'client' : 'partner';
+        if (!email) return res.status(400).json({ error: 'email requis' });
+
+        if (!firebaseAdmin) {
+            return res.json({ ok: false, step: 'firebase', detail: 'firebase-admin non initialisé — FIREBASE_SERVICE_ACCOUNT manquant ou invalide sur Render.' });
+        }
+
+        var userId = _resolveUserIdForFcm(email, role);
+        if (!userId) {
+            return res.json({ ok: false, step: 'user_lookup', detail: (role === 'partner' ? 'Aucun partenaire' : 'Aucun client') + ' trouvé pour "' + email + '". Vérifiez l\'email et le rôle.' });
+        }
+
+        var tokens = loadFcmTokens().filter(function(t) { return t.userId === userId; });
+        if (tokens.length === 0) {
+            return res.json({ ok: false, step: 'token_lookup', userId: userId, detail: 'Aucun token FCM enregistré pour ' + email + ' (userId=' + userId + '). Le téléphone doit rouvrir l\'app GENESIS une fois pour s\'enregistrer.' });
+        }
+
+        var results = [];
+        for (var i = 0; i < tokens.length; i++) {
+            var t = tokens[i];
+            try {
+                var msgId = await firebaseAdmin.messaging().send({
+                    token: t.token,
+                    notification: { title: '🔔 Test GENESIS', body: 'Si vous voyez cette notification, tout fonctionne !' },
+                    android: { channelId: 'genesis_general', priority: 'high' },
+                    data: { url: '/app.html', type: 'test' }
+                });
+                results.push({ platform: t.platform, registered_at: t.registered_at, success: true, messageId: msgId });
+            } catch(sendErr) {
+                results.push({ platform: t.platform, registered_at: t.registered_at, success: false, error: sendErr.message, code: sendErr.code || null });
+            }
+        }
+        res.json({ ok: true, step: 'sent', userId: userId, tokenCount: tokens.length, results: results });
+    } catch(e) {
+        console.error('[FCM-TEST] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
+    }
+});
+
 // POST /api/push/register — Enregistre un token FCM depuis l'app native Capacitor
 app.post('/api/push/register', function(req, res) {
     try {
