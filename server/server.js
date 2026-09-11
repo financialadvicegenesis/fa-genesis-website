@@ -2779,9 +2779,11 @@ function _resolveUserIdForFcm(email, role) {
     try {
         if (role === 'partner') {
             var p = loadPartners().find(function(x) { return x.email && x.email.toLowerCase() === email.toLowerCase(); });
+            if (!p) console.log('[FCM] Aucun partenaire trouvé pour', email, '— notification FCM ignorée');
             return p ? p.id : null;
         }
         var u = loadUsers().find(function(x) { return x.email && x.email.toLowerCase() === email.toLowerCase(); });
+        if (!u) console.log('[FCM] Aucun client trouvé pour', email, '— notification FCM ignorée');
         return u ? u.id : null;
     } catch(e) { return null; }
 }
@@ -2808,9 +2810,11 @@ function sendFcmToRole(role, payload) {
 }
 
 function sendFcmToUser(userId, payload) {
-    if (!firebaseAdmin || !userId) return;
+    if (!firebaseAdmin) { console.log('[FCM] Envoi ignoré — firebase-admin non initialisé (FIREBASE_SERVICE_ACCOUNT manquant ou invalide)'); return; }
+    if (!userId) { console.log('[FCM] Envoi ignoré — userId manquant'); return; }
     var tokens = loadFcmTokens().filter(function(t) { return t.userId === userId; });
-    if (tokens.length === 0) return;
+    if (tokens.length === 0) { console.log('[FCM] Aucun token FCM enregistré pour userId=' + userId + ' — notification non envoyée'); return; }
+    console.log('[FCM] Envoi vers userId=' + userId + ' (' + tokens.length + ' appareil(s))');
     var expired = [];
     tokens.forEach(function(t) {
         firebaseAdmin.messaging().send({
