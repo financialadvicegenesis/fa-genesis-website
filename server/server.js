@@ -11952,6 +11952,15 @@ function loadChat() {
 function saveChat(msgs) {
     try { fs.writeFileSync(CHAT_FILE, JSON.stringify(msgs, null, 2), 'utf8'); }
     catch (e) { console.error('[CHAT] Erreur ecriture:', e.message); }
+    // CRITIQUE : sans cet appel, les messages clients<->prestataires (chat.json) ne vivaient
+    // QUE sur le disque local du serveur — jamais sauvegardés dans MongoDB. Sur Render sans
+    // disque persistant, ça veut dire que TOUS ces messages disparaissaient à chaque
+    // redéploiement, silencieusement (aucune erreur, le fichier repart juste du seed vide).
+    // Collection 'chat' (PAS 'messages' — ce nom est déjà utilisé par un autre système de
+    // messagerie distinct, messages.json/loadMessages/saveMessages ; les confondre aurait fait
+    // écraser les données de l'un par l'autre à chaque sauvegarde, deleteMany()+insertMany()
+    // remplaçant toute la collection).
+    persistentStore.persistToCloud('chat', msgs).catch(function(e) {});
 }
 
 function loadSupportTickets() {
@@ -12106,12 +12115,51 @@ app.get('/api/messages', function(req, res) {
 
         var msgs = loadChat();
         var myMsgs = msgs.filter(function(m) {
-            return m.from_email === user.email || m.to_email === user.email;
+            var isMine = m.from_email === user.email || m.to_email === user.email;
+            if (!isMine) return false;
+            // Suppression côté client uniquement : le message reste visible pour l'autre
+            // partie (et l'admin) — voir DELETE /api/messages/conversation.
+            return !(Array.isArray(m.deleted_by) && m.deleted_by.indexOf(user.email) !== -1);
         });
         myMsgs.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
         res.json({ ok: true, messages: myMsgs });
     } catch (err) {
         console.error('[CHAT] Erreur GET client:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * DELETE /api/messages/conversation — Le client supprime (de son côté uniquement) toute sa
+ * conversation avec un prestataire précis. Le prestataire et l'admin continuent de la voir.
+ */
+app.delete('/api/messages/conversation', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var user = findUserByToken(token);
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var counterpart = (req.body.counterpart || '').toLowerCase();
+        if (!counterpart) return res.status(400).json({ error: 'counterpart requis' });
+
+        var msgs = loadChat();
+        var changed = 0;
+        msgs.forEach(function(m) {
+            var isMine = m.from_email === user.email || m.to_email === user.email;
+            if (!isMine) return;
+            var matchesCounterpart =
+                (m.to_type === 'partner' && ((m.to_email && m.to_email.toLowerCase() === counterpart) || (m.to_id && String(m.to_id).toLowerCase() === counterpart))) ||
+                (m.from_type === 'partner' && m.from_email && m.from_email.toLowerCase() === counterpart);
+            if (!matchesCounterpart) return;
+            if (!Array.isArray(m.deleted_by)) m.deleted_by = [];
+            if (m.deleted_by.indexOf(user.email) === -1) { m.deleted_by.push(user.email); changed++; }
+        });
+        if (changed > 0) saveChat(msgs);
+        res.json({ ok: true, deleted: changed });
+    } catch (err) {
+        console.error('[CHAT] Erreur DELETE conversation client:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -12269,12 +12317,45 @@ app.get('/api/partner/inbox', authenticatePartner, function(req, res) {
         var partner = req.partner;
         var msgs = loadChat();
         var myMsgs = msgs.filter(function(m) {
-            return (m.to_type === 'partner' && m.to_email === partner.email) ||
+            var isMine = (m.to_type === 'partner' && m.to_email === partner.email) ||
                    (m.from_type === 'partner' && m.from_email === partner.email);
+            if (!isMine) return false;
+            // Suppression côté prestataire uniquement : le client (et l'admin) continue de voir
+            // ces messages — voir DELETE /api/partner/inbox/conversation.
+            return !(Array.isArray(m.deleted_by) && m.deleted_by.indexOf(partner.email) !== -1);
         });
         myMsgs.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
         res.json({ ok: true, messages: myMsgs });
     } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * DELETE /api/partner/inbox/conversation — Le prestataire supprime (de son côté uniquement)
+ * toute sa conversation avec un client précis. Le client et l'admin continuent de la voir.
+ */
+app.delete('/api/partner/inbox/conversation', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var clientEmail = (req.body.client_email || '').toLowerCase();
+        if (!clientEmail) return res.status(400).json({ error: 'client_email requis' });
+
+        var msgs = loadChat();
+        var changed = 0;
+        msgs.forEach(function(m) {
+            var isMine = (m.to_type === 'partner' && m.to_email === partner.email) ||
+                (m.from_type === 'partner' && m.from_email === partner.email);
+            if (!isMine) return;
+            var counterpartEmail = (m.from_type === 'partner') ? m.to_email : m.from_email;
+            if (!counterpartEmail || counterpartEmail.toLowerCase() !== clientEmail) return;
+            if (!Array.isArray(m.deleted_by)) m.deleted_by = [];
+            if (m.deleted_by.indexOf(partner.email) === -1) { m.deleted_by.push(partner.email); changed++; }
+        });
+        if (changed > 0) saveChat(msgs);
+        res.json({ ok: true, deleted: changed });
+    } catch (err) {
+        console.error('[CHAT] Erreur DELETE conversation partenaire:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

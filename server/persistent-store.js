@@ -49,6 +49,7 @@ var COLLECTIONS = [
     'promotions',
     'reservations',
     'messages',
+    'chat',
     'support-tickets',
     'notifications',
     'partner-subprofiles',

@@ -7381,7 +7381,8 @@ function renderMsgTab(){
       var unread=conv.msgs.filter(function(m){return m.from_type==='partner'&&!m.read_at;}).length;
       var safeEmail=conv.email.replace(/'/g,"\'");
       var safeName=(conv.name||'Prestataire').replace(/'/g,"\'");
-      return '<div onclick="openConversation(\''+safeEmail+'\',\''+safeName+'\',\'user-tie\',\''+safeEmail+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);">'
+      return '<div style="display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(255,255,255,.06);">'
+        +'<div onclick="openConversation(\''+safeEmail+'\',\''+safeName+'\',\'user-tie\',\''+safeEmail+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 8px 14px 16px;flex:1;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);">'
         +'<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a1200,#2a1f00);border:2px solid #FFD700;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#FFD700;flex-shrink:0;">'+initials+'</div>'
         +'<div style="flex:1;min-width:0;">'
           +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
@@ -7393,12 +7394,27 @@ function renderMsgTab(){
             +(unread?'<span style="background:#FFD700;color:#000;border-radius:50%;min-width:18px;height:18px;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 3px;">'+unread+'</span>':'')
           +'</div>'
         +'</div>'
+        +'</div>'
+        +'<button onclick="event.stopPropagation();_deleteClientConversation(\''+safeEmail+'\',\''+safeName+'\')" style="background:none;border:none;color:#555;font-size:16px;padding:12px 16px 12px 4px;cursor:pointer;flex-shrink:0;" title="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>'
         +'</div>';
     }).join('');
   }).catch(function(){
     var convEl=document.getElementById('msgConvList');
     if(convEl) convEl.innerHTML='<div class="empty"><p>Erreur de chargement</p></div>';
   });
+}
+
+// Suppression d'une conversation côté client uniquement — le prestataire (et l'admin)
+// continuent de la voir de leur côté, voir DELETE /api/messages/conversation côté serveur.
+function _deleteClientConversation(partnerEmail, partnerName){
+  if(!confirm('Supprimer votre conversation avec '+partnerName+' ? Elle restera visible du côté du prestataire.')) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/messages/conversation',{
+    method:'DELETE',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({counterpart:partnerEmail})
+  }).then(function(r){return r.json();}).then(function(){
+    renderMsgTab();
+  }).catch(function(){ showToast('Erreur','Impossible de supprimer la conversation.','error'); });
 }
 // ── PROFIL ────────────────────────────────────────────────────
 function tierBadgeMeta(tier){
@@ -13743,7 +13759,10 @@ function _ptnrLoadMessages(){
     threads.forEach(function(thread){
       var key = _ptnrThreadKey(thread.email);
       html += '<div class="ptnr-card" style="margin-bottom:16px;">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
       html += '<div class="ptnr-card-title">'+_escHtml(thread.name)+'</div>';
+      html += '<button onclick="_ptnrDeleteConversation(\''+thread.email.replace(/\'/g,"\\'")+'\',\''+thread.name.replace(/\'/g,"\\'")+'\')" style="background:none;border:none;color:#555;font-size:15px;cursor:pointer;padding:4px;" title="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>';
+      html += '</div>';
       thread.messages.forEach(function(m){
         var isPartner = m.from_type === 'partner';
         html += '<div class="ptnr-msg-bubble'+(isPartner?' partner':'')+'">';
@@ -13778,6 +13797,15 @@ function _ptnrLoadMessages(){
       setTimeout(function(){ _ptnrScrollToThread(_pst); }, 100);
     }
   }).catch(function(){ if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
+}
+
+// Suppression d'une conversation côté prestataire uniquement — le client (et l'admin)
+// continuent de la voir de leur côté, voir DELETE /api/partner/inbox/conversation.
+function _ptnrDeleteConversation(clientEmail, clientName){
+  if(!confirm('Supprimer votre conversation avec '+clientName+' ? Elle restera visible du côté du client.')) return;
+  _ptnrFetch('/api/partner/inbox/conversation','DELETE',{client_email:clientEmail}).then(function(){
+    _ptnrLoadMessages();
+  }).catch(function(){ showToast('Erreur','Impossible de supprimer la conversation.','error'); });
 }
 
 function _ptnrAttachFiles(key, fileList){
