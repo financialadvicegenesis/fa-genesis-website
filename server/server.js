@@ -2870,15 +2870,19 @@ function sendFcmToUser(userId, payload) {
     if (!dataPayload.title) dataPayload.title = payload.title || 'FA GENESIS';
     if (!dataPayload.body) dataPayload.body = payload.body || '';
     if (!dataPayload.channelId) dataPayload.channelId = payload.channelId || 'genesis_general';
-    tokens.forEach(function(t) {
-        firebaseAdmin.messaging().send({
+    // BUG corrigé : la purge des tokens périmés se faisait juste après la boucle forEach,
+    // donc AVANT que les .catch() (asynchrones) n'aient eu la moindre chance de s'exécuter —
+    // expired.length valait donc toujours 0 à ce moment-là, et aucun token périmé n'était
+    // jamais réellement supprimé (ils s'accumulaient indéfiniment, ex: à chaque réinstallation
+    // de l'app). On attend maintenant que tous les envois soient terminés avant de purger.
+    var sends = tokens.map(function(t) {
+        return firebaseAdmin.messaging().send({
             token: t.token,
             android: { priority: 'high' },
             data: dataPayload
         }).then(function() {
             console.log('[FCM] Notification envoyée à userId=' + userId);
         }).catch(function(err) {
-            // Token expiré ou invalide → supprimer
             if (err.code === 'messaging/registration-token-not-registered' ||
                 err.code === 'messaging/invalid-registration-token') {
                 expired.push(t.token);
@@ -2886,10 +2890,13 @@ function sendFcmToUser(userId, payload) {
             console.warn('[FCM] Erreur envoi:', err.message);
         });
     });
-    if (expired.length > 0) {
-        var cleaned = loadFcmTokens().filter(function(t) { return expired.indexOf(t.token) === -1; });
-        saveFcmTokens(cleaned);
-    }
+    Promise.all(sends).then(function() {
+        if (expired.length > 0) {
+            var cleaned = loadFcmTokens().filter(function(t) { return expired.indexOf(t.token) === -1; });
+            saveFcmTokens(cleaned);
+            console.log('[FCM] ' + expired.length + ' token(s) périmé(s) supprimé(s) pour userId=' + userId);
+        }
+    });
 }
 
 /**
