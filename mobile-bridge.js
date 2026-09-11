@@ -101,9 +101,25 @@
                 });
 
                 Plugins.PushNotifications.addListener('pushNotificationActionPerformed', function(action) {
-                    // Utilisateur a tapé sur la notification dans le tiroir Android
+                    // Utilisateur a tapé sur la notification dans le tiroir Android.
+                    // L'app native charge toujours https://fagenesis.com/app.html (server.url) :
+                    // au moment où ce listener se déclenche, cette page est déjà chargée. Changer
+                    // window.location.href vers une URL qui ne diffère que par le hash (le cas de
+                    // presque tous nos liens de notif) ne recharge PAS la page dans un navigateur —
+                    // ça ne fait donc jamais tourner la logique de routage d'app.html. On appelle
+                    // directement _handleNotifHash() (exposée globalement, script classique non-module),
+                    // exactement comme le fait déjà sw.js pour le Web Push quand l'onglet est déjà ouvert.
                     var data = (action.notification && action.notification.data) || {};
+                    var hash = null;
                     if (data.url) {
+                        var idx = data.url.indexOf('#');
+                        hash = idx !== -1 ? data.url.slice(idx + 1) : null;
+                    }
+                    if (hash && typeof window._handleNotifHash === 'function') {
+                        window._handleNotifHash(hash);
+                    } else if (data.url) {
+                        // Repli : app pas encore prête (cas rare, lancement à froid) — un
+                        // chargement complet exécutera le routage au démarrage (voir app.html).
                         window.location.href = data.url;
                     } else if (data.tab) {
                         try { if (typeof nav === 'function') nav(data.tab); } catch(e) {}

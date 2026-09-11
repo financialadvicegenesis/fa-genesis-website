@@ -14044,15 +14044,21 @@ function _handleNotifHash(hash){
     setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('messages'); }, 500);
     return;
   }
-  if(hash === 'open-admin'){
+  if(hash === 'open-admin' || hash === 'admin'){
     nav('partner'); setTimeout(function(){ if(typeof _openAdminPanel==='function') _openAdminPanel(); }, 400);
-  } else if(hash === 'partner:missions'){
+  } else if(hash === 'partner:missions' || hash === 'missions'){
     nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('missions'); }, 500);
   } else if(hash === 'partner:messages'){
     nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('messages'); }, 500);
+  } else if(hash === 'partner:livrables' || hash === 'partner:projects'){
+    nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('livrables'); }, 500);
+  } else if(hash === 'partner:profile'){
+    nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('profil'); }, 500);
+  } else if(hash === 'partner:versements'){
+    nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('versements'); }, 500);
   } else if(hash === 'open-partner' || hash === 'partner:home'){
     nav('partner');
-  } else if(hash === 'tab:resa' || hash === 'open-reservations' || hash === 'reservations' || hash === 'open-suivi'){
+  } else if(hash === 'tab:resa' || hash === 'tab:reservations' || hash === 'open-reservations' || hash === 'reservations' || hash === 'open-suivi'){
     nav('reservations');
   } else if(hash === 'tab:wallet'){
     nav('profil'); setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
@@ -14062,6 +14068,8 @@ function _handleNotifHash(hash){
     nav('prestataires');
   } else if(hash === 'open-litiges' || hash === 'litiges'){
     nav('profil'); setTimeout(function(){ if(typeof openMesLitiges==='function') openMesLitiges(); }, 500);
+  } else if(hash === 'open-livrables'){
+    if(typeof _navToLivrables==='function') _navToLivrables();
   } else if(hash === 'messages' || hash === 'open-messages'){
     nav('messages');
   } else if(hash === 'explorer'){

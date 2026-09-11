@@ -124,6 +124,12 @@ self.addEventListener('notificationclick', function(event) {
   var data = event.notification.data || {};
   var rawUrl = data.url || '/app.html';
 
+  // Beaucoup de notifications (notifyUser côté serveur) envoient un lien qui n'est qu'un
+  // hash nu, ex: '#profil', '#partner:livrables' (valide pour l'app native, déjà sur
+  // app.html) — sans ce correctif, ouvrir la notif ici chargeait la racine du site
+  // (index.html) avec ce hash au lieu d'app.html, où ce hash n'a aucun sens.
+  if (rawUrl.charAt(0) === '#') rawUrl = '/app.html' + rawUrl;
+
   // URL absolue pour clients.openWindow()
   var fullUrl = rawUrl.startsWith('http') ? rawUrl : (self.location.origin + rawUrl);
 
