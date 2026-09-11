@@ -2824,7 +2824,12 @@ function sendFcmToUser(userId, payload) {
         firebaseAdmin.messaging().send({
             token: t.token,
             notification: { title: payload.title || 'FA GENESIS', body: payload.body || '' },
-            android: { channelId: payload.channelId || 'genesis_general', priority: 'high' },
+            // channelId appartient à AndroidNotification (android.notification), pas
+            // directement à AndroidConfig (android) — Firebase rejetait CHAQUE envoi FCM
+            // depuis toujours avec "Unknown name 'channelId' at 'message.android'"
+            // (messaging/invalid-argument), jamais visible avant l'outil de diagnostic
+            // /api/admin/push/test-fcm car sendFcmToUser() avalait l'erreur en .catch().
+            android: { priority: 'high', notification: { channelId: payload.channelId || 'genesis_general' } },
             data: payload.data || {}
         }).then(function() {
             console.log('[FCM] Notification envoyée à userId=' + userId);
@@ -2878,7 +2883,7 @@ app.post('/api/admin/push/test-fcm', async function(req, res) {
                 var msgId = await firebaseAdmin.messaging().send({
                     token: t.token,
                     notification: { title: '🔔 Test GENESIS', body: 'Si vous voyez cette notification, tout fonctionne !' },
-                    android: { channelId: 'genesis_general', priority: 'high' },
+                    android: { priority: 'high', notification: { channelId: 'genesis_general' } },
                     data: { url: '/app.html', type: 'test' }
                 });
                 results.push({ platform: t.platform, registered_at: t.registered_at, success: true, messageId: msgId });
