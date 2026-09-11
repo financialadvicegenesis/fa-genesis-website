@@ -2140,11 +2140,34 @@ function notifyUser(email, role, type, title, body, link) {
         // FCM (app Android/iOS native) — jusqu'ici jamais déclenché depuis notifyUser(),
         // donc AUCUNE notification (message, commande, retrait, badge...) n'atteignait un
         // utilisateur de l'app native, même avec un token FCM correctement enregistré.
+        //
+        // Message SANS bloc "notification" (data-only) : c'est ce qui force Android à invoquer
+        // GenesisMessagingService.onMessageReceived() dans TOUS les états de l'app (premier
+        // plan, arrière-plan, tuée) — indispensable pour construire nous-mêmes la notification
+        // avec un bouton "Répondre" (RemoteInput), ce qu'un message avec bloc "notification"
+        // standard ne permet pas (l'OS l'affiche directement, sans jamais repasser par le code
+        // natif de l'app quand elle n'est pas au premier plan).
         var fcmPayload = {
-            title: title || 'FA GENESIS',
-            body: body || '',
-            data: { url: link || '/', type: type || 'notif' }
+            data: {
+                url: link || '/',
+                type: type || 'notif',
+                title: title || 'FA GENESIS',
+                body: body || '',
+                channelId: _fcmChannelForType(type)
+            }
         };
+        // Réponse directe depuis la notification (comme WhatsApp), uniquement pour les
+        // messages : le lien encode déjà l'identité du destinataire de la réponse (voir
+        // POST /api/messages et /api/partner/inbox/reply, qui construisent ce lien) — on la
+        // réutilise ici plutôt que de changer la signature de notifyUser() pour ça.
+        if (type === 'message-client' || type === 'message-partner') {
+            var _replyMatch = String(link || '').match(/:([^:]+)$/);
+            if (_replyMatch) {
+                fcmPayload.data.replyTo = decodeURIComponent(_replyMatch[1]);
+                fcmPayload.data.replyRole = role;
+                fcmPayload.data.replyName = String(title || '').replace(/^Message de /, '');
+            }
+        }
         if (email) {
             var fcmUserId = _resolveUserIdForFcm(email, role);
             if (fcmUserId) sendFcmToUser(fcmUserId, fcmPayload);
@@ -2778,6 +2801,22 @@ function saveFcmTokens(tokens) {
 // pour pouvoir router une notification vers FCM (app Android/iOS native) — notifyUser()
 // ne prenait jusqu'ici en compte QUE le Web Push (VAPID), jamais FCM, alors que les tokens
 // FCM sont enregistrés par userId (voir /api/push/register), pas par email.
+// Fait correspondre un type de notification à l'un des 4 canaux déjà créés nativement
+// (MainActivity.java, createNotificationChannels) — permet au prestataire/client de
+// désactiver une catégorie précise (ex: paiements) sans couper tout le reste.
+function _fcmChannelForType(type) {
+    var t = String(type || '');
+    if (t.indexOf('message') === 0) return 'genesis_messages';
+    if (['mission_pending','mission_accepted','mission_declined','mission_cancelled','mission_complete','partner-request',
+         'contract_signed','contract_sent','contract_ready','contract_partnership_signed','contract_refused',
+         'delivery_validated','revision_requested','revision_addressed','livrable-valide','livrable-revision',
+         'livrable_published','livrable-revision-done','prestation_delivered','prestation_complete','rdv',
+         'mission-status','mission_created'].indexOf(t) !== -1) return 'genesis_missions';
+    if (['paiement','paiement-admin','payment_success','wallet_credited','withdrawal_pending','withdrawal_sent',
+         'withdrawal_manual','auto_payout','auto_release','installment-overdue','installment-reminder'].indexOf(t) !== -1) return 'genesis_paiements';
+    return 'genesis_general';
+}
+
 function _resolveUserIdForFcm(email, role) {
     if (!email) return null;
     try {
@@ -2820,17 +2859,22 @@ function sendFcmToUser(userId, payload) {
     if (tokens.length === 0) { console.log('[FCM] Aucun token FCM enregistré pour userId=' + userId + ' — notification non envoyée'); return; }
     console.log('[FCM] Envoi vers userId=' + userId + ' (' + tokens.length + ' appareil(s))');
     var expired = [];
+    // Message data-only (PAS de bloc "notification") : GenesisMessagingService.java construit
+    // lui-même la notification côté natif dans tous les états de l'app (premier plan, fond,
+    // tuée) — condition nécessaire pour y ajouter un bouton "Répondre" (RemoteInput). Un
+    // message avec un bloc "notification" est affiché directement par l'OS sans jamais
+    // repasser par le code natif quand l'app n'est pas au premier plan, donc sans action possible.
+    var dataPayload = {};
+    var srcData = payload.data || payload || {};
+    Object.keys(srcData).forEach(function(k) { if (srcData[k] != null) dataPayload[k] = String(srcData[k]); });
+    if (!dataPayload.title) dataPayload.title = payload.title || 'FA GENESIS';
+    if (!dataPayload.body) dataPayload.body = payload.body || '';
+    if (!dataPayload.channelId) dataPayload.channelId = payload.channelId || 'genesis_general';
     tokens.forEach(function(t) {
         firebaseAdmin.messaging().send({
             token: t.token,
-            notification: { title: payload.title || 'FA GENESIS', body: payload.body || '' },
-            // channelId appartient à AndroidNotification (android.notification), pas
-            // directement à AndroidConfig (android) — Firebase rejetait CHAQUE envoi FCM
-            // depuis toujours avec "Unknown name 'channelId' at 'message.android'"
-            // (messaging/invalid-argument), jamais visible avant l'outil de diagnostic
-            // /api/admin/push/test-fcm car sendFcmToUser() avalait l'erreur en .catch().
-            android: { priority: 'high', notification: { channelId: payload.channelId || 'genesis_general' } },
-            data: payload.data || {}
+            android: { priority: 'high' },
+            data: dataPayload
         }).then(function() {
             console.log('[FCM] Notification envoyée à userId=' + userId);
         }).catch(function(err) {
@@ -2882,9 +2926,8 @@ app.post('/api/admin/push/test-fcm', async function(req, res) {
             try {
                 var msgId = await firebaseAdmin.messaging().send({
                     token: t.token,
-                    notification: { title: '🔔 Test GENESIS', body: 'Si vous voyez cette notification, tout fonctionne !' },
-                    android: { priority: 'high', notification: { channelId: 'genesis_general' } },
-                    data: { url: '/app.html', type: 'test' }
+                    android: { priority: 'high' },
+                    data: { url: '/app.html', type: 'test', title: '🔔 Test GENESIS', body: 'Si vous voyez cette notification, tout fonctionne !', channelId: 'genesis_general' }
                 });
                 results.push({ platform: t.platform, registered_at: t.registered_at, success: true, messageId: msgId });
             } catch(sendErr) {
@@ -12495,7 +12538,7 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
         console.log('[CHAT] Partenaire ' + partner.email + ' -> ' + toEmail + ' : ' + content.substring(0, 50));
         // Push au client destinataire
         var _ptnrDisplayName = ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email;
-        notifyUser(toEmail, 'client', 'message-partner', 'Message de ' + _ptnrDisplayName, content.substring(0, 100), '/app.html#open-messages');
+        notifyUser(toEmail, 'client', 'message-partner', 'Message de ' + _ptnrDisplayName, content.substring(0, 100), '/app.html#open-messages:' + encodeURIComponent(partner.email));
         res.json({ ok: true, message: newMsg });
     } catch (err) {
         res.status(500).json({ error: 'Erreur serveur' });

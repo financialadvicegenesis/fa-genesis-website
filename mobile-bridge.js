@@ -28,6 +28,17 @@
     // ── Push Notifications (FCM) ───────────────────────────────────────────────
     window.FAGMobile = window.FAGMobile || {};
 
+    // Copie le jeton de session (client ou prestataire) dans les SharedPreferences natives —
+    // seul moyen pour ReplyReceiver.java (répondre à un message depuis la notification, sans
+    // ouvrir l'app) d'avoir accès à un jeton valide, le JS/localStorage n'étant pas accessible
+    // au code natif qui tourne en dehors du contexte de la WebView.
+    window.FAGMobile.setAuthToken = async function(token, role, email) {
+        try {
+            if (!Plugins.TokenStore || !token || !role) return;
+            await Plugins.TokenStore.setToken({ token: token, role: role, email: email || '' });
+        } catch(e) { console.warn('[FAG Mobile] setAuthToken:', e.message); }
+    };
+
     window.FAGMobile.initPushNotifications = async function(userId) {
         try {
             if (!Plugins.PushNotifications) {

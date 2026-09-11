@@ -3486,8 +3486,12 @@ function _clientCheckNativePush(){
   if(!uid) return;
   if(window.FAGMobile && window.FAGMobile.initPushNotifications){
     window.FAGMobile.initPushNotifications(uid);
+    window.FAGMobile.setAuthToken(USER._token, 'client', USER.email);
   } else {
-    document.addEventListener('fagmobile:ready', function(){ window.FAGMobile.initPushNotifications(uid); }, { once:true });
+    document.addEventListener('fagmobile:ready', function(){
+      window.FAGMobile.initPushNotifications(uid);
+      window.FAGMobile.setAuthToken(USER._token, 'client', USER.email);
+    }, { once:true });
   }
 }
 
@@ -13950,9 +13954,13 @@ function _ptnrCheckPushStatus(){
     var uid = _ptnrSession ? (_ptnrSession.id || _ptnrSession._id) : null;
     if(window.FAGMobile && window.FAGMobile.initPushNotifications){
       window.FAGMobile.initPushNotifications(uid);
+      window.FAGMobile.setAuthToken(_ptnrToken, 'partner', _ptnrSession?_ptnrSession.email:'');
     } else {
       // Bridge pas encore prêt : attendre l'événement fagmobile:ready
-      document.addEventListener('fagmobile:ready', function(){ window.FAGMobile.initPushNotifications(uid); }, { once: true });
+      document.addEventListener('fagmobile:ready', function(){
+        window.FAGMobile.initPushNotifications(uid);
+        window.FAGMobile.setAuthToken(_ptnrToken, 'partner', _ptnrSession?_ptnrSession.email:'');
+      }, { once: true });
     }
     return;
   }
@@ -14070,6 +14078,14 @@ function _handleNotifHash(hash){
     _ptnrPendingScrollThread = decodeURIComponent(msgThreadMatch[1]);
     nav('partner');
     setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('messages'); }, 500);
+    return;
+  }
+  // Message d'un prestataire (côté client) → ouvrir directement la conversation avec lui.
+  var clientMsgMatch = hash.match(/^open-messages:(.+)$/);
+  if(clientMsgMatch){
+    var _cmEmail = decodeURIComponent(clientMsgMatch[1]);
+    nav('messages');
+    setTimeout(function(){ if(typeof openConversation==='function') openConversation(_cmEmail, 'Prestataire', 'user-tie', _cmEmail); }, 400);
     return;
   }
   if(hash === 'open-admin' || hash === 'admin'){
