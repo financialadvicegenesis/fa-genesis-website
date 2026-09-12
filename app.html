@@ -3353,23 +3353,43 @@ var OFFERS = [
 
 // ── SPLASH → APP ─────────────────────────────────────────────
 setTimeout(function(){
+  var _bootHandled = false;
+  var _bootDiag = '';
+  // Session cliente — isolée dans son propre try : si cette valeur est corrompue
+  // (JSON.parse échoue), ça ne doit PAS empêcher de retomber sur la session
+  // prestataire ci-dessous — avant ce correctif, une exception ici sautait
+  // directement à showRoleChoice() sans jamais vérifier le token prestataire.
   try{
     var s = localStorage.getItem('fa_genesis_session');
     var t = localStorage.getItem('fa_genesis_token');
-    if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); }
-    else if(localStorage.getItem('fa_genesis_partner_token')){
-      // Prestataire sans compte client associé sur cet appareil : sans ce cas, l'app
-      // retombait TOUJOURS sur l'écran d'accueil "Je cherche un prestataire..." à froid,
-      // quelle que soit sa session prestataire déjà active — showApp()/_ptnrInit() ne
-      // s'exécutaient donc jamais automatiquement, et un lien de notification en attente
-      // (voir _restoreNavSession) n'était jamais consommé puisque showApp() ne tournait
-      // jamais tout seul. Repli en mode invité (comme goPartner()) pour laisser
-      // showApp() → _ptnrInit() → _restoreNavSession() suivre leur cours normal.
-      GUEST = true;
-      _exitSplash(showApp);
-    }
-    else { _exitSplash(showRoleChoice); }
-  } catch(e){ _exitSplash(showRoleChoice); }
+    if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); _bootHandled = true; }
+  } catch(e){ _bootDiag = 'client JSON: ' + e.message; }
+  // Prestataire sans compte client associé sur cet appareil : sans ce repli, l'app
+  // retombait TOUJOURS sur l'écran d'accueil "Je cherche un prestataire..." à froid,
+  // quelle que soit sa session prestataire déjà active — showApp()/_ptnrInit() ne
+  // s'exécutaient donc jamais automatiquement, et un lien de notification en attente
+  // n'était jamais consommé puisque showApp() ne tournait jamais tout seul.
+  if(!_bootHandled){
+    try{
+      if(localStorage.getItem('fa_genesis_partner_token')){
+        GUEST = true;
+        _exitSplash(showApp);
+        _bootHandled = true;
+      }
+    } catch(e){ _bootDiag += ' | partner: ' + e.message; }
+  }
+  if(!_bootHandled){
+    // Diagnostic temporaire (natif uniquement) : n'alerte QUE si une session semblait
+    // exister mais n'a pas pu être exploitée — jamais pour un nouvel utilisateur sans
+    // aucune session, qui doit voir l'écran d'accueil normalement et silencieusement.
+    try{
+      if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+        var _hadAnyToken = localStorage.getItem('fa_genesis_partner_token') || localStorage.getItem('fa_genesis_token') || localStorage.getItem('fa_genesis_session');
+        if(_hadAnyToken){ alert('DIAG GENESIS : retour écran accueil malgré session présente. ' + (_bootDiag || 'raison inconnue')); }
+      }
+    } catch(e){}
+    _exitSplash(showRoleChoice);
+  }
 }, 2500);
 
 function _exitSplash(callback){
