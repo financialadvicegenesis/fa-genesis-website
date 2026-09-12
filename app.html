@@ -14110,6 +14110,11 @@ function _adminSubscribePush(){
 // Appelé quand l'app est déjà ouverte et que l'utilisateur clique sur une notif
 function _handleNotifHash(hash, _retryCount){
   if(!hash) return;
+  // Diagnostic temporaire : confirme si cette fonction est bien appelée par le code natif au
+  // clic sur une notification, et avec quelle valeur — à retirer une fois la cause confirmée.
+  if(!_retryCount && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+    try{ alert('DIAG GENESIS : _handleNotifHash reçu hash="' + hash + '" _ptnrToken=' + (_ptnrToken?'présent':'absent')); }catch(e){}
+  }
   // Auto-attente : sur l'app native, ce hash peut être livré par le code natif (tap sur une
   // notification) à un instant fixe qui ne correspond pas forcément au moment où la session
   // prestataire a fini de se restaurer (_ptnrToken posé par _ptnrInit(), lui-même déclenché
