@@ -2412,6 +2412,13 @@ a{text-decoration:none;color:inherit}
 .confirm-modal-btn-cancel{background:#1e1e1e;color:#ccc;}
 .confirm-modal-btn-ok{background:var(--yellow);color:#000;}
 .confirm-modal-btn-ok.danger{background:#ef4444;color:#fff;}
+.confirm-modal-input{width:100%;background:#0a0a0a;border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font-size:14px;padding:11px 12px;margin-bottom:18px;font-family:inherit;resize:none;box-sizing:border-box;}
+.confirm-modal-input:focus{outline:none;border-color:var(--yellow);}
+/* ── Tirer-pour-rafraîchir (Messages / Missions) ── */
+.ptr-indicator{height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#666;font-size:17px;transition:height .18s ease;}
+.ptr-indicator.ready{color:var(--yellow);}
+.ptr-indicator.loading i{animation:ptrSpin .6s linear infinite;}
+@keyframes ptrSpin{to{transform:rotate(360deg);}}
 .toast-ico{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;flex-shrink:0;margin-top:1px;}
 .toast-ico-success{background:rgba(34,197,94,.2);color:#22c55e;}
 .toast-ico-error{background:rgba(239,68,68,.2);color:#ef4444;}
@@ -6724,7 +6731,7 @@ function renderResaTab(){
   var c = document.getElementById('resaContent');
   if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations.'); return; }
   c.innerHTML = '<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Mes réservations</div></div>'
-    + '<div id="resaList" style="padding:14px;padding-bottom:80px;"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
+    + '<div id="resaList" style="padding:14px;padding-bottom:80px;">'+_skeletonRows(3)+'</div>';
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
@@ -7398,7 +7405,7 @@ function renderMsgTab(){
     return;
   }
   el.innerHTML='<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Messages</div></div>'
-    +'<div id="msgConvList" style="padding:0 0 80px;"><div class="chat-empty-state"><span>Chargement...</span></div></div>';
+    +'<div id="msgConvList" style="padding:14px 0 80px;">'+_skeletonRows(4, true)+'</div>';
   var api=window.FA_GENESIS_API||API;
   var hdrs={'Authorization':'Bearer '+USER._token};
   Promise.all([
@@ -7460,7 +7467,7 @@ function renderMsgTab(){
           +'</div>'
         +'</div>'
         +'</div>'
-        +'<button onclick="event.stopPropagation();_deleteClientConversation(\''+safeEmail+'\',\''+safeName+'\')" style="background:none;border:none;color:#555;font-size:16px;padding:12px 16px 12px 4px;cursor:pointer;flex-shrink:0;" title="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>'
+        +'<button onclick="event.stopPropagation();_deleteClientConversation(\''+safeEmail+'\',\''+safeName+'\')" style="background:none;border:none;color:#555;font-size:16px;cursor:pointer;flex-shrink:0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;" title="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>'
         +'</div>';
     }).join('');
   }).catch(function(){
@@ -8007,7 +8014,7 @@ function showFavoris(){
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes favoris</div></div>'
     +'<div id="fav-chips" style="padding:8px 16px 4px;display:flex;gap:8px;flex-wrap:wrap;"></div>'
-    +'<div id="fav-list" class="p-dir-results" style="padding-top:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'<div id="fav-list" class="p-dir-results" style="padding-top:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'+_skeletonRows(3, true)+'</div>'
     +'</div>';
   _renderFavChips();
   fetch(API+'/api/users/favorites', {headers:{'Authorization':'Bearer '+USER._token}})
@@ -8034,7 +8041,7 @@ function showMesDevis(){
   _saveProfilScroll('showMesDevis');
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes devis</div></div>'
-    +'<div id="devis-client-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'<div id="devis-client-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'+_skeletonRows(2)+'</div>'
     +'</div>';
   if(!USER || GUEST || !USER._token){ document.getElementById('devis-client-list').innerHTML = '<div class="espace-empty">Connectez-vous pour voir vos devis.</div>'; return; }
   fetch(API+'/api/my-quotes', {headers:{'Authorization':'Bearer '+USER._token}})
@@ -8067,7 +8074,7 @@ function showSuiviPrestations(){
   _saveProfilScroll('showSuiviPrestations');
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Suivi des prestations</div></div>'
-    +'<div id="suivi-prest-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'<div id="suivi-prest-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'+_skeletonRows(3, true)+'</div>'
     +'</div>';
   if(!USER || GUEST || !USER._token){ document.getElementById('suivi-prest-list').innerHTML = '<div class="espace-empty">Connectez-vous pour suivre vos prestations.</div>'; return; }
   fetch(API+'/api/my-requests', {headers:{'Authorization':'Bearer '+USER._token}})
@@ -9020,7 +9027,7 @@ function showNotifications(){
   var c=document.getElementById('profilContent'); if(!c) return;
   c.innerHTML='<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Notifications</div></div>'
-    +'<div id="notif-page-wrap" style="padding:0 0 80px;"><div class="espace-loading">Chargement...</div></div>'
+    +'<div id="notif-page-wrap" style="padding:14px 0 80px;">'+_skeletonRows(4, true)+'</div>'
     +'</div>';
   _loadNotifPage();
 }
@@ -9928,9 +9935,9 @@ function _fetchAndRenderCommandes(){
         // sa vue — les données réelles restent intactes côté admin/prestataire).
         var _canHide = !_canDelete && (_dsKey==='completed' || _dsKey==='reviewed');
         var _deleteBtn = _canDelete
-          ? "<button onclick='event.stopPropagation();_cancelUnpaidOrder(\""+r.order_id+"\",\""+r.id+"\")' style='background:none;border:none;padding:6px;cursor:pointer;color:#555;flex-shrink:0;' title='Supprimer'><i class='fa-solid fa-trash-can' style='font-size:14px;'></i></button>"
+          ? "<button onclick='event.stopPropagation();_cancelUnpaidOrder(\""+r.order_id+"\",\""+r.id+"\")' style='background:none;border:none;cursor:pointer;color:#555;flex-shrink:0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;' title='Supprimer'><i class='fa-solid fa-trash-can' style='font-size:14px;'></i></button>"
           : _canHide
-          ? "<button onclick='event.stopPropagation();_hideCompletedOrder(\""+r.id+"\")' style='background:none;border:none;padding:6px;cursor:pointer;color:#555;flex-shrink:0;' title='Supprimer'><i class='fa-solid fa-trash-can' style='font-size:14px;'></i></button>"
+          ? "<button onclick='event.stopPropagation();_hideCompletedOrder(\""+r.id+"\")' style='background:none;border:none;cursor:pointer;color:#555;flex-shrink:0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;' title='Supprimer'><i class='fa-solid fa-trash-can' style='font-size:14px;'></i></button>"
           : "<i class='fa-solid fa-chevron-right' style='color:#444;font-size:12px;flex-shrink:0;'></i>";
         return "<div class='espace-card' style='padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;' onclick='"+(_canDelete?'':'showOrderDetail(\"'+r.id+'\")')+"'>"
           +_avatarHtml
@@ -9959,7 +9966,7 @@ function showMesCommandes(){
   _stopCmdRefresh();
   c.innerHTML="<div class='espace-view'>"
     +"<div class='espace-back-bar'><button class='espace-back-btn' onclick='profilBack()'>&#8249;</button><div class='espace-title'>Mes commandes</div></div>"
-    +"<div id='cmd-list' style='padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;'><div class='espace-loading'>Chargement...</div></div>"
+    +"<div id='cmd-list' style='padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;'>"+_skeletonRows(3)+"</div>"
     +"</div>";
   _fetchAndRenderCommandes();
   _cmdRefreshTimer = setInterval(_fetchAndRenderCommandes, 30000);
@@ -11340,7 +11347,7 @@ function showClientWallet(){
   _saveProfilScroll('showClientWallet');
   c.innerHTML='<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Portefeuille GENESIS SAFE™</div></div>'
-    +'<div id="wallet-content" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'<div id="wallet-content" style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'+_skeletonRows(2)+'</div>'
     +'</div>';
   fetch((window.FA_GENESIS_API||API)+'/api/client/wallet',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
@@ -11593,7 +11600,7 @@ function showLivrables(){
   var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
   c.innerHTML='<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes livrables</div></div>'
-    +'<div id="lvr-main" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'<div id="lvr-main" style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'+_skeletonRows(3)+'</div>'
     +'</div>';
   _loadCommonDocs(function(){_renderAppLivrables(API2,token);});
 }
@@ -11664,7 +11671,7 @@ function showSeances(){
   var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
   c.innerHTML='<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes séances</div></div>'
-    +'<div id="sea-main" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'<div id="sea-main" style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'+_skeletonRows(3)+'</div>'
     +'</div>';
   fetch(API2+'/api/sessions/me',{headers:{'Authorization':'Bearer '+token}})
     .then(function(r){return r.json();})
@@ -11716,7 +11723,7 @@ function showSupport(){
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Assistance</div></div>'
     +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
     +'<button onclick="showNewTicketForm()" style="width:100%;background:#FFD700;color:#000;border:2px solid #000;font-family:Unbounded,cursive;font-size:13px;font-weight:900;padding:14px;cursor:pointer;margin-bottom:16px;"><i class=\"fa-solid fa-plus\" style=\"margin-right:8px;\"></i>Nouveau message</button>'
-    +'<div id="support-list"><div class="espace-loading">Chargement...</div></div>'
+    +'<div id="support-list">'+_skeletonRows(2)+'</div>'
     +'</div></div>';
   _loadSupportList();
 }
@@ -13898,7 +13905,7 @@ function _ptnrLoadMessages(){
       html += '<div class="ptnr-card" style="margin-bottom:16px;">';
       html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
       html += '<div class="ptnr-card-title">'+_escHtml(thread.name)+'</div>';
-      html += '<button onclick="_ptnrDeleteConversation(\''+thread.email.replace(/\'/g,"\\'")+'\',\''+thread.name.replace(/\'/g,"\\'")+'\')" style="background:none;border:none;color:#555;font-size:15px;cursor:pointer;padding:4px;" title="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>';
+      html += '<button onclick="_ptnrDeleteConversation(\''+thread.email.replace(/\'/g,"\\'")+'\',\''+thread.name.replace(/\'/g,"\\'")+'\')" style="background:none;border:none;color:#555;font-size:15px;cursor:pointer;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;" title="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>';
       html += '</div>';
       thread.messages.forEach(function(m){
         var isPartner = m.from_type === 'partner';
@@ -16993,7 +17000,7 @@ function _ptnrRenderEngagedMissionCard(r){
   return '<div class="dispatch-card" id="request-'+r.id+'">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
     +'<div class="dispatch-title" style="flex:1;min-width:0;">'+r.client_name+' — '+r.service_label+'</div>'
-    +(_ptnrCanHide ? '<button onclick="_ptnrHideMission(\''+r.id+'\')" style="background:none;border:none;padding:6px;cursor:pointer;color:#555;flex-shrink:0;" title="Supprimer"><i class="fa-solid fa-trash-can" style="font-size:14px;"></i></button>' : '')
+    +(_ptnrCanHide ? '<button onclick="_ptnrHideMission(\''+r.id+'\')" style="background:none;border:none;cursor:pointer;color:#555;flex-shrink:0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;" title="Supprimer"><i class="fa-solid fa-trash-can" style="font-size:14px;"></i></button>' : '')
     +'</div>'
     +contractDlBtn
     +(r.payment_tier === 'small' ? '<div style="font-size:11px;color:#6dbf6d;font-weight:700;margin-bottom:6px;"><i class="fas fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — fonds versés à la livraison confirmée</div>' : '')
@@ -19345,6 +19352,113 @@ function showConfirmModal(message, opts){
   });
 }
 
+// ── Modale de saisie stylée — remplace window.prompt() ──
+// Retourne une Promise<string|null> (null si annulé, chaîne vide ou remplie sinon) —
+// même principe que showConfirmModal(), avec un champ de texte en plus.
+function showPromptModal(message, opts){
+  opts = opts || {};
+  return new Promise(function(resolve){
+    var old = document.getElementById('confirm-modal-overlay');
+    if(old) old.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'confirm-modal-overlay';
+    var title = opts.title ? '<div class="confirm-modal-title">'+_escHtml(opts.title)+'</div>' : '';
+    var isTextarea = opts.multiline !== false;
+    var fieldTag = isTextarea ? 'textarea rows="3"' : 'input type="text"';
+    var fieldCloseTag = isTextarea ? 'textarea' : 'input';
+    overlay.innerHTML =
+      '<div class="confirm-modal-card">' + title +
+        '<div class="confirm-modal-msg">'+_escHtml(message)+'</div>' +
+        '<'+fieldTag+' class="confirm-modal-input" id="confirm-modal-field" placeholder="'+_escHtml(opts.placeholder||'')+'">'+(isTextarea?_escHtml(opts.defaultValue||''):'')+'</'+fieldCloseTag+'>' +
+        '<div class="confirm-modal-row">' +
+          '<button class="confirm-modal-btn confirm-modal-btn-cancel">'+_escHtml(opts.cancelLabel||'Annuler')+'</button>' +
+          '<button class="confirm-modal-btn confirm-modal-btn-ok">'+_escHtml(opts.confirmLabel||'Valider')+'</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    var field = overlay.querySelector('#confirm-modal-field');
+    if(!isTextarea) field.value = opts.defaultValue || '';
+    requestAnimationFrame(function(){ overlay.className = 'on'; field.focus(); });
+    function close(result){
+      overlay.className = '';
+      setTimeout(function(){ if(overlay.parentNode) overlay.remove(); }, 180);
+      resolve(result);
+    }
+    overlay.querySelector('.confirm-modal-btn-cancel').onclick = function(){ haptic(10); close(null); };
+    overlay.querySelector('.confirm-modal-btn-ok').onclick = function(){ haptic(20); close(field.value); };
+    overlay.onclick = function(e){ if(e.target === overlay) close(null); };
+  });
+}
+
+// ── Tirer-pour-rafraîchir ──────────────────────────────────────
+// #content est LE seul conteneur qui défile dans toute l'app (client ET prestataire, voir CSS
+// #content{overflow-y:auto}) — un seul écouteur suffit donc pour toute l'app. Au moment où le
+// doigt touche l'écran (en haut de la liste), on détermine quel écran est actuellement affiché
+// et donc quelle fonction de rechargement appeler ; si aucune n'est pertinente pour l'écran en
+// cours (ex: Accueil), le geste ne déclenche simplement rien — comportement de scroll inchangé.
+(function(){
+  var container = document.getElementById('content');
+  if(!container) return;
+  var startY = 0, pulling = false, indicator = null, activeHandler = null;
+  var THRESHOLD = 68;
+  function ensureIndicator(){
+    if(indicator) return indicator;
+    indicator = document.createElement('div');
+    indicator.className = 'ptr-indicator';
+    indicator.innerHTML = '<i class="fa-solid fa-arrow-rotate-right"></i>';
+    container.insertBefore(indicator, container.firstChild);
+    return indicator;
+  }
+  function getRefreshHandler(){
+    try{
+      var dash = document.getElementById('ptnr-dash-screen');
+      if(dash && dash.style.display !== 'none'){
+        var screen = sessionStorage.getItem('fa_ptnr_screen');
+        if(screen === 'missions' && typeof _ptnrLoadMissions === 'function') return _ptnrLoadMissions;
+        if(screen === 'messages' && typeof _ptnrLoadMessages === 'function') return _ptnrLoadMessages;
+        return null;
+      }
+    }catch(e){}
+    try{
+      var msgTab = document.getElementById('tab-messages');
+      if(msgTab && msgTab.classList.contains('on') && typeof renderMsgTab === 'function') return renderMsgTab;
+    }catch(e){}
+    return null;
+  }
+  container.addEventListener('touchstart', function(e){
+    if(container.scrollTop <= 0){
+      activeHandler = getRefreshHandler();
+      if(activeHandler){ startY = e.touches[0].clientY; pulling = true; }
+    }
+  }, {passive:true});
+  container.addEventListener('touchmove', function(e){
+    if(!pulling) return;
+    var dy = e.touches[0].clientY - startY;
+    if(dy > 0 && container.scrollTop <= 0){
+      var ind = ensureIndicator();
+      ind.style.height = Math.min(dy*0.5, 90)+'px';
+      ind.classList.toggle('ready', dy*0.5 >= THRESHOLD);
+    } else {
+      pulling = false;
+      if(indicator){ indicator.style.height='0px'; indicator.classList.remove('ready'); }
+    }
+  }, {passive:true});
+  container.addEventListener('touchend', function(){
+    if(!pulling) return;
+    pulling = false;
+    if(!indicator) return;
+    if(indicator.classList.contains('ready') && activeHandler){
+      indicator.classList.add('loading');
+      haptic(15);
+      try{ activeHandler(); }catch(e){}
+      setTimeout(function(){ indicator.style.height='0px'; indicator.classList.remove('ready','loading'); }, 700);
+    } else {
+      indicator.style.height='0px';
+      indicator.classList.remove('ready');
+    }
+  });
+})();
+
 // ── 2. Toast notifications ──
 function showToast(title,sub,type){
   var stack=document.getElementById('toast-stack'); if(!stack) return;
@@ -19925,10 +20039,9 @@ async function _submitClientContractSign() {
 async function _clientRefuseContract(contractId) {
     var ok = await showConfirmModal('Êtes-vous sûr de vouloir refuser ce contrat ? Le prestataire sera informé.', {confirmLabel:'Refuser'});
     if (!ok) return;
-    // prompt() natif conservé ici volontairement (motif optionnel en texte libre) — hors
-    // périmètre du remplacement des confirm()/alert() par la modale stylée (qui ne gère que
-    // des choix oui/non), à traiter séparément si besoin d'un champ de saisie personnalisé.
-    var reason = prompt('Motif du refus (optionnel) :') || '';
+    var reason = await showPromptModal('Motif du refus (optionnel) :', {placeholder:'Ex : délais, budget, périmètre…', confirmLabel:'Envoyer le refus'});
+    if (reason === null) return; // annulé
+
     try {
         var r = await fetch((window.FA_GENESIS_API || API) + '/api/contracts/' + contractId + '/client-refuse', {
             method: 'POST',
