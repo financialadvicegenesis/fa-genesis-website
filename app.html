@@ -3376,8 +3376,13 @@ setTimeout(function(){
     try{
       if(localStorage.getItem('fa_genesis_partner_token')){
         GUEST = true;
-        _exitSplash(showApp);
-        setTimeout(function(){ if(typeof nav==='function') nav('partner'); }, 200);
+        // nav('partner') doit se déclencher APRES showApp(), pas en parallèle : avant ce
+        // correctif, ce setTimeout(200ms) tournait indépendamment du délai interne de
+        // _exitSplash() (820ms) et se déclenchait donc AVANT showApp() lui-même — nav('partner')
+        // agissait alors sur un état pas encore initialisé, et pouvait gagner la course contre
+        // _restoreNavSession()/_handleNotifHash() (lien de notification en attente), l'écrasant
+        // sur "accueil" au lieu de l'onglet ciblé (ex: messages).
+        _exitSplash(function(){ showApp(); if(typeof nav==='function') nav('partner'); });
         _bootHandled = true;
       }
     } catch(e){}
@@ -14244,10 +14249,14 @@ if('serviceWorker' in navigator){
       if(_ptnrToken && profileId){
         if(_ptnrSession) _ptnrSession._profileId = profileId;
         _ptnrShowDash();
-        // Si aucun screen sauvegardé (onglet fermé/rouvert), charger l'accueil
+        // Si aucun screen sauvegardé (onglet fermé/rouvert), charger l'accueil —
+        // SAUF si un lien de notification est déjà en attente (window._pendingDeepLinkHash,
+        // déposé par MainActivity.java) : _restoreNavSession()/_handleNotifHash() va choisir
+        // le bon onglet (ex: messages) juste après — le forcer sur "accueil" ici l'écraserait
+        // selon l'ordre exact d'exécution des deux minuteurs concurrents.
         var _savedPtnrScreen = null;
         try{ _savedPtnrScreen = sessionStorage.getItem('fa_ptnr_screen'); }catch(e){}
-        if(!_savedPtnrScreen) _ptnrNav('home');
+        if(!_savedPtnrScreen && !window._pendingDeepLinkHash) _ptnrNav('home');
       } else if(_ptnrToken){ _ptnrShowScreen('profiles'); _ptnrLoadProfileSelector(); }
     }
   };
