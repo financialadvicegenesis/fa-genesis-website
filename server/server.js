@@ -2147,6 +2147,14 @@ function notifyUser(email, role, type, title, body, link) {
         // avec un bouton "Répondre" (RemoteInput), ce qu'un message avec bloc "notification"
         // standard ne permet pas (l'OS l'affiche directement, sans jamais repasser par le code
         // natif de l'app quand elle n'est pas au premier plan).
+        // Nombre total de notifications non lues pour ce destinataire précis — transmis au
+        // natif Android pour afficher un badge numérique sur l'icône de l'app (comme
+        // WhatsApp/Instagram), au lieu du simple point que l'OS affiche par défaut. Calculé
+        // ici (après le push() ci-dessus) pour inclure la notification qu'on vient de créer.
+        var _badgeCount = email ? all.filter(function(n) {
+            return n.role === role && n.email && n.email.toLowerCase() === email.toLowerCase() && !n.read;
+        }).length : null;
+
         var fcmPayload = {
             data: {
                 url: link || '/',
@@ -2156,6 +2164,7 @@ function notifyUser(email, role, type, title, body, link) {
                 channelId: _fcmChannelForType(type)
             }
         };
+        if (_badgeCount !== null) fcmPayload.data.badgeCount = String(_badgeCount);
         // Réponse directe depuis la notification (comme WhatsApp), uniquement pour les
         // messages : le lien encode déjà l'identité du destinataire de la réponse (voir
         // POST /api/messages et /api/partner/inbox/reply, qui construisent ce lien) — on la

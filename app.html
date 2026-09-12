@@ -234,8 +234,9 @@ a{text-decoration:none;color:inherit}
 .hdr-right{display:flex;align-items:center;gap:12px}
 .hdr-btn{width:36px;height:36px;border-radius:10px;background:var(--card);
   display:flex;align-items:center;justify-content:center;font-size:16px;position:relative}
-.hdr-badge{position:absolute;top:-3px;right:-3px;width:10px;height:10px;
-  background:#ef4444;border-radius:50%;border:2px solid var(--bg);display:none}
+.hdr-badge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 3px;
+  background:#ef4444;border-radius:8px;border:2px solid var(--bg);display:none;
+  align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;line-height:1}
 .hdr-avatar{width:36px;height:36px;border-radius:10px;background:var(--card);
   display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--yellow);
   overflow:hidden}
@@ -8933,7 +8934,10 @@ function loadNotifInbox(){
       var list = (data&&Array.isArray(data.notifications))?data.notifications:[];
       var unread = (data&&data.unread_count)||0;
       var badge = document.getElementById('hdrBadge');
-      if(badge) badge.style.display = unread>0?'block':'none';
+      if(badge){
+        if(unread>0){ badge.textContent = unread>99?'99+':String(unread); badge.style.display='flex'; }
+        else { badge.textContent=''; badge.style.display='none'; }
+      }
       // Vérification étudiant en temps réel : si une notif student_verified non lue
       // est détectée alors que le client est encore affiché comme "pending", forcer la sync
       if(USER && USER.student_status==='pending'){
@@ -13397,6 +13401,14 @@ function _ptnrShowDash(){
   // affiché était bien "Messages".
   document.querySelectorAll('.client-nav').forEach(function(b){ b.style.display='none'; });
   document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display=''; b.className='nav-btn ptnr-nav'; });
+  // Badge de la cloche (nombre de notifications non lues) : loadNotifInbox() n'était câblée
+  // que sur la session cliente (initApp(), if(USER){...}) — jamais appelée pour un appareil
+  // uniquement prestataire (GUEST=true, pas de USER) — le badge restait donc invisible en
+  // permanence côté prestataire, peu importe le nombre de messages/notifications non lus.
+  if(typeof loadNotifInbox==='function'){
+    loadNotifInbox();
+    if(!window._ptnrNotifPollStarted){ window._ptnrNotifPollStarted = true; setInterval(loadNotifInbox, 60000); }
+  }
   if(_ptnrSession){
     var p = _ptnrSession;
     var savedProfile = null;
