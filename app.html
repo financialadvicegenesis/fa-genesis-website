@@ -12841,6 +12841,10 @@ function _ptnrBiolockUnlock(){
     if(btn){ btn.disabled = false; }
     if(ok){
       _ptnrBioUnlocked = true;
+      if(_ptnrPendingNotifTarget) console.log('[GENESIS_NOTIFICATION] authentication_success');
+      // nav('partner') applique automatiquement _ptnrPendingNotifTarget s'il y en a un
+      // (voir le point d'entrée unique du dashboard ci-dessus) — l'authentification ne
+      // décide jamais elle-même de la destination, elle se contente d'autoriser l'accès.
       nav('partner');
     } else if(errEl){
       errEl.textContent = msg || 'Authentification échouée.';
@@ -13223,7 +13227,7 @@ function _ptnrEnterDashboard(profileId){
     return;
   }
   _ptnrShowDash();
-  _ptnrNav('home');
+  if(!_ptnrApplyPendingNotifTarget()) _ptnrNav('home');
   _ptnrRefreshBadges();
   _ptnrCheckPushStatus();
   // Tutoriel : uniquement à la première vraie connexion, jamais en mode invité
@@ -13245,7 +13249,7 @@ var _ptnrContractHasSignature = false;
 
 function _ptnrShowPartnershipContract() {
   var overlay = document.getElementById('ptnr-contract-overlay');
-  if (!overlay) { _ptnrShowDash(); _ptnrNav('home'); return; }
+  if (!overlay) { _ptnrShowDash(); if(!_ptnrApplyPendingNotifTarget()) _ptnrNav('home'); return; }
   overlay.style.display = 'block';
   // Reset du formulaire
   var nameEl = document.getElementById('ptnr-contract-name');
@@ -13338,7 +13342,7 @@ function _ptnrSignPartnershipContract() {
       if (overlay) overlay.style.display = 'none';
       if (typeof showToast === 'function') showToast('Contrat signé ! Bienvenue sur FA GENESIS.');
       _ptnrShowDash();
-      _ptnrNav('home');
+      if(!_ptnrApplyPendingNotifTarget()) _ptnrNav('home');
       _ptnrRefreshBadges();
       _ptnrCheckPushStatus();
       setTimeout(function(){
@@ -13495,6 +13499,7 @@ function _ptnrNav(screen){
   if(screen==='devis') _ptnrLoadDevis();
   if(screen==='seances') _ptnrLoadSeances();
   if(screen==='messages'){
+    console.log('[GENESIS_NOTIFICATION] navigate_messages');
     _ptnrLoadMessages();
     _clearPtnrMsgPoll();
     _ptnrMsgPollInterval = setInterval(function(){
@@ -13802,11 +13807,43 @@ function _ptnrCancelSeance(id){
 var _ptnrMsgAttachments = {}; // threadKey -> [{name,type,dataUrl}] en attente d'envoi
 var _ptnrPendingScrollThread = null; // email du client à faire défiler/surligner après le prochain chargement des messages
 
+// ── DESTINATION DE NOTIFICATION (source de vérité unique) ──────────────────────────────────
+// _ptnrPendingNotifTarget est LA seule source de vérité pour "quel onglet ouvrir après une
+// notification" — {screen, threadEmail|null} ou null. Posée dès la lecture du hash de la
+// notification (_handleNotifHash), AVANT tout passage par une porte d'authentification
+// (biométrie, sélection de profil, signature de contrat). Elle n'est jamais consommée par ces
+// portes elles-mêmes : l'authentification autorise l'accès, elle ne décide jamais de la
+// destination. C'est uniquement _ptnrApplyPendingNotifTarget() — appelée à CHAQUE point d'entrée
+// du dashboard (nav('partner'), _ptnrEnterDashboard, fin de signature du contrat) — qui la
+// consomme, remplaçant les anciennes vérifications éparpillées (window._pendingDeepLinkHash à
+// un endroit, _ptnrPendingScrollThread à un autre) par un unique chemin de décision.
+var _ptnrPendingNotifTarget = null;
+
+function _ptnrApplyPendingNotifTarget(){
+  if(!_ptnrPendingNotifTarget) return false;
+  var target = _ptnrPendingNotifTarget;
+  _ptnrPendingNotifTarget = null;
+  console.log('[GENESIS_NOTIFICATION] destination_restored', target.screen);
+  if(target.threadEmail) _ptnrPendingScrollThread = target.threadEmail;
+  _ptnrNav(target.screen);
+  return true;
+}
+
 function _ptnrScrollToThread(email){
   var key = _ptnrThreadKey(email);
   var input = document.getElementById('ptnr-reply-'+key);
   var card = input ? input.closest('.ptnr-card') : null;
-  if(!card) return;
+  if(!card){
+    // Conversation introuvable (supprimée entre l'envoi de la notification et l'ouverture de
+    // l'app, ou email ne correspondant à aucun fil autorisé pour CE prestataire précis — le
+    // serveur ne renvoie de toute façon jamais que les fils appartenant à l'appelant
+    // authentifié, voir /api/partner/inbox : un id manipulé dans une notification ne peut donc
+    // jamais faire apparaître la conversation de quelqu'un d'autre). On ne plante pas : la
+    // liste des messages reste affichée normalement, juste sans surlignage/défilement ciblé.
+    console.log('[GENESIS_NOTIFICATION] navigation_failed thread_not_found');
+    return;
+  }
+  console.log('[GENESIS_NOTIFICATION] conversation_loaded');
   card.scrollIntoView({behavior:'smooth', block:'start'});
   card.style.transition = 'box-shadow .3s';
   card.style.boxShadow = '0 0 0 2px #FFD700';
@@ -14133,6 +14170,7 @@ function _adminSubscribePush(){
 // Appelé quand l'app est déjà ouverte et que l'utilisateur clique sur une notif
 function _handleNotifHash(hash, _retryCount){
   if(!hash) return;
+  if(!_retryCount) console.log('[GENESIS_NOTIFICATION] intent_received');
   // Auto-attente : sur l'app native, ce hash peut être livré par le code natif (tap sur une
   // notification) à un instant fixe qui ne correspond pas forcément au moment où la session
   // prestataire a fini de se restaurer (_ptnrToken posé par _ptnrInit(), lui-même déclenché
@@ -14143,6 +14181,8 @@ function _handleNotifHash(hash, _retryCount){
     var _rc = (_retryCount||0) + 1;
     if(_rc <= 10){
       setTimeout(function(){ _handleNotifHash(hash, _rc); }, 400);
+    } else {
+      console.log('[GENESIS_NOTIFICATION] navigation_failed session_not_ready');
     }
     return;
   }
@@ -14164,9 +14204,9 @@ function _handleNotifHash(hash, _retryCount){
   // (au lieu de juste l'onglet Messages en général), voir _ptnrScrollToThread.
   var msgThreadMatch = hash.match(/^partner:messages:(.+)$/);
   if(msgThreadMatch){
-    _ptnrPendingScrollThread = decodeURIComponent(msgThreadMatch[1]);
+    console.log('[GENESIS_NOTIFICATION] navigate_conversation');
+    _ptnrPendingNotifTarget = { screen: 'messages', threadEmail: decodeURIComponent(msgThreadMatch[1]) };
     nav('partner');
-    setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('messages'); }, 500);
     return;
   }
   // Message d'un prestataire (côté client) → ouvrir directement la conversation avec lui.
@@ -14180,15 +14220,15 @@ function _handleNotifHash(hash, _retryCount){
   if(hash === 'open-admin' || hash === 'admin'){
     nav('partner'); setTimeout(function(){ if(typeof _openAdminPanel==='function') _openAdminPanel(); }, 400);
   } else if(hash === 'partner:missions' || hash === 'missions'){
-    nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('missions'); }, 500);
+    _ptnrPendingNotifTarget = { screen: 'missions', threadEmail: null }; nav('partner');
   } else if(hash === 'partner:messages'){
-    nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('messages'); }, 500);
+    _ptnrPendingNotifTarget = { screen: 'messages', threadEmail: null }; nav('partner');
   } else if(hash === 'partner:livrables' || hash === 'partner:projects'){
-    nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('livrables'); }, 500);
+    _ptnrPendingNotifTarget = { screen: 'livrables', threadEmail: null }; nav('partner');
   } else if(hash === 'partner:profile'){
-    nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('profil'); }, 500);
+    _ptnrPendingNotifTarget = { screen: 'profil', threadEmail: null }; nav('partner');
   } else if(hash === 'partner:versements'){
-    nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('versements'); }, 500);
+    _ptnrPendingNotifTarget = { screen: 'versements', threadEmail: null }; nav('partner');
   } else if(hash === 'open-partner' || hash === 'partner:home'){
     nav('partner');
   } else if(hash === 'tab:resa' || hash === 'tab:reservations' || hash === 'open-reservations' || hash === 'reservations' || hash === 'open-suivi'){
@@ -14261,25 +14301,27 @@ if('serviceWorker' in navigator){
     _origNav(tab);
     if(tab === 'partner'){
       if(!_ptnrToken){ _ptnrShowScreen('login'); return; }
-      if(_ptnrRequiresBiolock()){ _ptnrShowScreen('biolock'); return; }
+      if(_ptnrRequiresBiolock()){
+        if(_ptnrPendingNotifTarget) console.log('[GENESIS_NOTIFICATION] authentication_required');
+        _ptnrShowScreen('biolock');
+        return;
+      }
       if(_ptnrSession && (_ptnrSession.partner_type==='admin'||_ptnrSession.role==='admin')){ _ptnrShowScreen('admin'); return; }
       var profileId = localStorage.getItem('fa_genesis_partner_profile');
       if(_ptnrToken && profileId){
         if(_ptnrSession) _ptnrSession._profileId = profileId;
         _ptnrShowDash();
-        // Si aucun screen sauvegardé (onglet fermé/rouvert), charger l'accueil —
-        // SAUF si un lien de notification est déjà en attente (window._pendingDeepLinkHash,
-        // déposé par MainActivity.java) ou en cours de traitement (_ptnrPendingScrollThread,
-        // posé par _handleNotifHash() AVANT son propre nav('partner') — donc déjà présent au
-        // moment où CE nav('partner') se déclenche, y compris depuis _ptnrBiolockUnlock() une
-        // fois la biométrie validée, cas où window._pendingDeepLinkHash est déjà consommé
-        // depuis longtemps mais où le routage vers "messages" n'a pas forcément encore eu le
-        // temps de s'exécuter si l'authentification biométrique a été rapide) :
-        // _restoreNavSession()/_handleNotifHash() va choisir le bon onglet (ex: messages) —
-        // le forcer sur "accueil" ici l'écraserait selon l'ordre exact d'exécution des minuteurs.
+        // Point d'entrée unique du dashboard : la destination d'une notification en attente
+        // (_ptnrPendingNotifTarget, posée AVANT tout passage par une porte d'authentification)
+        // est TOUJOURS prioritaire sur le choix par défaut — qu'on arrive ici directement
+        // (session déjà déverrouillée), après un succès de biométrie, ou après sélection de
+        // profil. L'authentification n'a fait qu'autoriser l'accès ; elle ne décide jamais de
+        // la destination. Si aucune notification n'est en attente, on retombe sur le dernier
+        // onglet connu (sessionStorage) ou "accueil" par défaut.
+        if(_ptnrApplyPendingNotifTarget()) return;
         var _savedPtnrScreen = null;
         try{ _savedPtnrScreen = sessionStorage.getItem('fa_ptnr_screen'); }catch(e){}
-        if(!_savedPtnrScreen && !window._pendingDeepLinkHash && !_ptnrPendingScrollThread) _ptnrNav('home');
+        if(!_savedPtnrScreen) _ptnrNav('home');
       } else if(_ptnrToken){ _ptnrShowScreen('profiles'); _ptnrLoadProfileSelector(); }
     }
   };
