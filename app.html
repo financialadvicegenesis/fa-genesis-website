@@ -13450,9 +13450,10 @@ function _ptnrNav(screen){
   // pas l'écran actuellement affiché (ex: écran "choix du profil" toujours actif faute de
   // profil déjà sélectionné), _ptnrNav() basculerait silencieusement un onglet à l'intérieur
   // d'un conteneur caché — le prestataire resterait bloqué sur l'ancien écran. On force donc
-  // toujours l'affichage du dashboard ici, avant de router vers l'onglet demandé.
+  // l'affichage du dashboard ici — SAUF si le verrou biométrique est requis (sécurité) : ne
+  // jamais court-circuiter l'écran de biométrie/connexion pour révéler le contenu en dessous.
   var _dashEl = document.getElementById('ptnr-dash-screen');
-  if(_dashEl && _dashEl.style.display === 'none') _ptnrShowScreen('dash');
+  if(_dashEl && _dashEl.style.display === 'none' && _ptnrToken && !_ptnrRequiresBiolock()) _ptnrShowScreen('dash');
   _ptnrCloseDrawer();
   // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
   var _cEl = document.getElementById('content');
@@ -14251,12 +14252,17 @@ if('serviceWorker' in navigator){
         _ptnrShowDash();
         // Si aucun screen sauvegardé (onglet fermé/rouvert), charger l'accueil —
         // SAUF si un lien de notification est déjà en attente (window._pendingDeepLinkHash,
-        // déposé par MainActivity.java) : _restoreNavSession()/_handleNotifHash() va choisir
-        // le bon onglet (ex: messages) juste après — le forcer sur "accueil" ici l'écraserait
-        // selon l'ordre exact d'exécution des deux minuteurs concurrents.
+        // déposé par MainActivity.java) ou en cours de traitement (_ptnrPendingScrollThread,
+        // posé par _handleNotifHash() AVANT son propre nav('partner') — donc déjà présent au
+        // moment où CE nav('partner') se déclenche, y compris depuis _ptnrBiolockUnlock() une
+        // fois la biométrie validée, cas où window._pendingDeepLinkHash est déjà consommé
+        // depuis longtemps mais où le routage vers "messages" n'a pas forcément encore eu le
+        // temps de s'exécuter si l'authentification biométrique a été rapide) :
+        // _restoreNavSession()/_handleNotifHash() va choisir le bon onglet (ex: messages) —
+        // le forcer sur "accueil" ici l'écraserait selon l'ordre exact d'exécution des minuteurs.
         var _savedPtnrScreen = null;
         try{ _savedPtnrScreen = sessionStorage.getItem('fa_ptnr_screen'); }catch(e){}
-        if(!_savedPtnrScreen && !window._pendingDeepLinkHash) _ptnrNav('home');
+        if(!_savedPtnrScreen && !window._pendingDeepLinkHash && !_ptnrPendingScrollThread) _ptnrNav('home');
       } else if(_ptnrToken){ _ptnrShowScreen('profiles'); _ptnrLoadProfileSelector(); }
     }
   };
