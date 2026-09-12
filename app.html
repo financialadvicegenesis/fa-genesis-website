@@ -2399,6 +2399,19 @@ a{text-decoration:none;color:inherit}
 .toast-item{display:flex;align-items:flex-start;gap:11px;background:rgba(12,12,12,.97);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:13px 14px 12px;backdrop-filter:blur(20px);box-shadow:0 12px 44px rgba(0,0,0,.75);transform:translateY(24px) scale(.94);opacity:0;transition:transform .32s cubic-bezier(.34,1.56,.64,1),opacity .28s ease;pointer-events:auto;overflow:hidden;position:relative;}
 .toast-item.t-in{transform:translateY(0) scale(1);opacity:1;}
 .toast-item.t-out{transform:translateY(-10px) scale(.95);opacity:0;transition:all .22s ease;}
+/* ── Modale de confirmation stylée (remplace window.confirm(), moche et hors-charte) ── */
+#confirm-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999999;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;transition:opacity .18s ease;}
+#confirm-modal-overlay.on{opacity:1;}
+.confirm-modal-card{background:rgba(12,12,12,.98);border:1px solid rgba(255,255,255,.1);border-radius:18px;max-width:340px;width:100%;padding:22px;backdrop-filter:blur(20px);box-shadow:0 20px 60px rgba(0,0,0,.75);transform:translateY(14px) scale(.96);transition:transform .22s cubic-bezier(.34,1.56,.64,1);}
+#confirm-modal-overlay.on .confirm-modal-card{transform:translateY(0) scale(1);}
+.confirm-modal-title{font-weight:900;font-size:16px;color:#fff;margin-bottom:8px;}
+.confirm-modal-msg{color:#bbb;font-size:14px;line-height:1.55;margin-bottom:20px;white-space:pre-line;}
+.confirm-modal-row{display:flex;gap:10px;}
+.confirm-modal-btn{flex:1;border:none;border-radius:12px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;transition:transform .1s ease,filter .15s ease;}
+.confirm-modal-btn:active{transform:scale(.96);filter:brightness(.9);}
+.confirm-modal-btn-cancel{background:#1e1e1e;color:#ccc;}
+.confirm-modal-btn-ok{background:var(--yellow);color:#000;}
+.confirm-modal-btn-ok.danger{background:#ef4444;color:#fff;}
 .toast-ico{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;flex-shrink:0;margin-top:1px;}
 .toast-ico-success{background:rgba(34,197,94,.2);color:#22c55e;}
 .toast-ico-error{background:rgba(239,68,68,.2);color:#ef4444;}
@@ -7459,14 +7472,16 @@ function renderMsgTab(){
 // Suppression d'une conversation côté client uniquement — le prestataire (et l'admin)
 // continuent de la voir de leur côté, voir DELETE /api/messages/conversation côté serveur.
 function _deleteClientConversation(partnerEmail, partnerName){
-  if(!confirm('Supprimer votre conversation avec '+partnerName+' ? Elle restera visible du côté du prestataire.')) return;
-  fetch((window.FA_GENESIS_API||API)+'/api/messages/conversation',{
-    method:'DELETE',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({counterpart:partnerEmail})
-  }).then(function(r){return r.json();}).then(function(){
-    renderMsgTab();
-  }).catch(function(){ showToast('Erreur','Impossible de supprimer la conversation.','error'); });
+  showConfirmModal('Supprimer votre conversation avec '+partnerName+' ? Elle restera visible du côté du prestataire.', {confirmLabel:'Supprimer'}).then(function(ok){
+    if(!ok) return;
+    fetch((window.FA_GENESIS_API||API)+'/api/messages/conversation',{
+      method:'DELETE',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+      body:JSON.stringify({counterpart:partnerEmail})
+    }).then(function(r){return r.json();}).then(function(){
+      renderMsgTab();
+    }).catch(function(){ showToast('Erreur','Impossible de supprimer la conversation.','error'); });
+  });
 }
 // ── PROFIL ────────────────────────────────────────────────────
 function tierBadgeMeta(tier){
@@ -9952,37 +9967,41 @@ function showMesCommandes(){
 
 function _cancelUnpaidOrder(orderId, requestId){
   if(!orderId||!USER||!USER._token) return;
-  if(!confirm('Supprimer cette commande non payée ?')) return;
-  fetch((window.FA_GENESIS_API||API)+'/api/orders/'+orderId+'/cancel-pending',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token}
-  }).then(function(r){return r.json();}).then(function(res){
-    if(res.success||res.ok){
-      showToast('Commande supprimée','La commande a été annulée.','success');
-      _fetchAndRenderCommandes();
-    } else {
-      showToast('Erreur',res.error||'Impossible d\'annuler.','error');
-    }
-  }).catch(function(){
-    showToast('Erreur réseau','Réessayez.','error');
+  showConfirmModal('Supprimer cette commande non payée ?', {confirmLabel:'Supprimer'}).then(function(ok){
+    if(!ok) return;
+    fetch((window.FA_GENESIS_API||API)+'/api/orders/'+orderId+'/cancel-pending',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token}
+    }).then(function(r){return r.json();}).then(function(res){
+      if(res.success||res.ok){
+        showToast('Commande supprimée','La commande a été annulée.','success');
+        _fetchAndRenderCommandes();
+      } else {
+        showToast('Erreur',res.error||'Impossible d\'annuler.','error');
+      }
+    }).catch(function(){
+      showToast('Erreur réseau','Réessayez.','error');
+    });
   });
 }
 
 function _hideCompletedOrder(requestId){
   if(!requestId||!USER||!USER._token) return;
-  if(!confirm('Supprimer cette commande de votre liste ? Vos données de paiement restent conservées.')) return;
-  fetch((window.FA_GENESIS_API||API)+'/api/my-requests/'+requestId+'/hide',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token}
-  }).then(function(r){return r.json();}).then(function(res){
-    if(res.success){
-      showToast('Commande supprimée','Elle n\'apparaît plus dans votre liste.','success');
-      _fetchAndRenderCommandes();
-    } else {
-      showToast('Erreur',res.error||'Impossible de supprimer.','error');
-    }
-  }).catch(function(){
-    showToast('Erreur réseau','Réessayez.','error');
+  showConfirmModal('Supprimer cette commande de votre liste ? Vos données de paiement restent conservées.', {confirmLabel:'Supprimer'}).then(function(ok){
+    if(!ok) return;
+    fetch((window.FA_GENESIS_API||API)+'/api/my-requests/'+requestId+'/hide',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token}
+    }).then(function(r){return r.json();}).then(function(res){
+      if(res.success){
+        showToast('Commande supprimée','Elle n\'apparaît plus dans votre liste.','success');
+        _fetchAndRenderCommandes();
+      } else {
+        showToast('Erreur',res.error||'Impossible de supprimer.','error');
+      }
+    }).catch(function(){
+      showToast('Erreur réseau','Réessayez.','error');
+    });
   });
 }
 
@@ -12452,22 +12471,23 @@ function _checkoutGenesisProject(ptnrItems){
   var totalEst = ptnrItems.reduce(function(s,it){ return s+(it.priceNum||0)*(it.quantity||1); },0);
   // Demander confirmation avant de créer le projet
   var names = ptnrItems.map(function(it){ return it.serviceLabel; }).join(' + ');
-  if(!confirm('Créer un Projet GENESIS ?\n\n'+names+'\n\nTotal estimé : '+totalEst+' €\n\nVous serez redirigé vers le paiement de chaque prestation.')) return;
-
-  fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
-    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({ clientInfo: clientInfo, partnerServiceItems: partnerServiceItems })
-  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
-  .then(function(res){
-    if(!res.ok||!res.data||!res.data.projectId) throw new Error((res.data&&res.data.error)||'Erreur création projet');
-    // Vider le panier des prestations
-    APP_CART = APP_CART.filter(function(it){ return it.type!=='partner_service'; });
-    _saveCart(); renderCartBody();
-    showToast('Projet GENESIS créé !', res.data.prestations+' prestations • Total '+totalEst+' €', 'success');
-    // Naviguer vers Mes réservations
-    setTimeout(function(){ nav('resa'); }, 800);
-  }).catch(function(err){
-    showToast('Erreur', err.message||'Impossible de créer le projet', 'error');
+  showConfirmModal('Créer un Projet GENESIS ?\n\n'+names+'\n\nTotal estimé : '+totalEst+' €\n\nVous serez redirigé vers le paiement de chaque prestation.', {danger:false, confirmLabel:'Créer'}).then(function(ok){
+    if(!ok) return;
+    fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+      body:JSON.stringify({ clientInfo: clientInfo, partnerServiceItems: partnerServiceItems })
+    }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
+    .then(function(res){
+      if(!res.ok||!res.data||!res.data.projectId) throw new Error((res.data&&res.data.error)||'Erreur création projet');
+      // Vider le panier des prestations
+      APP_CART = APP_CART.filter(function(it){ return it.type!=='partner_service'; });
+      _saveCart(); renderCartBody();
+      showToast('Projet GENESIS créé !', res.data.prestations+' prestations • Total '+totalEst+' €', 'success');
+      // Naviguer vers Mes réservations
+      setTimeout(function(){ nav('resa'); }, 800);
+    }).catch(function(err){
+      showToast('Erreur', err.message||'Impossible de créer le projet', 'error');
+    });
   });
 }
 
@@ -13919,10 +13939,12 @@ function _ptnrLoadMessages(){
 // Suppression d'une conversation côté prestataire uniquement — le client (et l'admin)
 // continuent de la voir de leur côté, voir DELETE /api/partner/inbox/conversation.
 function _ptnrDeleteConversation(clientEmail, clientName){
-  if(!confirm('Supprimer votre conversation avec '+clientName+' ? Elle restera visible du côté du client.')) return;
-  _ptnrFetch('/api/partner/inbox/conversation','DELETE',{client_email:clientEmail}).then(function(){
-    _ptnrLoadMessages();
-  }).catch(function(){ showToast('Erreur','Impossible de supprimer la conversation.','error'); });
+  showConfirmModal('Supprimer votre conversation avec '+clientName+' ? Elle restera visible du côté du client.', {confirmLabel:'Supprimer'}).then(function(ok){
+    if(!ok) return;
+    _ptnrFetch('/api/partner/inbox/conversation','DELETE',{client_email:clientEmail}).then(function(){
+      _ptnrLoadMessages();
+    }).catch(function(){ showToast('Erreur','Impossible de supprimer la conversation.','error'); });
+  });
 }
 
 function _ptnrAttachFiles(key, fileList){
@@ -17139,20 +17161,24 @@ function _ptnrDoSubmitLiv(oid, body){
   }).catch(function(){ showToast('Erreur de connexion','Réessayez','error'); });
 }
 function _ptnrPublishPtnrLiv(livId, oid){
-  if(!confirm('Publier ce livrable ? Le client sera notifié.')) return;
-  _ptnrFetch('/api/partner/livrables/'+livId+'/publish','POST',{}).then(function(res){
-    if(res&&res.error){ showToast('Erreur',res.error,'error'); return; }
-    showToast('Livrable publié','Client notifié ✓','success');
-    _ptnrLoadOrderLivrables(oid);
-  }).catch(function(){ showToast('Erreur de connexion','Réessayez','error'); });
+  showConfirmModal('Publier ce livrable ? Le client sera notifié.', {danger:false, confirmLabel:'Publier'}).then(function(ok){
+    if(!ok) return;
+    _ptnrFetch('/api/partner/livrables/'+livId+'/publish','POST',{}).then(function(res){
+      if(res&&res.error){ showToast('Erreur',res.error,'error'); return; }
+      showToast('Livrable publié','Client notifié ✓','success');
+      _ptnrLoadOrderLivrables(oid);
+    }).catch(function(){ showToast('Erreur de connexion','Réessayez','error'); });
+  });
 }
 function _ptnrDeletePtnrLiv(livId, oid){
-  if(!confirm('Supprimer ce livrable ? Le client ne le verra plus.')) return;
-  _ptnrFetch('/api/partner/livrables/'+livId,'DELETE',null).then(function(res){
-    if(res&&res.error){ showToast('Erreur',res.error,'error'); return; }
-    showToast('Supprimé','','success');
-    _ptnrLoadOrderLivrables(oid);
-  }).catch(function(){ showToast('Erreur de connexion','Réessayez','error'); });
+  showConfirmModal('Supprimer ce livrable ? Le client ne le verra plus.', {confirmLabel:'Supprimer'}).then(function(ok){
+    if(!ok) return;
+    _ptnrFetch('/api/partner/livrables/'+livId,'DELETE',null).then(function(res){
+      if(res&&res.error){ showToast('Erreur',res.error,'error'); return; }
+      showToast('Supprimé','','success');
+      _ptnrLoadOrderLivrables(oid);
+    }).catch(function(){ showToast('Erreur de connexion','Réessayez','error'); });
+  });
 }
 
 function _ptnrSubmitRevision(livrableId, requestId){
@@ -18118,10 +18144,12 @@ function _ptnrTogglePromo(promoId){
 }
 
 function _ptnrDeletePromo(promoId){
-  if(!confirm('Supprimer cette promotion ?')) return;
-  _ptnrFetch('/api/partner/promotions/'+promoId,'DELETE',null).then(function(){
-    showToast('Promotion supprimée','','info');
-    _ptnrLoadPromotions();
+  showConfirmModal('Supprimer cette promotion ?', {confirmLabel:'Supprimer'}).then(function(ok){
+    if(!ok) return;
+    _ptnrFetch('/api/partner/promotions/'+promoId,'DELETE',null).then(function(){
+      showToast('Promotion supprimée','','info');
+      _ptnrLoadPromotions();
+    });
   });
 }
 
@@ -19282,6 +19310,41 @@ function _ptnrHandlePhotoUpload(input){
 // ── 1. Haptic feedback ──
 function haptic(p){try{if(navigator.vibrate)navigator.vibrate(p||10);}catch(e){}}
 
+// ── Modale de confirmation stylée — remplace window.confirm() partout dans l'app ──
+// window.confirm() affiche la boîte de dialogue grise par défaut du système, hors charte
+// graphique et incohérente entre Android/iOS/navigateur. showConfirmModal() retourne une
+// Promise<boolean> pour rester simple à intégrer à la place d'un `if(!confirm(...)) return;`
+// synchrone : `showConfirmModal(msg).then(function(ok){ if(!ok) return; ...suite... });`
+function showConfirmModal(message, opts){
+  opts = opts || {};
+  return new Promise(function(resolve){
+    var old = document.getElementById('confirm-modal-overlay');
+    if(old) old.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'confirm-modal-overlay';
+    var danger = opts.danger !== false; // par défaut rouge (la plupart des usages actuels sont des suppressions)
+    var title = opts.title ? '<div class="confirm-modal-title">'+_escHtml(opts.title)+'</div>' : '';
+    overlay.innerHTML =
+      '<div class="confirm-modal-card">' + title +
+        '<div class="confirm-modal-msg">'+_escHtml(message)+'</div>' +
+        '<div class="confirm-modal-row">' +
+          '<button class="confirm-modal-btn confirm-modal-btn-cancel">'+_escHtml(opts.cancelLabel||'Annuler')+'</button>' +
+          '<button class="confirm-modal-btn confirm-modal-btn-ok'+(danger?' danger':'')+'">'+_escHtml(opts.confirmLabel||'Confirmer')+'</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function(){ overlay.className = 'on'; });
+    function close(result){
+      overlay.className = '';
+      setTimeout(function(){ if(overlay.parentNode) overlay.remove(); }, 180);
+      resolve(result);
+    }
+    overlay.querySelector('.confirm-modal-btn-cancel').onclick = function(){ haptic(10); close(false); };
+    overlay.querySelector('.confirm-modal-btn-ok').onclick = function(){ haptic(20); close(true); };
+    overlay.onclick = function(e){ if(e.target === overlay) close(false); };
+  });
+}
+
 // ── 2. Toast notifications ──
 function showToast(title,sub,type){
   var stack=document.getElementById('toast-stack'); if(!stack) return;
@@ -19860,7 +19923,11 @@ async function _submitClientContractSign() {
 }
 
 async function _clientRefuseContract(contractId) {
-    if (!confirm('Êtes-vous sûr de vouloir refuser ce contrat ? Le prestataire sera informé.')) return;
+    var ok = await showConfirmModal('Êtes-vous sûr de vouloir refuser ce contrat ? Le prestataire sera informé.', {confirmLabel:'Refuser'});
+    if (!ok) return;
+    // prompt() natif conservé ici volontairement (motif optionnel en texte libre) — hors
+    // périmètre du remplacement des confirm()/alert() par la modale stylée (qui ne gère que
+    // des choix oui/non), à traiter séparément si besoin d'un champ de saisie personnalisé.
     var reason = prompt('Motif du refus (optionnel) :') || '';
     try {
         var r = await fetch((window.FA_GENESIS_API || API) + '/api/contracts/' + contractId + '/client-refuse', {
@@ -19870,8 +19937,8 @@ async function _clientRefuseContract(contractId) {
         });
         var d = await r.json();
         if (r.ok && d.success) { renderMesContrats(); }
-        else { alert(d.error || 'Erreur lors du refus.'); }
-    } catch(e) { alert('Erreur de connexion.'); }
+        else { showToast('Erreur', d.error || 'Erreur lors du refus.', 'error'); }
+    } catch(e) { showToast('Erreur', 'Erreur de connexion.', 'error'); }
 }
 
 function _downloadClientContractPdf(contractId) {
