@@ -3354,7 +3354,6 @@ var OFFERS = [
 // ── SPLASH → APP ─────────────────────────────────────────────
 setTimeout(function(){
   var _bootHandled = false;
-  var _bootDiag = '';
   // Session cliente — isolée dans son propre try : si cette valeur est corrompue
   // (JSON.parse échoue), ça ne doit PAS empêcher de retomber sur la session
   // prestataire ci-dessous — avant ce correctif, une exception ici sautait
@@ -3363,33 +3362,27 @@ setTimeout(function(){
     var s = localStorage.getItem('fa_genesis_session');
     var t = localStorage.getItem('fa_genesis_token');
     if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); _bootHandled = true; }
-  } catch(e){ _bootDiag = 'client JSON: ' + e.message; }
+  } catch(e){}
   // Prestataire sans compte client associé sur cet appareil : sans ce repli, l'app
   // retombait TOUJOURS sur l'écran d'accueil "Je cherche un prestataire..." à froid,
   // quelle que soit sa session prestataire déjà active — showApp()/_ptnrInit() ne
-  // s'exécutaient donc jamais automatiquement, et un lien de notification en attente
-  // n'était jamais consommé puisque showApp() ne tournait jamais tout seul.
+  // s'exécutaient donc jamais automatiquement. On atterrit désormais directement dans
+  // l'espace prestataire par défaut (au lieu de l'accueil client/invité, qui n'a aucun
+  // sens pour un appareil où seul un compte prestataire existe) — que ce démarrage
+  // vienne d'une notification ou d'une simple ouverture normale de l'app. Si un lien de
+  // notification plus précis (ex: une conversation donnée) arrive ensuite via
+  // _restoreNavSession()/_handleNotifHash(), il prend le dessus sans conflit.
   if(!_bootHandled){
     try{
       if(localStorage.getItem('fa_genesis_partner_token')){
         GUEST = true;
         _exitSplash(showApp);
+        setTimeout(function(){ if(typeof nav==='function') nav('partner'); }, 200);
         _bootHandled = true;
       }
-    } catch(e){ _bootDiag += ' | partner: ' + e.message; }
-  }
-  if(!_bootHandled){
-    // Diagnostic temporaire (natif uniquement) : n'alerte QUE si une session semblait
-    // exister mais n'a pas pu être exploitée — jamais pour un nouvel utilisateur sans
-    // aucune session, qui doit voir l'écran d'accueil normalement et silencieusement.
-    try{
-      if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
-        var _hadAnyToken = localStorage.getItem('fa_genesis_partner_token') || localStorage.getItem('fa_genesis_token') || localStorage.getItem('fa_genesis_session');
-        if(_hadAnyToken){ alert('DIAG GENESIS : retour écran accueil malgré session présente. ' + (_bootDiag || 'raison inconnue')); }
-      }
     } catch(e){}
-    _exitSplash(showRoleChoice);
   }
+  if(!_bootHandled){ _exitSplash(showRoleChoice); }
 }, 2500);
 
 function _exitSplash(callback){
@@ -14110,11 +14103,6 @@ function _adminSubscribePush(){
 // Appelé quand l'app est déjà ouverte et que l'utilisateur clique sur une notif
 function _handleNotifHash(hash, _retryCount){
   if(!hash) return;
-  // Diagnostic temporaire : confirme si cette fonction est bien appelée par le code natif au
-  // clic sur une notification, et avec quelle valeur — à retirer une fois la cause confirmée.
-  if(!_retryCount && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
-    try{ alert('DIAG GENESIS : _handleNotifHash reçu hash="' + hash + '" _ptnrToken=' + (_ptnrToken?'présent':'absent')); }catch(e){}
-  }
   // Auto-attente : sur l'app native, ce hash peut être livré par le code natif (tap sur une
   // notification) à un instant fixe qui ne correspond pas forcément au moment où la session
   // prestataire a fini de se restaurer (_ptnrToken posé par _ptnrInit(), lui-même déclenché
