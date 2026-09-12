@@ -13441,6 +13441,13 @@ function _clearPtnrMsgPoll(){ if(_ptnrMsgPollInterval){clearInterval(_ptnrMsgPol
 function _ptnrNav(screen){
   if(screen !== 'messages') _clearPtnrMsgPoll();
   try{sessionStorage.setItem('fa_ptnr_screen',screen);}catch(e){}
+  // Filet de sécurité pour les deep-links (notification tap) : si le tableau de bord n'est
+  // pas l'écran actuellement affiché (ex: écran "choix du profil" toujours actif faute de
+  // profil déjà sélectionné), _ptnrNav() basculerait silencieusement un onglet à l'intérieur
+  // d'un conteneur caché — le prestataire resterait bloqué sur l'ancien écran. On force donc
+  // toujours l'affichage du dashboard ici, avant de router vers l'onglet demandé.
+  var _dashEl = document.getElementById('ptnr-dash-screen');
+  if(_dashEl && _dashEl.style.display === 'none') _ptnrShowScreen('dash');
   _ptnrCloseDrawer();
   // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
   var _cEl = document.getElementById('content');
