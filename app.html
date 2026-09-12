@@ -13388,10 +13388,15 @@ function _ptnrPollAccountStatus(){
 
 function _ptnrShowDash(){
   _ptnrShowScreen('dash');
-  // Activer la nav bas partenaire (Accueil actif par défaut)
+  // Activer la nav bas partenaire — le choix de l'onglet actif (surlignage) est laissé à
+  // l'appel _ptnrNav(...) qui suit systématiquement _ptnrShowDash() partout dans le code
+  // (home après connexion/signature, mais aussi messages/missions/etc. pour un deep-link de
+  // notification) : forcer "Accueil" ici en dur était redondant dans le cas normal et FAUX
+  // quand on arrive directement sur un autre onglet (ex: notification de message après
+  // déverrouillage biométrique) — le surlignage restait sur "Accueil" alors que le contenu
+  // affiché était bien "Messages".
   document.querySelectorAll('.client-nav').forEach(function(b){ b.style.display='none'; });
   document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display=''; b.className='nav-btn ptnr-nav'; });
-  var pnbH = document.getElementById('pnb-home'); if(pnbH) pnbH.className='nav-btn ptnr-nav on';
   if(_ptnrSession){
     var p = _ptnrSession;
     var savedProfile = null;
