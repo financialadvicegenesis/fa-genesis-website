@@ -12864,7 +12864,20 @@ function _ptnrBiolockUnlock(){
   var errEl = document.getElementById('ptnr-biolock-err');
   if(errEl) errEl.className = 'ptnr-login-err';
   if(btn){ btn.disabled = true; }
+  var _settled = false;
+  // Filet de sécurité : le plugin biométrique lance sa propre Activity Android séparée pour
+  // l'invite (voir AuthActivity.java) — si le système tue le processus de l'app pendant ce
+  // détour, le résultat de startActivityForResult peut ne jamais revenir (limitation connue
+  // d'Android), laissant la promesse ci-dessous éternellement en attente et le bouton
+  // "Déverrouiller" bloqué indéfiniment. app.html étant de toute façon rechargée de zéro dans
+  // ce cas précis (voir MainActivity.java côté natif), ce timeout ne sert qu'à débloquer
+  // l'UTILISATEUR RESTÉ SUR L'ANCIENNE PAGE si jamais elle n'a PAS été rechargée (résultat
+  // juste lent/perdu sans mort de processus) — un cas plus rare mais réel.
+  var _timeoutId = setTimeout(function(){ _done(false, 'Délai dépassé. Réessayez.'); }, 20000);
   function _done(ok, msg){
+    if(_settled) return;
+    _settled = true;
+    clearTimeout(_timeoutId);
     if(btn){ btn.disabled = false; }
     if(ok){
       _ptnrBioUnlocked = true;
