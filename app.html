@@ -13858,16 +13858,54 @@ var _ptnrPendingScrollThread = null; // email du client à faire défiler/surlig
 // consomme, remplaçant les anciennes vérifications éparpillées (window._pendingDeepLinkHash à
 // un endroit, _ptnrPendingScrollThread à un autre) par un unique chemin de décision.
 var _ptnrPendingNotifTarget = null;
+var _PTNR_NOTIF_TARGET_LS_KEY = 'fa_genesis_pending_notif_target';
+
+// Persistance localStorage — indispensable, pas juste défensive : la WebView Android (moteur
+// Chromium) tourne dans son propre PROCESSUS DE RENDU, séparé du processus de MainActivity. Ce
+// processus de rendu peut être recyclé par le système pendant qu'une autre Activity (la
+// biométrie, voir AuthActivity.java) est au premier plan — la page se recharge alors en
+// interne, SANS qu'aucun onCreate()/onNewIntent() natif ne se redéclenche. Toute persistance
+// côté natif (SharedPreferences, extras d'Intent) est donc invisible à ce scénario précis :
+// seul un stockage lu directement par la page elle-même à chaque chargement — quelle qu'en
+// soit la cause — peut survivre à ce cas. localStorage (contrairement à une variable JS ou à
+// sessionStorage, dont la garantie de survie à ce cas précis est moins sûre) est backé disque
+// et scopé à l'origine de la page, pas au cycle de vie d'un quelconque processus Android.
+function _ptnrSetPendingNotifTarget(target){
+  _ptnrPendingNotifTarget = target;
+  try{ localStorage.setItem(_PTNR_NOTIF_TARGET_LS_KEY, JSON.stringify({ target: target, ts: Date.now() })); }catch(e){}
+}
+function _ptnrLoadPendingNotifTargetFromStorage(){
+  if(_ptnrPendingNotifTarget) return; // déjà posée ce chargement-ci (ex: notification fraîche), ne pas écraser
+  try{
+    var raw = localStorage.getItem(_PTNR_NOTIF_TARGET_LS_KEY);
+    if(!raw) return;
+    var stored = JSON.parse(raw);
+    // Péremption à 5 minutes : au-delà, on considère que l'utilisateur a de toute façon rouvert
+    // l'app normalement entre-temps — pas question de le rediriger vers une vieille conversation
+    // des jours plus tard simplement parce qu'une entrée n'avait jamais été nettoyée.
+    if(!stored || !stored.target || (Date.now() - (stored.ts||0)) > 5*60*1000){
+      localStorage.removeItem(_PTNR_NOTIF_TARGET_LS_KEY);
+      return;
+    }
+    _ptnrPendingNotifTarget = stored.target;
+    console.log('[GENESIS_NOTIFICATION] destination_restored_from_storage');
+  }catch(e){}
+}
 
 function _ptnrApplyPendingNotifTarget(){
   if(!_ptnrPendingNotifTarget) return false;
   var target = _ptnrPendingNotifTarget;
   _ptnrPendingNotifTarget = null;
+  try{ localStorage.removeItem(_PTNR_NOTIF_TARGET_LS_KEY); }catch(e){}
   console.log('[GENESIS_NOTIFICATION] destination_restored', target.screen);
   if(target.threadEmail) _ptnrPendingScrollThread = target.threadEmail;
   _ptnrNav(target.screen);
   return true;
 }
+// Appelé dès l'analyse du script (avant même le timer de démarrage/splash, avant toute
+// décision de navigation) — restaure une éventuelle destination laissée par un chargement de
+// page précédent interrompu (voir le commentaire détaillé au-dessus de _ptnrSetPendingNotifTarget).
+_ptnrLoadPendingNotifTargetFromStorage();
 
 function _ptnrScrollToThread(email){
   var key = _ptnrThreadKey(email);
@@ -13892,9 +13930,9 @@ function _ptnrScrollToThread(email){
 
 function _ptnrThreadKey(email){ return String(email||'').replace(/[^a-z0-9]/gi, '_'); }
 
-function _ptnrLoadMessages(){
+function _ptnrLoadMessages(_isRetry){
   var el = document.getElementById('ptnr-messages-list');
-  if(el) el.innerHTML = _skeletonRows(3, true);
+  if(el && !_isRetry) el.innerHTML = _skeletonRows(3, true);
   _ptnrFetch('/api/partner/inbox').then(function(data){
     var flat = data.messages || [];
     if(!flat.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-empty-txt">Aucun message</div></div>'; return; }
@@ -13953,7 +13991,15 @@ function _ptnrLoadMessages(){
       var _pst = _ptnrPendingScrollThread; _ptnrPendingScrollThread = null;
       setTimeout(function(){ _ptnrScrollToThread(_pst); }, 100);
     }
-  }).catch(function(){ if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
+  }).catch(function(err){
+    console.log('[GENESIS_NOTIFICATION] navigation_failed messages_load_error', (err && err.message) || err);
+    // Un échec juste après un démarrage à froid (ex: via notification) est souvent transitoire
+    // (réseau/DNS pas encore chaud) — une seule nouvelle tentative automatique avant d'afficher
+    // une erreur définitive à l'utilisateur, plutôt que de le laisser bloqué sur "Erreur de
+    // chargement" pour un problème qui se serait résolu de lui-même une seconde plus tard.
+    if(!_isRetry){ setTimeout(function(){ _ptnrLoadMessages(true); }, 1200); return; }
+    if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
+  });
 }
 
 // Suppression d'une conversation côté prestataire uniquement — le client (et l'admin)
@@ -14247,7 +14293,7 @@ function _handleNotifHash(hash, _retryCount){
   var msgThreadMatch = hash.match(/^partner:messages:(.+)$/);
   if(msgThreadMatch){
     console.log('[GENESIS_NOTIFICATION] navigate_conversation');
-    _ptnrPendingNotifTarget = { screen: 'messages', threadEmail: decodeURIComponent(msgThreadMatch[1]) };
+    _ptnrSetPendingNotifTarget({ screen: 'messages', threadEmail: decodeURIComponent(msgThreadMatch[1]) });
     nav('partner');
     return;
   }
@@ -14262,15 +14308,15 @@ function _handleNotifHash(hash, _retryCount){
   if(hash === 'open-admin' || hash === 'admin'){
     nav('partner'); setTimeout(function(){ if(typeof _openAdminPanel==='function') _openAdminPanel(); }, 400);
   } else if(hash === 'partner:missions' || hash === 'missions'){
-    _ptnrPendingNotifTarget = { screen: 'missions', threadEmail: null }; nav('partner');
+    _ptnrSetPendingNotifTarget({ screen: 'missions', threadEmail: null }); nav('partner');
   } else if(hash === 'partner:messages'){
-    _ptnrPendingNotifTarget = { screen: 'messages', threadEmail: null }; nav('partner');
+    _ptnrSetPendingNotifTarget({ screen: 'messages', threadEmail: null }); nav('partner');
   } else if(hash === 'partner:livrables' || hash === 'partner:projects'){
-    _ptnrPendingNotifTarget = { screen: 'livrables', threadEmail: null }; nav('partner');
+    _ptnrSetPendingNotifTarget({ screen: 'livrables', threadEmail: null }); nav('partner');
   } else if(hash === 'partner:profile'){
-    _ptnrPendingNotifTarget = { screen: 'profil', threadEmail: null }; nav('partner');
+    _ptnrSetPendingNotifTarget({ screen: 'profil', threadEmail: null }); nav('partner');
   } else if(hash === 'partner:versements'){
-    _ptnrPendingNotifTarget = { screen: 'versements', threadEmail: null }; nav('partner');
+    _ptnrSetPendingNotifTarget({ screen: 'versements', threadEmail: null }); nav('partner');
   } else if(hash === 'open-partner' || hash === 'partner:home'){
     nav('partner');
   } else if(hash === 'tab:resa' || hash === 'tab:reservations' || hash === 'open-reservations' || hash === 'reservations' || hash === 'open-suivi'){
