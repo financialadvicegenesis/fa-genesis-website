@@ -201,8 +201,18 @@
 
     window.FAGMobile.authenticateBiometric = async function(reason) {
         try {
-            if (!Plugins.BiometricAuthNative) return { success: false, error: 'Biométrie indisponible' };
-            await Plugins.BiometricAuthNative.internalAuthenticate({
+            // GenesisBiometric (natif, com.fagenesis.genesis.GenesisBiometricPlugin) — remplace
+            // le plugin tiers @aparajita/capacitor-biometric-auth (BiometricAuthNative) pour
+            // l'authentification elle-même. Cause racine corrigée : ce dernier affichait son
+            // invite depuis une Activity Android SÉPARÉE (AuthActivity), ce qui faisait passer
+            // MainActivity — et sa WebView — en arrière-plan pendant l'authentification,
+            // l'exposant à un recyclage du processus de rendu Chromium par le système (perte
+            // silencieuse de tout l'état JS, dont la destination d'une notification en cours de
+            // traitement). Confirmé par un test A/B réel sur compte réel (biométrie désactivée :
+            // aucun problème : biométrie activée : problème systématique). GenesisBiometric
+            // affiche l'invite directement sur MainActivity (comportement officiellement
+            // documenté par Android), qui ne quitte donc jamais le premier plan.
+            var params = {
                 reason: reason || 'Accédez à votre compte FA Genesis',
                 androidTitle: 'FA Genesis',
                 androidSubtitle: 'Déverrouillage sécurisé',
@@ -210,7 +220,19 @@
                 // Autorise le repli sur le code PIN / schéma de l'appareil après plusieurs
                 // échecs biométriques, pour ne jamais bloquer totalement l'accès au compte.
                 allowDeviceCredential: true
-            });
+            };
+            // Repli sur l'ancien plugin tant que la version native contenant GenesisBiometric
+            // n'est pas encore installée sur l'appareil (app.html/mobile-bridge.js sont chargés
+            // en direct depuis le serveur — ce code peut donc être actif AVANT que la nouvelle
+            // version native ne soit publiée/installée par chaque utilisateur). Sans ce repli,
+            // la biométrie serait indisponible pour tout le monde jusqu'à mise à jour native.
+            if (Plugins.GenesisBiometric) {
+                await Plugins.GenesisBiometric.authenticate(params);
+            } else if (Plugins.BiometricAuthNative) {
+                await Plugins.BiometricAuthNative.internalAuthenticate(params);
+            } else {
+                return { success: false, error: 'Biométrie indisponible' };
+            }
             return { success: true };
         } catch(e) {
             return { success: false, error: (e && e.message) || 'Authentification annulée' };
