@@ -2789,8 +2789,13 @@ a{text-decoration:none;color:inherit}
         </div>
       </div>
 
-      <!-- Biometric lock screen (native app only, session existante mais verrouillée) -->
-      <div id="ptnr-biolock-screen" style="display:none;">
+      <!-- Voile de verrouillage biométrique — PAS un écran plein qui remplace le contenu.
+           Le contenu exact (conversation ciblée par une notification, dernier onglet ouvert,
+           sélecteur de profil...) est déjà rendu EN DESSOUS avant même que ce voile n'apparaisse
+           — exactement comme WhatsApp/Instagram : l'authentification ne fait jamais que retirer
+           ce voile, elle ne décide et ne déclenche plus jamais de navigation. Voir
+           _ptnrShowBiolockOverlay() / _ptnrHideBiolockOverlay() / _ptnrBiolockUnlock(). -->
+      <div id="ptnr-biolock-screen" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(8,8,8,.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);align-items:center;justify-content:center;">
         <div class="ptnr-login-wrap">
           <div class="ptnr-login-logo">GENESIS</div>
           <div style="font-size:40px;color:#FFD700;margin:8px 0 4px;"><i class="fa-solid fa-lock"></i></div>
@@ -12881,11 +12886,13 @@ function _ptnrBiolockUnlock(){
     if(btn){ btn.disabled = false; }
     if(ok){
       _ptnrBioUnlocked = true;
-      if(_ptnrPendingNotifTarget) console.log('[GENESIS_NOTIFICATION] authentication_success');
-      // nav('partner') applique automatiquement _ptnrPendingNotifTarget s'il y en a un
-      // (voir le point d'entrée unique du dashboard ci-dessus) — l'authentification ne
-      // décide jamais elle-même de la destination, elle se contente d'autoriser l'accès.
-      nav('partner');
+      console.log('[GENESIS_NOTIFICATION] authentication_success');
+      // Le contenu correct (destination de notification déjà appliquée, ou dernier onglet)
+      // est affiché en dessous du voile depuis AVANT que celui-ci n'apparaisse (voir
+      // _ptnrShowBiolockOverlay, appelé par nav() une fois le rendu terminé). Réussir la
+      // biométrie ne fait donc plus JAMAIS naviguer où que ce soit — uniquement retirer le
+      // voile — à la manière de WhatsApp/Instagram.
+      _ptnrHideBiolockOverlay();
     } else if(errEl){
       errEl.textContent = msg || 'Authentification échouée.';
       errEl.className = 'ptnr-login-err on';
@@ -13045,10 +13052,12 @@ function _ptnrTogglePass(){
 }
 
 function _ptnrShowScreen(name){
-  // name: 'login' | 'biolock' | 'register' | 'admin' | 'profiles' | 'dash'
-  var screens = ['ptnr-login-screen','ptnr-biolock-screen','ptnr-register-screen','ptnr-admin-screen','ptnr-profile-screen','ptnr-dash-screen'];
+  // name: 'login' | 'register' | 'admin' | 'profiles' | 'dash'
+  // Le verrou biométrique n'est plus un "écran" parmi d'autres ici : c'est un voile superposé
+  // au contenu déjà affiché (voir _ptnrShowBiolockOverlay), géré indépendamment de _ptnrShowScreen.
+  var screens = ['ptnr-login-screen','ptnr-register-screen','ptnr-admin-screen','ptnr-profile-screen','ptnr-dash-screen'];
   screens.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
-  var show = name==='login'?'ptnr-login-screen':name==='biolock'?'ptnr-biolock-screen':name==='register'?'ptnr-register-screen':name==='admin'?'ptnr-admin-screen':name==='profiles'?'ptnr-profile-screen':'ptnr-dash-screen';
+  var show = name==='login'?'ptnr-login-screen':name==='register'?'ptnr-register-screen':name==='admin'?'ptnr-admin-screen':name==='profiles'?'ptnr-profile-screen':'ptnr-dash-screen';
   var el = document.getElementById(show); if(el) el.style.display='';
   // Masquer la nav partenaire sur tous les écrans sauf le dashboard authentifié
   if(name !== 'dash') document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display='none'; });
@@ -13057,10 +13066,22 @@ function _ptnrShowScreen(name){
     var eye=document.getElementById('ptnr-pass-eye'); if(eye) eye.innerHTML=EYE_OPEN_SVG;
     var p=document.getElementById('ptnr-pass'); if(p){p.value='';p.type='password';}
   }
-  if(name === 'biolock'){
-    var errEl=document.getElementById('ptnr-biolock-err'); if(errEl) errEl.className='ptnr-login-err';
-    setTimeout(_ptnrBiolockUnlock, 200);
-  }
+}
+
+// Pose le voile biométrique par-dessus le contenu déjà affiché (JAMAIS avant) et lance
+// automatiquement l'invite native — à la manière de WhatsApp/Instagram.
+function _ptnrShowBiolockOverlay(){
+  var el = document.getElementById('ptnr-biolock-screen');
+  if(!el) return;
+  var errEl = document.getElementById('ptnr-biolock-err'); if(errEl) errEl.className = 'ptnr-login-err';
+  el.style.display = 'flex';
+  setTimeout(_ptnrBiolockUnlock, 200);
+}
+
+// Retire le voile — ne navigue jamais nulle part, le contenu en dessous était déjà le bon.
+function _ptnrHideBiolockOverlay(){
+  var el = document.getElementById('ptnr-biolock-screen');
+  if(el) el.style.display = 'none';
 }
 
 var _ptnrRegOpenedAt = 0;
@@ -13511,10 +13532,11 @@ function _ptnrNav(screen){
   // pas l'écran actuellement affiché (ex: écran "choix du profil" toujours actif faute de
   // profil déjà sélectionné), _ptnrNav() basculerait silencieusement un onglet à l'intérieur
   // d'un conteneur caché — le prestataire resterait bloqué sur l'ancien écran. On force donc
-  // l'affichage du dashboard ici — SAUF si le verrou biométrique est requis (sécurité) : ne
-  // jamais court-circuiter l'écran de biométrie/connexion pour révéler le contenu en dessous.
+  // l'affichage du dashboard ici. Le verrou biométrique n'est plus un écran qui cache le
+  // contenu (voir _ptnrShowBiolockOverlay) : c'est un voile superposé indépendant, il reste
+  // au-dessus (z-index) quoi qu'il arrive ici — rien à court-circuiter.
   var _dashEl = document.getElementById('ptnr-dash-screen');
-  if(_dashEl && _dashEl.style.display === 'none' && _ptnrToken && !_ptnrRequiresBiolock()) _ptnrShowScreen('dash');
+  if(_dashEl && _dashEl.style.display === 'none' && _ptnrToken) _ptnrShowScreen('dash');
   _ptnrCloseDrawer();
   // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
   var _cEl = document.getElementById('content');
@@ -14389,28 +14411,41 @@ if('serviceWorker' in navigator){
     _origNav(tab);
     if(tab === 'partner'){
       if(!_ptnrToken){ _ptnrShowScreen('login'); return; }
-      if(_ptnrRequiresBiolock()){
-        if(_ptnrPendingNotifTarget) console.log('[GENESIS_NOTIFICATION] authentication_required');
-        _ptnrShowScreen('biolock');
+      // Le voile biométrique (s'il est requis) est posé APRÈS avoir affiché le contenu
+      // correct en dessous — jamais avant, jamais en bloquant le rendu. C'est le mécanisme
+      // WhatsApp/Instagram : la destination (conversation exacte visée par une notification,
+      // dernier onglet ouvert, sélecteur de profil...) est TOUJOURS la bonne dès la première
+      // image ; l'authentification n'autorise que sa VISUALISATION, elle ne la décide jamais
+      // et ne déclenche plus aucune navigation à son succès (voir _ptnrBiolockUnlock).
+      var _needsLock = _ptnrRequiresBiolock();
+      if(_needsLock && _ptnrPendingNotifTarget) console.log('[GENESIS_NOTIFICATION] authentication_required');
+      if(_ptnrSession && (_ptnrSession.partner_type==='admin'||_ptnrSession.role==='admin')){
+        _ptnrShowScreen('admin');
+        if(_needsLock) _ptnrShowBiolockOverlay();
         return;
       }
-      if(_ptnrSession && (_ptnrSession.partner_type==='admin'||_ptnrSession.role==='admin')){ _ptnrShowScreen('admin'); return; }
       var profileId = localStorage.getItem('fa_genesis_partner_profile');
       if(_ptnrToken && profileId){
         if(_ptnrSession) _ptnrSession._profileId = profileId;
         _ptnrShowDash();
         // Point d'entrée unique du dashboard : la destination d'une notification en attente
         // (_ptnrPendingNotifTarget, posée AVANT tout passage par une porte d'authentification)
-        // est TOUJOURS prioritaire sur le choix par défaut — qu'on arrive ici directement
-        // (session déjà déverrouillée), après un succès de biométrie, ou après sélection de
-        // profil. L'authentification n'a fait qu'autoriser l'accès ; elle ne décide jamais de
-        // la destination. Si aucune notification n'est en attente, on retombe sur le dernier
-        // onglet connu (sessionStorage) ou "accueil" par défaut.
-        if(_ptnrApplyPendingNotifTarget()) return;
-        var _savedPtnrScreen = null;
-        try{ _savedPtnrScreen = sessionStorage.getItem('fa_ptnr_screen'); }catch(e){}
-        if(!_savedPtnrScreen) _ptnrNav('home');
-      } else if(_ptnrToken){ _ptnrShowScreen('profiles'); _ptnrLoadProfileSelector(); }
+        // est TOUJOURS prioritaire sur le choix par défaut, et appliquée ICI — avant même de
+        // savoir si un voile biométrique doit être posé par-dessus. Le contenu affiché sous
+        // le voile est donc toujours le bon dès la première image. Si aucune notification
+        // n'est en attente, on retombe sur le dernier onglet connu (sessionStorage) ou
+        // "accueil" par défaut.
+        var _appliedNotif = _ptnrApplyPendingNotifTarget();
+        if(!_appliedNotif){
+          var _savedPtnrScreen = null;
+          try{ _savedPtnrScreen = sessionStorage.getItem('fa_ptnr_screen'); }catch(e){}
+          if(!_savedPtnrScreen) _ptnrNav('home');
+        }
+        if(_needsLock) _ptnrShowBiolockOverlay();
+      } else if(_ptnrToken){
+        _ptnrShowScreen('profiles'); _ptnrLoadProfileSelector();
+        if(_needsLock) _ptnrShowBiolockOverlay();
+      }
     }
   };
 })();
