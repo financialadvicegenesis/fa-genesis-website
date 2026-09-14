@@ -3655,6 +3655,7 @@ function initApp(){
     if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 120000); }
     if(typeof _clientRefreshMsgBadge==='function') _clientRefreshMsgBadge();
     if(!window._msgBadgePollStarted){ window._msgBadgePollStarted = true; setInterval(_clientRefreshMsgBadge, 90000); }
+    if(typeof _genesisConnectChatSocket==='function') _genesisConnectChatSocket();
     if(!window._qgPollStarted){ window._qgPollStarted = true; setInterval(function(){ if(typeof _syncUserBadge==='function' && USER && !GUEST) _syncUserBadge(); }, 30000); }
     if(!window._statusCardPollStarted){ window._statusCardPollStarted = true; setInterval(function(){ if(typeof loadStatusCard==='function' && USER && !GUEST) loadStatusCard(); }, 30000); }
     setTimeout(function(){
@@ -9480,6 +9481,165 @@ var _chatKey=null, _chatName=null, _chatPartnerEmail=null;
 var _chatPollInterval=null;
 function _clearChatPoll(){ if(_chatPollInterval){clearInterval(_chatPollInterval);_chatPollInterval=null;} }
 
+// ── TEMPS RÉEL (WebSocket) — façon WhatsApp/Messenger/Instagram ────────────────
+// Une connexion permanente (au lieu d'interroger le serveur toutes les X secondes) : les
+// messages et accusés de lecture arrivent instantanément quand l'app est ouverte. Le polling
+// ci-dessus/ci-dessous reste en place mais à fréquence très réduite, comme simple filet de
+// sécurité si la connexion est momentanément indisponible (coupure réseau, app tout juste
+// revenue au premier plan...).
+var _genesisChatWs = null;
+var _genesisChatWsIdentity = null;
+var _genesisChatWsRetryMs = 1000;
+var _genesisChatWsRetryTimer = null;
+// Horodatage du dernier message envoyé DEPUIS CET ONGLET/APPAREIL (sendChatMessage /
+// _ptnrSendReply) — évite d'afficher deux fois son propre message quand l'écho WebSocket
+// (self:true, pour la synchro multi-appareil) revient alors que la bulle optimiste locale
+// est déjà affichée.
+var _genesisLastSentMsgAt = 0;
+
+function _genesisChatWsUrl(token){
+  var api = window.FA_GENESIS_API || API;
+  var wsBase = api.replace(/^https/, 'wss').replace(/^http/, 'ws');
+  return wsBase + '/ws/chat?token=' + encodeURIComponent(token);
+}
+
+// Une seule identité connectée à la fois (client OU prestataire) — déterminée par l'onglet
+// réellement affiché à l'écran, pas par la simple présence d'un token en mémoire (un appareil
+// peut avoir les deux sessions stockées sans que les deux soient "actives" en même temps).
+function _genesisActiveChatIdentity(){
+  var partnerTab = document.getElementById('tab-partner');
+  var isPartnerActive = partnerTab && partnerTab.classList.contains('on');
+  if(isPartnerActive && typeof _ptnrToken!=='undefined' && _ptnrToken && _ptnrSession && _ptnrSession.email){
+    return { role:'partner', token:_ptnrToken, key:'partner:'+_ptnrSession.email.toLowerCase() };
+  }
+  if(USER && USER._token && USER.email){
+    return { role:'client', token:USER._token, key:'client:'+USER.email.toLowerCase() };
+  }
+  if(typeof _ptnrToken!=='undefined' && _ptnrToken && _ptnrSession && _ptnrSession.email){
+    return { role:'partner', token:_ptnrToken, key:'partner:'+_ptnrSession.email.toLowerCase() };
+  }
+  return null;
+}
+
+function _genesisConnectChatSocket(){
+  if(typeof WebSocket==='undefined') return;
+  var identity = _genesisActiveChatIdentity();
+  if(!identity) return;
+  // Déjà connecté avec la bonne identité : rien à faire (évite de reconnecter à chaque appel
+  // de nav(), qui déclenche cette fonction après CHAQUE navigation).
+  if(_genesisChatWs && _genesisChatWsIdentity===identity.key && (_genesisChatWs.readyState===0||_genesisChatWs.readyState===1)) return;
+  if(_genesisChatWs){ try{ _genesisChatWs.onclose=null; _genesisChatWs.close(); }catch(e){} }
+  if(_genesisChatWsRetryTimer){ clearTimeout(_genesisChatWsRetryTimer); _genesisChatWsRetryTimer=null; }
+  try{
+    _genesisChatWsIdentity = identity.key;
+    var ws = new WebSocket(_genesisChatWsUrl(identity.token));
+    _genesisChatWs = ws;
+    ws.onopen = function(){ _genesisChatWsRetryMs = 1000; };
+    ws.onmessage = function(ev){
+      try{ _genesisHandleChatWsMessage(JSON.parse(ev.data)); }catch(e){}
+    };
+    ws.onclose = function(){
+      if(_genesisChatWs===ws) _genesisChatWs = null;
+      _genesisChatWsRetryTimer = setTimeout(_genesisConnectChatSocket, _genesisChatWsRetryMs);
+      _genesisChatWsRetryMs = Math.min(_genesisChatWsRetryMs*2, 30000);
+    };
+    ws.onerror = function(){ try{ ws.close(); }catch(e){} };
+  }catch(e){}
+}
+
+// Reconnexion immédiate au retour au premier plan (le système d'exploitation coupe souvent
+// les connexions réseau des apps en arrière-plan) — sans attendre le prochain nav().
+document.addEventListener('fagmobile:resumed', function(){
+  if(typeof _genesisConnectChatSocket==='function') _genesisConnectChatSocket();
+});
+
+function _genesisHandleChatWsMessage(data){
+  if(!data || !data.type) return;
+  var partnerTab = document.getElementById('tab-partner');
+  var isPartnerActive = partnerTab && partnerTab.classList.contains('on');
+  if(data.type === 'chat_message'){
+    var m = data.message; if(!m) return;
+    if(isPartnerActive){
+      // Rechargement protégé (ne détruit jamais un champ de réponse en cours d'usage — voir
+      // _ptnrTryRefreshMessages) plutôt qu'un ajout chirurgical : l'écran Messages prestataire
+      // affiche TOUS les fils à la fois, pas une conversation isolée comme côté client.
+      if(typeof _ptnrTryRefreshMessages==='function') _ptnrTryRefreshMessages();
+      if(typeof _ptnrRefreshBadges==='function') _ptnrRefreshBadges();
+    } else {
+      // Écho de mon propre envoi tout juste passé par sendChatMessage() sur CET appareil :
+      // la bulle optimiste locale l'affiche déjà, ne pas la dupliquer (voir _genesisLastSentMsgAt).
+      var isOwnRecentEcho = data.self && (Date.now() - _genesisLastSentMsgAt) < 4000;
+      var counterpart = (m.from_type==='partner') ? m.from_email : m.to_email;
+      if(!isOwnRecentEcho && _chatPartnerEmail && counterpart && counterpart.toLowerCase()===_chatPartnerEmail.toLowerCase() && document.getElementById('chat-msgs')){
+        _clientAppendChatBubble(m);
+        // Le message vient d'apparaître à l'écran, déjà ouvert : le marquer lu tout de suite,
+        // comme à l'ouverture d'une conversation (sauf écho multi-appareil de mon propre envoi).
+        if(!data.self && USER && USER._token){
+          fetch((window.FA_GENESIS_API||API)+'/api/messages/conversation/read',{
+            method:'POST', headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'},
+            body:JSON.stringify({counterpart:counterpart})
+          }).catch(function(){});
+        }
+      } else if(!data.self && typeof showToast==='function'){
+        showToast(m.from_name||'Nouveau message', (m.content||'').substring(0,80));
+      }
+      if(typeof _clientRefreshMsgBadge==='function') _clientRefreshMsgBadge();
+    }
+  } else if(data.type === 'chat_read'){
+    if(isPartnerActive){
+      if(typeof _ptnrTryRefreshMessages==='function') _ptnrTryRefreshMessages();
+    } else {
+      _genesisMarkSentAsReadUi(data.counterpart);
+    }
+  }
+}
+
+// Coche bleue "lu" en temps réel sur mes messages envoyés à ce destinataire, dans la
+// conversation actuellement ouverte côté client — sans recharger toute la liste.
+function _genesisMarkSentAsReadUi(counterpart){
+  if(!counterpart || !_chatPartnerEmail) return;
+  if(counterpart.toLowerCase() !== _chatPartnerEmail.toLowerCase()) return;
+  document.querySelectorAll('#chat-msgs .chat-bubble-mine .fa-check').forEach(function(icon){
+    icon.className = 'fa-solid fa-check-double';
+    icon.style.color = '#53bdeb';
+    icon.title = 'Lu';
+  });
+}
+
+// Un seul message = une seule bulle HTML, réutilisée par le rendu initial (loadChatMessages)
+// ET par l'ajout temps réel (_clientAppendChatBubble) pour ne jamais dupliquer le gabarit.
+// Coches façon WhatsApp/Messenger sur MES messages uniquement : ✓ gris = envoyé au serveur,
+// ✓✓ bleu = lu par le destinataire (read_at posé, voir POST .../conversation/read).
+function _clientChatBubbleHtml(m, myEmail){
+  var isMine=(m.from_email&&m.from_email.toLowerCase()===myEmail);
+  var time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
+  var checkHtml='';
+  if(isMine){
+    checkHtml = m.read_at
+      ? ' <i class="fa-solid fa-check-double" style="color:#53bdeb;font-size:11px;" title="Lu"></i>'
+      : ' <i class="fa-solid fa-check" style="color:#8696a0;font-size:11px;" title="Envoyé"></i>';
+  }
+  return '<div class="chat-bubble '+(isMine?'chat-bubble-mine':'chat-bubble-theirs')+'" id="chat-msg-'+(m.id||'')+'" data-mine="'+(isMine?'1':'0')+'">'
+    +(m.subject&&m.subject!=='Message'&&m.subject?'<div class="chat-bubble-subj">'+m.subject+'</div>':'')
+    +'<div>'+(m.content||m.body||'')+'</div>'
+    +(time?'<div class="chat-bubble-time">'+time+checkHtml+'</div>':'')
+    +'</div>';
+}
+
+// Ajout temps réel d'UN message dans la conversation actuellement ouverte (voir
+// _genesisHandleChatWsMessage) — jamais un rechargement complet, pour rester instantané et
+// ne jamais perturber une saisie en cours, exactement comme WhatsApp/Messenger/Instagram.
+function _clientAppendChatBubble(m){
+  var msgs=document.getElementById('chat-msgs'); if(!msgs) return;
+  if(document.getElementById('chat-msg-'+m.id)) return; // déjà affiché (évite les doublons)
+  var em=msgs.querySelector('.chat-empty-state'); if(em) em.remove();
+  var myEmail=(USER&&USER.email||'').toLowerCase();
+  var wrap=document.createElement('div');
+  wrap.innerHTML=_clientChatBubbleHtml(m, myEmail);
+  msgs.appendChild(wrap.firstChild);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
 // partnerEmail : email du prestataire (pour les conversations client↔partenaire)
 // Si null/absent, la conversation est avec l'admin FA GENESIS (rétrocompatibilité)
 function openConversation(key, name, icon, partnerEmail){
@@ -9510,10 +9670,13 @@ function openConversation(key, name, icon, partnerEmail){
       body:JSON.stringify({counterpart:partnerEmail})
     }).then(function(){ if(typeof _clientRefreshMsgBadge==='function') _clientRefreshMsgBadge(); }).catch(function(){});
   }
+  // Filet de sécurité uniquement : la livraison instantanée passe désormais par le WebSocket
+  // temps réel (_genesisHandleChatWsMessage → append direct de la bulle, sans reload). Fréquence
+  // largement réduite en conséquence (avant : 4s en continu, nécessaire avant l'existence du WS).
   _chatPollInterval = setInterval(function(){
     if(document.getElementById('chat-msgs')) loadChatMessages(_chatPartnerEmail);
     else _clearChatPoll();
-  }, 4000);
+  }, 20000);
 }
 
 // Badge "messages non lus" (façon Instagram/Messenger) sur les points d'entrée Messages
@@ -9580,15 +9743,7 @@ function loadChatMessages(partnerEmail){
       return;
     }
     var myEmail=(USER.email||'').toLowerCase();
-    msgs.innerHTML=list.map(function(m){
-      var isMine=(m.from_email&&m.from_email.toLowerCase()===myEmail);
-      var time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
-      return '<div class="chat-bubble '+(isMine?'chat-bubble-mine':'chat-bubble-theirs')+'">'
-        +(m.subject&&m.subject!=='Message'&&m.subject?'<div class="chat-bubble-subj">'+m.subject+'</div>':'')
-        +'<div>'+(m.content||m.body||'')+'</div>'
-        +(time?'<div class="chat-bubble-time">'+time+'</div>':'')
-        +'</div>';
-    }).join('');
+    msgs.innerHTML=list.map(function(m){ return _clientChatBubbleHtml(m, myEmail); }).join('');
     msgs.scrollTop=msgs.scrollHeight;
   }).catch(function(){
     msgs.innerHTML='<div class="chat-empty-state"><span>Aucun message.</span><span style="font-size:12px;color:#555;">Commencez la conversation !</span></div>';
@@ -9601,6 +9756,10 @@ function sendChatMessage(){
   var text=inp.value.trim(); if(!text) return;
   if(btn){btn.disabled=true;btn.textContent='...';}
   inp.value='';
+  // Marque ce moment pour que l'écho WebSocket de CE message (self:true, voir
+  // _genesisHandleChatWsMessage) ne l'affiche pas une seconde fois — la bulle optimiste
+  // ci-dessous s'en charge déjà, en attendant la confirmation serveur.
+  _genesisLastSentMsgAt = Date.now();
   // Affichage optimiste
   var msgs=document.getElementById('chat-msgs');
   if(msgs){
@@ -13568,6 +13727,7 @@ function _ptnrShowDash(){
     }).catch(function(){});
   }
   if(!_ptnrRefreshTimer) _ptnrRefreshTimer = setInterval(_ptnrRefreshBadges, 90000);
+  if(typeof _genesisConnectChatSocket==='function') _genesisConnectChatSocket();
   if(!_ptnrRepTimer) _ptnrRepTimer = setInterval(function(){
     if(!_ptnrToken) return;
     _ptnrFetch('/api/partner/reputation').then(function(data){
@@ -13633,23 +13793,11 @@ function _ptnrNav(screen){
     console.log('[GENESIS_NOTIFICATION] navigate_messages');
     _ptnrLoadMessages();
     _clearPtnrMsgPoll();
-    _ptnrMsgPollInterval = setInterval(function(){
-      var listEl = document.getElementById('ptnr-messages-list');
-      if(!listEl){ _clearPtnrMsgPoll(); return; }
-      // CRITIQUE : _ptnrLoadMessages() reconstruit TOUT l'écran (innerHTML complet), y compris
-      // les zones de réponse (<textarea>) de chaque fil — contrairement au client (transcript
-      // et zone de saisie dans deux conteneurs séparés), ici tout est dans le même bloc HTML.
-      // Reconstruire ce bloc PENDANT que le prestataire écrit détruit le <textarea> sous ses
-      // doigts : le clavier Android se ferme instantanément et le texte non envoyé est perdu —
-      // exactement le bug rapporté ("le clavier disparaît, impossible d'envoyer"). On saute donc
-      // ce cycle de rafraîchissement tant qu'un champ de réponse a le focus ou contient un
-      // brouillon non envoyé, sur N'IMPORTE quel fil (pas seulement celui visible à l'écran).
-      var active = document.activeElement;
-      var isTypingReply = !!(active && active.classList && active.classList.contains('ptnr-reply-input'));
-      var hasDraftText = Array.prototype.some.call(document.querySelectorAll('.ptnr-reply-input'), function(t){ return t.value && t.value.trim().length > 0; });
-      if(isTypingReply || hasDraftText) return;
-      _ptnrLoadMessages();
-    }, 4000);
+    // Filet de sécurité uniquement : la livraison instantanée passe désormais par le WebSocket
+    // temps réel (_genesisHandleChatWsMessage → _ptnrTryRefreshMessages), déclenché dès qu'un
+    // message arrive plutôt que d'attendre ce cycle. Fréquence largement réduite en conséquence
+    // (avant : 4s en continu, nécessaire uniquement quand le WebSocket n'était pas encore là).
+    _ptnrMsgPollInterval = setInterval(_ptnrTryRefreshMessages, 25000);
   }
   if(screen==='missions') _ptnrLoadMissions();
   if(screen==='versements') _ptnrLoadVersements();
@@ -14034,6 +14182,20 @@ function _ptnrScrollToThread(email){
 
 function _ptnrThreadKey(email){ return String(email||'').replace(/[^a-z0-9]/gi, '_'); }
 
+// Rafraîchit l'écran Messages du prestataire — SAUF pendant que le prestataire écrit, pour ne
+// jamais détruire le <textarea> sous ses doigts (voir _ptnrLoadMessages : tout l'écran, zones de
+// réponse comprises, est reconstruit en un bloc). Appelé par le WebSocket temps réel dès qu'un
+// message arrive (façon WhatsApp/Messenger) et par le polling de secours toutes les 25s.
+function _ptnrTryRefreshMessages(){
+  var listEl = document.getElementById('ptnr-messages-list');
+  if(!listEl){ _clearPtnrMsgPoll(); return; }
+  var active = document.activeElement;
+  var isTypingReply = !!(active && active.classList && active.classList.contains('ptnr-reply-input'));
+  var hasDraftText = Array.prototype.some.call(document.querySelectorAll('.ptnr-reply-input'), function(t){ return t.value && t.value.trim().length > 0; });
+  if(isTypingReply || hasDraftText) return;
+  _ptnrLoadMessages();
+}
+
 function _ptnrLoadMessages(_isRetry){
   var el = document.getElementById('ptnr-messages-list');
   if(el && !_isRetry) el.innerHTML = _skeletonRows(3, true);
@@ -14064,8 +14226,15 @@ function _ptnrLoadMessages(_isRetry){
       html += '</div>';
       thread.messages.forEach(function(m){
         var isPartner = m.from_type === 'partner';
+        // Coches façon WhatsApp/Messenger sur MES messages uniquement : ✓ gris = envoyé,
+        // ✓✓ bleu = lu par le client (read_at posé, voir POST .../conversation/read).
+        var checkHtml = isPartner
+          ? (m.read_at
+              ? ' <i class="fa-solid fa-check-double" style="color:#53bdeb;font-size:11px;" title="Lu"></i>'
+              : ' <i class="fa-solid fa-check" style="color:#888;font-size:11px;" title="Envoyé"></i>')
+          : '';
         html += '<div class="ptnr-msg-bubble'+(isPartner?' partner':'')+'">';
-        html += '<div class="ptnr-msg-meta">'+(isPartner?'Vous':_escHtml(thread.name))+' · '+_ptnrFmt(m.created_at)+'</div>';
+        html += '<div class="ptnr-msg-meta">'+(isPartner?'Vous':_escHtml(thread.name))+' · '+_ptnrFmt(m.created_at)+checkHtml+'</div>';
         html += '<div class="ptnr-msg-text">'+_escHtml(m.content)+'</div>';
         if(m.attachments && m.attachments.length){
           html += '<div class="ptnr-msg-attachments" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">';
@@ -14518,6 +14687,10 @@ if('serviceWorker' in navigator){
   var _origNav = nav;
   nav = function(tab){
     _origNav(tab);
+    // Le WebSocket temps réel (chat) n'a qu'UNE identité active à la fois (client OU
+    // prestataire) — la reconnexion ici, après CHAQUE navigation, garantit qu'il correspond
+    // toujours à l'espace actuellement affiché, quel que soit le chemin qui y a mené.
+    if(typeof _genesisConnectChatSocket==='function') _genesisConnectChatSocket();
     if(tab === 'partner'){
       if(!_ptnrToken){ _ptnrShowScreen('login'); return; }
       // Le voile biométrique (s'il est requis) est posé APRÈS avoir affiché le contenu

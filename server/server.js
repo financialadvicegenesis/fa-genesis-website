@@ -17,6 +17,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
+const WebSocket = require('ws');
 
 const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments, generatePartnerSplit, generateUserInstallmentPlan, validateInstallments, CLIENT_TYPE_MAX_INSTALLMENTS } = require('./products');
 const contractService = require('./contracts');
@@ -12315,7 +12316,12 @@ app.post('/api/messages/conversation/read', function(req, res) {
             if (!m.from_email || m.from_email.toLowerCase() !== counterpart) return;
             if (!m.read_at) { m.read_at = new Date().toISOString(); changed++; }
         });
-        if (changed > 0) saveChat(msgs);
+        if (changed > 0) {
+            saveChat(msgs);
+            // Prévient le prestataire en temps réel pour que ses coches passent à "lu"
+            // instantanément (façon WhatsApp/Messenger), sans attendre son propre polling.
+            sendToChatSocket('partner', counterpart, { type: 'chat_read', reader: 'client', counterpart: user.email });
+        }
         res.json({ ok: true, updated: changed });
     } catch (err) {
         console.error('[CHAT] Erreur POST conversation/read client:', err.message);
@@ -12387,6 +12393,11 @@ app.post('/api/messages', function(req, res) {
         msgs.push(newMsg);
         saveChat(msgs);
         console.log('[CHAT] Client ' + user.email + ' -> ' + toType + ' : ' + content.substring(0, 50));
+        // Temps réel (façon WhatsApp/Messenger) : pousser le message instantanément si le
+        // destinataire a l'app ouverte — sans attendre le polling ni la notification push.
+        if (toType === 'partner' && toEmail) sendToChatSocket('partner', toEmail, { type: 'chat_message', message: newMsg });
+        // Multi-appareil : synchroniser les autres sessions ouvertes de l'expéditeur lui-même.
+        sendToChatSocket('client', user.email, { type: 'chat_message', message: newMsg, self: true });
         // Push au destinataire
         var senderDisplayName = ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email;
         if (toType === 'admin') {
@@ -12538,7 +12549,12 @@ app.post('/api/partner/inbox/conversation/read', authenticatePartner, function(r
             if (!m.from_email || m.from_email.toLowerCase() !== clientEmail) return;
             if (!m.read_at) { m.read_at = new Date().toISOString(); changed++; }
         });
-        if (changed > 0) saveChat(msgs);
+        if (changed > 0) {
+            saveChat(msgs);
+            // Prévient le client en temps réel pour que ses coches passent à "lu" instantanément
+            // (façon WhatsApp/Messenger), sans attendre son propre polling.
+            sendToChatSocket('client', clientEmail, { type: 'chat_read', reader: 'partner', counterpart: partner.email });
+        }
         res.json({ ok: true, updated: changed });
     } catch (err) {
         console.error('[CHAT] Erreur POST conversation/read partenaire:', err.message);
@@ -12616,6 +12632,11 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
         msgs.push(newMsg);
         saveChat(msgs);
         console.log('[CHAT] Partenaire ' + partner.email + ' -> ' + toEmail + ' : ' + content.substring(0, 50));
+        // Temps réel (façon WhatsApp/Messenger) : pousser le message instantanément si le
+        // client destinataire a l'app ouverte — sans attendre le polling ni la notification push.
+        sendToChatSocket('client', toEmail, { type: 'chat_message', message: newMsg });
+        // Multi-appareil : synchroniser les autres sessions ouvertes du prestataire lui-même.
+        sendToChatSocket('partner', partner.email, { type: 'chat_message', message: newMsg, self: true });
         // Push au client destinataire
         var _ptnrDisplayName = ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email;
         notifyUser(toEmail, 'client', 'message-partner', 'Message de ' + _ptnrDisplayName, content.substring(0, 100), '/app.html#open-messages:' + encodeURIComponent(partner.email));
@@ -23947,7 +23968,7 @@ app.post('/api/admin/client-withdrawals/:order_id/confirm', function(req, res) {
     }
 });
 
-app.listen(PORT, async () => {
+var httpServer = app.listen(PORT, async () => {
     // Restaurer les données depuis MongoDB Atlas (si configuré)
     try {
         var mongoConnected = await persistentStore.connect();
@@ -24003,6 +24024,79 @@ app.listen(PORT, async () => {
         await initTestAccounts();
     }
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+// TEMPS RÉEL (chat) — façon WhatsApp/Messenger/Instagram : les messages et les
+// accusés de lecture sont poussés instantanément aux appareils connectés via
+// WebSocket, au lieu de dépendre uniquement du polling périodique côté app.html
+// (qui reste en place comme filet de sécurité, à fréquence réduite, pour le cas
+// où la connexion WebSocket est momentanément indisponible).
+// ══════════════════════════════════════════════════════════════════════════
+var chatWss = new WebSocket.Server({ server: httpServer, path: '/ws/chat' });
+var chatSockets = {}; // clé "role:email" → liste de connexions ws ouvertes (multi-appareil/onglet)
+
+function _chatSocketKey(role, email) { return String(role) + ':' + String(email || '').toLowerCase(); }
+
+function _registerChatSocket(role, email, ws) {
+    var key = _chatSocketKey(role, email);
+    if (!chatSockets[key]) chatSockets[key] = [];
+    chatSockets[key].push(ws);
+    ws._chatKey = key;
+}
+
+function _unregisterChatSocket(ws) {
+    if (!ws._chatKey || !chatSockets[ws._chatKey]) return;
+    chatSockets[ws._chatKey] = chatSockets[ws._chatKey].filter(function(s) { return s !== ws; });
+    if (!chatSockets[ws._chatKey].length) delete chatSockets[ws._chatKey];
+}
+
+// Pousse un événement temps réel à TOUTES les connexions ouvertes de ce destinataire précis
+// (plusieurs onglets/appareils possibles) — sans effet si l'appareil n'a pas l'app ouverte,
+// auquel cas la notification push (FCM, voir notifyUser) et le polling de secours prennent le relais.
+function sendToChatSocket(role, email, payload) {
+    var key = _chatSocketKey(role, email);
+    var list = chatSockets[key];
+    if (!list || !list.length) return;
+    var json = JSON.stringify(payload);
+    list.forEach(function(ws) {
+        try { if (ws.readyState === WebSocket.OPEN) ws.send(json); } catch (e) {}
+    });
+}
+
+chatWss.on('connection', function(ws, req) {
+    try {
+        var urlObj = new URL(req.url, 'http://internal');
+        var token = urlObj.searchParams.get('token');
+        var identity = null;
+        var partner = findPartnerByToken(token);
+        if (partner) {
+            identity = { role: 'partner', email: partner.email };
+        } else {
+            var user = findUserByToken(token);
+            if (user) identity = { role: 'client', email: user.email };
+        }
+        if (!identity) { ws.close(4001, 'unauthorized'); return; }
+
+        ws.isAlive = true;
+        ws.on('pong', function() { ws.isAlive = true; });
+        _registerChatSocket(identity.role, identity.email, ws);
+        ws.on('close', function() { _unregisterChatSocket(ws); });
+        ws.on('error', function() { _unregisterChatSocket(ws); });
+    } catch (e) {
+        try { ws.close(); } catch (e2) {}
+    }
+});
+
+// Purge les connexions mortes (ex: app tuée sans fermeture propre du socket côté client) —
+// sans ça, chatSockets accumulerait indéfiniment des sockets fantômes.
+setInterval(function() {
+    chatWss.clients.forEach(function(ws) {
+        if (ws.isAlive === false) { _unregisterChatSocket(ws); return ws.terminate(); }
+        ws.isAlive = false;
+        try { ws.ping(); } catch (e) {}
+    });
+}, 30000);
+
 // ── FIN callback app.listen — tout ce qui suit est de nouveau au niveau module (routes,
 // fonctions Wise, etc.). Avant ce correctif, l'accolade fermante manquait ici : ~750 lignes
 // (intégration Wise complète, plusieurs endpoints admin) étaient accidentellement imbriquées
