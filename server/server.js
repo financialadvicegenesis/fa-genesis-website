@@ -1293,7 +1293,7 @@ async function processDispatchPayout(dispatch, stage) {
             console.log('[PAYOUT] ' + stage + ' → Wallet GENESIS crédité : +' + paidAmount + '€ pour ' + partner.email);
             notifyUser(partner.email, 'partner', 'wallet_credited', '💰 Gains disponibles !',
                 '+' + paidAmount.toFixed(2) + '€ viennent d\'être ajoutés à votre Wallet GENESIS. Retirez-les quand vous voulez.',
-                '#partner:livrables');
+                '#partner:versements');
         } else {
             console.error('[PAYOUT] ' + stage + ' → Échec crédit wallet pour ' + partner.email);
         }
@@ -1339,7 +1339,7 @@ async function releaseOnHoldPayouts(dispatchId) {
                 if (p.order_id) updateOrder(p.order_id, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
                 notifyUser(p.partner_email, 'partner', 'wallet_credited', '💰 Litige résolu — versement débloqué',
                     '+' + p.amount.toFixed(2) + '€ viennent d\'être ajoutés à votre Wallet GENESIS suite à la résolution du litige.',
-                    '#partner:livrables');
+                    '#partner:versements');
             } else {
                 notifyUser(null, 'admin', 'refund_manual', '⚠️ Échec du crédit wallet après résolution de litige',
                     'Dispatch ' + p.dispatch_id + ' — le litige a été résolu en faveur du prestataire mais le crédit wallet a échoué. Traiter manuellement.',
@@ -1684,7 +1684,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                             if (_psPartnerEmailAuth) {
                                 notifyUser(_psPartnerEmailAuth, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
                                     _psClientFnAuth + ' a réservé « ' + (_psOrderAuth.product_name || 'votre prestation') + ' ». Le paiement est sécurisé par GENESIS SAFE™. Acceptez ou refusez dans les 24h.',
-                                    '#partner:livrables');
+                                    '#partner:missions');
                             }
                             if (_psClientEmailAuth) {
                                 notifyUser(_psClientEmailAuth, 'client', 'payment_success', '✅ Paiement GENESIS SAFE™ sécurisé !',
@@ -1759,7 +1759,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                                 if (_psPartnerEmailWh) {
                                     notifyUser(_psPartnerEmailWh, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
                                         _psClientFnWh + ' a payé pour "' + (_psOrderWh.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
-                                        '#partner:livrables');
+                                        '#partner:missions');
                                 }
                                 if (_psClientEmailWh) {
                                     notifyUser(_psClientEmailWh, 'client', 'payment_success', '✅ Paiement réussi !',
@@ -5971,7 +5971,7 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                         notifyUser(psPartnerEmail, 'partner', 'mission_pending',
                             '🆕 Nouvelle commande !',
                             ((updatedOrder.client_info && updatedOrder.client_info.first_name) || 'Un client') + ' a payé pour "' + (updatedOrder.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
-                            '#partner:livrables');
+                            '#partner:missions');
                     }
                     // Notifier le CLIENT : paiement réussi
                     notifyUser(ce, 'client', 'payment_success',
@@ -7334,7 +7334,7 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
         // Notifier le partenaire
         notifyUser(req.partner.email, 'partner', 'withdrawal_pending', '📤 Retrait en cours',
             'Votre demande de retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' est en cours de traitement.',
-            '#partner:livrables');
+            '#partner:versements');
 
         // Notifier l'admin par email : montant à virer sur Wise avant l'envoi automatique
         var _wdPartnerName = ((req.partner.prenom || '') + ' ' + (req.partner.nom || '')).trim() || req.partner.email;
@@ -24744,7 +24744,7 @@ async function runWeeklyAutoPayouts() {
                 // Notifier le prestataire
                 notifyUser(_ap.email, 'partner', 'auto_payout', '💸 Virement automatique envoyé',
                     _apAmount.toFixed(2) + '€ ont été virés automatiquement sur votre compte ce lundi.',
-                    '#partner:livrables');
+                    '#partner:versements');
 
                 processed++;
             } catch(_apErr) {
