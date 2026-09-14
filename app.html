@@ -13634,8 +13634,21 @@ function _ptnrNav(screen){
     _ptnrLoadMessages();
     _clearPtnrMsgPoll();
     _ptnrMsgPollInterval = setInterval(function(){
-      if(document.getElementById('ptnr-messages-list')) _ptnrLoadMessages();
-      else _clearPtnrMsgPoll();
+      var listEl = document.getElementById('ptnr-messages-list');
+      if(!listEl){ _clearPtnrMsgPoll(); return; }
+      // CRITIQUE : _ptnrLoadMessages() reconstruit TOUT l'écran (innerHTML complet), y compris
+      // les zones de réponse (<textarea>) de chaque fil — contrairement au client (transcript
+      // et zone de saisie dans deux conteneurs séparés), ici tout est dans le même bloc HTML.
+      // Reconstruire ce bloc PENDANT que le prestataire écrit détruit le <textarea> sous ses
+      // doigts : le clavier Android se ferme instantanément et le texte non envoyé est perdu —
+      // exactement le bug rapporté ("le clavier disparaît, impossible d'envoyer"). On saute donc
+      // ce cycle de rafraîchissement tant qu'un champ de réponse a le focus ou contient un
+      // brouillon non envoyé, sur N'IMPORTE quel fil (pas seulement celui visible à l'écran).
+      var active = document.activeElement;
+      var isTypingReply = !!(active && active.classList && active.classList.contains('ptnr-reply-input'));
+      var hasDraftText = Array.prototype.some.call(document.querySelectorAll('.ptnr-reply-input'), function(t){ return t.value && t.value.trim().length > 0; });
+      if(isTypingReply || hasDraftText) return;
+      _ptnrLoadMessages();
     }, 4000);
   }
   if(screen==='missions') _ptnrLoadMissions();

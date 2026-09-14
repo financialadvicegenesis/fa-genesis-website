@@ -2236,6 +2236,11 @@ app.get('/api/notifications', function(req, res) {
 
     var all = loadNotifications();
     var mine = all.filter(function(n) {
+        // Les notifications de message ont leur propre badge dédié (section "Messages", voir
+        // _ptnrRefreshBadges()/_clientRefreshMsgBadge() côté app.html) — comme sur Instagram/
+        // Facebook, elles n'apparaissent JAMAIS dans la cloche "Notifications" générale, pour
+        // éviter qu'un même message ne soit compté/affiché à deux endroits différents.
+        if (n.type === 'message-client' || n.type === 'message-partner') return false;
         if (identity.role === 'admin') return n.role === 'admin';
         return n.role === identity.role && n.email && n.email.toLowerCase() === identity.email.toLowerCase();
     }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
