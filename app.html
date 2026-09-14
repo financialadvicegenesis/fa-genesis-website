@@ -9597,16 +9597,24 @@ function _genesisActiveChatIdentity(){
   return null;
 }
 
+// CRITIQUE : cette fonction est appelée depuis nav() — dont dépend TOUTE la chaîne
+// notification→biométrie→conversation exacte (voir _ptnrRequiresBiolock/_ptnrApplyPendingNotifTarget
+// juste après son appel dans nav()). Une exception non interceptée ICI interromprait l'exécution
+// de nav() avant que cette logique critique ne s'exécute, laissant le prestataire sur l'écran
+// déjà affiché (typiquement Accueil) au lieu de la conversation — une régression bien pire que
+// l'absence de reconnexion WebSocket elle-même. TOUT le corps est donc protégé, pas seulement
+// la construction du WebSocket : le chat temps réel est un confort, jamais une dépendance dont
+// la navigation biométrique/notification peut dépendre pour fonctionner.
 function _genesisConnectChatSocket(){
-  if(typeof WebSocket==='undefined') return;
-  var identity = _genesisActiveChatIdentity();
-  if(!identity) return;
-  // Déjà connecté avec la bonne identité : rien à faire (évite de reconnecter à chaque appel
-  // de nav(), qui déclenche cette fonction après CHAQUE navigation).
-  if(_genesisChatWs && _genesisChatWsIdentity===identity.key && (_genesisChatWs.readyState===0||_genesisChatWs.readyState===1)) return;
-  if(_genesisChatWs){ try{ _genesisChatWs.onclose=null; _genesisChatWs.close(); }catch(e){} }
-  if(_genesisChatWsRetryTimer){ clearTimeout(_genesisChatWsRetryTimer); _genesisChatWsRetryTimer=null; }
   try{
+    if(typeof WebSocket==='undefined') return;
+    var identity = _genesisActiveChatIdentity();
+    if(!identity) return;
+    // Déjà connecté avec la bonne identité : rien à faire (évite de reconnecter à chaque appel
+    // de nav(), qui déclenche cette fonction après CHAQUE navigation).
+    if(_genesisChatWs && _genesisChatWsIdentity===identity.key && (_genesisChatWs.readyState===0||_genesisChatWs.readyState===1)) return;
+    if(_genesisChatWs){ try{ _genesisChatWs.onclose=null; _genesisChatWs.close(); }catch(e){} }
+    if(_genesisChatWsRetryTimer){ clearTimeout(_genesisChatWsRetryTimer); _genesisChatWsRetryTimer=null; }
     _genesisChatWsIdentity = identity.key;
     var ws = new WebSocket(_genesisChatWsUrl(identity.token));
     _genesisChatWs = ws;
@@ -9701,7 +9709,7 @@ function _genesisCloseSwipeRow(){
   _genesisOpenSwipeRow = null;
 }
 document.addEventListener('click', function(e){
-  if(_genesisOpenSwipeRow && !_genesisOpenSwipeRow.contains(e.target)) _genesisCloseSwipeRow();
+  try{ if(_genesisOpenSwipeRow && !_genesisOpenSwipeRow.contains(e.target)) _genesisCloseSwipeRow(); }catch(err){}
 }, true);
 
 // handlers: {onArchive, onMore} — `el` doit contenir .swipe-actions>.swipe-btn-more/.swipe-btn-archive
@@ -14989,10 +14997,6 @@ if('serviceWorker' in navigator){
   var _origNav = nav;
   nav = function(tab){
     _origNav(tab);
-    // Le WebSocket temps réel (chat) n'a qu'UNE identité active à la fois (client OU
-    // prestataire) — la reconnexion ici, après CHAQUE navigation, garantit qu'il correspond
-    // toujours à l'espace actuellement affiché, quel que soit le chemin qui y a mené.
-    if(typeof _genesisConnectChatSocket==='function') _genesisConnectChatSocket();
     if(tab === 'partner'){
       if(!_ptnrToken){ _ptnrShowScreen('login'); return; }
       // Le voile biométrique (s'il est requis) est posé APRÈS avoir affiché le contenu
@@ -15031,6 +15035,11 @@ if('serviceWorker' in navigator){
         if(_needsLock) _ptnrShowBiolockOverlay();
       }
     }
+    // Volontairement APRÈS toute la logique ci-dessus (biométrie, destination de notification) :
+    // le chat temps réel est un confort, jamais une dépendance de la navigation. Protégée en
+    // interne par un try/catch qui n'échoue jamais (voir _genesisConnectChatSocket) — cette
+    // position est une seconde protection (défense en profondeur), pas la seule.
+    if(typeof _genesisConnectChatSocket==='function') _genesisConnectChatSocket();
   };
 })();
 
