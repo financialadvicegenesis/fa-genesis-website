@@ -284,6 +284,18 @@ a{text-decoration:none;color:inherit}
   font-size:9px;font-weight:900;min-width:15px;height:15px;border-radius:50%;display:none;
   align-items:center;justify-content:center;font-family:'Unbounded',cursive;line-height:1;padding:0 2px;}
 .nav-cart-badge.on{display:flex;}
+/* Badge "messages non lus" sur l'icône Messages de la nav du bas (prestataire) — même
+   convention visuelle qu'Instagram/Messenger : nombre exact, rouge, coin supérieur droit. */
+.nav-msg-badge{position:absolute;top:2px;right:calc(50% - 22px);background:#ef4444;color:#fff;
+  font-size:9px;font-weight:900;min-width:15px;height:15px;border-radius:50%;display:none;
+  align-items:center;justify-content:center;font-family:'Unbounded',cursive;line-height:1;padding:0 2px;}
+.nav-msg-badge.on{display:flex;}
+/* Idem côté client, sur les points d'entrée "Messages" (accueil, carte de statut...) */
+.client-msg-badge{display:none;position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;
+  padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:9px;
+  align-items:center;justify-content:center;font-family:'Unbounded',cursive;line-height:1;
+  border:2px solid var(--bg);}
+.client-msg-badge.on{display:flex;}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    HOME TAB
@@ -314,7 +326,7 @@ a{text-decoration:none;color:inherit}
 .qa-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 16px;margin-top:20px}
 .qa{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
 .qa-icon{width:56px;height:56px;border-radius:16px;background:var(--card);
-  display:flex;align-items:center;justify-content:center;font-size:22px;
+  display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;
   border:1px solid var(--border);transition:transform .15s}
 .qa:active .qa-icon{transform:scale(.93)}
 .qa-label{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.3px}
@@ -2607,7 +2619,7 @@ a{text-decoration:none;color:inherit}
           <div class="qa-label">Réserver</div>
         </div>
         <div class="qa" onclick="nav('messages')">
-          <div class="qa-icon"><i class="fa-solid fa-comment-dots"></i></div>
+          <div class="qa-icon"><i class="fa-solid fa-comment-dots"></i><span class="client-msg-badge" id="qa-msg-badge"></span></div>
           <div class="qa-label">Messages</div>
         </div>
         <div class="qa" onclick="_navToLivrables()">
@@ -3307,8 +3319,9 @@ a{text-decoration:none;color:inherit}
     <button class="nav-btn ptnr-nav" id="pnb-missions" onclick="_ptnrNav('missions')" style="display:none">
       <i class="ni fa-solid fa-bolt"></i><span>Missions</span>
     </button>
-    <button class="nav-btn ptnr-nav" id="pnb-messages" onclick="_ptnrNav('messages')" style="display:none">
+    <button class="nav-btn ptnr-nav" id="pnb-messages" onclick="_ptnrNav('messages')" style="display:none;position:relative">
       <i class="ni fa-solid fa-comment"></i><span>Messages</span>
+      <span class="nav-msg-badge" id="pnb-msg-badge"></span>
     </button>
     <button class="nav-btn ptnr-nav" id="pnb-versements" onclick="_ptnrNav('versements')" style="display:none">
       <i class="ni fa-solid fa-wallet"></i><span>Wallet</span>
@@ -3640,6 +3653,8 @@ function initApp(){
     _loadClientCollabPartnerIds();
     loadNotifInbox();
     if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 120000); }
+    if(typeof _clientRefreshMsgBadge==='function') _clientRefreshMsgBadge();
+    if(!window._msgBadgePollStarted){ window._msgBadgePollStarted = true; setInterval(_clientRefreshMsgBadge, 90000); }
     if(!window._qgPollStarted){ window._qgPollStarted = true; setInterval(function(){ if(typeof _syncUserBadge==='function' && USER && !GUEST) _syncUserBadge(); }, 30000); }
     if(!window._statusCardPollStarted){ window._statusCardPollStarted = true; setInterval(function(){ if(typeof loadStatusCard==='function' && USER && !GUEST) loadStatusCard(); }, 30000); }
     setTimeout(function(){
@@ -9485,10 +9500,42 @@ function openConversation(key, name, icon, partnerEmail){
     +'</div>'
     +'</div>';
   loadChatMessages(partnerEmail);
+  // Marque côté serveur les messages de ce prestataire comme lus, UNE SEULE FOIS à
+  // l'ouverture (pas à chaque tick du polling ci-dessous) — fait redescendre immédiatement
+  // le badge "messages non lus" (façon Instagram/Messenger), voir _clientRefreshMsgBadge().
+  if(partnerEmail && USER && USER._token){
+    fetch((window.FA_GENESIS_API||API)+'/api/messages/conversation/read',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'},
+      body:JSON.stringify({counterpart:partnerEmail})
+    }).then(function(){ if(typeof _clientRefreshMsgBadge==='function') _clientRefreshMsgBadge(); }).catch(function(){});
+  }
   _chatPollInterval = setInterval(function(){
     if(document.getElementById('chat-msgs')) loadChatMessages(_chatPartnerEmail);
     else _clearChatPoll();
   }, 4000);
+}
+
+// Badge "messages non lus" (façon Instagram/Messenger) sur les points d'entrée Messages
+// côté client (accueil, carte de statut...) — nombre de CONVERSATIONS ayant au moins un
+// message du prestataire non lu, pas le nombre total de messages.
+function _clientRefreshMsgBadge(){
+  if(!USER || !USER._token || GUEST) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/messages',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var msgs = (data && data.messages) || [];
+      var unreadPartnerEmails = {};
+      msgs.forEach(function(m){
+        if(m.from_type !== 'partner' || m.read_at) return;
+        if(m.from_email) unreadPartnerEmails[m.from_email.toLowerCase()] = true;
+      });
+      var count = Object.keys(unreadPartnerEmails).length;
+      document.querySelectorAll('.client-msg-badge').forEach(function(el){
+        if(count>0){ el.textContent = count; el.className = 'client-msg-badge on'; }
+        else { el.className = 'client-msg-badge'; }
+      });
+    }).catch(function(){});
 }
 
 function _startMsgWithPartner(partnerId, partnerName, partnerEmail){
@@ -14031,6 +14078,18 @@ function _ptnrLoadMessages(_isRetry){
       html += '</div>';
     });
     if(el) el.innerHTML = html;
+    // Marquer comme lus les messages clients déjà affichés à l'instant — contrairement au
+    // client (liste → conversation), l'écran Messages du prestataire montre TOUS les fils
+    // d'un coup, donc les afficher ICI équivaut à les avoir "ouverts". Fait redescendre le
+    // badge "messages non lus" (façon Instagram/Messenger) immédiatement, sans attendre le
+    // prochain rafraîchissement périodique (_ptnrRefreshBadges, toutes les 90s).
+    threads.forEach(function(thread){
+      var hasUnread = thread.messages.some(function(m){ return m.from_type==='client' && !m.read_at; });
+      if(hasUnread){
+        _ptnrFetch('/api/partner/inbox/conversation/read','POST',{client_email:thread.email})
+          .then(function(){ _ptnrRefreshBadges(); }).catch(function(){});
+      }
+    });
     if(_ptnrPendingScrollThread){
       var _pst = _ptnrPendingScrollThread; _ptnrPendingScrollThread = null;
       setTimeout(function(){ _ptnrScrollToThread(_pst); }, 100);
@@ -14175,15 +14234,30 @@ function _ptnrRefreshBadges(){
     var missionCount = (results[3] && results[3].requests && results[3].requests.length) || 0;
     var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open'||!q.status;}).length;
     var pendingSeances = sessions.filter(function(s){return s.status==='pending'||s.status==='proposed';}).length;
-    var unreadMsg = inbox.filter(function(m){return m.unread||m.isUnread;}).length || inbox.length;
+    // Nombre de CONVERSATIONS distinctes ayant au moins un message client non lu — convention
+    // Instagram/Messenger (nombre de discussions non lues, pas de messages). `inbox` ne contient
+    // déjà que les messages de CE prestataire (filtré côté serveur), donc from_type==='client'
+    // suffit à identifier les messages reçus (pas besoin de recomparer to_email).
+    var unreadClientEmails = {};
+    inbox.forEach(function(m){
+      if(m.from_type !== 'client' || m.read_at) return;
+      if(m.from_email) unreadClientEmails[m.from_email.toLowerCase()] = true;
+    });
+    var unreadMsg = Object.keys(unreadClientEmails).length;
     function _setBadge(id, count){
       var el = document.getElementById(id); if(!el) return;
       if(count>0){ el.textContent=count; el.className='ptnr-badge on'; }
       else { el.className='ptnr-badge'; }
     }
+    function _setNavMsgBadge(id, count){
+      var el = document.getElementById(id); if(!el) return;
+      if(count>0){ el.textContent=count; el.className='nav-msg-badge on'; }
+      else { el.className='nav-msg-badge'; }
+    }
     _setBadge('ptnr-badge-devis', pendingDevis);
     _setBadge('ptnr-badge-seances', pendingSeances);
     _setBadge('ptnr-badge-messages', unreadMsg);
+    _setNavMsgBadge('pnb-msg-badge', unreadMsg);
     _setBadgeMissions(missionCount);
     var hasAny = pendingDevis > 0 || pendingSeances > 0 || unreadMsg > 0 || missionCount > 0;
     var dot = document.getElementById('dot-partner'); if(dot) dot.style.display = hasAny ? '' : 'none';

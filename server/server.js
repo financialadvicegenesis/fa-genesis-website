@@ -12287,6 +12287,38 @@ app.delete('/api/messages/conversation', function(req, res) {
 });
 
 /**
+ * POST /api/messages/conversation/read — Le client marque comme lus tous les messages reçus
+ * d'un prestataire précis (alimente les badges "messages non lus" façon Instagram/Messenger,
+ * voir _clientRefreshMsgBadge() côté app.html). Appelé à l'ouverture d'une conversation.
+ */
+app.post('/api/messages/conversation/read', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var user = findUserByToken(token);
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var counterpart = (req.body.counterpart || '').toLowerCase();
+        if (!counterpart) return res.status(400).json({ error: 'counterpart requis' });
+
+        var msgs = loadChat();
+        var changed = 0;
+        msgs.forEach(function(m) {
+            if (m.to_email !== user.email) return; // seuls les messages REÇUS par ce client
+            if (m.from_type !== 'partner') return;
+            if (!m.from_email || m.from_email.toLowerCase() !== counterpart) return;
+            if (!m.read_at) { m.read_at = new Date().toISOString(); changed++; }
+        });
+        if (changed > 0) saveChat(msgs);
+        res.json({ ok: true, updated: changed });
+    } catch (err) {
+        console.error('[CHAT] Erreur POST conversation/read client:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/messages — Client envoie un message de chat
  */
 app.post('/api/messages', function(req, res) {
@@ -12478,6 +12510,33 @@ app.delete('/api/partner/inbox/conversation', authenticatePartner, function(req,
         res.json({ ok: true, deleted: changed });
     } catch (err) {
         console.error('[CHAT] Erreur DELETE conversation partenaire:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/inbox/conversation/read — Le prestataire marque comme lus tous les messages
+ * reçus d'un client précis (alimente les badges "messages non lus" façon Instagram/Messenger,
+ * voir _ptnrRefreshBadges() côté app.html). Appelé quand le prestataire affiche l'onglet Messages.
+ */
+app.post('/api/partner/inbox/conversation/read', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var clientEmail = (req.body.client_email || '').toLowerCase();
+        if (!clientEmail) return res.status(400).json({ error: 'client_email requis' });
+
+        var msgs = loadChat();
+        var changed = 0;
+        msgs.forEach(function(m) {
+            if (m.to_email !== partner.email) return; // seuls les messages REÇUS par ce partenaire
+            if (m.from_type !== 'client') return;
+            if (!m.from_email || m.from_email.toLowerCase() !== clientEmail) return;
+            if (!m.read_at) { m.read_at = new Date().toISOString(); changed++; }
+        });
+        if (changed > 0) saveChat(msgs);
+        res.json({ ok: true, updated: changed });
+    } catch (err) {
+        console.error('[CHAT] Erreur POST conversation/read partenaire:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
