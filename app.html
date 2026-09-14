@@ -2439,8 +2439,13 @@ a{text-decoration:none;color:inherit}
 .action-sheet-cancel{margin-top:6px;border-top:none;color:#aaa;font-weight:800;}
 /* ── Glisser vers la gauche pour archiver (liste conversations / fils) — Gmail/WhatsApp/Instagram ── */
 .swipe-row-wrap{position:relative;overflow:hidden;}
-.swipe-action-bg{position:absolute;inset:0;background:#FFD700;color:#000;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding-right:26px;font-weight:900;font-size:13px;opacity:0;}
-.swipe-action-bg i{font-size:17px;}
+/* Deux boutons révélés à taper (façon Messenger Android : "Plus" + "Archiver"), jamais
+   d'action déclenchée automatiquement par la seule distance du glissement. */
+.swipe-actions{position:absolute;top:0;right:0;bottom:0;width:140px;display:flex;}
+.swipe-btn{flex:1;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;}
+.swipe-btn i{font-size:17px;}
+.swipe-btn-more{background:#4a4a4a;}
+.swipe-btn-archive{background:#FFD700;color:#000;}
 .swipe-row-fg{position:relative;background:var(--bg);}
 /* ── Tirer-pour-rafraîchir (Messages / Missions) ── */
 .ptr-indicator{height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#666;font-size:17px;transition:height .18s ease;}
@@ -7507,10 +7512,13 @@ function renderMsgTab(showArchived){
       var unread=conv.msgs.filter(function(m){return m.from_type==='partner'&&!m.read_at;}).length;
       var safeEmail=conv.email.replace(/'/g,"\'");
       var safeName=(conv.name||'Prestataire').replace(/'/g,"\'");
-      return '<div class="swipe-row-wrap" data-counterpart="'+conv.email+'">'
-        +'<div class="swipe-action-bg"><i class="fa-solid fa-box-archive"></i><span>'+(showArchived?'Désarchiver':'Archiver')+'</span></div>'
+      return '<div class="swipe-row-wrap" data-counterpart="'+conv.email+'" data-name="'+_escHtml(conv.name||'Prestataire')+'">'
+        +'<div class="swipe-actions">'
+          +'<button class="swipe-btn swipe-btn-more"><i class="fa-solid fa-ellipsis"></i><span>Plus</span></button>'
+          +'<button class="swipe-btn swipe-btn-archive"><i class="fa-solid fa-box-archive"></i><span>'+(showArchived?'Désarchiver':'Archiver')+'</span></button>'
+        +'</div>'
         +'<div class="swipe-row-fg" style="display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(255,255,255,.06);background:var(--bg);">'
-        +'<div onclick="openConversation(\''+safeEmail+'\',\''+safeName+'\',\'user-tie\',\''+safeEmail+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 8px 14px 16px;flex:1;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);">'
+        +'<div onclick="openConversation(\''+safeEmail+'\',\''+safeName+'\',\'user-tie\',\''+safeEmail+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex:1;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);">'
         +'<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a1200,#2a1f00);border:2px solid #FFD700;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#FFD700;flex-shrink:0;">'+initials+'</div>'
         +'<div style="flex:1;min-width:0;">'
           +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
@@ -7523,14 +7531,15 @@ function renderMsgTab(showArchived){
           +'</div>'
         +'</div>'
         +'</div>'
-        +'<button onclick="event.stopPropagation();_deleteClientConversation(\''+safeEmail+'\',\''+safeName+'\')" style="background:none;border:none;color:#555;font-size:16px;cursor:pointer;flex-shrink:0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;" title="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>'
         +'</div>'
         +'</div>';
     }).join('');
     Array.prototype.forEach.call(convEl.querySelectorAll('.swipe-row-wrap'), function(rowEl){
-      _genesisAttachSwipeToArchive(rowEl, function(){
-        var email = rowEl.getAttribute('data-counterpart');
-        if(showArchived) _clientUnarchiveConversation(email); else _clientArchiveConversation(email);
+      var email = rowEl.getAttribute('data-counterpart');
+      var name = rowEl.getAttribute('data-name');
+      _genesisAttachSwipeToArchive(rowEl, {
+        onArchive: function(){ if(showArchived) _clientUnarchiveConversation(email); else _clientArchiveConversation(email); },
+        onMore: function(){ _clientOpenConvMore(email, name); }
       });
     });
   }).catch(function(){
@@ -7554,6 +7563,14 @@ function _clientUnarchiveConversation(partnerEmail){
     method:'POST', headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'},
     body:JSON.stringify({counterpart:partnerEmail})
   }).then(function(){ renderMsgTab(true); }).catch(function(){ showToast('Erreur','Erreur de connexion.','error'); renderMsgTab(true); });
+}
+
+// Bouton "Plus" révélé par le glissement (façon Messenger Android) — regroupe les actions
+// secondaires sur la conversation, pour l'instant uniquement la suppression.
+function _clientOpenConvMore(partnerEmail, partnerName){
+  showActionSheet([{ label:'Supprimer la conversation', value:'delete', danger:true }]).then(function(v){
+    if(v==='delete') _deleteClientConversation(partnerEmail, partnerName);
+  });
 }
 
 // Suppression d'une conversation côté client uniquement — le prestataire (et l'admin)
@@ -9668,50 +9685,78 @@ function _genesisHandleChatWsMessage(data){
   }
 }
 
-// Geste "glisser vers la gauche pour archiver" (façon Gmail/WhatsApp/Instagram), générique —
-// appliqué à une ligne de conversation (client) ou une carte de fil (prestataire). Glisser
-// au-delà du seuil déclenche onArchive(el) puis fait glisser la ligne hors écran ; relâcher
-// avant le seuil la fait revenir à sa place. `el` doit contenir un enfant .swipe-action-bg
-// (révélé derrière) et .swipe-row-fg (la ligne visible, celle qui glisse).
-function _genesisAttachSwipeToArchive(el, onArchive){
+// Geste "glisser vers la gauche" façon Messenger Android (PAS WhatsApp/Instagram — vérifié :
+// WhatsApp Android utilise un appui long + icône en haut, Instagram n'archive pas du tout ;
+// Messenger est la seule des trois à révéler "Plus"/"Archiver" par glissement sur Android).
+// Le glissement révèle deux vrais boutons à TAPER (.swipe-btn-more / .swipe-btn-archive) —
+// aucune action n'est jamais déclenchée par la seule distance du glissement. Une seule ligne
+// révélée à la fois (comme Messenger) ; taper ailleurs la referme sans autre effet.
+var _genesisOpenSwipeRow = null;
+function _genesisCloseSwipeRow(){
+  if(!_genesisOpenSwipeRow) return;
+  var row = _genesisOpenSwipeRow;
+  var fg = row.querySelector('.swipe-row-fg');
+  if(fg){ fg.style.transition='transform .2s ease'; fg.style.transform='translateX(0)'; }
+  row._swipeOpen = false;
+  _genesisOpenSwipeRow = null;
+}
+document.addEventListener('click', function(e){
+  if(_genesisOpenSwipeRow && !_genesisOpenSwipeRow.contains(e.target)) _genesisCloseSwipeRow();
+}, true);
+
+// handlers: {onArchive, onMore} — `el` doit contenir .swipe-actions>.swipe-btn-more/.swipe-btn-archive
+// et .swipe-row-fg (la ligne visible, celle qui glisse).
+function _genesisAttachSwipeToArchive(el, handlers){
   if(!el || el._swipeAttached) return;
   el._swipeAttached = true;
+  el._swipeOpen = false;
   var fg = el.querySelector('.swipe-row-fg'); if(!fg) return;
-  var bg = el.querySelector('.swipe-action-bg');
+  var REVEAL = 140; // largeur des deux boutons (voir .swipe-actions)
   var startX=0, startY=0, dx=0, dragging=false, decided=false, horizontal=false;
-  var THRESHOLD = 90;
   fg.addEventListener('touchstart', function(e){
     if(e.touches.length!==1) return;
-    startX=e.touches[0].clientX; startY=e.touches[0].clientY; dx=0; dragging=true; decided=false; horizontal=false;
+    if(_genesisOpenSwipeRow && _genesisOpenSwipeRow!==el) _genesisCloseSwipeRow();
+    startX=e.touches[0].clientX; startY=e.touches[0].clientY;
+    dx = el._swipeOpen ? -REVEAL : 0;
+    dragging=true; decided=false; horizontal=false;
     fg.style.transition='none';
   }, {passive:true});
   fg.addEventListener('touchmove', function(e){
     if(!dragging) return;
     var x=e.touches[0].clientX, y=e.touches[0].clientY;
-    var rawDx = x-startX;
     if(!decided){
-      if(Math.abs(rawDx)>8 || Math.abs(y-startY)>8){ decided=true; horizontal=Math.abs(rawDx)>Math.abs(y-startY); }
+      if(Math.abs(x-startX)>8 || Math.abs(y-startY)>8){ decided=true; horizontal=Math.abs(x-startX)>Math.abs(y-startY); }
     }
     if(horizontal){
-      dx = Math.max(-140, Math.min(0, rawDx)); // uniquement vers la gauche
+      var rawDx = (el._swipeOpen?-REVEAL:0) + (x-startX);
+      dx = Math.max(-REVEAL, Math.min(0, rawDx)); // uniquement vers la gauche, jamais au-delà des boutons
       fg.style.transform='translateX('+dx+'px)';
-      if(bg) bg.style.opacity = Math.min(1, Math.abs(dx)/THRESHOLD);
     }
   }, {passive:true});
   function end(){
     if(!dragging) return; dragging=false;
-    fg.style.transition='transform .22s ease';
-    if(horizontal && dx<=-THRESHOLD){
-      fg.style.transform='translateX(-100%)';
-      haptic(25);
-      setTimeout(function(){ onArchive(el); }, 180);
+    if(!horizontal) return; // pas un glissement horizontal : laisser le tap normal s'exécuter
+    fg.style.transition='transform .2s ease';
+    if(dx <= -REVEAL/3){
+      fg.style.transform='translateX(-'+REVEAL+'px)';
+      el._swipeOpen = true; _genesisOpenSwipeRow = el;
+      haptic(15);
     } else {
       fg.style.transform='translateX(0)';
-      if(bg) bg.style.opacity=0;
+      el._swipeOpen = false; if(_genesisOpenSwipeRow===el) _genesisOpenSwipeRow=null;
     }
   }
   fg.addEventListener('touchend', end, {passive:true});
   fg.addEventListener('touchcancel', end, {passive:true});
+  // Un tap sur la ligne pendant qu'elle est révélée la referme, au lieu d'ouvrir la
+  // conversation en dessous (capture : s'exécute avant le onclick inline de la ligne).
+  fg.addEventListener('click', function(e){
+    if(el._swipeOpen){ e.stopPropagation(); e.preventDefault(); _genesisCloseSwipeRow(); }
+  }, true);
+  var moreBtn = el.querySelector('.swipe-btn-more');
+  var archiveBtn = el.querySelector('.swipe-btn-archive');
+  if(moreBtn) moreBtn.addEventListener('click', function(e){ e.stopPropagation(); _genesisCloseSwipeRow(); haptic(20); if(handlers.onMore) handlers.onMore(); });
+  if(archiveBtn) archiveBtn.addEventListener('click', function(e){ e.stopPropagation(); _genesisCloseSwipeRow(); haptic(20); if(handlers.onArchive) handlers.onArchive(); });
 }
 
 // Coche bleue "lu" en temps réel sur mes messages envoyés à ce destinataire, dans la
@@ -14437,13 +14482,13 @@ function _ptnrLoadMessages(_isRetry, showArchived){
     var html = '';
     threads.forEach(function(thread){
       var key = _ptnrThreadKey(thread.email);
-      html += '<div class="swipe-row-wrap" data-counterpart="'+thread.email+'" style="margin-bottom:16px;">';
-      html += '<div class="swipe-action-bg" style="border-radius:14px;"><i class="fa-solid fa-box-archive"></i><span>'+(showArchived?'Désarchiver':'Archiver')+'</span></div>';
+      html += '<div class="swipe-row-wrap" data-counterpart="'+thread.email+'" data-name="'+_escHtml(thread.name)+'" style="margin-bottom:16px;">';
+      html += '<div class="swipe-actions" style="border-radius:0 14px 14px 0;overflow:hidden;">'
+        +'<button class="swipe-btn swipe-btn-more"><i class="fa-solid fa-ellipsis"></i><span>Plus</span></button>'
+        +'<button class="swipe-btn swipe-btn-archive"><i class="fa-solid fa-box-archive"></i><span>'+(showArchived?'Désarchiver':'Archiver')+'</span></button>'
+        +'</div>';
       html += '<div class="swipe-row-fg ptnr-card" style="margin-bottom:0;">';
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
       html += '<div class="ptnr-card-title">'+_escHtml(thread.name)+'</div>';
-      html += '<button onclick="_ptnrDeleteConversation(\''+thread.email.replace(/\'/g,"\\'")+'\',\''+thread.name.replace(/\'/g,"\\'")+'\')" style="background:none;border:none;color:#555;font-size:15px;cursor:pointer;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;" title="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>';
-      html += '</div>';
       thread.messages.forEach(function(m){
         var isPartner = m.from_type === 'partner';
         // Coches façon WhatsApp/Messenger sur MES messages uniquement : ✓ gris = envoyé,
@@ -14487,9 +14532,11 @@ function _ptnrLoadMessages(_isRetry, showArchived){
     if(el) el.innerHTML = html;
     Array.prototype.forEach.call(el ? el.querySelectorAll('.ptnr-msg-bubble') : [], _ptnrAttachBubbleLongPress);
     Array.prototype.forEach.call(el ? el.querySelectorAll('.swipe-row-wrap') : [], function(rowEl){
-      _genesisAttachSwipeToArchive(rowEl, function(){
-        var email = rowEl.getAttribute('data-counterpart');
-        if(showArchived) _ptnrUnarchiveConversation(email); else _ptnrArchiveConversation(email);
+      var email = rowEl.getAttribute('data-counterpart');
+      var name = rowEl.getAttribute('data-name');
+      _genesisAttachSwipeToArchive(rowEl, {
+        onArchive: function(){ if(showArchived) _ptnrUnarchiveConversation(email); else _ptnrArchiveConversation(email); },
+        onMore: function(){ _ptnrOpenConvMore(email, name); }
       });
     });
     // Marquer comme lus les messages clients déjà affichés à l'instant — contrairement au
@@ -14532,6 +14579,14 @@ function _ptnrUnarchiveConversation(clientEmail){
   _ptnrFetch('/api/partner/inbox/unarchive','POST',{client_email:clientEmail})
     .then(function(){ _ptnrLoadMessages(false, true); })
     .catch(function(){ showToast('Erreur','Erreur de connexion.','error'); _ptnrLoadMessages(false, true); });
+}
+
+// Bouton "Plus" révélé par le glissement (façon Messenger Android) — regroupe les actions
+// secondaires sur la conversation, pour l'instant uniquement la suppression.
+function _ptnrOpenConvMore(clientEmail, clientName){
+  showActionSheet([{ label:'Supprimer la conversation', value:'delete', danger:true }]).then(function(v){
+    if(v==='delete') _ptnrDeleteConversation(clientEmail, clientName);
+  });
 }
 
 // Suppression d'une conversation côté prestataire uniquement — le client (et l'admin)
