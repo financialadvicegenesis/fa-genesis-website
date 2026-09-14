@@ -14207,7 +14207,9 @@ function _ptnrLoadHome(){
   // messages/missions, cartes finance...). Trouvé lors de cet audit biométrie/messagerie.
   var list = document.getElementById('ptnr-home-list');
   if(list) list.innerHTML = _skeletonRows(2);
-  _ptnrRenderServicesSection();
+  // Gardée (comme déjà fait ailleurs pour ce même appel, voir _ptnrInit) : _ptnrRenderServicesSection
+  // est définie dans le second bloc <script>, pas toujours chargé sur un démarrage à froid lent.
+  if(typeof _ptnrRenderServicesSection==='function') _ptnrRenderServicesSection();
   Promise.all([
     _ptnrFetch('/api/partner/projects').catch(function(){return [];}),
     _ptnrFetch('/api/partner/quotes').catch(function(){return [];}),
