@@ -12913,6 +12913,28 @@ function _ptnrBiolockUnlock(){
 // Réarme le verrou dès que l'app repasse en arrière-plan (voir mobile-bridge.js)
 document.addEventListener('fagmobile:backgrounded', function(){ _ptnrBioUnlocked = false; });
 
+// Repose le voile IMMÉDIATEMENT au retour au premier plan, sans attendre qu'une navigation
+// le redéclenche (sinon quelqu'un qui récupère le téléphone déverrouillé pendant que l'app
+// est en arrière-plan retrouverait l'espace prestataire déjà ouvert en revenant dessus,
+// tant qu'il ne tape pas sur une notification ou l'onglet "Partenaire" — voir le comportement
+// de WhatsApp/Instagram, qui reverrouillent systématiquement dès la reprise).
+document.addEventListener('fagmobile:resumed', function(){
+  if(!_ptnrRequiresBiolock()) return;
+  var tabPartner = document.getElementById('tab-partner');
+  if(!tabPartner || !tabPartner.classList.contains('on')) return; // pas dans l'espace prestataire
+  var biolockEl = document.getElementById('ptnr-biolock-screen');
+  if(biolockEl && biolockEl.style.display !== 'none') return; // déjà affiché
+  var dashEl = document.getElementById('ptnr-dash-screen');
+  var adminEl = document.getElementById('ptnr-admin-screen');
+  var profEl = document.getElementById('ptnr-profile-screen');
+  var hasProtectedContentVisible =
+    (dashEl && dashEl.style.display !== 'none') ||
+    (adminEl && adminEl.style.display !== 'none') ||
+    (profEl && profEl.style.display !== 'none');
+  if(!hasProtectedContentVisible) return; // écran login/register affiché : rien à protéger
+  _ptnrShowBiolockOverlay();
+});
+
 // Proposition d'activation (une seule fois, juste après une connexion/inscription réussie)
 function _ptnrOfferBiometricOptIn(){
   if(!_ptnrIsNative()) return;

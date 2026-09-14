@@ -297,6 +297,12 @@
         Plugins.App.addListener('appStateChange', function(state) {
             if (!state.isActive) {
                 document.dispatchEvent(new CustomEvent('fagmobile:backgrounded'));
+            } else {
+                // Ne se déclenche que sur une VRAIE reprise depuis l'arrière-plan (pas au
+                // lancement à froid) — permet à app.html de reposer le voile biométrique
+                // immédiatement si l'espace prestataire était affiché avant la mise en
+                // arrière-plan, sans attendre qu'une navigation le redéclenche.
+                document.dispatchEvent(new CustomEvent('fagmobile:resumed'));
             }
         });
     }
