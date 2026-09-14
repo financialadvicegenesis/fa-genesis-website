@@ -2426,6 +2426,22 @@ a{text-decoration:none;color:inherit}
 .confirm-modal-btn-ok.danger{background:#ef4444;color:#fff;}
 .confirm-modal-input{width:100%;background:#0a0a0a;border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font-size:14px;padding:11px 12px;margin-bottom:18px;font-family:inherit;resize:none;box-sizing:border-box;}
 .confirm-modal-input:focus{outline:none;border-color:var(--yellow);}
+/* ── Menu d'actions bas d'écran (long-appui sur un message) — façon Instagram/WhatsApp ── */
+#action-sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s ease;}
+#action-sheet-overlay.on{opacity:1;pointer-events:auto;}
+.action-sheet-panel{width:100%;max-width:480px;background:rgba(16,16,16,.98);backdrop-filter:blur(20px);border-radius:20px 20px 0 0;padding:10px 14px calc(14px + var(--safe-bottom,0px));display:flex;flex-direction:column;gap:6px;transform:translateY(100%);transition:transform .24s cubic-bezier(.34,1.56,.64,1);box-shadow:0 -10px 40px rgba(0,0,0,.5);}
+#action-sheet-overlay.on .action-sheet-panel{transform:translateY(0);}
+.action-sheet-title{text-align:center;font-size:11px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:.4px;padding:10px 0 4px;}
+.action-sheet-btn{width:100%;background:transparent;border:none;border-top:1px solid rgba(255,255,255,.08);color:#fff;font-size:15px;font-weight:700;padding:15px 4px;cursor:pointer;text-align:center;transition:background .12s ease;}
+.action-sheet-btn:first-of-type{border-top:none;}
+.action-sheet-btn:active{background:rgba(255,255,255,.06);}
+.action-sheet-btn.danger{color:#ef4444;}
+.action-sheet-cancel{margin-top:6px;border-top:none;color:#aaa;font-weight:800;}
+/* ── Glisser vers la gauche pour archiver (liste conversations / fils) — Gmail/WhatsApp/Instagram ── */
+.swipe-row-wrap{position:relative;overflow:hidden;}
+.swipe-action-bg{position:absolute;inset:0;background:#FFD700;color:#000;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding-right:26px;font-weight:900;font-size:13px;opacity:0;}
+.swipe-action-bg i{font-size:17px;}
+.swipe-row-fg{position:relative;background:var(--bg);}
 /* ── Tirer-pour-rafraîchir (Messages / Missions) ── */
 .ptr-indicator{height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#666;font-size:17px;transition:height .18s ease;}
 .ptr-indicator.ready{color:var(--yellow);}
@@ -3191,6 +3207,7 @@ a{text-decoration:none;color:inherit}
         <!-- Sub-screen: Messages -->
         <div class="ptnr-screen" id="ptnr-screen-messages">
           <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Messages clients</span></div>
+          <div id="ptnr-msg-archived-link"></div>
           <div id="ptnr-messages-list"></div>
         </div>
 
@@ -7417,7 +7434,9 @@ function submitRevisionRequest(livrableId){
 }
 
 // ── MESSAGES ─────────────────────────────────────────────────
-function renderMsgTab(){
+// showArchived : affiche les conversations archivées (façon WhatsApp/Messenger/Instagram) au
+// lieu des actives — voir le lien "Conversations archivées" injecté sous l'en-tête.
+function renderMsgTab(showArchived){
   _clearChatPoll();
   var el=document.getElementById('msgContent');
   if(!USER||GUEST){
@@ -7425,17 +7444,20 @@ function renderMsgTab(){
       +locked('Messagerie','Connectez-vous pour accéder à vos conversations.');
     return;
   }
-  el.innerHTML='<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Messages</div></div>'
+  el.innerHTML='<div class="espace-back-bar"><button class="espace-back-btn" onclick="'+(showArchived?'renderMsgTab(false)':'navBack()')+'">&#8249;</button><div class="espace-title">'+(showArchived?'Conversations archivées':'Messages')+'</div></div>'
+    +'<div id="msgArchivedLink"></div>'
     +'<div id="msgConvList" style="padding:14px 0 80px;">'+_skeletonRows(4, true)+'</div>';
   var api=window.FA_GENESIS_API||API;
   var hdrs={'Authorization':'Bearer '+USER._token};
   Promise.all([
     fetch(api+'/api/messages',{headers:hdrs}).then(function(r){return r.json();}).catch(function(){return {messages:[]};}),
-    fetch(api+'/api/my-requests',{headers:hdrs}).then(function(r){return r.json();}).catch(function(){return {requests:[]};}) 
+    fetch(api+'/api/my-requests',{headers:hdrs}).then(function(r){return r.json();}).catch(function(){return {requests:[]};}),
+    fetch(api+'/api/messages/archived',{headers:hdrs}).then(function(r){return r.json();}).catch(function(){return {archived:[]};})
   ]).then(function(results){
     var convEl=document.getElementById('msgConvList'); if(!convEl) return;
     var allMsgs=(results[0]&&results[0].messages)||[];
     var reqs=(results[1]&&Array.isArray(results[1].requests))?results[1].requests:[];
+    var archivedEmails=(results[2]&&Array.isArray(results[2].archived))?results[2].archived:[];
     // Name + photo map from requests
     var nameMap={};
     reqs.forEach(function(r){ if(r.partner_email) nameMap[r.partner_email.toLowerCase()]={name:r.partner_name||'Prestataire',photo:r.partner_photo||null}; });
@@ -7453,20 +7475,31 @@ function renderMsgTab(){
     Object.keys(convMap).forEach(function(email){
       if(nameMap[email]) convMap[email].name=nameMap[email].name;
     });
-    var convs=Object.keys(convMap).map(function(k){return convMap[k];}).sort(function(a,b){
+    var allConvs=Object.keys(convMap).map(function(k){return convMap[k];}).sort(function(a,b){
       var la=a.msgs[a.msgs.length-1], lb=b.msgs[b.msgs.length-1];
       return new Date(lb.created_at)-new Date(la.created_at);
     });
+    var archivedSet={}; archivedEmails.forEach(function(e){ archivedSet[e]=true; });
+    var convs = allConvs.filter(function(c){ return showArchived ? !!archivedSet[c.email] : !archivedSet[c.email]; });
+    // Lien d'accès aux conversations archivées (masqué s'il n'y en a aucune), uniquement sur
+    // la vue "actives" — comme WhatsApp/Instagram.
+    var linkEl=document.getElementById('msgArchivedLink');
+    if(linkEl){
+      var nArchived = showArchived ? convs.length : allConvs.filter(function(c){return !!archivedSet[c.email];}).length;
+      linkEl.innerHTML = (!showArchived && nArchived>0)
+        ? '<button onclick="renderMsgTab(true)" style="width:100%;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.06);color:#999;font-size:13px;font-weight:700;padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;"><i class="fa-solid fa-box-archive" style="color:#FFD700;"></i> Conversations archivées <span style="margin-left:auto;color:#555;">'+nArchived+' <i class="fa-solid fa-chevron-right" style="font-size:11px;"></i></span></button>'
+        : '';
+    }
     if(!convs.length){
       convEl.innerHTML='<div class="empty"><div class="e-ico"><i class="fa-solid fa-comment-slash"></i></div>'
-        +'<p>Aucune conversation</p>'
-        +'<p style="font-size:13px;color:#555;">Vos échanges avec les prestataires apparaîtront ici.</p></div>';
+        +'<p>'+(showArchived?'Aucune conversation archivée':'Aucune conversation')+'</p>'
+        +(showArchived?'':'<p style="font-size:13px;color:#555;">Vos échanges avec les prestataires apparaîtront ici.</p>')+'</div>';
       return;
     }
     convEl.innerHTML=convs.map(function(conv){
       var last=conv.msgs[conv.msgs.length-1];
       var initials=(conv.name||'?').split(' ').map(function(w){return w[0]||''}).slice(0,2).join('').toUpperCase();
-      var preview=(last.content||'Photo').substring(0,55);
+      var preview=last.deleted_for_everyone?'Message supprimé':(last.content||'Photo').substring(0,55);
       var dt=new Date(last.created_at), now=new Date();
       var timeStr=(now-dt)<86400000
         ?dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
@@ -7474,7 +7507,9 @@ function renderMsgTab(){
       var unread=conv.msgs.filter(function(m){return m.from_type==='partner'&&!m.read_at;}).length;
       var safeEmail=conv.email.replace(/'/g,"\'");
       var safeName=(conv.name||'Prestataire').replace(/'/g,"\'");
-      return '<div style="display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(255,255,255,.06);">'
+      return '<div class="swipe-row-wrap" data-counterpart="'+conv.email+'">'
+        +'<div class="swipe-action-bg"><i class="fa-solid fa-box-archive"></i><span>'+(showArchived?'Désarchiver':'Archiver')+'</span></div>'
+        +'<div class="swipe-row-fg" style="display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(255,255,255,.06);background:var(--bg);">'
         +'<div onclick="openConversation(\''+safeEmail+'\',\''+safeName+'\',\'user-tie\',\''+safeEmail+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 8px 14px 16px;flex:1;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);">'
         +'<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a1200,#2a1f00);border:2px solid #FFD700;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#FFD700;flex-shrink:0;">'+initials+'</div>'
         +'<div style="flex:1;min-width:0;">'
@@ -7489,12 +7524,36 @@ function renderMsgTab(){
         +'</div>'
         +'</div>'
         +'<button onclick="event.stopPropagation();_deleteClientConversation(\''+safeEmail+'\',\''+safeName+'\')" style="background:none;border:none;color:#555;font-size:16px;cursor:pointer;flex-shrink:0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;" title="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>'
+        +'</div>'
         +'</div>';
     }).join('');
+    Array.prototype.forEach.call(convEl.querySelectorAll('.swipe-row-wrap'), function(rowEl){
+      _genesisAttachSwipeToArchive(rowEl, function(){
+        var email = rowEl.getAttribute('data-counterpart');
+        if(showArchived) _clientUnarchiveConversation(email); else _clientArchiveConversation(email);
+      });
+    });
   }).catch(function(){
     var convEl=document.getElementById('msgConvList');
     if(convEl) convEl.innerHTML='<div class="empty"><p>Erreur de chargement</p></div>';
   });
+}
+
+// Archiver/désarchiver une conversation (glissement vers la gauche, façon WhatsApp/Messenger/
+// Instagram) — n'affecte que ma propre vue, jamais celle du prestataire.
+function _clientArchiveConversation(partnerEmail){
+  if(!USER||!USER._token||!partnerEmail) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/messages/archive',{
+    method:'POST', headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'},
+    body:JSON.stringify({counterpart:partnerEmail})
+  }).then(function(){ renderMsgTab(false); }).catch(function(){ showToast('Erreur','Impossible d\'archiver.','error'); renderMsgTab(false); });
+}
+function _clientUnarchiveConversation(partnerEmail){
+  if(!USER||!USER._token||!partnerEmail) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/messages/unarchive',{
+    method:'POST', headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'},
+    body:JSON.stringify({counterpart:partnerEmail})
+  }).then(function(){ renderMsgTab(true); }).catch(function(){ showToast('Erreur','Erreur de connexion.','error'); renderMsgTab(true); });
 }
 
 // Suppression d'une conversation côté client uniquement — le prestataire (et l'admin)
@@ -9591,7 +9650,68 @@ function _genesisHandleChatWsMessage(data){
     } else {
       _genesisMarkSentAsReadUi(data.counterpart);
     }
+  } else if(data.type === 'chat_message_deleted'){
+    // "Supprimer pour tout le monde" déclenché par l'autre côté (ou par moi depuis un autre
+    // appareil) : remplace la bulle par le placeholder "Message supprimé" en direct.
+    if(isPartnerActive){
+      if(typeof _ptnrTryRefreshMessages==='function') _ptnrTryRefreshMessages();
+    } else if(data.id){
+      var bubbleEl = document.getElementById('chat-msg-'+data.id);
+      if(bubbleEl){
+        bubbleEl.dataset.deleted = '1';
+        var subjEl = bubbleEl.querySelector('.chat-bubble-subj'); if(subjEl) subjEl.remove();
+        var firstDiv = bubbleEl.querySelector('div');
+        if(firstDiv) firstDiv.outerHTML = '<div style="font-style:italic;opacity:.55;"><i class="fa-solid fa-ban" style="margin-right:5px;font-size:11px;"></i>Message supprimé</div>';
+        var checkEl = bubbleEl.querySelector('.chat-bubble-time i'); if(checkEl) checkEl.remove();
+      }
+    }
   }
+}
+
+// Geste "glisser vers la gauche pour archiver" (façon Gmail/WhatsApp/Instagram), générique —
+// appliqué à une ligne de conversation (client) ou une carte de fil (prestataire). Glisser
+// au-delà du seuil déclenche onArchive(el) puis fait glisser la ligne hors écran ; relâcher
+// avant le seuil la fait revenir à sa place. `el` doit contenir un enfant .swipe-action-bg
+// (révélé derrière) et .swipe-row-fg (la ligne visible, celle qui glisse).
+function _genesisAttachSwipeToArchive(el, onArchive){
+  if(!el || el._swipeAttached) return;
+  el._swipeAttached = true;
+  var fg = el.querySelector('.swipe-row-fg'); if(!fg) return;
+  var bg = el.querySelector('.swipe-action-bg');
+  var startX=0, startY=0, dx=0, dragging=false, decided=false, horizontal=false;
+  var THRESHOLD = 90;
+  fg.addEventListener('touchstart', function(e){
+    if(e.touches.length!==1) return;
+    startX=e.touches[0].clientX; startY=e.touches[0].clientY; dx=0; dragging=true; decided=false; horizontal=false;
+    fg.style.transition='none';
+  }, {passive:true});
+  fg.addEventListener('touchmove', function(e){
+    if(!dragging) return;
+    var x=e.touches[0].clientX, y=e.touches[0].clientY;
+    var rawDx = x-startX;
+    if(!decided){
+      if(Math.abs(rawDx)>8 || Math.abs(y-startY)>8){ decided=true; horizontal=Math.abs(rawDx)>Math.abs(y-startY); }
+    }
+    if(horizontal){
+      dx = Math.max(-140, Math.min(0, rawDx)); // uniquement vers la gauche
+      fg.style.transform='translateX('+dx+'px)';
+      if(bg) bg.style.opacity = Math.min(1, Math.abs(dx)/THRESHOLD);
+    }
+  }, {passive:true});
+  function end(){
+    if(!dragging) return; dragging=false;
+    fg.style.transition='transform .22s ease';
+    if(horizontal && dx<=-THRESHOLD){
+      fg.style.transform='translateX(-100%)';
+      haptic(25);
+      setTimeout(function(){ onArchive(el); }, 180);
+    } else {
+      fg.style.transform='translateX(0)';
+      if(bg) bg.style.opacity=0;
+    }
+  }
+  fg.addEventListener('touchend', end, {passive:true});
+  fg.addEventListener('touchcancel', end, {passive:true});
 }
 
 // Coche bleue "lu" en temps réel sur mes messages envoyés à ce destinataire, dans la
@@ -9614,16 +9734,58 @@ function _clientChatBubbleHtml(m, myEmail){
   var isMine=(m.from_email&&m.from_email.toLowerCase()===myEmail);
   var time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
   var checkHtml='';
-  if(isMine){
+  if(isMine && !m.deleted_for_everyone){
     checkHtml = m.read_at
       ? ' <i class="fa-solid fa-check-double" style="color:#53bdeb;font-size:11px;" title="Lu"></i>'
       : ' <i class="fa-solid fa-check" style="color:#8696a0;font-size:11px;" title="Envoyé"></i>';
   }
-  return '<div class="chat-bubble '+(isMine?'chat-bubble-mine':'chat-bubble-theirs')+'" id="chat-msg-'+(m.id||'')+'" data-mine="'+(isMine?'1':'0')+'">'
-    +(m.subject&&m.subject!=='Message'&&m.subject?'<div class="chat-bubble-subj">'+m.subject+'</div>':'')
-    +'<div>'+(m.content||m.body||'')+'</div>'
+  // Message retiré ("Supprimer pour tout le monde" / Unsend) : placeholder grisé, façon
+  // WhatsApp ("Ce message a été supprimé") — jamais rendu invisible sans trace.
+  var bodyHtml = m.deleted_for_everyone
+    ? '<div style="font-style:italic;opacity:.55;"><i class="fa-solid fa-ban" style="margin-right:5px;font-size:11px;"></i>Message supprimé</div>'
+    : '<div>'+(m.content||m.body||'')+'</div>';
+  return '<div class="chat-bubble '+(isMine?'chat-bubble-mine':'chat-bubble-theirs')+'" id="chat-msg-'+(m.id||'')+'" data-mine="'+(isMine?'1':'0')+'" data-deleted="'+(m.deleted_for_everyone?'1':'0')+'">'
+    +(m.subject&&m.subject!=='Message'&&m.subject&&!m.deleted_for_everyone?'<div class="chat-bubble-subj">'+m.subject+'</div>':'')
+    +bodyHtml
     +(time?'<div class="chat-bubble-time">'+time+checkHtml+'</div>':'')
     +'</div>';
+}
+
+// Long-appui sur un message (façon Instagram/WhatsApp) : ouvre le menu "Supprimer pour moi" /
+// "Supprimer pour tout le monde" (uniquement pour ses propres messages, non déjà supprimés).
+function _clientAttachBubbleLongPress(bubbleEl){
+  if(!bubbleEl || bubbleEl._lpAttached) return;
+  bubbleEl._lpAttached = true;
+  var timer = null;
+  function start(){ timer = setTimeout(function(){ timer=null; _clientOpenMessageActions(bubbleEl); }, 480); }
+  function cancel(){ if(timer){ clearTimeout(timer); timer=null; } }
+  bubbleEl.addEventListener('touchstart', start, {passive:true});
+  bubbleEl.addEventListener('touchend', cancel, {passive:true});
+  bubbleEl.addEventListener('touchmove', cancel, {passive:true});
+  bubbleEl.addEventListener('touchcancel', cancel, {passive:true});
+  bubbleEl.addEventListener('mousedown', start);
+  bubbleEl.addEventListener('mouseup', cancel);
+  bubbleEl.addEventListener('mouseleave', cancel);
+}
+function _clientOpenMessageActions(bubbleEl){
+  if(!bubbleEl || bubbleEl.dataset.deleted==='1') return;
+  var msgId = bubbleEl.id.replace('chat-msg-','');
+  var isMine = bubbleEl.dataset.mine==='1';
+  haptic(30);
+  var actions = [{ label:'Supprimer pour moi', value:'me' }];
+  if(isMine) actions.push({ label:'Supprimer pour tout le monde', value:'everyone', danger:true });
+  showActionSheet(actions).then(function(scope){
+    if(!scope) return;
+    fetch((window.FA_GENESIS_API||API)+'/api/messages/'+msgId+'/delete',{
+      method:'POST', headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'},
+      body:JSON.stringify({scope:scope})
+    }).then(function(r){return r.json();}).then(function(res){
+      if(res && res.error){ showToast('Erreur', res.error, 'error'); return; }
+      if(scope==='me'){ bubbleEl.remove(); }
+      // scope 'everyone' : le placeholder "Message supprimé" arrive via loadChatMessages/
+      // l'écho WebSocket (chat_message_deleted) — pas besoin de retoucher le DOM ici.
+    }).catch(function(){ showToast('Erreur','Erreur de connexion.','error'); });
+  });
 }
 
 // Ajout temps réel d'UN message dans la conversation actuellement ouverte (voir
@@ -9636,7 +9798,9 @@ function _clientAppendChatBubble(m){
   var myEmail=(USER&&USER.email||'').toLowerCase();
   var wrap=document.createElement('div');
   wrap.innerHTML=_clientChatBubbleHtml(m, myEmail);
-  msgs.appendChild(wrap.firstChild);
+  var node = wrap.firstChild;
+  msgs.appendChild(node);
+  _clientAttachBubbleLongPress(node);
   msgs.scrollTop=msgs.scrollHeight;
 }
 
@@ -9744,6 +9908,7 @@ function loadChatMessages(partnerEmail){
     }
     var myEmail=(USER.email||'').toLowerCase();
     msgs.innerHTML=list.map(function(m){ return _clientChatBubbleHtml(m, myEmail); }).join('');
+    Array.prototype.forEach.call(msgs.querySelectorAll('.chat-bubble'), _clientAttachBubbleLongPress);
     msgs.scrollTop=msgs.scrollHeight;
   }).catch(function(){
     msgs.innerHTML='<div class="chat-empty-state"><span>Aucun message.</span><span style="font-size:12px;color:#555;">Commencez la conversation !</span></div>';
@@ -13791,7 +13956,7 @@ function _ptnrNav(screen){
   if(screen==='seances') _ptnrLoadSeances();
   if(screen==='messages'){
     console.log('[GENESIS_NOTIFICATION] navigate_messages');
-    _ptnrLoadMessages();
+    _ptnrLoadMessages(false, false); // toujours revenir aux messages actifs en arrivant sur l'onglet, comme WhatsApp
     _clearPtnrMsgPoll();
     // Filet de sécurité uniquement : la livraison instantanée passe désormais par le WebSocket
     // temps réel (_genesisHandleChatWsMessage → _ptnrTryRefreshMessages), déclenché dès qu'un
@@ -14196,12 +14361,56 @@ function _ptnrTryRefreshMessages(){
   _ptnrLoadMessages();
 }
 
-function _ptnrLoadMessages(_isRetry){
+// Long-appui sur un message (façon Instagram/WhatsApp) : "Supprimer pour moi" / "Supprimer
+// pour tout le monde" (uniquement pour ses propres messages, non déjà supprimés).
+function _ptnrAttachBubbleLongPress(bubbleEl){
+  if(!bubbleEl || bubbleEl._lpAttached) return;
+  bubbleEl._lpAttached = true;
+  var timer = null;
+  function start(){ timer = setTimeout(function(){ timer=null; _ptnrOpenMessageActions(bubbleEl); }, 480); }
+  function cancel(){ if(timer){ clearTimeout(timer); timer=null; } }
+  bubbleEl.addEventListener('touchstart', start, {passive:true});
+  bubbleEl.addEventListener('touchend', cancel, {passive:true});
+  bubbleEl.addEventListener('touchmove', cancel, {passive:true});
+  bubbleEl.addEventListener('touchcancel', cancel, {passive:true});
+  bubbleEl.addEventListener('mousedown', start);
+  bubbleEl.addEventListener('mouseup', cancel);
+  bubbleEl.addEventListener('mouseleave', cancel);
+}
+function _ptnrOpenMessageActions(bubbleEl){
+  if(!bubbleEl || bubbleEl.dataset.deleted==='1') return;
+  var msgId = bubbleEl.id.replace('ptnr-msg-','');
+  var isMine = bubbleEl.dataset.mine==='1';
+  haptic(30);
+  var actions = [{ label:'Supprimer pour moi', value:'me' }];
+  if(isMine) actions.push({ label:'Supprimer pour tout le monde', value:'everyone', danger:true });
+  showActionSheet(actions).then(function(scope){
+    if(!scope) return;
+    _ptnrFetch('/api/partner/inbox/'+msgId+'/delete','POST',{scope:scope}).then(function(res){
+      if(res && res.error){ showToast('Erreur', res.error, 'error'); return; }
+      _ptnrLoadMessages();
+    }).catch(function(){ showToast('Erreur','Erreur de connexion.','error'); });
+  });
+}
+
+// showArchived : affiche les conversations archivées (façon WhatsApp/Messenger/Instagram) au
+// lieu des actives. Omis (undefined) → conserve la vue actuellement affichée (_ptnrMsgShowArchived),
+// pour que les rafraîchissements en arrière-plan (WS, polling) ne fassent jamais sauter le
+// prestataire hors de la vue archivée qu'il est en train de consulter.
+var _ptnrMsgShowArchived = false;
+function _ptnrLoadMessages(_isRetry, showArchived){
+  if(showArchived === undefined) showArchived = _ptnrMsgShowArchived;
+  _ptnrMsgShowArchived = showArchived;
   var el = document.getElementById('ptnr-messages-list');
   if(el && !_isRetry) el.innerHTML = _skeletonRows(3, true);
-  _ptnrFetch('/api/partner/inbox').then(function(data){
+  Promise.all([
+    _ptnrFetch('/api/partner/inbox'),
+    _ptnrFetch('/api/partner/inbox/archived').catch(function(){ return {archived:[]}; })
+  ]).then(function(results){
+    var data = results[0] || {};
+    var archivedEmails = (results[1] && Array.isArray(results[1].archived)) ? results[1].archived : [];
+    var archivedSet = {}; archivedEmails.forEach(function(e){ archivedSet[e]=true; });
     var flat = data.messages || [];
-    if(!flat.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-empty-txt">Aucun message</div></div>'; return; }
     var threadsByEmail = {};
     flat.forEach(function(m){
       var counterpartEmail = (m.from_type === 'partner') ? m.to_email : m.from_email;
@@ -14211,15 +14420,26 @@ function _ptnrLoadMessages(_isRetry){
       else if(m.from_type === 'partner' && m.to_name) threadsByEmail[counterpartEmail].name = m.to_name;
       threadsByEmail[counterpartEmail].messages.push(m);
     });
-    var threads = Object.keys(threadsByEmail).map(function(k){ return threadsByEmail[k]; });
-    threads.sort(function(a,b){
+    var allThreads = Object.keys(threadsByEmail).map(function(k){ return threadsByEmail[k]; });
+    allThreads.sort(function(a,b){
       var la = a.messages[a.messages.length-1], lb = b.messages[b.messages.length-1];
       return new Date(lb.created_at) - new Date(la.created_at);
     });
+    var threads = allThreads.filter(function(t){ return showArchived ? !!archivedSet[t.email] : !archivedSet[t.email]; });
+    var linkEl = document.getElementById('ptnr-msg-archived-link');
+    if(linkEl){
+      var nArchived = showArchived ? threads.length : allThreads.filter(function(t){ return !!archivedSet[t.email]; }).length;
+      linkEl.innerHTML = showArchived
+        ? '<button onclick="_ptnrLoadMessages(false,false)" style="width:100%;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.06);color:#999;font-size:13px;font-weight:700;padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;"><i class="fa-solid fa-arrow-left"></i> Retour aux messages</button>'
+        : (nArchived>0 ? '<button onclick="_ptnrLoadMessages(false,true)" style="width:100%;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.06);color:#999;font-size:13px;font-weight:700;padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;"><i class="fa-solid fa-box-archive" style="color:#FFD700;"></i> Conversations archivées <span style="margin-left:auto;color:#555;">'+nArchived+' <i class="fa-solid fa-chevron-right" style="font-size:11px;"></i></span></button>' : '');
+    }
+    if(!threads.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-empty-txt">'+(showArchived?'Aucune conversation archivée':'Aucun message')+'</div></div>'; return; }
     var html = '';
     threads.forEach(function(thread){
       var key = _ptnrThreadKey(thread.email);
-      html += '<div class="ptnr-card" style="margin-bottom:16px;">';
+      html += '<div class="swipe-row-wrap" data-counterpart="'+thread.email+'" style="margin-bottom:16px;">';
+      html += '<div class="swipe-action-bg" style="border-radius:14px;"><i class="fa-solid fa-box-archive"></i><span>'+(showArchived?'Désarchiver':'Archiver')+'</span></div>';
+      html += '<div class="swipe-row-fg ptnr-card" style="margin-bottom:0;">';
       html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
       html += '<div class="ptnr-card-title">'+_escHtml(thread.name)+'</div>';
       html += '<button onclick="_ptnrDeleteConversation(\''+thread.email.replace(/\'/g,"\\'")+'\',\''+thread.name.replace(/\'/g,"\\'")+'\')" style="background:none;border:none;color:#555;font-size:15px;cursor:pointer;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;" title="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>';
@@ -14228,24 +14448,28 @@ function _ptnrLoadMessages(_isRetry){
         var isPartner = m.from_type === 'partner';
         // Coches façon WhatsApp/Messenger sur MES messages uniquement : ✓ gris = envoyé,
         // ✓✓ bleu = lu par le client (read_at posé, voir POST .../conversation/read).
-        var checkHtml = isPartner
+        var checkHtml = (isPartner && !m.deleted_for_everyone)
           ? (m.read_at
               ? ' <i class="fa-solid fa-check-double" style="color:#53bdeb;font-size:11px;" title="Lu"></i>'
               : ' <i class="fa-solid fa-check" style="color:#888;font-size:11px;" title="Envoyé"></i>')
           : '';
-        html += '<div class="ptnr-msg-bubble'+(isPartner?' partner':'')+'">';
+        html += '<div class="ptnr-msg-bubble'+(isPartner?' partner':'')+'" id="ptnr-msg-'+m.id+'" data-mine="'+(isPartner?'1':'0')+'" data-deleted="'+(m.deleted_for_everyone?'1':'0')+'">';
         html += '<div class="ptnr-msg-meta">'+(isPartner?'Vous':_escHtml(thread.name))+' · '+_ptnrFmt(m.created_at)+checkHtml+'</div>';
-        html += '<div class="ptnr-msg-text">'+_escHtml(m.content)+'</div>';
-        if(m.attachments && m.attachments.length){
-          html += '<div class="ptnr-msg-attachments" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">';
-          m.attachments.forEach(function(a){
-            if(a.type && a.type.indexOf('image/')===0){
-              html += '<a href="'+a.dataUrl+'" target="_blank"><img src="'+a.dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;"></a>';
-            }else{
-              html += '<a href="'+a.dataUrl+'" target="_blank" download="'+_escHtml(a.name)+'" style="font-size:12px;background:#f0f0f0;padding:4px 8px;border-radius:6px;"><i class="fa-solid fa-paperclip"></i> '+_escHtml(a.name)+'</a>';
-            }
-          });
-          html += '</div>';
+        if(m.deleted_for_everyone){
+          html += '<div class="ptnr-msg-text" style="font-style:italic;opacity:.55;"><i class="fa-solid fa-ban" style="margin-right:5px;font-size:11px;"></i>Message supprimé</div>';
+        } else {
+          html += '<div class="ptnr-msg-text">'+_escHtml(m.content)+'</div>';
+          if(m.attachments && m.attachments.length){
+            html += '<div class="ptnr-msg-attachments" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">';
+            m.attachments.forEach(function(a){
+              if(a.type && a.type.indexOf('image/')===0){
+                html += '<a href="'+a.dataUrl+'" target="_blank"><img src="'+a.dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;"></a>';
+              }else{
+                html += '<a href="'+a.dataUrl+'" target="_blank" download="'+_escHtml(a.name)+'" style="font-size:12px;background:#f0f0f0;padding:4px 8px;border-radius:6px;"><i class="fa-solid fa-paperclip"></i> '+_escHtml(a.name)+'</a>';
+              }
+            });
+            html += '</div>';
+          }
         }
         html += '</div>';
       });
@@ -14257,9 +14481,17 @@ function _ptnrLoadMessages(_isRetry){
       html += '<button class="ptnr-reply-send" onclick="_ptnrSendReply(\''+key+'\',\''+thread.email+'\',\''+thread.name.replace(/'/g,"\\'")+'\')">Envoyer</button>';
       html += '</div>';
       html += '<div id="ptnr-reply-err-'+key+'" style="color:#c00;font-size:12px;margin-top:4px;"></div>';
-      html += '</div>';
+      html += '</div>'; // .swipe-row-fg.ptnr-card
+      html += '</div>'; // .swipe-row-wrap
     });
     if(el) el.innerHTML = html;
+    Array.prototype.forEach.call(el ? el.querySelectorAll('.ptnr-msg-bubble') : [], _ptnrAttachBubbleLongPress);
+    Array.prototype.forEach.call(el ? el.querySelectorAll('.swipe-row-wrap') : [], function(rowEl){
+      _genesisAttachSwipeToArchive(rowEl, function(){
+        var email = rowEl.getAttribute('data-counterpart');
+        if(showArchived) _ptnrUnarchiveConversation(email); else _ptnrArchiveConversation(email);
+      });
+    });
     // Marquer comme lus les messages clients déjà affichés à l'instant — contrairement au
     // client (liste → conversation), l'écran Messages du prestataire montre TOUS les fils
     // d'un coup, donc les afficher ICI équivaut à les avoir "ouverts". Fait redescendre le
@@ -14285,6 +14517,21 @@ function _ptnrLoadMessages(_isRetry){
     if(!_isRetry){ setTimeout(function(){ _ptnrLoadMessages(true); }, 1200); return; }
     if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
   });
+}
+
+// Archiver/désarchiver une conversation (glissement vers la gauche, façon WhatsApp/Messenger/
+// Instagram) — n'affecte que la vue du prestataire, jamais celle du client.
+function _ptnrArchiveConversation(clientEmail){
+  if(!clientEmail) return;
+  _ptnrFetch('/api/partner/inbox/archive','POST',{client_email:clientEmail})
+    .then(function(){ _ptnrLoadMessages(false, false); })
+    .catch(function(){ showToast('Erreur','Impossible d\'archiver.','error'); _ptnrLoadMessages(false, false); });
+}
+function _ptnrUnarchiveConversation(clientEmail){
+  if(!clientEmail) return;
+  _ptnrFetch('/api/partner/inbox/unarchive','POST',{client_email:clientEmail})
+    .then(function(){ _ptnrLoadMessages(false, true); })
+    .catch(function(){ showToast('Erreur','Erreur de connexion.','error'); _ptnrLoadMessages(false, true); });
 }
 
 // Suppression d'une conversation côté prestataire uniquement — le client (et l'admin)
@@ -19762,6 +20009,40 @@ function showPromptModal(message, opts){
     }
     overlay.querySelector('.confirm-modal-btn-cancel').onclick = function(){ haptic(10); close(null); };
     overlay.querySelector('.confirm-modal-btn-ok').onclick = function(){ haptic(20); close(field.value); };
+    overlay.onclick = function(e){ if(e.target === overlay) close(null); };
+  });
+}
+
+// ── Menu d'actions en bas d'écran (long-appui sur un message) — façon Instagram/WhatsApp ──
+// actions: [{label, value, danger}]. Retourne une Promise<value|null> (null si annulé).
+function showActionSheet(actions, title){
+  return new Promise(function(resolve){
+    var old = document.getElementById('action-sheet-overlay');
+    if(old) old.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'action-sheet-overlay';
+    var html = '<div class="action-sheet-panel">';
+    if(title) html += '<div class="action-sheet-title">'+_escHtml(title)+'</div>';
+    actions.forEach(function(a, i){
+      html += '<button class="action-sheet-btn'+(a.danger?' danger':'')+'" data-i="'+i+'">'+_escHtml(a.label)+'</button>';
+    });
+    html += '<button class="action-sheet-btn action-sheet-cancel" data-i="-1">Annuler</button>';
+    html += '</div>';
+    overlay.innerHTML = html;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function(){ overlay.className = 'on'; });
+    function close(val){
+      overlay.className = '';
+      setTimeout(function(){ if(overlay.parentNode) overlay.remove(); }, 220);
+      resolve(val);
+    }
+    overlay.querySelectorAll('.action-sheet-btn').forEach(function(btn){
+      btn.onclick = function(){
+        haptic(15);
+        var i = parseInt(btn.getAttribute('data-i'), 10);
+        close(i === -1 ? null : actions[i].value);
+      };
+    });
     overlay.onclick = function(e){ if(e.target === overlay) close(null); };
   });
 }

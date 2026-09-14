@@ -12065,6 +12065,10 @@ app.post('/api/admin/orders/:orderId/unlock-balance', function(req, res) {
 // ============================================================
 
 var CHAT_FILE = path.join(DATA_DIR,'chat.json');
+// Nom de fichier ET nom de collection MongoDB DOIVENT correspondre exactement (restoreAllFromCloud
+// reconstruit le fichier via `collName + '.json'`, sans normalisation tiret/underscore — un
+// écart ici a déjà cassé silencieusement une restauration par le passé, voir partner_requests).
+var CHAT_ARCHIVES_FILE = path.join(DATA_DIR,'chat-archives.json');
 var SUPPORT_TICKETS_FILE = path.join(DATA_DIR,'support-tickets.json');
 
 function loadChat() {
@@ -12089,6 +12093,24 @@ function saveChat(msgs) {
     // écraser les données de l'un par l'autre à chaque sauvegarde, deleteMany()+insertMany()
     // remplaçant toute la collection).
     persistentStore.persistToCloud('chat', msgs).catch(function(e) {});
+}
+
+// Conversations archivées (façon WhatsApp/Messenger/Instagram) — un rang par conversation
+// archivée par un utilisateur donné, séparé de chat.json (concept par CONVERSATION, pas par
+// message). Voir COLLECTIONS dans persistent-store.js : 'chat-archives' doit y figurer, sinon
+// perdu à chaque redéploiement Render (voir le commentaire au-dessus sur 'chat').
+function loadChatArchives() {
+    try {
+        if (fs.existsSync(CHAT_ARCHIVES_FILE)) {
+            return JSON.parse(fs.readFileSync(CHAT_ARCHIVES_FILE, 'utf8'));
+        }
+    } catch (e) { console.error('[CHAT-ARCHIVES] Erreur lecture:', e.message); }
+    return [];
+}
+function saveChatArchives(rows) {
+    try { fs.writeFileSync(CHAT_ARCHIVES_FILE, JSON.stringify(rows, null, 2), 'utf8'); }
+    catch (e) { console.error('[CHAT-ARCHIVES] Erreur ecriture:', e.message); }
+    persistentStore.persistToCloud('chat-archives', rows).catch(function(e) {});
 }
 
 function loadSupportTickets() {
@@ -12330,6 +12352,129 @@ app.post('/api/messages/conversation/read', function(req, res) {
 });
 
 /**
+ * GET /api/messages/archived — Liste des conversations archivées par CE client (façon
+ * WhatsApp/Messenger/Instagram) — juste la liste des emails prestataire concernés, à croiser
+ * côté app.html avec /api/messages pour séparer visuellement actives / archivées.
+ */
+app.get('/api/messages/archived', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var user = findUserByToken(authHeader.replace('Bearer ', ''));
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var rows = loadChatArchives().filter(function(r) {
+            return r.user_role === 'client' && r.user_email && r.user_email.toLowerCase() === user.email.toLowerCase();
+        });
+        res.json({ ok: true, archived: rows.map(function(r) { return r.counterpart_email; }) });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/messages/archive — Le client archive sa conversation avec un prestataire précis
+ * (n'affecte que sa propre vue — comme WhatsApp/Messenger/Instagram, l'autre côté n'est jamais
+ * prévenu ni impacté).
+ */
+app.post('/api/messages/archive', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var user = findUserByToken(authHeader.replace('Bearer ', ''));
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var counterpart = (req.body.counterpart || '').toLowerCase();
+        if (!counterpart) return res.status(400).json({ error: 'counterpart requis' });
+
+        var rows = loadChatArchives();
+        var already = rows.some(function(r) {
+            return r.user_role === 'client' && r.user_email.toLowerCase() === user.email.toLowerCase() && r.counterpart_email === counterpart;
+        });
+        if (!already) {
+            rows.push({ id: 'ARCH-' + uuidv4().split('-')[0].toUpperCase(), user_role: 'client', user_email: user.email.toLowerCase(), counterpart_email: counterpart, archived_at: new Date().toISOString() });
+            saveChatArchives(rows);
+        }
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/messages/unarchive — Le client désarchive une conversation.
+ */
+app.post('/api/messages/unarchive', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var user = findUserByToken(authHeader.replace('Bearer ', ''));
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var counterpart = (req.body.counterpart || '').toLowerCase();
+        if (!counterpart) return res.status(400).json({ error: 'counterpart requis' });
+
+        var rows = loadChatArchives().filter(function(r) {
+            return !(r.user_role === 'client' && r.user_email.toLowerCase() === user.email.toLowerCase() && r.counterpart_email === counterpart);
+        });
+        saveChatArchives(rows);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/messages/:id/delete — Le client supprime UN message précis (pas toute la
+ * conversation) — façon WhatsApp/Messenger/Instagram :
+ *   scope 'me'       : masqué uniquement de ma propre vue (n'importe quel message de MA conversation)
+ *   scope 'everyone'  : retiré pour les deux côtés, mais UNIQUEMENT si j'en suis l'auteur
+ *                        (comme "Supprimer pour tout le monde"/"Unsend") — remplacé par un
+ *                        placeholder "Message supprimé" plutôt que rendu invisible sans trace.
+ */
+app.post('/api/messages/:id/delete', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var user = findUserByToken(authHeader.replace('Bearer ', ''));
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var scope = req.body.scope === 'everyone' ? 'everyone' : 'me';
+        var msgs = loadChat();
+        var msg = msgs.find(function(m) { return m.id === req.params.id; });
+        if (!msg) return res.status(404).json({ error: 'Message introuvable' });
+        var isMine = msg.from_email === user.email;
+        var isRecipient = msg.to_email === user.email;
+        if (!isMine && !isRecipient) return res.status(403).json({ error: 'Accès non autorisé' });
+
+        if (scope === 'everyone') {
+            if (!isMine) return res.status(403).json({ error: 'Seul l\'auteur peut supprimer un message pour tout le monde' });
+            msg.deleted_for_everyone = true;
+            msg.deleted_at = new Date().toISOString();
+            msg.content = '';
+            msg.attachments = [];
+        } else {
+            if (!Array.isArray(msg.deleted_by)) msg.deleted_by = [];
+            if (msg.deleted_by.indexOf(user.email) === -1) msg.deleted_by.push(user.email);
+        }
+        saveChat(msgs);
+
+        if (scope === 'everyone') {
+            // Conversation client<->admin (to_type==='admin') : pas de destinataire WS temps réel
+            // ici (l'admin utilise l'espace web, pas ce socket) — rien à pousser dans ce cas.
+            var counterpartEmail = isMine ? msg.to_email : msg.from_email;
+            var isPartnerThread = msg.to_type === 'partner' || msg.from_type === 'partner';
+            if (isPartnerThread && counterpartEmail) sendToChatSocket('partner', counterpartEmail, { type: 'chat_message_deleted', id: msg.id, counterpart: user.email });
+            sendToChatSocket('client', user.email, { type: 'chat_message_deleted', id: msg.id, counterpart: counterpartEmail, self: true });
+        }
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('[CHAT] Erreur POST /api/messages/:id/delete:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/messages — Client envoie un message de chat
  */
 app.post('/api/messages', function(req, res) {
@@ -12558,6 +12703,105 @@ app.post('/api/partner/inbox/conversation/read', authenticatePartner, function(r
         res.json({ ok: true, updated: changed });
     } catch (err) {
         console.error('[CHAT] Erreur POST conversation/read partenaire:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partner/inbox/archived — Liste des conversations archivées par CE prestataire
+ * (façon WhatsApp/Messenger/Instagram).
+ */
+app.get('/api/partner/inbox/archived', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var rows = loadChatArchives().filter(function(r) {
+            return r.user_role === 'partner' && r.user_email && r.user_email.toLowerCase() === partner.email.toLowerCase();
+        });
+        res.json({ ok: true, archived: rows.map(function(r) { return r.counterpart_email; }) });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/inbox/archive — Le prestataire archive sa conversation avec un client précis
+ * (n'affecte que sa propre vue).
+ */
+app.post('/api/partner/inbox/archive', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var clientEmail = (req.body.client_email || '').toLowerCase();
+        if (!clientEmail) return res.status(400).json({ error: 'client_email requis' });
+
+        var rows = loadChatArchives();
+        var already = rows.some(function(r) {
+            return r.user_role === 'partner' && r.user_email.toLowerCase() === partner.email.toLowerCase() && r.counterpart_email === clientEmail;
+        });
+        if (!already) {
+            rows.push({ id: 'ARCH-' + uuidv4().split('-')[0].toUpperCase(), user_role: 'partner', user_email: partner.email.toLowerCase(), counterpart_email: clientEmail, archived_at: new Date().toISOString() });
+            saveChatArchives(rows);
+        }
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/inbox/unarchive — Le prestataire désarchive une conversation.
+ */
+app.post('/api/partner/inbox/unarchive', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var clientEmail = (req.body.client_email || '').toLowerCase();
+        if (!clientEmail) return res.status(400).json({ error: 'client_email requis' });
+
+        var rows = loadChatArchives().filter(function(r) {
+            return !(r.user_role === 'partner' && r.user_email.toLowerCase() === partner.email.toLowerCase() && r.counterpart_email === clientEmail);
+        });
+        saveChatArchives(rows);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/inbox/:id/delete — Le prestataire supprime UN message précis — façon
+ * WhatsApp/Messenger/Instagram : scope 'me' (masqué uniquement de sa vue) ou 'everyone'
+ * (retiré des deux côtés, uniquement si le prestataire en est l'auteur — "Unsend").
+ */
+app.post('/api/partner/inbox/:id/delete', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var scope = req.body.scope === 'everyone' ? 'everyone' : 'me';
+        var msgs = loadChat();
+        var msg = msgs.find(function(m) { return m.id === req.params.id; });
+        if (!msg) return res.status(404).json({ error: 'Message introuvable' });
+        var isMine = msg.from_email === partner.email;
+        var isRecipient = msg.to_email === partner.email;
+        if (!isMine && !isRecipient) return res.status(403).json({ error: 'Accès non autorisé' });
+
+        if (scope === 'everyone') {
+            if (!isMine) return res.status(403).json({ error: 'Seul l\'auteur peut supprimer un message pour tout le monde' });
+            msg.deleted_for_everyone = true;
+            msg.deleted_at = new Date().toISOString();
+            msg.content = '';
+            msg.attachments = [];
+        } else {
+            if (!Array.isArray(msg.deleted_by)) msg.deleted_by = [];
+            if (msg.deleted_by.indexOf(partner.email) === -1) msg.deleted_by.push(partner.email);
+        }
+        saveChat(msgs);
+
+        if (scope === 'everyone') {
+            var counterpartEmail = isMine ? msg.to_email : msg.from_email;
+            if (counterpartEmail) sendToChatSocket('client', counterpartEmail, { type: 'chat_message_deleted', id: msg.id, counterpart: partner.email });
+            sendToChatSocket('partner', partner.email, { type: 'chat_message_deleted', id: msg.id, counterpart: counterpartEmail, self: true });
+        }
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('[CHAT] Erreur POST /api/partner/inbox/:id/delete:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

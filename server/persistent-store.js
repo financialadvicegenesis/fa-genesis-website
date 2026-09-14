@@ -51,6 +51,7 @@ var COLLECTIONS = [
     'reservations',
     'messages',
     'chat',
+    'chat-archives',
     'support-tickets',
     'notifications',
     'partner-subprofiles',
