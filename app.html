@@ -3662,6 +3662,18 @@ function _loadTab(tab){
 
 // ── APP INIT ─────────────────────────────────────────────────
 function initApp(){
+  // CRITIQUE, en tout premier : _ptnrInit() restaure la session prestataire (_ptnrToken/
+  // _ptnrSession) depuis localStorage — c'est LA dépendance de toute la chaîne notification→
+  // biométrie→conversation exacte (voir nav()/_handleNotifHash). Trouvé lors d'un audit suite à
+  // un signalement "la biométrie renvoie encore vers Accueil" : un ReferenceError non intercepté
+  // plus bas dans cette fonction (_updateGreeting, définie dans un <script> SÉPARÉ et donc pas
+  // toujours déjà chargée selon la vitesse de démarrage à froid — la hoisting JS ne s'applique
+  // qu'À L'INTÉRIEUR d'un même bloc <script>) interrompait l'exécution de initApp() AVANT que
+  // _ptnrInit() n'ait eu la moindre chance de s'exécuter, laissant _ptnrToken indéfiniment nul —
+  // reproduit et confirmé en direct via Chrome DevTools sur un démarrage à froid réel. _ptnrInit()
+  // est donc déplacée ici, avant tout code pouvant potentiellement échouer, pour ne plus jamais
+  // dépendre du bon déroulement du reste de cette fonction.
+  _ptnrInit();
   if(USER){
     var fn = USER.prenom || USER.firstName || USER.first_name || (USER.email||'').split('@')[0];
     var greetEl = document.getElementById('greetName');
@@ -3690,11 +3702,14 @@ function initApp(){
     if(greetInvEl) greetInvEl.textContent = 'Invité';
   }
   updateCartBadge();
-  _updateGreeting();
+  // _updateGreeting est définie dans un <script> séparé plus bas dans le fichier — la hoisting
+  // JS ne couvre que l'intérieur d'un même bloc <script>, donc pas de garantie qu'elle soit déjà
+  // chargée sur un démarrage à froid particulièrement lent (voir le commentaire détaillé en
+  // tête de initApp()). Garde défensive plutôt que déplacement du code, pour rester cohérent
+  // avec le pattern déjà utilisé ailleurs dans cette même fonction (_syncUserBadge, etc.).
+  if(typeof _updateGreeting==='function') _updateGreeting();
   // Charger toutes les sections de l'accueil (data réelle)
   setTimeout(function(){ loadAccueilSections(); }, 100);
-  // Autres onglets : lazy loading via _loadTab() dans nav()
-  _ptnrInit();
 
   // SW update : vérifier immédiatement + toutes les 10 min
   if('serviceWorker' in navigator){
