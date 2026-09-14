@@ -14200,7 +14200,11 @@ function _ptnrFmt(dateStr){
 // ── ACCUEIL PARTENAIRE ──
 function _ptnrLoadHome(){
   _renderPartnerHomeQGWidget(_ptnrLastRepData);
-  _loadEarningsSummary();
+  // _loadEarningsSummary() : fonction supprimée avec l'ancienne UI Stripe Connect (voir
+  // "Supprimer Stripe Connect partenaire (remplacé par Wallet GENESIS)") mais cet appel avait
+  // été oublié — ReferenceError non intercepté à CHAQUE affichage de l'écran Accueil
+  // prestataire depuis, empêchant tout le reste de cette fonction de s'exécuter (alertes devis/
+  // messages/missions, cartes finance...). Trouvé lors de cet audit biométrie/messagerie.
   var list = document.getElementById('ptnr-home-list');
   if(list) list.innerHTML = _skeletonRows(2);
   _ptnrRenderServicesSection();
