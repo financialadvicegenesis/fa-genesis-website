@@ -3394,6 +3394,148 @@ a{text-decoration:none;color:inherit}
 
 function _playBgVideo(){ /* vidéo de fond désactivée — fichier trop lourd pour mobile */ }
 
+// ── UTILITAIRES CŒUR (haptic / toasts / modales) — déplacés ici depuis la fin du fichier ──
+// Utilisés PARTOUT dans l'app, y compris potentiellement très tôt au démarrage (nav(),
+// d'innombrables gestionnaires de clic). Ils vivaient auparavant dans un bloc <script> SÉPARÉ
+// beaucoup plus bas dans le fichier — la hoisting JS ne s'applique qu'À L'INTÉRIEUR d'un même
+// bloc <script>, jamais entre plusieurs blocs. Sur un démarrage à froid lent (fichier volumineux,
+// appareil/réseau lent), ce second bloc pouvait ne pas encore avoir fini de s'exécuter au moment
+// où l'un de ces utilitaires était appelé depuis ici — provoquant un ReferenceError qui
+// interrompait toute l'exécution en cours. Confirmé en direct lors d'un audit biométrie/messagerie
+// (haptic() jeté depuis nav(), _updateGreeting() jeté depuis initApp() — les deux corrigés).
+// Regroupés ici, tout en haut du tout premier bloc <script>, ils sont désormais TOUJOURS
+// disponibles, quelle que soit la vitesse de chargement du reste du fichier.
+function haptic(p){try{if(navigator.vibrate)navigator.vibrate(p||10);}catch(e){}}
+
+// Modale de confirmation stylée — remplace window.confirm() partout dans l'app. Retourne une
+// Promise<boolean> : `showConfirmModal(msg).then(function(ok){ if(!ok) return; ...suite... });`
+function showConfirmModal(message, opts){
+  opts = opts || {};
+  return new Promise(function(resolve){
+    var old = document.getElementById('confirm-modal-overlay');
+    if(old) old.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'confirm-modal-overlay';
+    var danger = opts.danger !== false; // par défaut rouge (la plupart des usages actuels sont des suppressions)
+    var title = opts.title ? '<div class="confirm-modal-title">'+_escHtml(opts.title)+'</div>' : '';
+    overlay.innerHTML =
+      '<div class="confirm-modal-card">' + title +
+        '<div class="confirm-modal-msg">'+_escHtml(message)+'</div>' +
+        '<div class="confirm-modal-row">' +
+          '<button class="confirm-modal-btn confirm-modal-btn-cancel">'+_escHtml(opts.cancelLabel||'Annuler')+'</button>' +
+          '<button class="confirm-modal-btn confirm-modal-btn-ok'+(danger?' danger':'')+'">'+_escHtml(opts.confirmLabel||'Confirmer')+'</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function(){ overlay.className = 'on'; });
+    function close(result){
+      overlay.className = '';
+      setTimeout(function(){ if(overlay.parentNode) overlay.remove(); }, 180);
+      resolve(result);
+    }
+    overlay.querySelector('.confirm-modal-btn-cancel').onclick = function(){ haptic(10); close(false); };
+    overlay.querySelector('.confirm-modal-btn-ok').onclick = function(){ haptic(20); close(true); };
+    overlay.onclick = function(e){ if(e.target === overlay) close(false); };
+  });
+}
+
+// Modale de saisie stylée — remplace window.prompt(). Retourne une Promise<string|null>
+// (null si annulé) — même principe que showConfirmModal(), avec un champ de texte en plus.
+function showPromptModal(message, opts){
+  opts = opts || {};
+  return new Promise(function(resolve){
+    var old = document.getElementById('confirm-modal-overlay');
+    if(old) old.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'confirm-modal-overlay';
+    var title = opts.title ? '<div class="confirm-modal-title">'+_escHtml(opts.title)+'</div>' : '';
+    var isTextarea = opts.multiline !== false;
+    var fieldTag = isTextarea ? 'textarea rows="3"' : 'input type="text"';
+    var fieldCloseTag = isTextarea ? 'textarea' : 'input';
+    overlay.innerHTML =
+      '<div class="confirm-modal-card">' + title +
+        '<div class="confirm-modal-msg">'+_escHtml(message)+'</div>' +
+        '<'+fieldTag+' class="confirm-modal-input" id="confirm-modal-field" placeholder="'+_escHtml(opts.placeholder||'')+'">'+(isTextarea?_escHtml(opts.defaultValue||''):'')+'</'+fieldCloseTag+'>' +
+        '<div class="confirm-modal-row">' +
+          '<button class="confirm-modal-btn confirm-modal-btn-cancel">'+_escHtml(opts.cancelLabel||'Annuler')+'</button>' +
+          '<button class="confirm-modal-btn confirm-modal-btn-ok">'+_escHtml(opts.confirmLabel||'Valider')+'</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    var field = overlay.querySelector('#confirm-modal-field');
+    if(!isTextarea) field.value = opts.defaultValue || '';
+    requestAnimationFrame(function(){ overlay.className = 'on'; field.focus(); });
+    function close(result){
+      overlay.className = '';
+      setTimeout(function(){ if(overlay.parentNode) overlay.remove(); }, 180);
+      resolve(result);
+    }
+    overlay.querySelector('.confirm-modal-btn-cancel').onclick = function(){ haptic(10); close(null); };
+    overlay.querySelector('.confirm-modal-btn-ok').onclick = function(){ haptic(20); close(field.value); };
+    overlay.onclick = function(e){ if(e.target === overlay) close(null); };
+  });
+}
+
+// Menu d'actions en bas d'écran (long-appui sur un message) — façon Instagram/WhatsApp.
+// actions: [{label, value, danger}]. Retourne une Promise<value|null> (null si annulé).
+function showActionSheet(actions, title){
+  return new Promise(function(resolve){
+    var old = document.getElementById('action-sheet-overlay');
+    if(old) old.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'action-sheet-overlay';
+    var html = '<div class="action-sheet-panel">';
+    if(title) html += '<div class="action-sheet-title">'+_escHtml(title)+'</div>';
+    actions.forEach(function(a, i){
+      html += '<button class="action-sheet-btn'+(a.danger?' danger':'')+'" data-i="'+i+'">'+_escHtml(a.label)+'</button>';
+    });
+    html += '<button class="action-sheet-btn action-sheet-cancel" data-i="-1">Annuler</button>';
+    html += '</div>';
+    overlay.innerHTML = html;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function(){ overlay.className = 'on'; });
+    function close(val){
+      overlay.className = '';
+      setTimeout(function(){ if(overlay.parentNode) overlay.remove(); }, 220);
+      resolve(val);
+    }
+    overlay.querySelectorAll('.action-sheet-btn').forEach(function(btn){
+      btn.onclick = function(){
+        haptic(15);
+        var i = parseInt(btn.getAttribute('data-i'), 10);
+        close(i === -1 ? null : actions[i].value);
+      };
+    });
+    overlay.onclick = function(e){ if(e.target === overlay) close(null); };
+  });
+}
+
+// Notifications "toast" (bandeau temporaire en haut/bas d'écran).
+function showToast(title,sub,type){
+  var stack=document.getElementById('toast-stack'); if(!stack) return;
+  type=type||'info';
+  var ico={success:'<i class="fa-solid fa-circle-check"></i>',error:'<i class="fa-solid fa-circle-xmark"></i>',info:'<i class="fa-solid fa-circle-info"></i>'}[type]||'<i class="fa-solid fa-bell"></i>';
+  var el=document.createElement('div');
+  el.className='toast-item';
+  el.innerHTML='<div class="toast-ico toast-ico-'+type+'">'+ico+'</div>'
+    +'<div class="toast-body">'
+    +'<div class="toast-title">'+title+'</div>'
+    +(sub?'<div class="toast-sub">'+sub+'</div>':'')
+    +'</div>'
+    +'<div class="toast-prog toast-prog-'+type+'"></div>';
+  while(stack.children.length>=3){
+    var old=stack.firstChild;
+    old.classList.add('t-out');
+    (function(o){setTimeout(function(){if(o.parentNode)o.parentNode.removeChild(o);},230);})(old);
+  }
+  stack.appendChild(el);
+  requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add('t-in');});});
+  setTimeout(function(){
+    el.classList.remove('t-in'); el.classList.add('t-out');
+    setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},230);
+  },3400);
+}
+
 // ── DATA ─────────────────────────────────────────────────────
 var USER = null, GUEST = false;
 var API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
@@ -20015,116 +20157,9 @@ function _ptnrHandlePhotoUpload(input){
 /* ══════════════════════════════════════════════════
    UX PREMIUM — Expérience inoubliable
 ══════════════════════════════════════════════════ */
-
-// ── 1. Haptic feedback ──
-function haptic(p){try{if(navigator.vibrate)navigator.vibrate(p||10);}catch(e){}}
-
-// ── Modale de confirmation stylée — remplace window.confirm() partout dans l'app ──
-// window.confirm() affiche la boîte de dialogue grise par défaut du système, hors charte
-// graphique et incohérente entre Android/iOS/navigateur. showConfirmModal() retourne une
-// Promise<boolean> pour rester simple à intégrer à la place d'un `if(!confirm(...)) return;`
-// synchrone : `showConfirmModal(msg).then(function(ok){ if(!ok) return; ...suite... });`
-function showConfirmModal(message, opts){
-  opts = opts || {};
-  return new Promise(function(resolve){
-    var old = document.getElementById('confirm-modal-overlay');
-    if(old) old.remove();
-    var overlay = document.createElement('div');
-    overlay.id = 'confirm-modal-overlay';
-    var danger = opts.danger !== false; // par défaut rouge (la plupart des usages actuels sont des suppressions)
-    var title = opts.title ? '<div class="confirm-modal-title">'+_escHtml(opts.title)+'</div>' : '';
-    overlay.innerHTML =
-      '<div class="confirm-modal-card">' + title +
-        '<div class="confirm-modal-msg">'+_escHtml(message)+'</div>' +
-        '<div class="confirm-modal-row">' +
-          '<button class="confirm-modal-btn confirm-modal-btn-cancel">'+_escHtml(opts.cancelLabel||'Annuler')+'</button>' +
-          '<button class="confirm-modal-btn confirm-modal-btn-ok'+(danger?' danger':'')+'">'+_escHtml(opts.confirmLabel||'Confirmer')+'</button>' +
-        '</div>' +
-      '</div>';
-    document.body.appendChild(overlay);
-    requestAnimationFrame(function(){ overlay.className = 'on'; });
-    function close(result){
-      overlay.className = '';
-      setTimeout(function(){ if(overlay.parentNode) overlay.remove(); }, 180);
-      resolve(result);
-    }
-    overlay.querySelector('.confirm-modal-btn-cancel').onclick = function(){ haptic(10); close(false); };
-    overlay.querySelector('.confirm-modal-btn-ok').onclick = function(){ haptic(20); close(true); };
-    overlay.onclick = function(e){ if(e.target === overlay) close(false); };
-  });
-}
-
-// ── Modale de saisie stylée — remplace window.prompt() ──
-// Retourne une Promise<string|null> (null si annulé, chaîne vide ou remplie sinon) —
-// même principe que showConfirmModal(), avec un champ de texte en plus.
-function showPromptModal(message, opts){
-  opts = opts || {};
-  return new Promise(function(resolve){
-    var old = document.getElementById('confirm-modal-overlay');
-    if(old) old.remove();
-    var overlay = document.createElement('div');
-    overlay.id = 'confirm-modal-overlay';
-    var title = opts.title ? '<div class="confirm-modal-title">'+_escHtml(opts.title)+'</div>' : '';
-    var isTextarea = opts.multiline !== false;
-    var fieldTag = isTextarea ? 'textarea rows="3"' : 'input type="text"';
-    var fieldCloseTag = isTextarea ? 'textarea' : 'input';
-    overlay.innerHTML =
-      '<div class="confirm-modal-card">' + title +
-        '<div class="confirm-modal-msg">'+_escHtml(message)+'</div>' +
-        '<'+fieldTag+' class="confirm-modal-input" id="confirm-modal-field" placeholder="'+_escHtml(opts.placeholder||'')+'">'+(isTextarea?_escHtml(opts.defaultValue||''):'')+'</'+fieldCloseTag+'>' +
-        '<div class="confirm-modal-row">' +
-          '<button class="confirm-modal-btn confirm-modal-btn-cancel">'+_escHtml(opts.cancelLabel||'Annuler')+'</button>' +
-          '<button class="confirm-modal-btn confirm-modal-btn-ok">'+_escHtml(opts.confirmLabel||'Valider')+'</button>' +
-        '</div>' +
-      '</div>';
-    document.body.appendChild(overlay);
-    var field = overlay.querySelector('#confirm-modal-field');
-    if(!isTextarea) field.value = opts.defaultValue || '';
-    requestAnimationFrame(function(){ overlay.className = 'on'; field.focus(); });
-    function close(result){
-      overlay.className = '';
-      setTimeout(function(){ if(overlay.parentNode) overlay.remove(); }, 180);
-      resolve(result);
-    }
-    overlay.querySelector('.confirm-modal-btn-cancel').onclick = function(){ haptic(10); close(null); };
-    overlay.querySelector('.confirm-modal-btn-ok').onclick = function(){ haptic(20); close(field.value); };
-    overlay.onclick = function(e){ if(e.target === overlay) close(null); };
-  });
-}
-
-// ── Menu d'actions en bas d'écran (long-appui sur un message) — façon Instagram/WhatsApp ──
-// actions: [{label, value, danger}]. Retourne une Promise<value|null> (null si annulé).
-function showActionSheet(actions, title){
-  return new Promise(function(resolve){
-    var old = document.getElementById('action-sheet-overlay');
-    if(old) old.remove();
-    var overlay = document.createElement('div');
-    overlay.id = 'action-sheet-overlay';
-    var html = '<div class="action-sheet-panel">';
-    if(title) html += '<div class="action-sheet-title">'+_escHtml(title)+'</div>';
-    actions.forEach(function(a, i){
-      html += '<button class="action-sheet-btn'+(a.danger?' danger':'')+'" data-i="'+i+'">'+_escHtml(a.label)+'</button>';
-    });
-    html += '<button class="action-sheet-btn action-sheet-cancel" data-i="-1">Annuler</button>';
-    html += '</div>';
-    overlay.innerHTML = html;
-    document.body.appendChild(overlay);
-    requestAnimationFrame(function(){ overlay.className = 'on'; });
-    function close(val){
-      overlay.className = '';
-      setTimeout(function(){ if(overlay.parentNode) overlay.remove(); }, 220);
-      resolve(val);
-    }
-    overlay.querySelectorAll('.action-sheet-btn').forEach(function(btn){
-      btn.onclick = function(){
-        haptic(15);
-        var i = parseInt(btn.getAttribute('data-i'), 10);
-        close(i === -1 ? null : actions[i].value);
-      };
-    });
-    overlay.onclick = function(e){ if(e.target === overlay) close(null); };
-  });
-}
+// (haptic/showConfirmModal/showPromptModal/showActionSheet ont été déplacées tout en haut du
+// premier bloc <script> — voir le commentaire à leur nouvel emplacement — pour ne plus jamais
+// dépendre de la vitesse de chargement du reste du fichier avant d'être disponibles.)
 
 // ── Tirer-pour-rafraîchir ──────────────────────────────────────
 // #content est LE seul conteneur qui défile dans toute l'app (client ET prestataire, voir CSS
@@ -20195,31 +20230,8 @@ function showActionSheet(actions, title){
   });
 })();
 
-// ── 2. Toast notifications ──
-function showToast(title,sub,type){
-  var stack=document.getElementById('toast-stack'); if(!stack) return;
-  type=type||'info';
-  var ico={success:'<i class="fa-solid fa-circle-check"></i>',error:'<i class="fa-solid fa-circle-xmark"></i>',info:'<i class="fa-solid fa-circle-info"></i>'}[type]||'<i class="fa-solid fa-bell"></i>';
-  var el=document.createElement('div');
-  el.className='toast-item';
-  el.innerHTML='<div class="toast-ico toast-ico-'+type+'">'+ico+'</div>'
-    +'<div class="toast-body">'
-    +'<div class="toast-title">'+title+'</div>'
-    +(sub?'<div class="toast-sub">'+sub+'</div>':'')
-    +'</div>'
-    +'<div class="toast-prog toast-prog-'+type+'"></div>';
-  while(stack.children.length>=3){
-    var old=stack.firstChild;
-    old.classList.add('t-out');
-    (function(o){setTimeout(function(){if(o.parentNode)o.parentNode.removeChild(o);},230);})(old);
-  }
-  stack.appendChild(el);
-  requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add('t-in');});});
-  setTimeout(function(){
-    el.classList.remove('t-in'); el.classList.add('t-out');
-    setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},230);
-  },3400);
-}
+// (showToast déplacée tout en haut du premier bloc <script> — voir _playBgVideo — pour être
+// disponible dès le début, indépendamment de la vitesse de chargement du reste du fichier.)
 
 // ── 3. Confetti (gold burst on payment success) ──
 function launchConfetti(){
