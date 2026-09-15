@@ -2576,6 +2576,35 @@ a{text-decoration:none;color:inherit}
 <div id="app">
 <canvas id="techCanvas" aria-hidden="true"></canvas>
 
+<!-- Voile de verrouillage biométrique de l'espace CLIENT — même mécanisme que côté prestataire
+     (voir #ptnr-biolock-screen et son commentaire) : posé PAR-DESSUS le contenu déjà affiché,
+     jamais avant, et ne déclenche jamais de navigation à son succès. Indépendant du voile
+     prestataire (voir _clientBioUnlocked / fa_genesis_client_biometric_enabled) — chacun peut
+     être activé sans l'autre, et le voile actif dépend de l'onglet affiché (voir
+     _clientMaybeShowBiolock). -->
+<div id="client-biolock-screen" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(8,8,8,.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);align-items:center;justify-content:center;">
+  <div class="ptnr-login-wrap">
+    <div class="ptnr-login-logo">GENESIS</div>
+    <div style="font-size:40px;color:#FFD700;margin:8px 0 4px;"><i class="fa-solid fa-lock"></i></div>
+    <div class="ptnr-login-title">Espace verrouillé</div>
+    <div class="ptnr-login-sub">Déverrouillez avec votre biométrie pour accéder à votre compte GENESIS.</div>
+    <button class="ptnr-login-btn" id="client-biolock-btn" onclick="_clientBiolockUnlock()"><i class="fa-solid fa-fingerprint" style="margin-right:8px;"></i>Déverrouiller</button>
+    <div class="ptnr-login-err" id="client-biolock-err"></div>
+    <button class="ptnr-link-btn" onclick="_showRoleChoiceAfterDelete()">Se déconnecter</button>
+  </div>
+</div>
+
+<!-- Proposition d'activation de la biométrie côté client (une fois, après connexion/inscription) -->
+<div id="client-bio-optin-overlay" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;">
+  <div style="width:100%;max-width:480px;background:#111;border:1.5px solid #FFD70044;border-radius:20px 20px 0 0;padding:26px 22px calc(26px + var(--safe-bottom,0px));text-align:center;">
+    <div style="font-size:38px;color:#FFD700;margin-bottom:10px;"><i class="fa-solid fa-fingerprint"></i></div>
+    <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:8px;">Sécurisez votre compte</div>
+    <div style="font-size:13px;color:#aaa;line-height:1.6;margin-bottom:20px;">Activez le déverrouillage par biométrie pour empêcher toute personne ayant accès à votre téléphone d'ouvrir votre compte GENESIS — vos commandes, vos paiements et vos messages.</div>
+    <button class="ptnr-login-btn" style="margin-bottom:8px;" onclick="_clientBioOptinAccept()">Activer</button>
+    <button class="ptnr-link-btn" onclick="_clientBioOptinDecline()">Plus tard</button>
+  </div>
+</div>
+
   <!-- Header -->
   <div id="hdr">
     <div class="hdr-left">
@@ -3759,6 +3788,14 @@ function showApp(){
   initApp();
   _clientCheckNativePush();
   setTimeout(_restoreNavSession, 400);
+  // Après la restauration de l'onglet (voir _restoreNavSession ci-dessus, qui peut basculer vers
+  // 'partner' si c'était le dernier onglet ouvert) — jamais avant, pour ne jamais poser le voile
+  // client sur un contenu qui va de toute façon être remplacé par l'espace prestataire un instant
+  // plus tard. _restoreNavSession() peut ne JAMAIS appeler nav() (onglet par défaut déjà affiché
+  // par le HTML statique) : ce point d'entrée est donc le SEUL qui couvre systématiquement un
+  // démarrage à froid avec une session déjà persistée, contrairement à un hook dans nav() qui
+  // manquerait ce cas précis.
+  setTimeout(function(){ if(typeof _clientMaybeShowBiolock==='function') _clientMaybeShowBiolock(); }, 450);
   setTimeout(function(){ if(typeof _checkTutoPrompt==='function') _checkTutoPrompt(); }, 1200);
   // Retour depuis l'onboarding Stripe : ouvrir directement le Portefeuille partenaire
   try {
@@ -8726,6 +8763,18 @@ function renderProfil(){
     +'</div></div>';
 
   // ── MES PARAMÈTRES ──────────────────────────────────────────
+  // Bascule biométrique — uniquement dans l'app native (Capacitor), et seulement pour un
+  // compte réellement connecté (rien à protéger pour un invité). Miroir exact de la bascule
+  // équivalente côté prestataire (voir #ptnr-biometric-toggle).
+  var bioRowClient = '';
+  if(typeof _ptnrIsNative==='function' && _ptnrIsNative() && USER && !GUEST){
+    var bioCheckedClient = _clientBiometricEnabled() ? ' checked' : '';
+    bioRowClient = '<div class="plus-item">'
+      +'<div class="plus-item-ico" style="background:#0a1a1a"><i class="fa-solid fa-fingerprint"></i></div>'
+      +'<div class="plus-item-label">Déverrouillage biométrique</div>'
+      +'<label class="tgl"><input type="checkbox" id="client-biometric-toggle"'+bioCheckedClient+' onchange="_clientToggleBiometric(this.checked)"><span class="tgl-slider"></span></label>'
+      +'</div>';
+  }
   var params = '<div class="plus-section">'
     +'<div class="plus-section-title">MES PARAMÈTRES</div>'
     +'<div class="plus-group">'
@@ -8733,6 +8782,7 @@ function renderProfil(){
     +pli('<i class="fa-solid fa-cookie-bite"></i>','#1a1000','Gestion des cookies',null,'showCookiesMenu()')
     +(USER && !GUEST ? pli('<i class="fa-solid fa-bell"></i>','#1a0800','Notifications',null,'showNotifications()') : '')
     +(USER && !GUEST ? pli('<i class="fa-solid fa-gear"></i>','#141414','Paramètres du compte',null,'showParametresCompte()') : '')
+    +bioRowClient
     +'</div></div>';
 
   // ── INFORMATIONS GÉNÉRALES ───────────────────────────────────
@@ -12841,6 +12891,10 @@ function _loOnLoginSuccess(res){
   }catch(e){}
   if(res.deviceToken){try{localStorage.setItem('fa_genesis_device_token',res.deviceToken);}catch(e){}}
   USER=res.user||res; USER._token=res.token; GUEST=false;
+  // Vient de prouver son identité par mot de passe (ou OTP) : pas besoin de redemander la
+  // biométrie tout de suite. Couvre login ET inscription, les deux passent par cette fonction.
+  _clientBioUnlocked = true;
+  _clientOfferBiometricOptIn();
   // Réinitialise le tutoriel à chaque connexion pour les comptes de test
   if(USER.email && USER.email.toLowerCase()==='test-nouveau@fagenesis.com'){
     try{ localStorage.removeItem(_tutoKey('c_done')); localStorage.removeItem(_tutoKey('first_login')); }catch(e){}
@@ -12861,6 +12915,150 @@ function _loOnLoginSuccess(res){
   loadStatusCard(); renderResaTab(); renderMsgTab(); renderProfil();
   setTimeout(function(){ if(typeof _checkTutoPrompt==='function') _checkTutoPrompt(); }, 800);
 }
+
+// ── Verrouillage biométrique (Face ID / empreinte) de l'espace CLIENT ─────────
+// Miroir exact du verrouillage prestataire (voir _ptnrRequiresBiolock et son commentaire) :
+// protège contre un tiers qui récupérerait le téléphone déjà connecté. Indépendant de celui du
+// prestataire (localStorage séparé, variable de déverrouillage séparée) — un utilisateur qui est
+// À LA FOIS client et prestataire peut activer l'un sans l'autre.
+var _clientBioUnlocked = false; // vrai après un déverrouillage réussi CE chargement de page
+
+function _clientBiometricEnabled(){
+  return localStorage.getItem('fa_genesis_client_biometric_enabled') === 'true';
+}
+
+function _clientRequiresBiolock(){
+  if(_clientBioUnlocked) return false;
+  if(!_ptnrIsNative()) return false; // vérif plateforme générique (Capacitor), pas spécifique au prestataire malgré son nom
+  if(!USER || GUEST) return false; // rien à protéger pour un invité ou un visiteur non connecté
+  return _clientBiometricEnabled();
+}
+
+// Pose le voile SEULEMENT si un onglet CLIENT (pas "Partenaire") est actuellement affiché — les
+// deux espaces ont leur propre voile indépendant, jamais les deux en même temps.
+function _clientMaybeShowBiolock(){
+  if(!_clientRequiresBiolock()) return;
+  var tabPartner = document.getElementById('tab-partner');
+  if(tabPartner && tabPartner.classList.contains('on')) return;
+  _clientShowBiolockOverlay();
+}
+
+function _clientShowBiolockOverlay(){
+  var el = document.getElementById('client-biolock-screen');
+  if(!el) return;
+  var errEl = document.getElementById('client-biolock-err'); if(errEl) errEl.className = 'ptnr-login-err';
+  el.style.display = 'flex';
+  setTimeout(_clientBiolockUnlock, 200);
+}
+
+function _clientHideBiolockOverlay(){
+  var el = document.getElementById('client-biolock-screen');
+  if(el) el.style.display = 'none';
+}
+
+function _clientBiolockUnlock(){
+  var btn = document.getElementById('client-biolock-btn');
+  var errEl = document.getElementById('client-biolock-err');
+  if(errEl) errEl.className = 'ptnr-login-err';
+  if(btn){ btn.disabled = true; }
+  var _settled = false;
+  // Filet de sécurité : voir le commentaire équivalent sur _ptnrBiolockUnlock — le plugin
+  // biométrique lance sa propre Activity Android séparée, dont le résultat peut ne jamais
+  // revenir si le système tue le processus entre-temps.
+  var _timeoutId = setTimeout(function(){ _done(false, 'Délai dépassé. Réessayez.'); }, 20000);
+  function _done(ok, msg){
+    if(_settled) return;
+    _settled = true;
+    clearTimeout(_timeoutId);
+    if(btn){ btn.disabled = false; }
+    if(ok){
+      _clientBioUnlocked = true;
+      _clientHideBiolockOverlay();
+    } else if(errEl){
+      errEl.textContent = msg || 'Authentification échouée.';
+      errEl.className = 'ptnr-login-err on';
+    }
+  }
+  if(!(window.FAGMobile && window.FAGMobile.authenticateBiometric)){
+    document.addEventListener('fagmobile:ready', function(){ _clientBiolockUnlock(); }, { once:true });
+    if(btn){ btn.disabled = false; }
+    return;
+  }
+  window.FAGMobile.authenticateBiometric('Déverrouillez votre compte GENESIS').then(function(res){
+    _done(res.success, res.error);
+  }).catch(function(){ _done(false); });
+}
+
+// Réarme le verrou dès que l'app repasse en arrière-plan (voir mobile-bridge.js)
+document.addEventListener('fagmobile:backgrounded', function(){ _clientBioUnlocked = false; });
+
+// Repose le voile IMMÉDIATEMENT au retour au premier plan (voir le commentaire équivalent sur
+// le listener prestataire) — uniquement si un onglet client est affiché.
+document.addEventListener('fagmobile:resumed', function(){
+  if(!_clientRequiresBiolock()) return;
+  var tabPartner = document.getElementById('tab-partner');
+  if(tabPartner && tabPartner.classList.contains('on')) return;
+  var biolockEl = document.getElementById('client-biolock-screen');
+  if(biolockEl && biolockEl.style.display !== 'none') return; // déjà affiché
+  _clientShowBiolockOverlay();
+});
+
+// Proposition d'activation (une seule fois, juste après une connexion/inscription réussie)
+function _clientOfferBiometricOptIn(){
+  if(!_ptnrIsNative()) return;
+  if(localStorage.getItem('fa_genesis_client_biometric_asked') === 'true') return;
+  if(!(window.FAGMobile && window.FAGMobile.checkBiometry)){
+    document.addEventListener('fagmobile:ready', _clientOfferBiometricOptIn, { once:true });
+    return;
+  }
+  window.FAGMobile.checkBiometry().then(function(info){
+    if(!info || !info.isAvailable) return;
+    var overlay = document.getElementById('client-bio-optin-overlay');
+    if(overlay) overlay.style.display = 'flex';
+  });
+}
+
+function _clientBioOptinAccept(){
+  localStorage.setItem('fa_genesis_client_biometric_asked', 'true');
+  localStorage.setItem('fa_genesis_client_biometric_enabled', 'true');
+  _clientBioUnlocked = true; // déjà "déverrouillé" pour cette session : pas besoin de re-demander tout de suite
+  var overlay = document.getElementById('client-bio-optin-overlay'); if(overlay) overlay.style.display = 'none';
+  showToast('Biométrie activée', 'Votre compte est désormais protégé.', 'success');
+}
+
+function _clientBioOptinDecline(){
+  localStorage.setItem('fa_genesis_client_biometric_asked', 'true');
+  var overlay = document.getElementById('client-bio-optin-overlay'); if(overlay) overlay.style.display = 'none';
+}
+
+// Bascule depuis les paramètres du profil (activer/désactiver après coup)
+function _clientToggleBiometric(enabled){
+  localStorage.setItem('fa_genesis_client_biometric_asked', 'true');
+  if(!enabled){
+    localStorage.setItem('fa_genesis_client_biometric_enabled', 'false');
+    showToast('Biométrie désactivée', '', 'info');
+    return;
+  }
+  var revert = function(){
+    var cb = document.getElementById('client-biometric-toggle'); if(cb) cb.checked = false;
+  };
+  if(!(window.FAGMobile && window.FAGMobile.checkBiometry)){
+    revert();
+    showToast('Indisponible', 'La biométrie n\'est pas accessible pour le moment.', 'error');
+    return;
+  }
+  window.FAGMobile.checkBiometry().then(function(info){
+    if(!info || !info.isAvailable){
+      revert();
+      showToast('Biométrie non configurée', 'Configurez votre empreinte ou Face ID dans les réglages de votre téléphone d\'abord.', 'error');
+      return;
+    }
+    localStorage.setItem('fa_genesis_client_biometric_enabled', 'true');
+    _clientBioUnlocked = true;
+    showToast('Biométrie activée', 'Votre compte est désormais protégé.', 'success');
+  }).catch(function(){ revert(); });
+}
+
 // OTP functions
 function toggleSmsInput(){
   var el=document.getElementById('lo-otp-sms-input');
