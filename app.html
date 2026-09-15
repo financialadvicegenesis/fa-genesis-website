@@ -9985,9 +9985,18 @@ function _clientChatBubbleHtml(m, myEmail){
   }
   // Message retiré ("Supprimer pour tout le monde" / Unsend) : placeholder grisé, façon
   // WhatsApp ("Ce message a été supprimé") — jamais rendu invisible sans trace.
+  // Aperçu cité (façon Instagram) si le prestataire a répondu à un message précis — voir
+  // reply_to posé côté serveur (POST /api/partner/inbox/reply, _ptnrSetReplyTarget côté
+  // prestataire). Lecture seule ici : le client ne peut pas encore initier ce type de réponse.
+  var replyHtml = (m.reply_to && !m.deleted_for_everyone)
+    ? '<div style="border-left:3px solid '+(isMine?'rgba(0,0,0,.3)':'rgba(255,255,255,.25)')+';padding:3px 8px;margin-bottom:6px;opacity:.8;">'
+      +'<div style="font-size:10px;font-weight:900;">'+(m.reply_to.from_type==='client'?'Vous':(_chatName||'Prestataire'))+'</div>'
+      +'<div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">'+(m.reply_to.content||'')+'</div>'
+      +'</div>'
+    : '';
   var bodyHtml = m.deleted_for_everyone
     ? '<div style="font-style:italic;opacity:.55;"><i class="fa-solid fa-ban" style="margin-right:5px;font-size:11px;"></i>Message supprimé</div>'
-    : '<div>'+(m.content||m.body||'')+'</div>';
+    : replyHtml+'<div>'+(m.content||m.body||'')+'</div>';
   return '<div class="chat-bubble '+(isMine?'chat-bubble-mine':'chat-bubble-theirs')+'" id="chat-msg-'+(m.id||'')+'" data-mine="'+(isMine?'1':'0')+'" data-deleted="'+(m.deleted_for_everyone?'1':'0')+'">'
     +(m.subject&&m.subject!=='Message'&&m.subject&&!m.deleted_for_everyone?'<div class="chat-bubble-subj">'+m.subject+'</div>':'')
     +bodyHtml
@@ -14613,10 +14622,13 @@ function _ptnrOpenMessageActions(bubbleEl){
   var msgId = bubbleEl.id.replace('ptnr-chat-msg-','');
   var isMine = bubbleEl.dataset.mine==='1';
   haptic(30);
-  var actions = [{ label:'Supprimer pour moi', value:'me' }];
+  // "Répondre" (façon Instagram) disponible sur TOUS les messages, pas seulement les miens —
+  // alternative au glissement (_genesisAttachSwipeToReply) pour qui ne le découvrirait pas.
+  var actions = [{ label:'Répondre', value:'reply' }, { label:'Supprimer pour moi', value:'me' }];
   if(isMine) actions.push({ label:'Supprimer pour tout le monde', value:'everyone', danger:true });
   showActionSheet(actions).then(function(scope){
     if(!scope) return;
+    if(scope==='reply'){ _ptnrSetReplyTarget(msgId); return; }
     _ptnrFetch('/api/partner/inbox/'+msgId+'/delete','POST',{scope:scope}).then(function(res){
       if(res && res.error){ showToast('Erreur', res.error, 'error'); return; }
       if(scope==='me'){ bubbleEl.remove(); }
@@ -14750,6 +14762,12 @@ function _ptnrLoadMessages(_isRetry, showArchived){
 // côté client. Consultée par le WebSocket temps réel, le polling de secours et l'envoi de réponse.
 var _ptnrCurrentConvEmail = null;
 var _ptnrCurrentConvName = null;
+// Cache des messages de la conversation actuellement ouverte, par id — permet à
+// _ptnrSetReplyTarget de retrouver le contenu d'un message précis sans re-parcourir le DOM.
+var _ptnrCurrentConvMessagesById = {};
+// Message actuellement ciblé pour une réponse précise (façon Instagram) : {id, content, isMine}
+// ou null. Voir _ptnrSetReplyTarget/_ptnrRenderReplyPreview/_ptnrSendConvReply.
+var _ptnrReplyTarget = null;
 
 // Ouvre la conversation avec CE client précis en plein écran, à l'intérieur de l'écran Messages
 // (façon WhatsApp/Messenger/Instagram) — remplace la liste des fils par une vue façon "Chat",
@@ -14759,6 +14777,8 @@ function _ptnrOpenConversation(email, name){
   _clearPtnrMsgPoll();
   _ptnrCurrentConvEmail = email;
   _ptnrCurrentConvName = name;
+  _ptnrCurrentConvMessagesById = {};
+  _ptnrReplyTarget = null;
   var hdr = document.getElementById('ptnr-messages-header'); if(hdr) hdr.style.display = 'none';
   var lnk = document.getElementById('ptnr-msg-archived-link'); if(lnk) lnk.style.display = 'none';
   var listEl = document.getElementById('ptnr-messages-list');
@@ -14771,6 +14791,10 @@ function _ptnrOpenConversation(email, name){
     +'</div>'
     +'<div class="chat-messages" id="ptnr-chat-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>'
     +'<div id="ptnr-chat-att-preview" style="display:flex;gap:6px;flex-wrap:wrap;padding:0 12px;"></div>'
+    // Bandeau "en train de répondre à..." (façon Instagram) — masqué tant qu'aucun message n'est
+    // ciblé (voir _ptnrSetReplyTarget/_ptnrRenderReplyPreview), déclenché par glissement d'une
+    // bulle vers la droite ou depuis le menu d'appui long (_ptnrOpenMessageActions).
+    +'<div id="ptnr-chat-reply-preview" style="display:none;align-items:center;background:#0d0d0d;border-top:1px solid #1a1a1a;padding:6px 8px;"></div>'
     +'<div class="chat-compose">'
     +'<input type="file" id="ptnr-chat-reply-file" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple style="display:none;" onchange="_ptnrAttachFiles(this.files)">'
     +'<button type="button" onclick="document.getElementById(\'ptnr-chat-reply-file\').click()" style="flex:0 0 auto;background:transparent;border:none;cursor:pointer;color:#888;font-size:18px;" title="Joindre un fichier"><i class="fa-solid fa-paperclip"></i></button>'
@@ -14797,11 +14821,57 @@ function _ptnrOpenConversation(email, name){
 function _ptnrCloseConversation(){
   _ptnrCurrentConvEmail = null;
   _ptnrCurrentConvName = null;
+  _ptnrCurrentConvMessagesById = {};
+  _ptnrReplyTarget = null;
   _clearPtnrMsgPoll();
   var hdr = document.getElementById('ptnr-messages-header'); if(hdr) hdr.style.display = '';
   var lnk = document.getElementById('ptnr-msg-archived-link'); if(lnk) lnk.style.display = '';
   _ptnrLoadMessages(false, _ptnrMsgShowArchived);
   _ptnrMsgPollInterval = setInterval(_ptnrTryRefreshMessages, 25000);
+}
+
+// Cible un message précis pour y répondre (façon Instagram : glissement d'une bulle vers la
+// droite, ou "Répondre" depuis le menu d'appui long) — affiche un aperçu cité au-dessus de la
+// zone de saisie ; envoyé avec le message suivant (voir _ptnrSendConvReply), effacé après envoi
+// ou via le bouton "×" (_ptnrCancelReply).
+function _ptnrSetReplyTarget(msgId){
+  var m = _ptnrCurrentConvMessagesById[msgId];
+  if(!m || m.deleted_for_everyone) return;
+  haptic(20);
+  _ptnrReplyTarget = {
+    id: m.id,
+    isMine: m.from_type === 'partner',
+    content: m.content || ((m.attachments && m.attachments.length) ? 'Photo' : '')
+  };
+  _ptnrRenderReplyPreview();
+  var inp = document.getElementById('ptnr-chat-input'); if(inp) inp.focus();
+}
+function _ptnrCancelReply(){
+  _ptnrReplyTarget = null;
+  _ptnrRenderReplyPreview();
+}
+function _ptnrRenderReplyPreview(){
+  var el = document.getElementById('ptnr-chat-reply-preview');
+  if(!el) return;
+  if(!_ptnrReplyTarget){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  var label = _ptnrReplyTarget.isMine ? 'Vous' : _escHtml(_ptnrCurrentConvName || 'Client');
+  el.style.display = 'flex';
+  el.innerHTML = '<div style="flex:1;min-width:0;border-left:3px solid #FFD700;padding:4px 10px;">'
+    +'<div style="font-size:11px;font-weight:900;color:#FFD700;">'+label+'</div>'
+    +'<div style="font-size:12px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_escHtml(_ptnrReplyTarget.content||'')+'</div>'
+    +'</div>'
+    +'<button type="button" onclick="_ptnrCancelReply()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer;padding:4px 10px;line-height:1;">&times;</button>';
+}
+
+// Fait défiler jusqu'au message original cité dans une bulle "réponse à" et le surligne
+// brièvement (façon WhatsApp/Instagram) — tap sur l'aperçu cité à l'intérieur d'une bulle.
+function _ptnrJumpToMessage(msgId){
+  var el = document.getElementById('ptnr-chat-msg-'+msgId);
+  if(!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  el.style.transition = 'box-shadow .3s';
+  el.style.boxShadow = '0 0 0 2px #FFD700';
+  setTimeout(function(){ el.style.boxShadow = ''; }, 1200);
 }
 
 // Un seul message = une seule bulle HTML, réutilisée par le rendu initial
@@ -14824,7 +14894,19 @@ function _ptnrChatBubbleHtml(m){
   if(m.deleted_for_everyone){
     bodyHtml = '<div style="font-style:italic;opacity:.55;"><i class="fa-solid fa-ban" style="margin-right:5px;font-size:11px;"></i>Message supprimé</div>';
   } else {
-    bodyHtml = '<div>'+_escHtml(m.content||'')+'</div>';
+    // Aperçu cité du message original (façon Instagram) si CE message est une réponse ciblée à
+    // un autre — voir _ptnrSetReplyTarget/reply_to_id posé côté serveur (POST .../inbox/reply).
+    // Tap dessus fait défiler jusqu'au message original (_ptnrJumpToMessage).
+    var replyHtml = '';
+    if(m.reply_to){
+      var rLabel = (m.reply_to.from_type === 'partner') ? 'Vous' : _escHtml(_ptnrCurrentConvName || 'Client');
+      var rBorder = isMine ? 'rgba(0,0,0,.3)' : 'rgba(255,255,255,.25)';
+      replyHtml = '<div onclick="_ptnrJumpToMessage(\''+m.reply_to.id+'\')" style="border-left:3px solid '+rBorder+';padding:3px 8px;margin-bottom:6px;opacity:.8;cursor:pointer;">'
+        +'<div style="font-size:10px;font-weight:900;">'+rLabel+'</div>'
+        +'<div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">'+_escHtml(m.reply_to.content||'')+'</div>'
+        +'</div>';
+    }
+    bodyHtml = replyHtml + '<div>'+_escHtml(m.content||'')+'</div>';
     if(m.attachments && m.attachments.length){
       bodyHtml += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">'
         + m.attachments.map(function(a){
@@ -14841,18 +14923,67 @@ function _ptnrChatBubbleHtml(m){
     +'</div>';
 }
 
+// Glissement d'une bulle vers la droite pour répondre à CE message précis (façon Instagram) —
+// générique (préfixe _genesis) pour rester cohérent avec _genesisAttachSwipeToArchive, même si
+// pour l'instant seul le prestataire l'utilise. L'icône reste visuellement fixe pendant que la
+// bulle glisse en dessous (contre-translation), façon Telegram/WhatsApp ; toujours suivi d'un
+// retour élastique, jamais d'un état "ouvert" permanent — contrairement au glissement d'archivage.
+function _genesisAttachSwipeToReply(bubbleEl, onReply){
+  if(!bubbleEl || bubbleEl._replySwipeAttached) return;
+  bubbleEl._replySwipeAttached = true;
+  var REVEAL = 44;
+  var startX=0, startY=0, dragging=false, decided=false, horizontal=false, triggered=false;
+  var icon = document.createElement('div');
+  icon.innerHTML = '<i class="fa-solid fa-reply"></i>';
+  icon.style.cssText = 'position:absolute;top:50%;left:-14px;transform:translateY(-50%);opacity:0;color:#FFD700;font-size:13px;pointer-events:none;';
+  bubbleEl.style.position = 'relative';
+  bubbleEl.appendChild(icon);
+  bubbleEl.addEventListener('touchstart', function(e){
+    if(e.touches.length!==1) return;
+    startX=e.touches[0].clientX; startY=e.touches[0].clientY;
+    dragging=true; decided=false; horizontal=false; triggered=false;
+    bubbleEl.style.transition='none';
+  }, {passive:true});
+  bubbleEl.addEventListener('touchmove', function(e){
+    if(!dragging) return;
+    var x=e.touches[0].clientX, y=e.touches[0].clientY;
+    if(!decided){
+      if(Math.abs(x-startX)>8 || Math.abs(y-startY)>8){ decided=true; horizontal=Math.abs(x-startX)>Math.abs(y-startY) && (x-startX)>0; }
+    }
+    if(horizontal){
+      var dx = Math.max(0, Math.min(REVEAL, x-startX));
+      bubbleEl.style.transform='translateX('+dx+'px)';
+      icon.style.transform='translateY(-50%) translateX(-'+dx+'px)';
+      icon.style.opacity = String(dx/REVEAL);
+      if(dx>=REVEAL && !triggered){ triggered=true; haptic(20); }
+    }
+  }, {passive:true});
+  function end(){
+    if(!dragging) return; dragging=false;
+    bubbleEl.style.transition='transform .2s ease';
+    bubbleEl.style.transform='translateX(0)';
+    icon.style.transition='opacity .2s';
+    icon.style.opacity='0';
+    if(triggered && onReply) onReply();
+  }
+  bubbleEl.addEventListener('touchend', end, {passive:true});
+  bubbleEl.addEventListener('touchcancel', end, {passive:true});
+}
+
 // Ajout temps réel d'UN message dans la conversation actuellement ouverte (voir
 // _genesisHandleChatWsMessage) — jamais un rechargement complet, exactement comme côté client
 // (_clientAppendChatBubble) et comme WhatsApp/Messenger/Instagram.
 function _ptnrAppendChatBubble(m){
   var msgs = document.getElementById('ptnr-chat-msgs'); if(!msgs) return;
   if(document.getElementById('ptnr-chat-msg-'+m.id)) return; // déjà affiché (évite les doublons)
+  _ptnrCurrentConvMessagesById[m.id] = m;
   var em = msgs.querySelector('.chat-empty-state'); if(em) em.remove();
   var wrap = document.createElement('div');
   wrap.innerHTML = _ptnrChatBubbleHtml(m);
   var node = wrap.firstChild;
   msgs.appendChild(node);
   _ptnrAttachBubbleLongPress(node);
+  _genesisAttachSwipeToReply(node, function(){ _ptnrSetReplyTarget(m.id); });
   msgs.scrollTop = msgs.scrollHeight;
 }
 
@@ -14886,8 +15017,13 @@ function _ptnrLoadConversationMessages(email, _isRetry){
       msgs.innerHTML = '<div class="chat-empty-state"><span>Aucun message.</span><span style="font-size:12px;color:#555;">Commencez la conversation !</span></div>';
       return;
     }
+    list.forEach(function(m){ _ptnrCurrentConvMessagesById[m.id] = m; });
     msgs.innerHTML = list.map(_ptnrChatBubbleHtml).join('');
-    Array.prototype.forEach.call(msgs.querySelectorAll('.chat-bubble'), _ptnrAttachBubbleLongPress);
+    Array.prototype.forEach.call(msgs.querySelectorAll('.chat-bubble'), function(node){
+      _ptnrAttachBubbleLongPress(node);
+      var mid = node.id.replace('ptnr-chat-msg-','');
+      _genesisAttachSwipeToReply(node, function(){ _ptnrSetReplyTarget(mid); });
+    });
     msgs.scrollTop = msgs.scrollHeight;
   }).catch(function(){
     if(!_isRetry){ setTimeout(function(){ _ptnrLoadConversationMessages(email, true); }, 1200); return; }
@@ -14959,19 +15095,29 @@ function _ptnrSendConvReply(){
   var atts = _ptnrCurrentAttachments || [];
   if(!msg && !atts.length) return;
   var toEmail = _ptnrCurrentConvEmail, toName = _ptnrCurrentConvName;
+  var replyToId = _ptnrReplyTarget ? _ptnrReplyTarget.id : null;
+  var replyQuoteHtml = '';
+  if(_ptnrReplyTarget){
+    var rLabel = _ptnrReplyTarget.isMine ? 'Vous' : _escHtml(_ptnrCurrentConvName || 'Client');
+    replyQuoteHtml = '<div style="border-left:3px solid rgba(0,0,0,.3);padding:3px 8px;margin-bottom:6px;opacity:.8;">'
+      +'<div style="font-size:10px;font-weight:900;">'+rLabel+'</div>'
+      +'<div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">'+_escHtml(_ptnrReplyTarget.content||'')+'</div>'
+      +'</div>';
+  }
   if(btn) btn.disabled = true;
   inp.value = '';
+  _ptnrCancelReply();
   _ptnrLastSentMsgAt = Date.now();
   var msgsEl = document.getElementById('ptnr-chat-msgs');
   if(msgsEl && msg){
     var em = msgsEl.querySelector('.chat-empty-state'); if(em) em.remove();
     var d = document.createElement('div'); d.className = 'chat-bubble chat-bubble-mine';
-    d.innerHTML = '<div>'+_escHtml(msg)+'</div>';
+    d.innerHTML = replyQuoteHtml + '<div>'+_escHtml(msg)+'</div>';
     msgsEl.appendChild(d); msgsEl.scrollTop = msgsEl.scrollHeight;
   }
   var preview = document.getElementById('ptnr-chat-att-preview'); if(preview) preview.innerHTML = '';
   _ptnrCurrentAttachments = [];
-  _ptnrFetch('/api/partner/inbox/reply','POST',{to_email:toEmail, content:msg, to_name:toName, attachments:atts}).then(function(data){
+  _ptnrFetch('/api/partner/inbox/reply','POST',{to_email:toEmail, content:msg, to_name:toName, attachments:atts, reply_to_id:replyToId}).then(function(data){
     if(btn) btn.disabled = false;
     if(data && data.error){ showToast('Erreur', data.message || 'Erreur d\'envoi', 'error'); return; }
     setTimeout(function(){ if(_ptnrCurrentConvEmail===toEmail) _ptnrLoadConversationMessages(toEmail); }, 1200);

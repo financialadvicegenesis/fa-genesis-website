@@ -12842,6 +12842,22 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
             return (m.from_email === partner.email && m.to_email === toEmail) ||
                    (m.from_email === toEmail && m.to_email === partner.email);
         }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        // Réponse à un message précis (façon Instagram) : on ne stocke qu'un instantané léger
+        // (id, aperçu, auteur) plutôt qu'une simple référence — l'aperçu cité reste donc lisible
+        // même si le message original est supprimé ensuite. reply_to_id doit obligatoirement
+        // pointer vers un message de CETTE conversation précise (jamais une autre, même si un
+        // client manipulait la valeur envoyée) pour ne jamais laisser citer un message d'un tiers.
+        var replyTo = null;
+        if (req.body.reply_to_id) {
+            var origMsg = thread.find(function(m) { return m.id === req.body.reply_to_id; });
+            if (origMsg) {
+                replyTo = {
+                    id: origMsg.id,
+                    from_type: origMsg.from_type,
+                    content: origMsg.deleted_for_everyone ? 'Message supprimé' : (origMsg.content || (origMsg.attachments && origMsg.attachments.length ? 'Photo' : ''))
+                };
+            }
+        }
         var lastFromClient = thread.find(function(m) { return m.from_type === 'client'; });
         if (lastFromClient) {
             var deltaMinutes = (new Date() - new Date(lastFromClient.created_at)) / 60000;
@@ -12868,6 +12884,7 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
             subject: req.body.subject || '',
             content: content,
             attachments: attResult.attachments,
+            reply_to: replyTo,
             created_at: new Date().toISOString(),
             read_at: null
         };
