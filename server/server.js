@@ -2136,6 +2136,45 @@ function _countUnreadMessageConversations(email, role) {
     }
 }
 
+// Calcule le badge numérique de l'icône Android pour ce destinataire précis (comme
+// WhatsApp/Instagram) : notifications générales non lues (hors messages, voir plus bas) +
+// conversations distinctes non lues (façon Messages). Extrait de notifyUser() en fonction
+// partagée pour que GET /api/notifications/badge-count (interrogé par ReplyReceiver.java après
+// une réponse directe depuis la notification) calcule EXACTEMENT le même chiffre que celui pousé
+// lors du prochain événement FCM — sinon les deux pourraient diverger silencieusement avec le
+// temps si l'un des deux calculs était modifié sans l'autre.
+//
+// Les notifications de type message-client/message-partner sont exclues du total GÉNÉRAL et
+// comptées séparément via _countUnreadMessageConversations (conversations distinctes non lues,
+// pas nombre brut de messages) : un enregistrement de notification de message n'est JAMAIS
+// marqué lu (la cloche "Notifications" les exclut exprès, voir GET /api/notifications, donc
+// l'utilisateur ne passe jamais par /read dessus) — les laisser dans le total général les aurait
+// fait s'accumuler indéfiniment (chaque message reçu depuis le début, jamais retiré), gonflant
+// le badge d'icône bien au-delà du nombre réel de messages non lus à l'instant présent.
+function _computeNotificationBadgeCount(email, role) {
+    if (!email) return 0;
+    var all = loadNotifications();
+    var generalUnread = all.filter(function(n) {
+        return n.role === role && n.email && n.email.toLowerCase() === email.toLowerCase() && !n.read &&
+            n.type !== 'message-client' && n.type !== 'message-partner';
+    }).length;
+    return generalUnread + _countUnreadMessageConversations(email, role);
+}
+
+/**
+ * GET /api/notifications/badge-count — Nombre à afficher sur le badge de l'icône Android
+ * (BadgeUtils.setBadgeCount côté natif) pour l'utilisateur authentifié, à l'instant T. Utilisé
+ * par ReplyReceiver.java juste après une réponse directe depuis la notification, pour rafraîchir
+ * immédiatement le badge sans attendre un nouvel événement FCM (qui n'arrive jamais suite à une
+ * simple réponse, contrairement à un nouveau message reçu).
+ */
+app.get('/api/notifications/badge-count', function(req, res) {
+    var identity = resolveCurrentIdentity(req);
+    if (!identity) return res.status(401).json({ error: 'Non autorise' });
+    if (identity.role === 'admin') return res.json({ ok: true, badgeCount: 0 });
+    res.json({ ok: true, badgeCount: _computeNotificationBadgeCount(identity.email, identity.role) });
+});
+
 // notifyUser : persiste une notification (historique consultable) ET tente un push best-effort
 // (le push best-effort existant n'est pas retire, juste complete par la persistance).
 function notifyUser(email, role, type, title, body, link) {
@@ -2177,28 +2216,9 @@ function notifyUser(email, role, type, title, body, link) {
         // avec un bouton "Répondre" (RemoteInput), ce qu'un message avec bloc "notification"
         // standard ne permet pas (l'OS l'affiche directement, sans jamais repasser par le code
         // natif de l'app quand elle n'est pas au premier plan).
-        // Nombre total de notifications non lues pour ce destinataire précis — transmis au
-        // natif Android pour afficher un badge numérique sur l'icône de l'app (comme
-        // WhatsApp/Instagram), au lieu du simple point que l'OS affiche par défaut. Calculé
-        // ici (après le push() ci-dessus) pour inclure la notification qu'on vient de créer.
-        //
-        // Les notifications de type message-client/message-partner sont exclues de ce total
-        // GÉNÉRAL et comptées séparément via _countUnreadMessageConversations (conversations
-        // distinctes non lues, pas nombre brut de messages) : un enregistrement de notification
-        // de message n'est JAMAIS marqué lu (la cloche "Notifications" les exclut exprès, voir
-        // GET /api/notifications, donc le partenaire ne passe jamais par /read dessus) — les
-        // laisser dans le total général les aurait fait s'accumuler indéfiniment (chaque message
-        // reçu depuis le début, jamais retiré), gonflant le badge d'icône bien au-delà du nombre
-        // réel de messages non lus à l'instant présent (ex: "6" affiché pour 1 seule conversation
-        // avec 1 message réellement non lu).
-        var _badgeCount = null;
-        if (email) {
-            var _generalUnread = all.filter(function(n) {
-                return n.role === role && n.email && n.email.toLowerCase() === email.toLowerCase() && !n.read &&
-                    n.type !== 'message-client' && n.type !== 'message-partner';
-            }).length;
-            _badgeCount = _generalUnread + _countUnreadMessageConversations(email, role);
-        }
+        // Badge numérique de l'icône (voir _computeNotificationBadgeCount pour le détail du
+        // calcul et le pourquoi) — recalculé ici pour inclure la notification qu'on vient de créer.
+        var _badgeCount = email ? _computeNotificationBadgeCount(email, role) : null;
 
         var fcmPayload = {
             data: {
