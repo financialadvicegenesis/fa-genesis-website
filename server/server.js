@@ -12562,6 +12562,26 @@ app.post('/api/messages', function(req, res) {
             toName = ((targetPartner.prenom || '') + ' ' + (targetPartner.nom || '')).trim();
         }
 
+        // Réponse à un message précis (façon Instagram, voir _clientSetReplyTarget côté
+        // app.html) : même logique que POST /api/partner/inbox/reply — instantané léger (id,
+        // auteur, aperçu) plutôt qu'une simple référence, et reply_to_id validé pour
+        // n'appartenir qu'à CETTE conversation précise (jamais une autre).
+        var replyTo = null;
+        if (req.body.reply_to_id) {
+            var replyThread = loadChat().filter(function(m) {
+                return (m.from_email === user.email && m.to_email === toEmail) ||
+                       (m.from_email === toEmail && m.to_email === user.email);
+            });
+            var origMsg = replyThread.find(function(m) { return m.id === req.body.reply_to_id; });
+            if (origMsg) {
+                replyTo = {
+                    id: origMsg.id,
+                    from_type: origMsg.from_type,
+                    content: origMsg.deleted_for_everyone ? 'Message supprimé' : (origMsg.content || (origMsg.attachments && origMsg.attachments.length ? 'Photo' : ''))
+                };
+            }
+        }
+
         var newMsg = {
             id: 'MSG-' + uuidv4().split('-')[0].toUpperCase(),
             from_email: user.email,
@@ -12574,6 +12594,7 @@ app.post('/api/messages', function(req, res) {
             subject: req.body.subject || '',
             content: content,
             attachments: attResult.attachments,
+            reply_to: replyTo,
             created_at: new Date().toISOString(),
             read_at: null
         };
