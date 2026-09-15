@@ -2485,7 +2485,11 @@ a{text-decoration:none;color:inherit}
 <body>
 
 <!-- ══════════ VIDÉO FOND ══════════ -->
-<video id="bgVideo" autoplay muted loop playsinline preload="auto">
+<!-- poster : le logo s'affiche immédiatement pendant que la vidéo se télécharge (elle n'est PAS
+     embarquée dans l'app — chargée en direct depuis fagenesis.com à chaque ouverture, voir
+     capacitor.config.json server.url — donc jamais instantanée sur un réseau mobile) : jamais
+     un écran noir/vide avant que la première image de la vidéo ne soit décodée. -->
+<video id="bgVideo" autoplay muted loop playsinline preload="auto" poster="assets/images/icon-app-512.png">
   <source src="assets/videos/teaser.mp4" type="video/mp4">
 </video>
 <div id="bgOverlay"></div>
@@ -3211,21 +3215,30 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Messages -->
         <div class="ptnr-screen" id="ptnr-screen-messages">
-          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Messages clients</span></div>
+          <!-- Pas de flèche "retour" ici : Messages est un onglet de premier niveau (barre du
+               bas), pas un sous-écran de Profil — comme sur Instagram/Messenger/WhatsApp, dont
+               la messagerie n'a jamais de flèche retour vers un autre onglet racine. L'ancienne
+               flèche renvoyait par erreur vers "profil" (copiée-collée depuis les vrais
+               sous-écrans de Profil ci-dessus), déroutant le prestataire à chaque retour. -->
+          <div class="ptnr-back-bar"><span class="ptnr-back-bar-title">Messages clients</span></div>
           <div id="ptnr-msg-archived-link"></div>
           <div id="ptnr-messages-list"></div>
         </div>
 
         <!-- Sub-screen: Missions (dispatch) -->
         <div class="ptnr-screen" id="ptnr-screen-missions">
-          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes missions</span></div>
+          <!-- Pas de flèche "retour" : Missions est un onglet de premier niveau (barre du bas),
+               pas un sous-écran de Profil — voir le même correctif sur Messages ci-dessus. -->
+          <div class="ptnr-back-bar"><span class="ptnr-back-bar-title">Mes missions</span></div>
           <div id="ptnr-missions-filter"></div>
           <div id="ptnr-missions-list"></div>
         </div>
 
         <!-- Sub-screen: Versements / Paiements -->
         <div class="ptnr-screen" id="ptnr-screen-versements">
-          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mon Wallet GENESIS</span></div>
+          <!-- Pas de flèche "retour" : Wallet est un onglet de premier niveau (barre du bas),
+               pas un sous-écran de Profil — voir le même correctif sur Messages ci-dessus. -->
+          <div class="ptnr-back-bar"><span class="ptnr-back-bar-title">Mon Wallet GENESIS</span></div>
           <div id="ptnr-versements-list"></div>
         </div>
 
