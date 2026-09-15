@@ -4050,9 +4050,10 @@ function _restoreNavSession(){
       return;
     }
     // Filet de sécurité : sur l'app native, ce lien est déposé par MainActivity.java depuis
-    // le code natif (pas par le bootstrap JS classique) — sur une connexion lente, la page
-    // peut ne pas encore l'avoir reçu à cet instant précis. On retente pendant quelques
-    // secondes avant d'abandonner, plutôt que de perdre silencieusement la navigation.
+    // le code natif (pas par le bootstrap JS classique), avec ses propres tentatives réparties
+    // sur plusieurs secondes (jusqu'à ~9s sur un appareil lent). On retente donc ici largement
+    // plus longtemps qu'avant (40 x 500ms = 20s, contre 4s auparavant) avant d'abandonner,
+    // plutôt que de perdre silencieusement la navigation sur un démarrage particulièrement lent.
     if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
       var _dlhTries = 0;
       var _dlhPoll = setInterval(function(){
@@ -4062,7 +4063,7 @@ function _restoreNavSession(){
           var _dlh2 = window._pendingDeepLinkHash;
           window._pendingDeepLinkHash = null;
           _handleNotifHash(_dlh2);
-        } else if(_dlhTries >= 8){
+        } else if(_dlhTries >= 40){
           clearInterval(_dlhPoll);
         }
       }, 500);
