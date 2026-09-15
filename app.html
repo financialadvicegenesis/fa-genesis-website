@@ -3220,7 +3220,10 @@ a{text-decoration:none;color:inherit}
                la messagerie n'a jamais de flèche retour vers un autre onglet racine. L'ancienne
                flèche renvoyait par erreur vers "profil" (copiée-collée depuis les vrais
                sous-écrans de Profil ci-dessus), déroutant le prestataire à chaque retour. -->
-          <div class="ptnr-back-bar"><span class="ptnr-back-bar-title">Messages clients</span></div>
+          <!-- Masqués dès qu'une conversation précise est ouverte (voir _ptnrOpenConversation) —
+               remplacés par le propre en-tête de la conversation (nom + flèche retour VERS LA
+               LISTE, façon WhatsApp/Messenger/Instagram), rendu directement dans #ptnr-messages-list. -->
+          <div class="ptnr-back-bar" id="ptnr-messages-header"><span class="ptnr-back-bar-title">Messages clients</span></div>
           <div id="ptnr-msg-archived-link"></div>
           <div id="ptnr-messages-list"></div>
         </div>
@@ -9815,10 +9818,20 @@ function _genesisHandleChatWsMessage(data){
   if(data.type === 'chat_message'){
     var m = data.message; if(!m) return;
     if(isPartnerActive){
-      // Rechargement protégé (ne détruit jamais un champ de réponse en cours d'usage — voir
-      // _ptnrTryRefreshMessages) plutôt qu'un ajout chirurgical : l'écran Messages prestataire
-      // affiche TOUS les fils à la fois, pas une conversation isolée comme côté client.
-      if(typeof _ptnrTryRefreshMessages==='function') _ptnrTryRefreshMessages();
+      // Miroir exact du côté client ci-dessous, depuis la restructuration de l'écran Messages
+      // prestataire en liste→conversation : ajout direct de la bulle si la conversation avec
+      // CE client précis est déjà ouverte, sinon simple rafraîchissement de la liste des fils
+      // (fait remonter/mettre à jour l'aperçu du fil concerné, façon WhatsApp/Messenger).
+      var ptnrIsOwnRecentEcho = data.self && (Date.now() - _ptnrLastSentMsgAt) < 4000;
+      var ptnrCounterpart = (m.from_type==='partner') ? m.to_email : m.from_email;
+      if(!ptnrIsOwnRecentEcho && _ptnrCurrentConvEmail && ptnrCounterpart && ptnrCounterpart.toLowerCase()===_ptnrCurrentConvEmail.toLowerCase() && document.getElementById('ptnr-chat-msgs')){
+        if(typeof _ptnrAppendChatBubble==='function') _ptnrAppendChatBubble(m);
+        if(!data.self){
+          _ptnrFetch('/api/partner/inbox/conversation/read','POST',{client_email:ptnrCounterpart}).catch(function(){});
+        }
+      } else if(!ptnrIsOwnRecentEcho && typeof _ptnrTryRefreshMessages==='function'){
+        _ptnrTryRefreshMessages();
+      }
       if(typeof _ptnrRefreshBadges==='function') _ptnrRefreshBadges();
     } else {
       // Écho de mon propre envoi tout juste passé par sendChatMessage() sur CET appareil :
@@ -9842,7 +9855,8 @@ function _genesisHandleChatWsMessage(data){
     }
   } else if(data.type === 'chat_read'){
     if(isPartnerActive){
-      if(typeof _ptnrTryRefreshMessages==='function') _ptnrTryRefreshMessages();
+      if(_ptnrCurrentConvEmail){ if(typeof _ptnrMarkSentAsReadUi==='function') _ptnrMarkSentAsReadUi(data.counterpart); }
+      else if(typeof _ptnrTryRefreshMessages==='function') _ptnrTryRefreshMessages();
     } else {
       _genesisMarkSentAsReadUi(data.counterpart);
     }
@@ -9850,7 +9864,13 @@ function _genesisHandleChatWsMessage(data){
     // "Supprimer pour tout le monde" déclenché par l'autre côté (ou par moi depuis un autre
     // appareil) : remplace la bulle par le placeholder "Message supprimé" en direct.
     if(isPartnerActive){
-      if(typeof _ptnrTryRefreshMessages==='function') _ptnrTryRefreshMessages();
+      var ptnrBubbleEl = data.id ? document.getElementById('ptnr-chat-msg-'+data.id) : null;
+      if(ptnrBubbleEl){
+        ptnrBubbleEl.dataset.deleted = '1';
+        var ptnrFirstDiv = ptnrBubbleEl.querySelector('div');
+        if(ptnrFirstDiv) ptnrFirstDiv.outerHTML = '<div style="font-style:italic;opacity:.55;"><i class="fa-solid fa-ban" style="margin-right:5px;font-size:11px;"></i>Message supprimé</div>';
+        var ptnrCheckEl = ptnrBubbleEl.querySelector('.chat-bubble-time i'); if(ptnrCheckEl) ptnrCheckEl.remove();
+      } else if(typeof _ptnrTryRefreshMessages==='function') _ptnrTryRefreshMessages();
     } else if(data.id){
       var bubbleEl = document.getElementById('chat-msg-'+data.id);
       if(bubbleEl){
@@ -14491,8 +14511,9 @@ function _ptnrCancelSeance(id){
 }
 
 // ── MESSAGES ──
-var _ptnrMsgAttachments = {}; // threadKey -> [{name,type,dataUrl}] en attente d'envoi
-var _ptnrPendingScrollThread = null; // email du client à faire défiler/surligner après le prochain chargement des messages
+var _ptnrCurrentAttachments = []; // pièces jointes en attente d'envoi dans la conversation actuellement ouverte
+var _ptnrLastSentMsgAt = 0; // horodatage du dernier envoi local — évite de dupliquer l'écho WebSocket de mon propre message
+var _ptnrPendingScrollThread = null; // email du client dont la conversation doit s'ouvrir directement après le prochain chargement des messages
 
 // ── DESTINATION DE NOTIFICATION (source de vérité unique) ──────────────────────────────────
 // _ptnrPendingNotifTarget est LA seule source de vérité pour "quel onglet ouvrir après une
@@ -14554,40 +14575,20 @@ function _ptnrApplyPendingNotifTarget(){
 // page précédent interrompu (voir le commentaire détaillé au-dessus de _ptnrSetPendingNotifTarget).
 _ptnrLoadPendingNotifTargetFromStorage();
 
-function _ptnrScrollToThread(email){
-  var key = _ptnrThreadKey(email);
-  var input = document.getElementById('ptnr-reply-'+key);
-  var card = input ? input.closest('.ptnr-card') : null;
-  if(!card){
-    // Conversation introuvable (supprimée entre l'envoi de la notification et l'ouverture de
-    // l'app, ou email ne correspondant à aucun fil autorisé pour CE prestataire précis — le
-    // serveur ne renvoie de toute façon jamais que les fils appartenant à l'appelant
-    // authentifié, voir /api/partner/inbox : un id manipulé dans une notification ne peut donc
-    // jamais faire apparaître la conversation de quelqu'un d'autre). On ne plante pas : la
-    // liste des messages reste affichée normalement, juste sans surlignage/défilement ciblé.
-    console.log('[GENESIS_NOTIFICATION] navigation_failed thread_not_found');
+// Rafraîchit l'écran Messages du prestataire — envoie vers la bonne cible (liste des fils, ou
+// conversation actuellement ouverte, voir _ptnrCurrentConvEmail) selon la vue affichée. Appelé
+// par le WebSocket temps réel dès qu'un message arrive (façon WhatsApp/Messenger) et par le
+// polling de secours. Aucun risque de détruire une saisie en cours : depuis la restructuration
+// en liste→conversation (façon WhatsApp/Messenger), la zone de réponse (.chat-compose) est un
+// élément persistant en dehors de la zone rafraîchie (#ptnr-chat-msgs), jamais reconstruite ici.
+function _ptnrTryRefreshMessages(){
+  if(_ptnrCurrentConvEmail){
+    if(document.getElementById('ptnr-chat-msgs')) _ptnrLoadConversationMessages(_ptnrCurrentConvEmail);
+    else _clearPtnrMsgPoll();
     return;
   }
-  console.log('[GENESIS_NOTIFICATION] conversation_loaded');
-  card.scrollIntoView({behavior:'smooth', block:'start'});
-  card.style.transition = 'box-shadow .3s';
-  card.style.boxShadow = '0 0 0 2px #FFD700';
-  setTimeout(function(){ card.style.boxShadow = ''; }, 2000);
-}
-
-function _ptnrThreadKey(email){ return String(email||'').replace(/[^a-z0-9]/gi, '_'); }
-
-// Rafraîchit l'écran Messages du prestataire — SAUF pendant que le prestataire écrit, pour ne
-// jamais détruire le <textarea> sous ses doigts (voir _ptnrLoadMessages : tout l'écran, zones de
-// réponse comprises, est reconstruit en un bloc). Appelé par le WebSocket temps réel dès qu'un
-// message arrive (façon WhatsApp/Messenger) et par le polling de secours toutes les 25s.
-function _ptnrTryRefreshMessages(){
   var listEl = document.getElementById('ptnr-messages-list');
   if(!listEl){ _clearPtnrMsgPoll(); return; }
-  var active = document.activeElement;
-  var isTypingReply = !!(active && active.classList && active.classList.contains('ptnr-reply-input'));
-  var hasDraftText = Array.prototype.some.call(document.querySelectorAll('.ptnr-reply-input'), function(t){ return t.value && t.value.trim().length > 0; });
-  if(isTypingReply || hasDraftText) return;
   _ptnrLoadMessages();
 }
 
@@ -14609,7 +14610,7 @@ function _ptnrAttachBubbleLongPress(bubbleEl){
 }
 function _ptnrOpenMessageActions(bubbleEl){
   if(!bubbleEl || bubbleEl.dataset.deleted==='1') return;
-  var msgId = bubbleEl.id.replace('ptnr-msg-','');
+  var msgId = bubbleEl.id.replace('ptnr-chat-msg-','');
   var isMine = bubbleEl.dataset.mine==='1';
   haptic(30);
   var actions = [{ label:'Supprimer pour moi', value:'me' }];
@@ -14618,7 +14619,8 @@ function _ptnrOpenMessageActions(bubbleEl){
     if(!scope) return;
     _ptnrFetch('/api/partner/inbox/'+msgId+'/delete','POST',{scope:scope}).then(function(res){
       if(res && res.error){ showToast('Erreur', res.error, 'error'); return; }
-      _ptnrLoadMessages();
+      if(scope==='me'){ bubbleEl.remove(); }
+      else if(_ptnrCurrentConvEmail){ _ptnrLoadConversationMessages(_ptnrCurrentConvEmail); }
     }).catch(function(){ showToast('Erreur','Erreur de connexion.','error'); });
   });
 }
@@ -14628,6 +14630,12 @@ function _ptnrOpenMessageActions(bubbleEl){
 // pour que les rafraîchissements en arrière-plan (WS, polling) ne fassent jamais sauter le
 // prestataire hors de la vue archivée qu'il est en train de consulter.
 var _ptnrMsgShowArchived = false;
+// Écran Messages du prestataire — vraie structure à deux niveaux, façon WhatsApp/Messenger/
+// Instagram : _ptnrLoadMessages() rend la LISTE des fils (une ligne = une personne, façon
+// "Discussions"), _ptnrOpenConversation(email,name) ouvre la conversation choisie en plein écran
+// (façon "Chat"), _ptnrCloseConversation() y revient. Avant cette restructuration, tous les fils
+// étaient affichés en même temps avec leur historique complet et leur propre zone de réponse —
+// ce n'est plus le cas.
 function _ptnrLoadMessages(_isRetry, showArchived){
   if(showArchived === undefined) showArchived = _ptnrMsgShowArchived;
   _ptnrMsgShowArchived = showArchived;
@@ -14655,6 +14663,24 @@ function _ptnrLoadMessages(_isRetry, showArchived){
       var la = a.messages[a.messages.length-1], lb = b.messages[b.messages.length-1];
       return new Date(lb.created_at) - new Date(la.created_at);
     });
+    // Une notification/deep-link peut demander l'ouverture directe d'une conversation précise
+    // (voir _ptnrSetPendingNotifTarget) — façon WhatsApp/Messenger : on saute la liste et on
+    // entre directement dans la conversation visée, plutôt que d'y faire défiler/surligner une
+    // carte comme dans l'ancienne structure "tout affiché en même temps".
+    if(_ptnrPendingScrollThread){
+      var _pst = _ptnrPendingScrollThread; _ptnrPendingScrollThread = null;
+      var _pstThread = allThreads.filter(function(t){ return t.email === _pst; })[0];
+      if(_pstThread){
+        console.log('[GENESIS_NOTIFICATION] conversation_loaded');
+        _ptnrOpenConversation(_pstThread.email, _pstThread.name);
+        return;
+      }
+      // Conversation introuvable (supprimée entre l'envoi de la notification et l'ouverture de
+      // l'app, ou email ne correspondant à aucun fil autorisé pour CE prestataire précis — le
+      // serveur ne renvoie de toute façon jamais que les fils appartenant à l'appelant
+      // authentifié, voir /api/partner/inbox). On ne plante pas : la liste s'affiche normalement.
+      console.log('[GENESIS_NOTIFICATION] navigation_failed thread_not_found');
+    }
     var threads = allThreads.filter(function(t){ return showArchived ? !!archivedSet[t.email] : !archivedSet[t.email]; });
     var linkEl = document.getElementById('ptnr-msg-archived-link');
     if(linkEl){
@@ -14663,59 +14689,44 @@ function _ptnrLoadMessages(_isRetry, showArchived){
         ? '<button onclick="_ptnrLoadMessages(false,false)" style="width:100%;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.06);color:#999;font-size:13px;font-weight:700;padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;"><i class="fa-solid fa-arrow-left"></i> Retour aux messages</button>'
         : (nArchived>0 ? '<button onclick="_ptnrLoadMessages(false,true)" style="width:100%;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.06);color:#999;font-size:13px;font-weight:700;padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;"><i class="fa-solid fa-box-archive" style="color:#FFD700;"></i> Conversations archivées <span style="margin-left:auto;color:#555;">'+nArchived+' <i class="fa-solid fa-chevron-right" style="font-size:11px;"></i></span></button>' : '');
     }
+    var titleEl = document.querySelector('#ptnr-messages-header .ptnr-back-bar-title');
+    if(titleEl) titleEl.textContent = showArchived ? 'Conversations archivées' : 'Messages clients';
     if(!threads.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-empty-txt">'+(showArchived?'Aucune conversation archivée':'Aucun message')+'</div></div>'; return; }
     var html = '';
     threads.forEach(function(thread){
-      var key = _ptnrThreadKey(thread.email);
-      html += '<div class="swipe-row-wrap" data-counterpart="'+thread.email+'" data-name="'+_escHtml(thread.name)+'" style="margin-bottom:16px;">';
-      html += '<div class="swipe-actions" style="border-radius:0 14px 14px 0;overflow:hidden;">'
-        +'<button class="swipe-btn swipe-btn-more"><i class="fa-solid fa-ellipsis"></i><span>Plus</span></button>'
-        +'<button class="swipe-btn swipe-btn-archive"><i class="fa-solid fa-box-archive"></i><span>'+(showArchived?'Désarchiver':'Archiver')+'</span></button>'
+      var last = thread.messages[thread.messages.length-1];
+      var initials = (thread.name||'?').split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();
+      var preview = last.deleted_for_everyone ? 'Message supprimé' : (last.content||'Photo').substring(0,55);
+      var dt = new Date(last.created_at), now = new Date();
+      var timeStr = (now-dt)<86400000
+        ? dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
+        : dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+      var unread = thread.messages.filter(function(m){ return m.from_type==='client' && !m.read_at; }).length;
+      var safeEmail = thread.email.replace(/'/g,"\\'");
+      var safeName = (thread.name||'Client').replace(/'/g,"\\'");
+      html += '<div class="swipe-row-wrap" data-counterpart="'+thread.email+'" data-name="'+_escHtml(thread.name)+'">'
+        +'<div class="swipe-actions">'
+          +'<button class="swipe-btn swipe-btn-more"><i class="fa-solid fa-ellipsis"></i><span>Plus</span></button>'
+          +'<button class="swipe-btn swipe-btn-archive"><i class="fa-solid fa-box-archive"></i><span>'+(showArchived?'Désarchiver':'Archiver')+'</span></button>'
+        +'</div>'
+        +'<div class="swipe-row-fg" style="display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(255,255,255,.06);background:var(--bg);">'
+        +'<div onclick="_ptnrOpenConversation(\''+safeEmail+'\',\''+safeName+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex:1;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);">'
+        +'<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a1200,#2a1f00);border:2px solid #FFD700;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#FFD700;flex-shrink:0;">'+initials+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
+            +'<div style="font-weight:900;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+_escHtml(thread.name)+'</div>'
+            +'<div style="font-size:11px;color:#555;white-space:nowrap;">'+timeStr+'</div>'
+          +'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+            +'<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">'+_escHtml(preview)+'</div>'
+            +(unread?'<span style="background:#FFD700;color:#000;border-radius:50%;min-width:18px;height:18px;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 3px;">'+unread+'</span>':'')
+          +'</div>'
+        +'</div>'
+        +'</div>'
+        +'</div>'
         +'</div>';
-      html += '<div class="swipe-row-fg ptnr-card" style="margin-bottom:0;">';
-      html += '<div class="ptnr-card-title">'+_escHtml(thread.name)+'</div>';
-      thread.messages.forEach(function(m){
-        var isPartner = m.from_type === 'partner';
-        // Coches façon WhatsApp/Messenger sur MES messages uniquement : ✓ gris = envoyé,
-        // ✓✓ bleu = lu par le client (read_at posé, voir POST .../conversation/read).
-        var checkHtml = (isPartner && !m.deleted_for_everyone)
-          ? (m.read_at
-              ? ' <i class="fa-solid fa-check-double" style="color:#53bdeb;font-size:11px;" title="Lu"></i>'
-              : ' <i class="fa-solid fa-check" style="color:#888;font-size:11px;" title="Envoyé"></i>')
-          : '';
-        html += '<div class="ptnr-msg-bubble'+(isPartner?' partner':'')+'" id="ptnr-msg-'+m.id+'" data-mine="'+(isPartner?'1':'0')+'" data-deleted="'+(m.deleted_for_everyone?'1':'0')+'">';
-        html += '<div class="ptnr-msg-meta">'+(isPartner?'Vous':_escHtml(thread.name))+' · '+_ptnrFmt(m.created_at)+checkHtml+'</div>';
-        if(m.deleted_for_everyone){
-          html += '<div class="ptnr-msg-text" style="font-style:italic;opacity:.55;"><i class="fa-solid fa-ban" style="margin-right:5px;font-size:11px;"></i>Message supprimé</div>';
-        } else {
-          html += '<div class="ptnr-msg-text">'+_escHtml(m.content)+'</div>';
-          if(m.attachments && m.attachments.length){
-            html += '<div class="ptnr-msg-attachments" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">';
-            m.attachments.forEach(function(a){
-              if(a.type && a.type.indexOf('image/')===0){
-                html += '<a href="'+a.dataUrl+'" target="_blank"><img src="'+a.dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;"></a>';
-              }else{
-                html += '<a href="'+a.dataUrl+'" target="_blank" download="'+_escHtml(a.name)+'" style="font-size:12px;background:#f0f0f0;padding:4px 8px;border-radius:6px;"><i class="fa-solid fa-paperclip"></i> '+_escHtml(a.name)+'</a>';
-              }
-            });
-            html += '</div>';
-          }
-        }
-        html += '</div>';
-      });
-      html += '<div id="ptnr-reply-att-preview-'+key+'" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>';
-      html += '<div class="ptnr-reply-row">';
-      html += '<input type="file" id="ptnr-reply-file-'+key+'" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple style="display:none;" onchange="_ptnrAttachFiles(\''+key+'\',this.files)">';
-      html += '<button type="button" onclick="document.getElementById(\'ptnr-reply-file-'+key+'\').click()" style="flex:0 0 auto;background:transparent;border:none;cursor:pointer;color:#888;font-size:18px;" title="Joindre un fichier"><i class="fa-solid fa-paperclip"></i></button>';
-      html += '<textarea class="ptnr-reply-input" id="ptnr-reply-'+key+'" placeholder="Répondre..." rows="2"></textarea>';
-      html += '<button class="ptnr-reply-send" onclick="_ptnrSendReply(\''+key+'\',\''+thread.email+'\',\''+thread.name.replace(/'/g,"\\'")+'\')">Envoyer</button>';
-      html += '</div>';
-      html += '<div id="ptnr-reply-err-'+key+'" style="color:#c00;font-size:12px;margin-top:4px;"></div>';
-      html += '</div>'; // .swipe-row-fg.ptnr-card
-      html += '</div>'; // .swipe-row-wrap
     });
     if(el) el.innerHTML = html;
-    Array.prototype.forEach.call(el ? el.querySelectorAll('.ptnr-msg-bubble') : [], _ptnrAttachBubbleLongPress);
     Array.prototype.forEach.call(el ? el.querySelectorAll('.swipe-row-wrap') : [], function(rowEl){
       var email = rowEl.getAttribute('data-counterpart');
       var name = rowEl.getAttribute('data-name');
@@ -14724,22 +14735,6 @@ function _ptnrLoadMessages(_isRetry, showArchived){
         onMore: function(){ _ptnrOpenConvMore(email, name); }
       });
     });
-    // Marquer comme lus les messages clients déjà affichés à l'instant — contrairement au
-    // client (liste → conversation), l'écran Messages du prestataire montre TOUS les fils
-    // d'un coup, donc les afficher ICI équivaut à les avoir "ouverts". Fait redescendre le
-    // badge "messages non lus" (façon Instagram/Messenger) immédiatement, sans attendre le
-    // prochain rafraîchissement périodique (_ptnrRefreshBadges, toutes les 90s).
-    threads.forEach(function(thread){
-      var hasUnread = thread.messages.some(function(m){ return m.from_type==='client' && !m.read_at; });
-      if(hasUnread){
-        _ptnrFetch('/api/partner/inbox/conversation/read','POST',{client_email:thread.email})
-          .then(function(){ _ptnrRefreshBadges(); }).catch(function(){});
-      }
-    });
-    if(_ptnrPendingScrollThread){
-      var _pst = _ptnrPendingScrollThread; _ptnrPendingScrollThread = null;
-      setTimeout(function(){ _ptnrScrollToThread(_pst); }, 100);
-    }
   }).catch(function(err){
     console.log('[GENESIS_NOTIFICATION] navigation_failed messages_load_error', (err && err.message) || err);
     // Un échec juste après un démarrage à froid (ex: via notification) est souvent transitoire
@@ -14748,6 +14743,155 @@ function _ptnrLoadMessages(_isRetry, showArchived){
     // chargement" pour un problème qui se serait résolu de lui-même une seconde plus tard.
     if(!_isRetry){ setTimeout(function(){ _ptnrLoadMessages(true); }, 1200); return; }
     if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
+  });
+}
+
+// Conversation email actuellement ouverte (null = vue liste affichée) — façon _chatPartnerEmail
+// côté client. Consultée par le WebSocket temps réel, le polling de secours et l'envoi de réponse.
+var _ptnrCurrentConvEmail = null;
+var _ptnrCurrentConvName = null;
+
+// Ouvre la conversation avec CE client précis en plein écran, à l'intérieur de l'écran Messages
+// (façon WhatsApp/Messenger/Instagram) — remplace la liste des fils par une vue façon "Chat",
+// avec sa propre barre de retour (VERS LA LISTE, pas vers le profil) et sa propre zone de saisie.
+function _ptnrOpenConversation(email, name){
+  if(!email) return;
+  _clearPtnrMsgPoll();
+  _ptnrCurrentConvEmail = email;
+  _ptnrCurrentConvName = name;
+  var hdr = document.getElementById('ptnr-messages-header'); if(hdr) hdr.style.display = 'none';
+  var lnk = document.getElementById('ptnr-msg-archived-link'); if(lnk) lnk.style.display = 'none';
+  var listEl = document.getElementById('ptnr-messages-list');
+  if(!listEl) return;
+  listEl.innerHTML = '<div class="chat-view">'
+    +'<div class="chat-back-bar">'
+    +'<button class="chat-back-btn" onclick="_ptnrCloseConversation()">&#8249;</button>'
+    +'<div style="font-size:16px;line-height:1;margin-right:6px;"><i class="fa-solid fa-user-tie"></i></div>'
+    +'<div class="chat-conv-name">'+_escHtml(name||'Client')+'</div>'
+    +'</div>'
+    +'<div class="chat-messages" id="ptnr-chat-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>'
+    +'<div id="ptnr-chat-att-preview" style="display:flex;gap:6px;flex-wrap:wrap;padding:0 12px;"></div>'
+    +'<div class="chat-compose">'
+    +'<input type="file" id="ptnr-chat-reply-file" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple style="display:none;" onchange="_ptnrAttachFiles(this.files)">'
+    +'<button type="button" onclick="document.getElementById(\'ptnr-chat-reply-file\').click()" style="flex:0 0 auto;background:transparent;border:none;cursor:pointer;color:#888;font-size:18px;" title="Joindre un fichier"><i class="fa-solid fa-paperclip"></i></button>'
+    +'<input id="ptnr-chat-input" class="chat-text-input" type="text" placeholder="Répondre..." onkeydown="if(event.key===\'Enter\'||event.keyCode===13)_ptnrSendConvReply()">'
+    +'<button class="chat-send-btn" id="ptnr-chat-send-btn" onclick="_ptnrSendConvReply()">&#8593;</button>'
+    +'</div>'
+    +'</div>';
+  _ptnrLoadConversationMessages(email);
+  // Marque côté serveur les messages de ce client comme lus, UNE SEULE FOIS à l'ouverture (et
+  // non plus à chaque affichage de la liste comme dans l'ancienne structure) — fait redescendre
+  // immédiatement le badge "messages non lus" (façon Instagram/Messenger).
+  _ptnrFetch('/api/partner/inbox/conversation/read','POST',{client_email:email})
+    .then(function(){ if(typeof _ptnrRefreshBadges==='function') _ptnrRefreshBadges(); }).catch(function(){});
+  // Filet de sécurité uniquement : la livraison instantanée passe par le WebSocket temps réel
+  // (_genesisHandleChatWsMessage → _ptnrAppendChatBubble). Fréquence réduite en conséquence.
+  _ptnrMsgPollInterval = setInterval(function(){
+    if(document.getElementById('ptnr-chat-msgs')) _ptnrLoadConversationMessages(email);
+    else _clearPtnrMsgPoll();
+  }, 20000);
+}
+
+// Retour à la liste des conversations depuis une conversation ouverte — reste dans la section
+// Messages (façon WhatsApp/Messenger/Instagram), ne redirige JAMAIS vers le profil.
+function _ptnrCloseConversation(){
+  _ptnrCurrentConvEmail = null;
+  _ptnrCurrentConvName = null;
+  _clearPtnrMsgPoll();
+  var hdr = document.getElementById('ptnr-messages-header'); if(hdr) hdr.style.display = '';
+  var lnk = document.getElementById('ptnr-msg-archived-link'); if(lnk) lnk.style.display = '';
+  _ptnrLoadMessages(false, _ptnrMsgShowArchived);
+  _ptnrMsgPollInterval = setInterval(_ptnrTryRefreshMessages, 25000);
+}
+
+// Un seul message = une seule bulle HTML, réutilisée par le rendu initial
+// (_ptnrLoadConversationMessages) ET par l'ajout temps réel (_ptnrAppendChatBubble). "Mine" =
+// envoyé par le prestataire lui-même (from_type==='partner'), pas une comparaison d'email comme
+// côté client (les deux côtés d'une conversation prestataire↔client n'ont pas le même "moi").
+// Conserve le rendu des pièces jointes (images/fichiers) de l'ancienne version inline — le
+// gabarit générique client (_clientChatBubbleHtml) n'en a pas besoin car son propre flux ne
+// gère pas les pièces jointes.
+function _ptnrChatBubbleHtml(m){
+  var isMine = m.from_type === 'partner';
+  var time = m.created_at ? new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+  var checkHtml = '';
+  if(isMine && !m.deleted_for_everyone){
+    checkHtml = m.read_at
+      ? ' <i class="fa-solid fa-check-double" style="color:#53bdeb;font-size:11px;" title="Lu"></i>'
+      : ' <i class="fa-solid fa-check" style="color:#8696a0;font-size:11px;" title="Envoyé"></i>';
+  }
+  var bodyHtml;
+  if(m.deleted_for_everyone){
+    bodyHtml = '<div style="font-style:italic;opacity:.55;"><i class="fa-solid fa-ban" style="margin-right:5px;font-size:11px;"></i>Message supprimé</div>';
+  } else {
+    bodyHtml = '<div>'+_escHtml(m.content||'')+'</div>';
+    if(m.attachments && m.attachments.length){
+      bodyHtml += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">'
+        + m.attachments.map(function(a){
+            return (a.type && a.type.indexOf('image/')===0)
+              ? '<a href="'+a.dataUrl+'" target="_blank"><img src="'+a.dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;"></a>'
+              : '<a href="'+a.dataUrl+'" target="_blank" download="'+_escHtml(a.name)+'" style="font-size:12px;background:rgba(255,255,255,.08);padding:4px 8px;border-radius:6px;color:inherit;"><i class="fa-solid fa-paperclip"></i> '+_escHtml(a.name)+'</a>';
+          }).join('')
+        + '</div>';
+    }
+  }
+  return '<div class="chat-bubble '+(isMine?'chat-bubble-mine':'chat-bubble-theirs')+'" id="ptnr-chat-msg-'+(m.id||'')+'" data-mine="'+(isMine?'1':'0')+'" data-deleted="'+(m.deleted_for_everyone?'1':'0')+'">'
+    +bodyHtml
+    +(time?'<div class="chat-bubble-time">'+time+checkHtml+'</div>':'')
+    +'</div>';
+}
+
+// Ajout temps réel d'UN message dans la conversation actuellement ouverte (voir
+// _genesisHandleChatWsMessage) — jamais un rechargement complet, exactement comme côté client
+// (_clientAppendChatBubble) et comme WhatsApp/Messenger/Instagram.
+function _ptnrAppendChatBubble(m){
+  var msgs = document.getElementById('ptnr-chat-msgs'); if(!msgs) return;
+  if(document.getElementById('ptnr-chat-msg-'+m.id)) return; // déjà affiché (évite les doublons)
+  var em = msgs.querySelector('.chat-empty-state'); if(em) em.remove();
+  var wrap = document.createElement('div');
+  wrap.innerHTML = _ptnrChatBubbleHtml(m);
+  var node = wrap.firstChild;
+  msgs.appendChild(node);
+  _ptnrAttachBubbleLongPress(node);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// Coche bleue "lu" en temps réel sur mes messages envoyés à ce client, dans la conversation
+// actuellement ouverte côté prestataire — sans recharger toute la conversation. Miroir exact de
+// _genesisMarkSentAsReadUi côté client.
+function _ptnrMarkSentAsReadUi(counterpart){
+  if(!counterpart || !_ptnrCurrentConvEmail) return;
+  if(counterpart.toLowerCase() !== _ptnrCurrentConvEmail.toLowerCase()) return;
+  document.querySelectorAll('#ptnr-chat-msgs .chat-bubble-mine .fa-check').forEach(function(icon){
+    icon.className = 'fa-solid fa-check-double';
+    icon.style.color = '#53bdeb';
+    icon.title = 'Lu';
+  });
+}
+
+// Charge (ou recharge) tous les messages de la conversation avec CE client précis dans
+// #ptnr-chat-msgs — miroir exact de loadChatMessages côté client, filtré sur /api/partner/inbox
+// au lieu de /api/messages.
+function _ptnrLoadConversationMessages(email, _isRetry){
+  var msgs = document.getElementById('ptnr-chat-msgs'); if(!msgs) return;
+  _ptnrFetch('/api/partner/inbox').then(function(data){
+    var flat = (data && data.messages) || [];
+    var pe = String(email||'').toLowerCase();
+    var list = flat.filter(function(m){
+      var counterpart = (m.from_type === 'partner') ? m.to_email : m.from_email;
+      return counterpart && counterpart.toLowerCase() === pe;
+    });
+    list.sort(function(a,b){ return new Date(a.created_at)-new Date(b.created_at); });
+    if(!list.length){
+      msgs.innerHTML = '<div class="chat-empty-state"><span>Aucun message.</span><span style="font-size:12px;color:#555;">Commencez la conversation !</span></div>';
+      return;
+    }
+    msgs.innerHTML = list.map(_ptnrChatBubbleHtml).join('');
+    Array.prototype.forEach.call(msgs.querySelectorAll('.chat-bubble'), _ptnrAttachBubbleLongPress);
+    msgs.scrollTop = msgs.scrollHeight;
+  }).catch(function(){
+    if(!_isRetry){ setTimeout(function(){ _ptnrLoadConversationMessages(email, true); }, 1200); return; }
+    msgs.innerHTML = '<div class="chat-empty-state"><span>Erreur de chargement</span></div>';
   });
 }
 
@@ -14785,44 +14929,55 @@ function _ptnrDeleteConversation(clientEmail, clientName){
   });
 }
 
-function _ptnrAttachFiles(key, fileList){
+// Pièces jointes pour la conversation actuellement ouverte (_ptnrCurrentConvEmail) — une seule
+// zone de composition à la fois désormais (plus besoin d'un index par fil, voir _ptnrSendConvReply).
+function _ptnrAttachFiles(fileList){
   var files = Array.prototype.slice.call(fileList||[]).slice(0, 3);
   if(!files.length) return;
-  var preview = document.getElementById('ptnr-reply-att-preview-'+key);
+  var preview = document.getElementById('ptnr-chat-att-preview');
   Promise.all(files.map(function(f){
     var isImg = f.type && f.type.indexOf('image/')===0;
     var p = isImg ? _ptnrImageFileToCompressedBase64(f, 1280, 0.82) : _ptnrFileToBase64(f);
     return p.then(function(dataUrl){ return { name: f.name, type: f.type||'', dataUrl: dataUrl }; });
   })).then(function(atts){
-    _ptnrMsgAttachments[key] = atts;
+    _ptnrCurrentAttachments = atts;
     if(preview){
-      preview.innerHTML = atts.map(function(a){ return '<span style="font-size:12px;background:#f0f0f0;padding:4px 8px;border-radius:6px;"><i class="fa-solid fa-paperclip"></i> '+_escHtml(a.name)+'</span>'; }).join('');
+      preview.innerHTML = atts.map(function(a){ return '<span style="font-size:12px;background:rgba(255,255,255,.08);padding:4px 8px;border-radius:6px;color:#ccc;"><i class="fa-solid fa-paperclip"></i> '+_escHtml(a.name)+'</span>'; }).join('');
     }
   });
 }
 
-function _ptnrSendReply(key, toEmail, clientName){
-  var inp = document.getElementById('ptnr-reply-'+key);
-  var errEl = document.getElementById('ptnr-reply-err-'+key);
-  if(!inp) return;
+// Envoi d'une réponse dans la conversation actuellement ouverte — miroir de sendChatMessage
+// côté client (affichage optimiste immédiat + dédoublonnage de l'écho WebSocket via
+// _ptnrLastSentMsgAt), avec en plus la prise en charge des pièces jointes déjà existante côté
+// prestataire (images/fichiers) que le flux client n'a pas.
+function _ptnrSendConvReply(){
+  var inp = document.getElementById('ptnr-chat-input');
+  var btn = document.getElementById('ptnr-chat-send-btn');
+  if(!inp || !_ptnrCurrentConvEmail) return;
   var msg = inp.value.trim();
-  var atts = _ptnrMsgAttachments[key] || [];
+  var atts = _ptnrCurrentAttachments || [];
   if(!msg && !atts.length) return;
-  if(errEl) errEl.textContent = '';
-  inp.disabled = true;
-  _ptnrFetch('/api/partner/inbox/reply','POST',{to_email:toEmail, content:msg, to_name:clientName, attachments:atts}).then(function(data){
-    if(data && data.error){
-      if(errEl) errEl.textContent = data.message || 'Erreur d\'envoi';
-      inp.disabled = false;
-      return;
-    }
-    inp.value = '';
-    delete _ptnrMsgAttachments[key];
-    inp.disabled = false;
-    _ptnrLoadMessages();
+  var toEmail = _ptnrCurrentConvEmail, toName = _ptnrCurrentConvName;
+  if(btn) btn.disabled = true;
+  inp.value = '';
+  _ptnrLastSentMsgAt = Date.now();
+  var msgsEl = document.getElementById('ptnr-chat-msgs');
+  if(msgsEl && msg){
+    var em = msgsEl.querySelector('.chat-empty-state'); if(em) em.remove();
+    var d = document.createElement('div'); d.className = 'chat-bubble chat-bubble-mine';
+    d.innerHTML = '<div>'+_escHtml(msg)+'</div>';
+    msgsEl.appendChild(d); msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+  var preview = document.getElementById('ptnr-chat-att-preview'); if(preview) preview.innerHTML = '';
+  _ptnrCurrentAttachments = [];
+  _ptnrFetch('/api/partner/inbox/reply','POST',{to_email:toEmail, content:msg, to_name:toName, attachments:atts}).then(function(data){
+    if(btn) btn.disabled = false;
+    if(data && data.error){ showToast('Erreur', data.message || 'Erreur d\'envoi', 'error'); return; }
+    setTimeout(function(){ if(_ptnrCurrentConvEmail===toEmail) _ptnrLoadConversationMessages(toEmail); }, 1200);
   }).catch(function(){
-    if(errEl) errEl.textContent = 'Erreur de connexion';
-    inp.disabled = false;
+    if(btn) btn.disabled = false;
+    showToast('Erreur','Erreur de connexion','error');
   });
 }
 
@@ -15076,7 +15231,8 @@ function _handleNotifHash(hash, _retryCount){
     return;
   }
   // Message d'un client → ouvrir directement la conversation avec ce client précis
-  // (au lieu de juste l'onglet Messages en général), voir _ptnrScrollToThread.
+  // (au lieu de juste l'onglet Messages en général), voir _ptnrOpenConversation et
+  // la consommation de _ptnrPendingScrollThread dans _ptnrLoadMessages.
   var msgThreadMatch = hash.match(/^partner:messages:(.+)$/);
   if(msgThreadMatch){
     console.log('[GENESIS_NOTIFICATION] navigate_conversation');
