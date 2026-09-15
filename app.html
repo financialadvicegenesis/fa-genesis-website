@@ -14263,15 +14263,25 @@ function _ptnrLoadHome(){
     var inbox = Array.isArray(results[2]) ? results[2] : (results[2].messages||results[2].inbox||[]);
 
     var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open';}).length;
-    var unreadMsg = inbox.filter(function(m){return m.unread||m.isUnread;}).length;
+    // Nombre de CONVERSATIONS distinctes ayant au moins un message client non lu — même calcul
+    // que _ptnrRefreshBadges (badge de la barre de nav). Avant : inbox.length (nombre BRUT de
+    // messages, tous fils confondus, ex: 6 messages échangés avec 1 seul client) était affiché
+    // tel quel comme "6 conversation(s) client" — comptait des messages, pas des clients — et ne
+    // redescendait jamais après lecture puisque les messages restent dans l'inbox indéfiniment.
+    var unreadClientEmailsHome = {};
+    inbox.forEach(function(m){
+      if(m.from_type !== 'client' || m.read_at) return;
+      if(m.from_email) unreadClientEmailsHome[m.from_email.toLowerCase()] = true;
+    });
+    var unreadConvCount = Object.keys(unreadClientEmailsHome).length;
 
     var html = '';
 
     // ── Alertes ──
     if(pendingDevis>0) html += '<div class="ptnr-card" style="border-left:3px solid #FFD700;cursor:pointer;" onclick="_ptnrNav(\'devis\')"><div class="ptnr-card-title">'+pendingDevis+' devis en attente</div><div class="ptnr-card-sub">Appuyez pour traiter les devis</div></div>';
-    if(inbox.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #3b82f6;cursor:pointer;" onclick="_ptnrNav(\'messages\')"><div class="ptnr-card-title">'+inbox.length+' conversation(s) client</div><div class="ptnr-card-sub">Appuyez pour voir les messages</div></div>';
+    if(unreadConvCount>0) html += '<div class="ptnr-card" style="border-left:3px solid #3b82f6;cursor:pointer;" onclick="_ptnrNav(\'messages\')"><div class="ptnr-card-title">'+unreadConvCount+' conversation(s) client non lue(s)</div><div class="ptnr-card-sub">Appuyez pour voir les messages</div></div>';
     if(projets.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #22c55e;cursor:pointer;" onclick="_ptnrNav(\'missions\')"><div class="ptnr-card-title">'+projets.length+' projet(s) assigné(s)</div><div class="ptnr-card-sub">Appuyez pour voir vos missions</div></div>';
-    if(!pendingDevis && !inbox.length && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
+    if(!pendingDevis && !unreadConvCount && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
     if(list) list.innerHTML = html;
     // Afficher l'alerte uniquement quand le client a payé+signé (dispatch pending_acceptance)
     _ptnrFetch('/api/partner/dispatches/pending').then(function(r){
