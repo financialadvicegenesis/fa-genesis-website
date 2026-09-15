@@ -2107,6 +2107,35 @@ function alertBatisseurPlusOnNewPartner(partner) {
     }
 }
 
+// Nombre de CONVERSATIONS distinctes ayant au moins un message non lu pour ce destinataire
+// précis (email+role) — même convention que _ptnrRefreshBadges/_clientRefreshMsgBadge côté
+// app.html (et que l'alerte "conversation(s) client" de l'accueil prestataire) : compte des
+// interlocuteurs distincts, pas des messages ni des notifications individuelles. Utilisé pour
+// alimenter le badge numérique natif de l'icône Android (BadgeUtils.setBadgeCount) avec un
+// chiffre qui reflète l'état RÉEL et actuel des messages non lus, façon WhatsApp/Messenger/
+// Instagram — voir le commentaire sur _badgeCount plus bas pour le pourquoi.
+function _countUnreadMessageConversations(email, role) {
+    if (!email) return 0;
+    try {
+        var msgs = loadChat();
+        var mine = msgs.filter(function(m) {
+            if (role === 'partner') {
+                return (m.to_type === 'partner' && m.to_email === email) || (m.from_type === 'partner' && m.from_email === email);
+            }
+            return m.from_email === email || m.to_email === email;
+        });
+        var incomingType = role === 'partner' ? 'client' : 'partner';
+        var unreadCounterparts = {};
+        mine.forEach(function(m) {
+            if (m.from_type !== incomingType || m.read_at) return;
+            if (m.from_email) unreadCounterparts[m.from_email.toLowerCase()] = true;
+        });
+        return Object.keys(unreadCounterparts).length;
+    } catch (e) {
+        return 0;
+    }
+}
+
 // notifyUser : persiste une notification (historique consultable) ET tente un push best-effort
 // (le push best-effort existant n'est pas retire, juste complete par la persistance).
 function notifyUser(email, role, type, title, body, link) {
@@ -2152,9 +2181,24 @@ function notifyUser(email, role, type, title, body, link) {
         // natif Android pour afficher un badge numérique sur l'icône de l'app (comme
         // WhatsApp/Instagram), au lieu du simple point que l'OS affiche par défaut. Calculé
         // ici (après le push() ci-dessus) pour inclure la notification qu'on vient de créer.
-        var _badgeCount = email ? all.filter(function(n) {
-            return n.role === role && n.email && n.email.toLowerCase() === email.toLowerCase() && !n.read;
-        }).length : null;
+        //
+        // Les notifications de type message-client/message-partner sont exclues de ce total
+        // GÉNÉRAL et comptées séparément via _countUnreadMessageConversations (conversations
+        // distinctes non lues, pas nombre brut de messages) : un enregistrement de notification
+        // de message n'est JAMAIS marqué lu (la cloche "Notifications" les exclut exprès, voir
+        // GET /api/notifications, donc le partenaire ne passe jamais par /read dessus) — les
+        // laisser dans le total général les aurait fait s'accumuler indéfiniment (chaque message
+        // reçu depuis le début, jamais retiré), gonflant le badge d'icône bien au-delà du nombre
+        // réel de messages non lus à l'instant présent (ex: "6" affiché pour 1 seule conversation
+        // avec 1 message réellement non lu).
+        var _badgeCount = null;
+        if (email) {
+            var _generalUnread = all.filter(function(n) {
+                return n.role === role && n.email && n.email.toLowerCase() === email.toLowerCase() && !n.read &&
+                    n.type !== 'message-client' && n.type !== 'message-partner';
+            }).length;
+            _badgeCount = _generalUnread + _countUnreadMessageConversations(email, role);
+        }
 
         var fcmPayload = {
             data: {
