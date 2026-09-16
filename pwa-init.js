@@ -1,7 +1,36 @@
 // FA GENESIS — PWA Init + Push Notifications
 (function() {
-  // Dans l'app native Capacitor : aucune fonctionnalité PWA (déjà installé)
-  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
+  var _isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+  // Service Worker : enregistré aussi dans l'app native Capacitor, EXCEPTIONNELLEMENT — tout le
+  // reste de ce fichier (installation PWA, Web Push) ne concerne que le site web, voir le
+  // early-return juste plus bas. C'est le seul moyen de mettre en cache durablement des
+  // ressources chargées en direct depuis le serveur (notamment la vidéo de démarrage, voir
+  // sw.js) : GitHub Pages ignore les en-têtes Cache-Control personnalisés, donc sans ce Service
+  // Worker, la vidéo (8+ Mo, jamais embarquée dans l'APK) se retéléchargeait entièrement à
+  // chaque ouverture de l'app dès que le cache HTTP par défaut de la WebView expirait — loin
+  // d'un démarrage "instantané". `controllerchange` (reload forcé après mise à jour du SW) reste
+  // réservé au web : un reload complet et inattendu de l'app native pendant son usage serait
+  // une régression, pas une amélioration.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/sw.js').then(function(reg) {
+        console.log('[PWA] SW enregistré:', reg.scope);
+        if (!_isNative) setTimeout(tryPushSubscribe, 3000);
+      }).catch(function(err) {
+        console.warn('[PWA] Echec SW:', err);
+      });
+    });
+    if (!_isNative) {
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        window.location.reload();
+      });
+    }
+  }
+
+  // Dans l'app native Capacitor : aucune AUTRE fonctionnalité PWA (déjà installé) — le Service
+  // Worker ci-dessus reste actif y compris ici, pour son seul bénéfice de cache HTTP.
+  if (_isNative) return;
 
   // L'installation PWA ne s'affiche QUE sur app.html
   var _isAppPage = /\/app\.html$|\/app$/.test(window.location.pathname) ||
@@ -32,20 +61,8 @@
     return /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
   }
 
-  // ── Service Worker ───────────────────────────────────────────
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-      navigator.serviceWorker.register('/sw.js').then(function(reg) {
-        console.log('[PWA] SW enregistré:', reg.scope);
-        setTimeout(tryPushSubscribe, 3000);
-      }).catch(function(err) {
-        console.warn('[PWA] Echec SW:', err);
-      });
-    });
-    navigator.serviceWorker.addEventListener('controllerchange', function() {
-      window.location.reload();
-    });
-  }
+  // (Service Worker enregistré plus haut, avant le early-return natif — voir le commentaire à
+  // cet endroit pour le pourquoi du déplacement.)
 
   // ── Expo install prompt (Android/Chrome) ─────────────────────
   var deferredPrompt = null;

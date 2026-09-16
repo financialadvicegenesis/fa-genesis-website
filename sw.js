@@ -1,5 +1,5 @@
-// FA GENESIS — Service Worker v21
-var CACHE_NAME = 'fa-genesis-v21';
+// FA GENESIS — Service Worker v22
+var CACHE_NAME = 'fa-genesis-v22';
 
 // Pages critiques : jamais mises en cache (toujours réseau)
 var NO_CACHE = ['/app.html', '/home.html', '/sw.js'];
@@ -69,9 +69,15 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // Images : cache-first
-  if (event.request.destination === 'image' ||
-      url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico|woff2?)$/)) {
+  // Images ET vidéos : cache-first — inclut notamment la vidéo de démarrage
+  // (assets/videos/teaser.mp4), chargée en direct depuis le serveur à chaque ouverture de
+  // l'app (pas embarquée dans l'APK, voir capacitor.config.json server.url) et donc jamais
+  // instantanée sans ce cache : GitHub Pages ignore les en-têtes Cache-Control personnalisés,
+  // ce Service Worker est le seul moyen de vraiment contrôler son cache. Avec ceci, seule la
+  // toute première ouverture télécharge la vidéo — toutes les suivantes la servent depuis ce
+  // cache local, sans aucun aller-retour réseau.
+  if (event.request.destination === 'image' || event.request.destination === 'video' ||
+      url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico|woff2?|mp4|webm)$/)) {
     event.respondWith(
       caches.match(event.request).then(function(cached) {
         return cached || fetch(event.request).then(function(resp) {

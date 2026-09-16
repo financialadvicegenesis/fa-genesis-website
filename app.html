@@ -17,6 +17,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Space+Grotesk:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Space+Grotesk:wght@400;700&display=swap"></noscript>
+<!-- Vidéo de démarrage : le scanner de préchargement du navigateur la découvre ICI, dans <head>,
+     AVANT même que le parseur HTML n'atteigne la balise <video> plus bas dans <body> — le
+     téléchargement démarre donc plus tôt, en parallèle du reste de la page, au lieu d'attendre
+     que tout ce qui précède soit parsé. Le fichier est déjà encodé "faststart" (moov avant mdat,
+     vérifié) donc la lecture peut commencer dès les premiers octets reçus, sans attendre les
+     8+ Mo entiers. Voir aussi sw.js (cache-first) pour que les ouvertures suivantes de l'app ne
+     retéléchargent plus du tout la vidéo. -->
+<link rel="preload" as="video" href="assets/videos/teaser.mp4" type="video/mp4">
 <style>
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    BASE
