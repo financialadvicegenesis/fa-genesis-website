@@ -2493,12 +2493,14 @@ a{text-decoration:none;color:inherit}
 <body>
 
 <!-- ══════════ VIDÉO FOND ══════════ -->
-<!-- Pas de poster (logo intermédiaire) : demandé explicitement pour que la vidéo elle-même soit
-     la toute première chose affichée, sans image de transition avant elle. Repose désormais sur
-     le cache Service Worker + <link rel="preload"> (voir <head>) qui rendent la vidéo quasi
-     instantanée dès la 2e ouverture — seule la toute première ouverture (cache froid) peut
-     encore afficher un court instant de fond noir avant que la vidéo ne démarre. -->
-<video id="bgVideo" autoplay muted loop playsinline preload="auto">
+<!-- REVERT (voir mémoire du projet) : le poster avait été retiré à la demande explicite pour que
+     la vidéo soit affichée en tout premier — mais son rôle était justement d'empêcher un écran
+     noir tant que la vidéo (chargée en direct, jamais embarquée dans l'app) n'a pas fini de
+     décoder sa première image. Un prestataire a rapporté un écran totalement noir à l'ouverture
+     de l'app sur son téléphone, symptôme compatible avec un appareil/réseau plus lent où la
+     vidéo met plus longtemps à démarrer que sur l'appareil de test. Remis en sécurité : mieux
+     vaut un court instant de logo qu'un écran noir qui rend l'app inutilisable. -->
+<video id="bgVideo" autoplay muted loop playsinline preload="auto" poster="assets/images/icon-app-512.png">
   <source src="assets/videos/teaser.mp4" type="video/mp4">
 </video>
 <div id="bgOverlay"></div>

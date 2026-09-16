@@ -2,35 +2,29 @@
 (function() {
   var _isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 
-  // Service Worker : enregistré aussi dans l'app native Capacitor, EXCEPTIONNELLEMENT — tout le
-  // reste de ce fichier (installation PWA, Web Push) ne concerne que le site web, voir le
-  // early-return juste plus bas. C'est le seul moyen de mettre en cache durablement des
-  // ressources chargées en direct depuis le serveur (notamment la vidéo de démarrage, voir
-  // sw.js) : GitHub Pages ignore les en-têtes Cache-Control personnalisés, donc sans ce Service
-  // Worker, la vidéo (8+ Mo, jamais embarquée dans l'APK) se retéléchargeait entièrement à
-  // chaque ouverture de l'app dès que le cache HTTP par défaut de la WebView expirait — loin
-  // d'un démarrage "instantané". `controllerchange` (reload forcé après mise à jour du SW) reste
-  // réservé au web : un reload complet et inattendu de l'app native pendant son usage serait
-  // une régression, pas une amélioration.
+  // REVERT (voir mémoire du projet) : le Service Worker avait été exceptionnellement activé
+  // dans l'app native pour accélérer le cache de la vidéo de démarrage, mais jamais vérifié sur
+  // un vrai appareil autre que celui de développement — un prestataire a rapporté un écran noir
+  // total à l'ouverture de l'app sur son téléphone juste après cette version, symptôme compatible
+  // avec un Service Worker qui échoue/bloque au démarrage sur certains WebView Android. Un écran
+  // noir total rend l'app complètement inutilisable — bien plus grave qu'une vidéo qui se
+  // retélécharge. Retour au comportement d'avant (des mois stables sur tous les appareils) :
+  // Service Worker réservé au web/PWA, jamais enregistré dans l'app native.
+  if (_isNative) return;
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
       navigator.serviceWorker.register('/sw.js').then(function(reg) {
         console.log('[PWA] SW enregistré:', reg.scope);
-        if (!_isNative) setTimeout(tryPushSubscribe, 3000);
+        setTimeout(tryPushSubscribe, 3000);
       }).catch(function(err) {
         console.warn('[PWA] Echec SW:', err);
       });
     });
-    if (!_isNative) {
-      navigator.serviceWorker.addEventListener('controllerchange', function() {
-        window.location.reload();
-      });
-    }
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      window.location.reload();
+    });
   }
-
-  // Dans l'app native Capacitor : aucune AUTRE fonctionnalité PWA (déjà installé) — le Service
-  // Worker ci-dessus reste actif y compris ici, pour son seul bénéfice de cache HTTP.
-  if (_isNative) return;
 
   // L'installation PWA ne s'affiche QUE sur app.html
   var _isAppPage = /\/app\.html$|\/app$/.test(window.location.pathname) ||
