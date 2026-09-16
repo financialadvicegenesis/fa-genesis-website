@@ -10,7 +10,29 @@
   // noir total rend l'app complètement inutilisable — bien plus grave qu'une vidéo qui se
   // retélécharge. Retour au comportement d'avant (des mois stables sur tous les appareils) :
   // Service Worker réservé au web/PWA, jamais enregistré dans l'app native.
-  if (_isNative) return;
+  if (_isNative) {
+    // Nettoyage : NE PLUS ENREGISTRER de Service Worker ici ne désinstalle pas celui qu'un
+    // appareil aurait déjà enregistré pendant la brève fenêtre où c'était activé (versions
+    // 2.4.6/2.4.7) — un Service Worker déjà installé continue de tourner indéfiniment tant que
+    // rien ne l'unregister() explicitement. Symptôme observé sur un appareil précis : un fragment
+    // de la page d'accueil du site marketing (index.html, pré-mise en cache par ce même Service
+    // Worker à l'installation, voir STATIC_ASSETS dans sw.js) s'affichait par-dessus l'app —
+    // cohérent avec ce Service Worker resté actif qui interceptait encore les requêtes et
+    // renvoyait une ressource mise en cache au lieu de laisser passer app.html. Purge donc
+    // activement toute inscription et tout cache existants, une fois, sur CHAQUE démarrage natif
+    // (l'opération est un no-op quasi instantané s'il n'y a déjà plus rien à nettoyer).
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(reg) { reg.unregister().catch(function() {}); });
+      }).catch(function() {});
+    }
+    if (window.caches && caches.keys) {
+      caches.keys().then(function(names) {
+        names.forEach(function(name) { caches.delete(name).catch(function() {}); });
+      }).catch(function() {});
+    }
+    return;
+  }
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
