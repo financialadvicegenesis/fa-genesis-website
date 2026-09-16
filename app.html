@@ -10229,6 +10229,13 @@ function _clientRefreshMsgBadge(){
         if(count>0){ el.textContent = count; el.className = 'client-msg-badge on'; }
         else { el.className = 'client-msg-badge'; }
       });
+      // Rafraîchit aussi le badge NATIF de l'icône Android (comme WhatsApp/Messenger) — sans
+      // ça, lire/répondre à un message directement dans l'app (donc sans jamais passer par
+      // ReplyReceiver/ni redémarrer l'app, voir MainActivity.onResume) laissait le badge affiché
+      // à l'ancien chiffre posé par la dernière notification FCM reçue.
+      if(typeof _ptnrIsNative==='function' && _ptnrIsNative() && window.FAGMobile && window.FAGMobile.refreshBadge){
+        window.FAGMobile.refreshBadge('client').catch(function(){});
+      }
     }).catch(function(){});
 }
 
@@ -15519,6 +15526,13 @@ function _ptnrRefreshBadges(){
     var hasAny = pendingDevis > 0 || pendingSeances > 0 || unreadMsg > 0 || missionCount > 0;
     var dot = document.getElementById('dot-partner'); if(dot) dot.style.display = hasAny ? '' : 'none';
     if(dot && hasAny) dot.className = 'nav-dot on'; else if(dot) dot.className = 'nav-dot';
+    // Rafraîchit aussi le badge NATIF de l'icône Android (comme WhatsApp/Messenger) — sans ça,
+    // lire/répondre à un message directement dans l'app (donc sans jamais passer par
+    // ReplyReceiver ni redémarrer l'app, voir MainActivity.onResume) laissait le badge affiché
+    // à l'ancien chiffre posé par la dernière notification FCM reçue.
+    if(typeof _ptnrIsNative==='function' && _ptnrIsNative() && window.FAGMobile && window.FAGMobile.refreshBadge){
+      window.FAGMobile.refreshBadge('partner').catch(function(){});
+    }
   });
 }
 

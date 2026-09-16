@@ -39,6 +39,19 @@
         } catch(e) { console.warn('[FAG Mobile] setAuthToken:', e.message); }
     };
 
+    // Rafraîchit le badge numérique de l'icône (comme WhatsApp/Messenger) en interrogeant le
+    // serveur pour l'état RÉEL et actuel des non-lus (voir GET /api/notifications/badge-count) —
+    // nécessaire chaque fois qu'un message est lu/répondu DANS l'app (donc sans jamais passer
+    // par ReplyReceiver.java ni redémarrer l'app, seuls autres endroits qui mettent le badge à
+    // jour), sinon il restait affiché avec l'ancien chiffre posé par la dernière notification
+    // FCM reçue. Appelé côté app.html depuis _ptnrRefreshBadges/_clientRefreshMsgBadge.
+    window.FAGMobile.refreshBadge = async function(role) {
+        try {
+            if (!Plugins.TokenStore || !role) return;
+            await Plugins.TokenStore.refreshBadge({ role: role });
+        } catch(e) { console.warn('[FAG Mobile] refreshBadge:', e.message); }
+    };
+
     window.FAGMobile.initPushNotifications = async function(userId) {
         try {
             if (!Plugins.PushNotifications) {
