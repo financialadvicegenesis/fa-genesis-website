@@ -2493,11 +2493,12 @@ a{text-decoration:none;color:inherit}
 <body>
 
 <!-- ══════════ VIDÉO FOND ══════════ -->
-<!-- poster : le logo s'affiche immédiatement pendant que la vidéo se télécharge (elle n'est PAS
-     embarquée dans l'app — chargée en direct depuis fagenesis.com à chaque ouverture, voir
-     capacitor.config.json server.url — donc jamais instantanée sur un réseau mobile) : jamais
-     un écran noir/vide avant que la première image de la vidéo ne soit décodée. -->
-<video id="bgVideo" autoplay muted loop playsinline preload="auto" poster="assets/images/icon-app-512.png">
+<!-- Pas de poster (logo intermédiaire) : demandé explicitement pour que la vidéo elle-même soit
+     la toute première chose affichée, sans image de transition avant elle. Repose désormais sur
+     le cache Service Worker + <link rel="preload"> (voir <head>) qui rendent la vidéo quasi
+     instantanée dès la 2e ouverture — seule la toute première ouverture (cache froid) peut
+     encore afficher un court instant de fond noir avant que la vidéo ne démarre. -->
+<video id="bgVideo" autoplay muted loop playsinline preload="auto">
   <source src="assets/videos/teaser.mp4" type="video/mp4">
 </video>
 <div id="bgOverlay"></div>
@@ -10209,6 +10210,13 @@ function openConversation(key, name, icon, partnerEmail){
       body:JSON.stringify({counterpart:partnerEmail})
     }).then(function(){ if(typeof _clientRefreshMsgBadge==='function') _clientRefreshMsgBadge(); }).catch(function(){});
   }
+  // Annule aussi la notification de message restée dans le volet pour ce prestataire précis
+  // (façon Instagram/WhatsApp) — sans ça, ouvrir/lire la conversation directement dans l'app
+  // (plutôt qu'en tapant la notification ou en y répondant depuis elle) laissait la notification
+  // affichée alors même que le message venait d'être lu.
+  if(partnerEmail && typeof _ptnrIsNative==='function' && _ptnrIsNative() && window.FAGMobile && window.FAGMobile.cancelMessageNotification){
+    window.FAGMobile.cancelMessageNotification(partnerEmail).catch(function(){});
+  }
   // Filet de sécurité uniquement : la livraison instantanée passe désormais par le WebSocket
   // temps réel (_genesisHandleChatWsMessage → append direct de la bulle, sans reload). Fréquence
   // largement réduite en conséquence (avant : 4s en continu, nécessaire avant l'existence du WS).
@@ -15110,6 +15118,13 @@ function _ptnrOpenConversation(email, name){
   // immédiatement le badge "messages non lus" (façon Instagram/Messenger).
   _ptnrFetch('/api/partner/inbox/conversation/read','POST',{client_email:email})
     .then(function(){ if(typeof _ptnrRefreshBadges==='function') _ptnrRefreshBadges(); }).catch(function(){});
+  // Annule aussi la notification de message restée dans le volet pour ce client précis (façon
+  // Instagram/WhatsApp) — sans ça, ouvrir/lire la conversation directement dans l'app (plutôt
+  // qu'en tapant la notification ou en y répondant depuis elle) laissait la notification affichée
+  // alors même que le message venait d'être lu.
+  if(typeof _ptnrIsNative==='function' && _ptnrIsNative() && window.FAGMobile && window.FAGMobile.cancelMessageNotification){
+    window.FAGMobile.cancelMessageNotification(email).catch(function(){});
+  }
   // Filet de sécurité uniquement : la livraison instantanée passe par le WebSocket temps réel
   // (_genesisHandleChatWsMessage → _ptnrAppendChatBubble). Fréquence réduite en conséquence.
   _ptnrMsgPollInterval = setInterval(function(){

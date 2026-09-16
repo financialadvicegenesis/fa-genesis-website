@@ -52,6 +52,19 @@
         } catch(e) { console.warn('[FAG Mobile] refreshBadge:', e.message); }
     };
 
+    // Annule la notification de message affichée pour ce contact précis (façon Instagram/
+    // WhatsApp) — nécessaire quand la conversation est ouverte/lue DANS l'app plutôt qu'en tapant
+    // la notification elle-même (auto-annulée nativement dans ce cas) ou qu'en y répondant
+    // directement (remplacée par ReplyReceiver côté natif) : sans cet appel, la notification
+    // restait visible dans le volet même après avoir déjà lu/répondu au message dans l'app.
+    // Appelé côté app.html depuis _ptnrOpenConversation/openConversation.
+    window.FAGMobile.cancelMessageNotification = async function(counterpart) {
+        try {
+            if (!Plugins.TokenStore || !counterpart) return;
+            await Plugins.TokenStore.cancelMessageNotification({ counterpart: counterpart });
+        } catch(e) { console.warn('[FAG Mobile] cancelMessageNotification:', e.message); }
+    };
+
     window.FAGMobile.initPushNotifications = async function(userId) {
         try {
             if (!Plugins.PushNotifications) {
