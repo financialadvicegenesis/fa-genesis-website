@@ -2493,14 +2493,13 @@ a{text-decoration:none;color:inherit}
 <body>
 
 <!-- ══════════ VIDÉO FOND ══════════ -->
-<!-- REVERT (voir mémoire du projet) : le poster avait été retiré à la demande explicite pour que
-     la vidéo soit affichée en tout premier — mais son rôle était justement d'empêcher un écran
-     noir tant que la vidéo (chargée en direct, jamais embarquée dans l'app) n'a pas fini de
-     décoder sa première image. Un prestataire a rapporté un écran totalement noir à l'ouverture
-     de l'app sur son téléphone, symptôme compatible avec un appareil/réseau plus lent où la
-     vidéo met plus longtemps à démarrer que sur l'appareil de test. Remis en sécurité : mieux
-     vaut un court instant de logo qu'un écran noir qui rend l'app inutilisable. -->
-<video id="bgVideo" autoplay muted loop playsinline preload="auto" poster="assets/images/icon-app-512.png">
+<!-- Pas de poster par défaut : demandé explicitement pour que la vidéo (ou à défaut le
+     chargement) soit directement visible dès l'ouverture, sans logo statique avant elle. Le
+     poster reste néanmoins posé DYNAMIQUEMENT en JS ci-dessous, mais UNIQUEMENT sur les
+     appareils à RAM limitée où la vidéo est de toute façon retirée (voir plus bas) — c'est sur
+     CES appareils précis (ex: Galaxy A06) qu'un fond totalement noir avait été signalé, jamais
+     sur un appareil capable de lire la vidéo normalement. -->
+<video id="bgVideo" autoplay muted loop playsinline preload="auto">
   <source src="assets/videos/teaser.mp4" type="video/mp4">
 </video>
 <script>
@@ -2508,15 +2507,21 @@ a{text-decoration:none;color:inherit}
 // total au démarrage), décoder une vidéo en lecture automatique dès le tout premier écran peut
 // suffire à faire planter le moteur de rendu de la WebView. navigator.deviceMemory (Chromium,
 // donc disponible dans la WebView Android) donne une estimation approximative de la RAM en Go —
-// en dessous d'un seuil prudent, on retire la vidéo AVANT qu'elle ne commence à charger et on
-// garde uniquement le poster (logo statique, déjà là dans tous les cas) comme fond. Best-effort :
-// l'API peut être absente (undefined) sur certains WebView plus anciens — dans ce cas on ne
-// change rien, la vidéo continue de se charger normalement.
+// en dessous d'un seuil prudent, on retire la vidéo AVANT qu'elle ne commence à charger. Le
+// poster n'est posé QUE dans ce cas précis (pas par défaut, voir commentaire au-dessus) : sans
+// vidéo à afficher, il remplace le fond noir qui apparaîtrait sinon. Best-effort : l'API peut
+// être absente (undefined) sur certains WebView plus anciens — dans ce cas on ne change rien, la
+// vidéo continue de se charger normalement, sans poster (comportement par défaut demandé).
 (function(){
   try{
     if(typeof navigator.deviceMemory === 'number' && navigator.deviceMemory > 0 && navigator.deviceMemory <= 2){
       var v = document.getElementById('bgVideo');
-      if(v){ v.removeAttribute('autoplay'); v.pause(); v.querySelectorAll('source').forEach(function(s){ s.remove(); }); v.load(); }
+      if(v){
+        v.removeAttribute('autoplay'); v.pause();
+        v.querySelectorAll('source').forEach(function(s){ s.remove(); });
+        v.load();
+        v.poster = 'assets/images/icon-app-512.png';
+      }
     }
   }catch(e){}
 })();
