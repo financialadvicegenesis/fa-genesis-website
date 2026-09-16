@@ -2512,6 +2512,30 @@ a{text-decoration:none;color:inherit}
 // vidéo à afficher, il remplace le fond noir qui apparaîtrait sinon. Best-effort : l'API peut
 // être absente (undefined) sur certains WebView plus anciens — dans ce cas on ne change rien, la
 // vidéo continue de se charger normalement, sans poster (comportement par défaut demandé).
+
+// Signale au natif (MainActivity, voir TokenStorePlugin.notifyAppReady) qu'il y a désormais
+// quelque chose de significatif à montrer, pour qu'il retire l'écran de démarrage natif (icône,
+// @drawable/splash) À CE MOMENT PRÉCIS plutôt que bien trop tôt : auparavant, Capacitor le
+// retirait dès qu'il affichait la WebView elle-même — bien avant qu'app.html n'ait fini d'être
+// téléchargé (jamais embarqué, toujours chargé en direct) et analysé, laissant un vide noir
+// entre l'icône et le contenu réel. Sans effet hors de l'app native, ou si le plugin natif n'est
+// pas encore disponible sur l'appareil (ancienne version installée) — purement additif.
+var _genesisNativeReadySignaled = false;
+function _genesisSignalNativeReady(){
+  if(_genesisNativeReadySignaled) return;
+  _genesisNativeReadySignaled = true;
+  try{
+    if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() &&
+       window.Capacitor.Plugins && window.Capacitor.Plugins.TokenStore && window.Capacitor.Plugins.TokenStore.notifyAppReady){
+      window.Capacitor.Plugins.TokenStore.notifyAppReady().catch(function(){});
+    }
+  }catch(e){}
+}
+// Filet de sécurité : si la vidéo ne démarre jamais (réseau très lent, format non supporté...),
+// ne jamais laisser l'écran de démarrage natif affiché indéfiniment — le natif a de toute façon
+// son propre filet à 4s (voir MainActivity.onCreate), celui-ci est juste plus réactif.
+setTimeout(_genesisSignalNativeReady, 2500);
+
 (function(){
   try{
     if(typeof navigator.deviceMemory === 'number' && navigator.deviceMemory > 0 && navigator.deviceMemory <= 2){
@@ -2522,8 +2546,17 @@ a{text-decoration:none;color:inherit}
         v.load();
         v.poster = 'assets/images/icon-app-512.png';
       }
+      // Pas de vidéo sur cet appareil : rien à attendre pour afficher quelque chose, signale
+      // tout de suite plutôt que d'attendre inutilement le filet de sécurité à 2,5s.
+      _genesisSignalNativeReady();
+    } else {
+      var v2 = document.getElementById('bgVideo');
+      if(v2){
+        v2.addEventListener('playing', _genesisSignalNativeReady, {once:true});
+        v2.addEventListener('error', _genesisSignalNativeReady, {once:true});
+      }
     }
-  }catch(e){}
+  }catch(e){ _genesisSignalNativeReady(); }
 })();
 </script>
 <div id="bgOverlay"></div>
