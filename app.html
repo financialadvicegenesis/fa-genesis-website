@@ -14444,6 +14444,15 @@ function _ptnrShowDash(){
       }
     }).catch(function(){});
   }
+  // Rafraîchit le badge "Messages" (et devis/missions) IMMÉDIATEMENT à l'entrée dans l'espace
+  // prestataire — sans cet appel direct, seul le timer périodique ci-dessous le faisait, avec
+  // un premier tick 90s après coup : en ouvrant l'app et en arrivant sur l'espace prestataire,
+  // le badge restait donc affiché à son état par défaut (souvent 0, aucun message) pendant
+  // cette fenêtre, même avec un message réellement non lu. _ptnrInit() (démarrage à froid) est
+  // censé déjà l'avoir posé correctement AVANT même l'arrivée ici, mais cet appel reste
+  // nécessaire pour les cas où l'espace prestataire est atteint autrement (changement de profil,
+  // reconnexion en cours de session...) sans repasser par ce chemin de démarrage précis.
+  if(typeof _ptnrRefreshBadges==='function') _ptnrRefreshBadges();
   if(!_ptnrRefreshTimer) _ptnrRefreshTimer = setInterval(_ptnrRefreshBadges, 90000);
   if(typeof _genesisConnectChatSocket==='function') _genesisConnectChatSocket();
   if(!_ptnrRepTimer) _ptnrRepTimer = setInterval(function(){
