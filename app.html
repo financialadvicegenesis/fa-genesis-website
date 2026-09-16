@@ -2503,15 +2503,18 @@ a{text-decoration:none;color:inherit}
   <source src="assets/videos/teaser.mp4" type="video/mp4">
 </video>
 <script>
-// Sur un appareil d'entrée de gamme à RAM limitée (ex: Galaxy A06, signalé avec un écran noir
-// total au démarrage), décoder une vidéo en lecture automatique dès le tout premier écran peut
-// suffire à faire planter le moteur de rendu de la WebView. navigator.deviceMemory (Chromium,
-// donc disponible dans la WebView Android) donne une estimation approximative de la RAM en Go —
-// en dessous d'un seuil prudent, on retire la vidéo AVANT qu'elle ne commence à charger. Le
-// poster n'est posé QUE dans ce cas précis (pas par défaut, voir commentaire au-dessus) : sans
-// vidéo à afficher, il remplace le fond noir qui apparaîtrait sinon. Best-effort : l'API peut
-// être absente (undefined) sur certains WebView plus anciens — dans ce cas on ne change rien, la
-// vidéo continue de se charger normalement, sans poster (comportement par défaut demandé).
+// Sur un appareil d'entrée/milieu de gamme à RAM limitée (ex: Galaxy A06, 4 Go — signalé à
+// plusieurs reprises avec un écran noir total au démarrage), décoder une vidéo en lecture
+// automatique dès le tout premier écran peut suffire à faire planter le moteur de rendu de la
+// WebView. navigator.deviceMemory (Chromium, donc disponible dans la WebView Android) donne une
+// estimation approximative de la RAM en Go — en dessous d'un seuil prudent, on retire la vidéo
+// AVANT qu'elle ne commence à charger. Seuil relevé à 4 Go (au lieu de 2) après un signalement
+// répété sur un appareil 4 Go précis : mieux vaut désactiver la vidéo sur davantage d'appareils
+// d'entrée de gamme que de risquer un écran noir sur l'un d'eux. Le poster n'est posé QUE dans
+// ce cas précis (pas par défaut, voir commentaire au-dessus) : sans vidéo à afficher, il
+// remplace le fond noir qui apparaîtrait sinon. Best-effort : l'API peut être absente (undefined)
+// sur certains WebView plus anciens — dans ce cas on ne change rien, la vidéo continue de se
+// charger normalement, sans poster (comportement par défaut demandé).
 
 // Signale au natif (MainActivity, voir TokenStorePlugin.notifyAppReady) qu'il y a désormais
 // quelque chose de significatif à montrer, pour qu'il retire l'écran de démarrage natif (icône,
@@ -2519,7 +2522,10 @@ a{text-decoration:none;color:inherit}
 // retirait dès qu'il affichait la WebView elle-même — bien avant qu'app.html n'ait fini d'être
 // téléchargé (jamais embarqué, toujours chargé en direct) et analysé, laissant un vide noir
 // entre l'icône et le contenu réel. Sans effet hors de l'app native, ou si le plugin natif n'est
-// pas encore disponible sur l'appareil (ancienne version installée) — purement additif.
+// pas encore disponible sur l'appareil (ancienne version installée) — purement additif. Le natif
+// n'active ce mécanisme que sur les appareils qu'IL juge capables (voir MainActivity.
+// isLowMemoryDevice, vérification indépendante de celle-ci) — un appel ici sur un appareil à RAM
+// limitée est donc sans effet, mais reste inoffensif.
 var _genesisNativeReadySignaled = false;
 function _genesisSignalNativeReady(){
   if(_genesisNativeReadySignaled) return;
@@ -2533,12 +2539,13 @@ function _genesisSignalNativeReady(){
 }
 // Filet de sécurité : si la vidéo ne démarre jamais (réseau très lent, format non supporté...),
 // ne jamais laisser l'écran de démarrage natif affiché indéfiniment — le natif a de toute façon
-// son propre filet à 4s (voir MainActivity.onCreate), celui-ci est juste plus réactif.
-setTimeout(_genesisSignalNativeReady, 2500);
+// son propre filet, légèrement plus long (2,5s, voir MainActivity.onCreate), celui-ci est donc le
+// premier à se déclencher en temps normal.
+setTimeout(_genesisSignalNativeReady, 2000);
 
 (function(){
   try{
-    if(typeof navigator.deviceMemory === 'number' && navigator.deviceMemory > 0 && navigator.deviceMemory <= 2){
+    if(typeof navigator.deviceMemory === 'number' && navigator.deviceMemory > 0 && navigator.deviceMemory <= 4){
       var v = document.getElementById('bgVideo');
       if(v){
         v.removeAttribute('autoplay'); v.pause();
@@ -2547,11 +2554,15 @@ setTimeout(_genesisSignalNativeReady, 2500);
         v.poster = 'assets/images/icon-app-512.png';
       }
       // Pas de vidéo sur cet appareil : rien à attendre pour afficher quelque chose, signale
-      // tout de suite plutôt que d'attendre inutilement le filet de sécurité à 2,5s.
+      // tout de suite plutôt que d'attendre inutilement le filet de sécurité à 2s.
       _genesisSignalNativeReady();
     } else {
       var v2 = document.getElementById('bgVideo');
       if(v2){
+        // 'canplay' (assez de données pour démarrer sans à-coup) déclenche généralement avant
+        // 'playing' (lecture effectivement démarrée) — écouter les deux fait signaler le natif
+        // dès le plus tôt des deux, réduisant le vide noir perçu sur un réseau/appareil correct.
+        v2.addEventListener('canplay', _genesisSignalNativeReady, {once:true});
         v2.addEventListener('playing', _genesisSignalNativeReady, {once:true});
         v2.addEventListener('error', _genesisSignalNativeReady, {once:true});
       }
