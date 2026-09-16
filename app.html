@@ -2503,6 +2503,24 @@ a{text-decoration:none;color:inherit}
 <video id="bgVideo" autoplay muted loop playsinline preload="auto" poster="assets/images/icon-app-512.png">
   <source src="assets/videos/teaser.mp4" type="video/mp4">
 </video>
+<script>
+// Sur un appareil d'entrée de gamme à RAM limitée (ex: Galaxy A06, signalé avec un écran noir
+// total au démarrage), décoder une vidéo en lecture automatique dès le tout premier écran peut
+// suffire à faire planter le moteur de rendu de la WebView. navigator.deviceMemory (Chromium,
+// donc disponible dans la WebView Android) donne une estimation approximative de la RAM en Go —
+// en dessous d'un seuil prudent, on retire la vidéo AVANT qu'elle ne commence à charger et on
+// garde uniquement le poster (logo statique, déjà là dans tous les cas) comme fond. Best-effort :
+// l'API peut être absente (undefined) sur certains WebView plus anciens — dans ce cas on ne
+// change rien, la vidéo continue de se charger normalement.
+(function(){
+  try{
+    if(typeof navigator.deviceMemory === 'number' && navigator.deviceMemory > 0 && navigator.deviceMemory <= 2){
+      var v = document.getElementById('bgVideo');
+      if(v){ v.removeAttribute('autoplay'); v.pause(); v.querySelectorAll('source').forEach(function(s){ s.remove(); }); v.load(); }
+    }
+  }catch(e){}
+})();
+</script>
 <div id="bgOverlay"></div>
 <div id="goldFlash"></div>
 
