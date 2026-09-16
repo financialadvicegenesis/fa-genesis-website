@@ -2107,14 +2107,15 @@ function alertBatisseurPlusOnNewPartner(partner) {
     }
 }
 
-// Nombre de CONVERSATIONS distinctes ayant au moins un message non lu pour ce destinataire
-// précis (email+role) — même convention que _ptnrRefreshBadges/_clientRefreshMsgBadge côté
-// app.html (et que l'alerte "conversation(s) client" de l'accueil prestataire) : compte des
-// interlocuteurs distincts, pas des messages ni des notifications individuelles. Utilisé pour
-// alimenter le badge numérique natif de l'icône Android (BadgeUtils.setBadgeCount) avec un
-// chiffre qui reflète l'état RÉEL et actuel des messages non lus, façon WhatsApp/Messenger/
-// Instagram — voir le commentaire sur _badgeCount plus bas pour le pourquoi.
-function _countUnreadMessageConversations(email, role) {
+// Nombre BRUT de messages non lus reçus par ce destinataire précis (email+role) — chaque
+// message compte, pas chaque interlocuteur distinct : demandé explicitement (2 messages reçus
+// → badge "2", 3 messages → "3"), même convention que _ptnrRefreshBadges/_clientRefreshMsgBadge
+// côté app.html. Utilisé pour alimenter le badge numérique natif de l'icône Android
+// (BadgeUtils.setBadgeCount) — voir le commentaire sur _computeNotificationBadgeCount plus bas.
+// Ne pas confondre avec le texte "X conversation(s) non lue(s)" de l'accueil prestataire, qui
+// reste volontairement basé sur le nombre d'interlocuteurs distincts (label différent, sens
+// différent) — seul ce chiffre nu sur l'icône compte les messages un par un.
+function _countUnreadMessages(email, role) {
     if (!email) return 0;
     try {
         var msgs = loadChat();
@@ -2125,39 +2126,30 @@ function _countUnreadMessageConversations(email, role) {
             return m.from_email === email || m.to_email === email;
         });
         var incomingType = role === 'partner' ? 'client' : 'partner';
-        var unreadCounterparts = {};
-        mine.forEach(function(m) {
-            if (m.from_type !== incomingType || m.read_at) return;
-            if (m.from_email) unreadCounterparts[m.from_email.toLowerCase()] = true;
-        });
-        return Object.keys(unreadCounterparts).length;
+        return mine.filter(function(m) { return m.from_type === incomingType && !m.read_at; }).length;
     } catch (e) {
         return 0;
     }
 }
 
 // Calcule le badge numérique de l'icône Android pour ce destinataire précis — UNIQUEMENT le
-// nombre de conversations non lues, façon WhatsApp (dont le badge ne reflète jamais que les
-// discussions non lues, aucune autre catégorie de notification n'y contribue). Extrait de
-// notifyUser() en fonction partagée pour que GET /api/notifications/badge-count (interrogé par
-// ReplyReceiver.java après une réponse directe depuis la notification, et par
-// TokenStorePlugin.refreshBadge après lecture dans l'app) calcule EXACTEMENT le même chiffre que
-// celui posé lors du prochain événement FCM.
+// nombre de messages non lus, façon WhatsApp/Instagram, aucune autre catégorie de notification
+// n'y contribue. Extrait de notifyUser() en fonction partagée pour que GET
+// /api/notifications/badge-count (interrogé par ReplyReceiver.java après une réponse directe
+// depuis la notification, et par TokenStorePlugin.refreshBadge après lecture dans l'app) calcule
+// EXACTEMENT le même chiffre que celui posé lors du prochain événement FCM.
 //
-// Les notifications GÉNÉRALES (devis, missions, paiements...) sont volontairement exclues, et
-// pas seulement les messages : contrairement aux messages, rien ne les marque automatiquement
-// comme lues quand l'utilisateur traite l'action correspondante depuis l'onglet concerné (Devis,
-// Missions...) — seul un passage par la cloche "Notifications" le fait (voir GET
-// /api/notifications). Une vieille notification générale jamais ouverte via la cloche restait
-// donc "non lue" pour toujours et gonflait indéfiniment le badge d'icône, même après que le
-// prestataire/client ait correctement lu et répondu à TOUS ses messages — symptôme rapporté :
-// le badge affichait encore "1" après une réponse dans l'app, alors que le message concerné
-// était bien marqué lu ; la vraie cause était une notification générale sans rapport, jamais lue.
-// La cloche elle-même (GET /api/notifications, unread_count) n'est pas affectée par ce
-// changement — seul le chiffre posé sur l'icône de l'app se limite désormais aux messages.
+// Les notifications GÉNÉRALES (devis, missions, paiements...) sont volontairement exclues :
+// contrairement aux messages, rien ne les marque automatiquement comme lues quand l'utilisateur
+// traite l'action correspondante depuis l'onglet concerné (Devis, Missions...) — seul un passage
+// par la cloche "Notifications" le fait (voir GET /api/notifications). Une vieille notification
+// générale jamais ouverte via la cloche restait donc "non lue" pour toujours et gonflait
+// indéfiniment le badge d'icône, même après que le prestataire/client ait correctement lu et
+// répondu à TOUS ses messages. La cloche elle-même (GET /api/notifications, unread_count) n'est
+// pas affectée par ce changement — seul le chiffre posé sur l'icône de l'app se limite aux messages.
 function _computeNotificationBadgeCount(email, role) {
     if (!email) return 0;
-    return _countUnreadMessageConversations(email, role);
+    return _countUnreadMessages(email, role);
 }
 
 /**

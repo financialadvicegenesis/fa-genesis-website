@@ -10235,12 +10235,9 @@ function _clientRefreshMsgBadge(){
     .then(function(r){return r.json();})
     .then(function(data){
       var msgs = (data && data.messages) || [];
-      var unreadPartnerEmails = {};
-      msgs.forEach(function(m){
-        if(m.from_type !== 'partner' || m.read_at) return;
-        if(m.from_email) unreadPartnerEmails[m.from_email.toLowerCase()] = true;
-      });
-      var count = Object.keys(unreadPartnerEmails).length;
+      // Nombre BRUT de messages non lus — demandé explicitement (2 messages reçus → badge "2",
+      // 3 messages → "3"), pas le nombre d'interlocuteurs distincts.
+      var count = msgs.filter(function(m){ return m.from_type === 'partner' && !m.read_at; }).length;
       document.querySelectorAll('.client-msg-badge').forEach(function(el){
         if(count>0){ el.textContent = count; el.className = 'client-msg-badge on'; }
         else { el.className = 'client-msg-badge'; }
@@ -15530,16 +15527,11 @@ function _ptnrRefreshBadges(){
     var missionCount = (results[3] && results[3].requests && results[3].requests.length) || 0;
     var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open'||!q.status;}).length;
     var pendingSeances = sessions.filter(function(s){return s.status==='pending'||s.status==='proposed';}).length;
-    // Nombre de CONVERSATIONS distinctes ayant au moins un message client non lu — convention
-    // Instagram/Messenger (nombre de discussions non lues, pas de messages). `inbox` ne contient
-    // déjà que les messages de CE prestataire (filtré côté serveur), donc from_type==='client'
-    // suffit à identifier les messages reçus (pas besoin de recomparer to_email).
-    var unreadClientEmails = {};
-    inbox.forEach(function(m){
-      if(m.from_type !== 'client' || m.read_at) return;
-      if(m.from_email) unreadClientEmails[m.from_email.toLowerCase()] = true;
-    });
-    var unreadMsg = Object.keys(unreadClientEmails).length;
+    // Nombre BRUT de messages client non lus — demandé explicitement (2 messages reçus →
+    // badge "2", 3 messages → "3"), pas le nombre d'interlocuteurs distincts. `inbox` ne
+    // contient déjà que les messages de CE prestataire (filtré côté serveur), donc
+    // from_type==='client' suffit à identifier les messages reçus.
+    var unreadMsg = inbox.filter(function(m){ return m.from_type === 'client' && !m.read_at; }).length;
     function _setBadge(id, count){
       var el = document.getElementById(id); if(!el) return;
       if(count>0){ el.textContent=count; el.className='ptnr-badge on'; }
