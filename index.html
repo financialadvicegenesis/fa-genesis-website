@@ -1774,5 +1774,39 @@ _load_actualites();
   <button id="insc-ov-close" onclick="closeInscriptionOverlay()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
   <iframe id="insc-frame" src="" title="Inscription FA GENESIS"></iframe>
 </div>
+
+<script>
+// Lien "copiable" par rubrique : chaque clic sur un lien de nav (#espaces, #fonctionnalites,
+// #actualites, #telecharger) fait défiler la page normalement (SPA, sans rechargement), puis
+// remplace l'URL affichée dans la barre d'adresse par la page dédiée correspondante (espaces.html,
+// etc.). Ces pages dédiées portent leurs propres balises Open Graph/Twitter et redirigent
+// aussitôt ici — donc un lien copié-collé (WhatsApp, Messenger, iMessage...) affiche désormais un
+// aperçu propre à la rubrique au lieu de l'aperçu générique de la page d'accueil (les robots de
+// prévisualisation ne lisent que la réponse HTTP initiale, jamais un fragment #, ni le JS).
+(function(){
+  var SECTION_URLS = {
+    espaces: 'espaces.html',
+    fonctionnalites: 'fonctionnalites.html',
+    actualites: 'actualites.html',
+    telecharger: 'telecharger.html'
+  };
+  function syncShareableUrl(id){
+    var path = SECTION_URLS[id];
+    if(!path || typeof history === 'undefined' || !history.replaceState) return;
+    try{ history.replaceState(null, '', path); }catch(e){}
+  }
+  document.querySelectorAll('a[href^="#"]').forEach(function(a){
+    var id = a.getAttribute('href').slice(1);
+    if(!SECTION_URLS[id]) return;
+    a.addEventListener('click', function(){
+      setTimeout(function(){ syncShareableUrl(id); }, 0);
+    });
+  });
+  if(location.hash){
+    var currentId = location.hash.slice(1);
+    if(SECTION_URLS[currentId]) syncShareableUrl(currentId);
+  }
+})();
+</script>
 </body>
 </html>
