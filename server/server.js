@@ -1685,12 +1685,12 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                             if (_psPartnerEmailAuth) {
                                 notifyUser(_psPartnerEmailAuth, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
                                     _psClientFnAuth + ' a réservé « ' + (_psOrderAuth.product_name || 'votre prestation') + ' ». Le paiement est sécurisé par GENESIS SAFE™. Acceptez ou refusez dans les 24h.',
-                                    '#partner:missions');
+                                    '#partner:mission:' + _psNewDispAuth.id);
                             }
                             if (_psClientEmailAuth) {
                                 notifyUser(_psClientEmailAuth, 'client', 'payment_success', '✅ Paiement GENESIS SAFE™ sécurisé !',
                                     'Votre paiement est sécurisé. ' + _psPartnerNameAuth + ' va prendre en charge votre demande sous 24h.',
-                                    '/app.html#tab:resa');
+                                    '/app.html#client:order:' + _psOrderAuth.id);
                             }
                             console.log('[STRIPE-WH] Mission partenaire créée (carte réservée GENESIS SAFE™):', authOrderId, '→', _psOrderAuth.partner_id);
                         }
@@ -1760,12 +1760,12 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                                 if (_psPartnerEmailWh) {
                                     notifyUser(_psPartnerEmailWh, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
                                         _psClientFnWh + ' a payé pour "' + (_psOrderWh.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
-                                        '#partner:missions');
+                                        '#partner:mission:' + _psNewDispWh.id);
                                 }
                                 if (_psClientEmailWh) {
                                     notifyUser(_psClientEmailWh, 'client', 'payment_success', '✅ Paiement réussi !',
                                         'Votre paiement a bien été reçu. ' + _psPartnerNameWh + ' va prendre en charge votre demande sous 24h.',
-                                        '/app.html#tab:resa');
+                                        '/app.html#client:order:' + _psOrderWh.id);
                                 }
                                 console.log('[STRIPE-WH] Mission partenaire créée — en attente acceptation :', orderId, '→', _psOrderWh.partner_id);
                             }
@@ -2758,9 +2758,9 @@ app.post('/api/admin/disputes/:id/resolve', function(req, res) {
         saveDisputes(disputes);
 
         var partner = getPartnerById(dispute.partner_id);
-        notifyUser(dispute.client_email, 'client', 'litige-resolu', 'Litige resolu', 'Votre litige a ete resolu par notre equipe.', '/app.html#open-litiges');
+        notifyUser(dispute.client_email, 'client', 'litige-resolu', 'Litige resolu', 'Votre litige a ete resolu par notre equipe.', '/app.html#litige-' + dispute.id);
         if (partner && partner.email) {
-            notifyUser(partner.email, 'partner', 'litige-resolu', 'Litige resolu', 'Le litige avec votre client a ete resolu par notre equipe.', '/app.html#partner:home');
+            notifyUser(partner.email, 'partner', 'litige-resolu', 'Litige resolu', 'Le litige avec votre client a ete resolu par notre equipe.', '/app.html#partner:litige-' + dispute.id);
         }
 
         // CRITIQUE : ne libérer le versement en attente (on_hold) QUE si le verdict est en
@@ -3104,12 +3104,12 @@ function updateOrder(orderId, updates) {
                     if (_clientEmail) {
                         notifyUser(_clientEmail, 'client', 'contract_ready', 'Contrat prêt à signer',
                             'Votre contrat de prestation avec ' + _newCtr.partner_name + ' est disponible. Signez-le pour démarrer la mission.',
-                            '/app.html#mes-contrats');
+                            '/app.html#client:contract:' + _cId);
                     }
                     if (_partner) {
                         notifyUser(_partner.email, 'partner', 'contract_sent', 'Contrat envoyé au client',
                             'Le contrat pour la commande ' + _order.id + ' a été envoyé à ' + (_clientName || _clientEmail) + '.',
-                            '#partner:livrables');
+                            '#partner:contract:' + _cId);
                     }
                     console.log('[CONTRACT] Contrat prestation auto-généré:', _cId);
                 } catch(_e) { console.error('[CONTRACT] Erreur auto-génération:', _e); }
@@ -3411,7 +3411,7 @@ async function checkAutoPaymentRelease() {
                     notifyUser(_arClientEmail, 'client', 'auto_release',
                         'Paiement libéré automatiquement',
                         'Faute de réponse sous 7 jours, le paiement de « ' + (_o.product_name || 'votre prestation') + ' » a été automatiquement versé au prestataire.',
-                        '/app.html#tab:wallet');
+                        '/app.html#client:order:' + _o.id);
                 }
                 if (_arPartnerEmail) {
                     notifyUser(_arPartnerEmail, 'partner', 'auto_release',
@@ -5115,7 +5115,7 @@ app.post('/api/admin/orders/:orderId/force-refund', async function(req, res) {
             if (ptnrEmail) {
                 notifyUser(ptnrEmail, 'partner', 'mission_cancelled', 'Mission annulée',
                     'La mission "' + (order.product_name || 'Prestation') + '" a été annulée et remboursée par l\'équipe GENESIS.' + (_clawbackNeeded ? ' Le montant correspondant a été débité de votre Wallet GENESIS.' : ''),
-                    '#missions');
+                    '#partner:mission:' + orderId);
             }
         }
 
@@ -5259,7 +5259,7 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
                 ? 'Le client a annulé la mission "' + (order.product_name || 'Prestation') + '" — la prestation n\'avait pas encore été livrée. Aucune pénalité.'
                 : 'Le client a annulé la mission "' + (order.product_name || 'Prestation') + '" avant acceptation.';
             if (ptnrEmail) {
-                notifyUser(ptnrEmail, 'partner', 'mission_cancelled', 'Mission annulée', _notifMsg, '#missions');
+                notifyUser(ptnrEmail, 'partner', 'mission_cancelled', 'Mission annulée', _notifMsg, '#partner:mission:' + orderId);
             }
         }
 
@@ -5686,7 +5686,7 @@ app.post('/api/contracts/sign', function(req, res) {
                 notifyUser(_partner.email, 'partner', 'contract_signed',
                     'Contrat signé par un client',
                     _clientDisplayName + ' a signé le contrat pour : ' + b.serviceLabel + '. Retrouvez la mission dans Mes livrables.',
-                    '#partner:livrables'
+                    '#partner:contract:' + contractId
                 );
                 emailService.sendContractSignedToPartnerEmail(
                     _partner.email,
@@ -5999,7 +5999,7 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
             : stage === 'installment_2' ? 'Le paiement de la tranche 2 a été reçu. Merci !'
             : 'Votre paiement complet a été confirmé. Merci !';
         const lbl = stage === 'deposit' ? 'acompte' : stage === 'installment_2' ? 'tranche 2' : stage === 'installment_3' ? 'tranche 3' : 'solde';
-        notifyUser(updatedOrder.client_info.email, 'client', 'paiement', 'Paiement confirmé ✅', msg, '#reservations');
+        notifyUser(updatedOrder.client_info.email, 'client', 'paiement', 'Paiement confirmé ✅', msg, '#client:order:' + orderId);
         notifyUser(null, 'admin', 'paiement-admin', 'Paiement reçu', (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + lbl, '/app.html#open-admin');
     }
 
@@ -6032,13 +6032,13 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                         notifyUser(psPartnerEmail, 'partner', 'mission_pending',
                             '🆕 Nouvelle commande !',
                             ((updatedOrder.client_info && updatedOrder.client_info.first_name) || 'Un client') + ' a payé pour "' + (updatedOrder.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
-                            '#partner:missions');
+                            '#partner:mission:' + disp.id);
                     }
                     // Notifier le CLIENT : paiement réussi
                     notifyUser(ce, 'client', 'payment_success',
                         '✅ Paiement réussi !',
                         'Votre paiement a bien été reçu. ' + psPartnerName + ' va prendre en charge votre demande sous 24h.',
-                        '/app.html#tab:resa');
+                        '/app.html#client:order:' + orderId);
                     console.log('[PAY_CONFIRM] Mission partenaire créée — en attente d\'acceptation du prestataire');
                 }
             } else {
@@ -6336,7 +6336,7 @@ app.post('/api/partner/dispatches/:id/accept-mission', authenticatePartner, asyn
             notifyUser(order.client_info.email, 'client', 'mission_accepted',
                 '✅ Mission acceptée !',
                 'Votre prestataire a accepté "' + (order.product_name || 'votre demande') + '". La mission démarre.',
-                '/app.html#tab:resa');
+                '/app.html#client:order:' + order.id);
         }
         console.log('[ACCEPT_MISSION] Dispatch accepté:', disp.id);
         res.json({ ok: true });
@@ -6380,7 +6380,7 @@ app.post('/api/partner/dispatches/:id/decline-mission', authenticatePartner, asy
                 notifyUser(order.client_info.email, 'client', 'mission_declined',
                     '❌ Mission refusée',
                     refundMsg,
-                    '/app.html#tab:resa');
+                    '/app.html#client:order:' + order.id);
             }
         }
         console.log('[DECLINE_MISSION] Dispatch refusé:', disp.id, '— remboursé:', refunded);
@@ -7670,11 +7670,11 @@ app.post('/api/payments/verify', async (req, res) => {
                     if (psDispatch) {
                         if (updatedOrder.payment_tier === 'small') {
                             console.log('[VERIFY] Mission partenaire — fonds GENESIS SAFE™ (small)');
-                            notifyUser(clientEmail, 'client', 'mission_created', 'Mission créée — paiement sécurisé', 'Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire après livraison.', '/app.html#reservations');
+                            notifyUser(clientEmail, 'client', 'mission_created', 'Mission créée — paiement sécurisé', 'Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire après livraison.', '/app.html#client:order:' + updatedOrder.id);
                         } else {
                             await processDispatchPayout(psDispatch, 'deposit');
                             console.log('[VERIFY] Mission partenaire — acompte 30% versé (large)');
-                            notifyUser(clientEmail, 'client', 'mission_created', 'Mission en cours', 'Votre acompte a été versé au prestataire. La livraison sera bientôt disponible.', '/app.html#reservations');
+                            notifyUser(clientEmail, 'client', 'mission_created', 'Mission en cours', 'Votre acompte a été versé au prestataire. La livraison sera bientôt disponible.', '/app.html#client:order:' + updatedOrder.id);
                         }
                     }
                 } else {
@@ -8499,7 +8499,7 @@ app.post('/api/livrables/:id/validate', (req, res) => {
         if (livrable.owner_partner_id) {
             var partnerForValidation = getPartnerById(livrable.owner_partner_id);
             if (partnerForValidation && partnerForValidation.email) {
-                notifyUser(partnerForValidation.email, 'partner', 'livrable-valide', 'Livrable validé ✅', (order.client_info.first_name || 'Le client') + ' a validé : ' + (livrable.title || 'votre livrable'), '#partner:livrables');
+                notifyUser(partnerForValidation.email, 'partner', 'livrable-valide', 'Livrable validé ✅', (order.client_info.first_name || 'Le client') + ' a validé : ' + (livrable.title || 'votre livrable'), '#partner:mission:' + order.id);
             }
         }
 
@@ -8556,7 +8556,7 @@ app.post('/api/livrables/:id/request-revision', (req, res) => {
         if (livrable.owner_partner_id) {
             var partnerForRevision = getPartnerById(livrable.owner_partner_id);
             if (partnerForRevision && partnerForRevision.email) {
-                notifyUser(partnerForRevision.email, 'partner', 'livrable-revision', 'Révision demandée ✏️', (order.client_info.first_name || 'Le client') + ' demande une revision sur : ' + (livrable.title || 'votre livrable'), '#partner:livrables');
+                notifyUser(partnerForRevision.email, 'partner', 'livrable-revision', 'Révision demandée ✏️', (order.client_info.first_name || 'Le client') + ' demande une revision sur : ' + (livrable.title || 'votre livrable'), '#partner:mission:' + order.id);
             }
         }
 
@@ -8612,7 +8612,7 @@ app.post('/api/partner/livrables/:id/republish', authenticatePartner, function(r
             var partnerName = (req.partner.prenom || '') + ' ' + (req.partner.nom || '');
             notifyUser(order.client_info.email, 'client', 'livrable-revision-done', 'Révision disponible ✅',
                 partnerName.trim() + ' a soumis la révision de "' + (livrable.title || 'votre livrable') + '". Vérifiez et validez.',
-                '/app.html#open-livrables');
+                '/app.html#client:order:' + order.id);
         }
 
         console.log('[LIVRABLE] Révision re-soumise par ' + req.partner.id + ' — livrable ' + livrable.id);
@@ -8943,7 +8943,7 @@ function finalizeSchedule(order) {
                 var confirmOrderName = updatedOrder.product_name || updatedOrder.product_id || 'votre commande';
                 emailService.sendScheduleConfirmedToClient(updatedOrder.client_info.email, confirmClientName, updatedOrder.start_date, confirmOrderName);
                 var dateStr = updatedOrder.start_date ? new Date(updatedOrder.start_date).toLocaleDateString('fr-FR') : '';
-                notifyUser(updatedOrder.client_info.email, 'client', 'rdv', 'Rendez-vous confirmé 📅', confirmOrderName + (dateStr ? ' — ' + dateStr : '') + ' est confirmé !', '#reservations');
+                notifyUser(updatedOrder.client_info.email, 'client', 'rdv', 'Rendez-vous confirmé 📅', confirmOrderName + (dateStr ? ' — ' + dateStr : '') + ' est confirmé !', '#client:order:' + updatedOrder.id);
             }
         } catch (emailErr) {
             console.error('[SCHEDULE] Erreur email confirmation date client:', emailErr.message);
@@ -10287,7 +10287,7 @@ app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
 
         console.log(`[CONTACT] Reponse envoyee avec succes au message ${msg.id} (${msg.email})`);
         // Push au client : réponse admin reçue
-        notifyUser(msg.email, 'client', 'reponse-admin', 'FA GENESIS vous a répondu', replyMessage.trim().substring(0, 100), '#messages');
+        notifyUser(msg.email, 'client', 'reponse-admin', 'FA GENESIS vous a répondu', replyMessage.trim().substring(0, 100), '#support-reply-' + msg.id);
 
         res.json({ success: true, message: 'Reponse envoyee avec succes' });
 
@@ -15126,14 +15126,14 @@ function checkDelayedMissions() {
             if (partner) {
                 notifyUser(partner.email, 'partner', 'delay-reminder', 'Délai annoncé dépassé',
                     'Le délai annoncé pour "' + (d.offer_name || 'une mission') + '" est dépassé. Pensez à informer votre client de l\'avancement.',
-                    '/app.html#open-partner');
+                    '/app.html#partner:mission:' + d.order_id);
             }
             var order = orders.find(function(o) { return o.id === d.order_id; });
             var clientEmail = order && order.client_info && order.client_info.email;
             if (clientEmail) {
                 notifyUser(clientEmail, 'client', 'delay-reminder', 'Mise à jour de votre commande',
                     'Votre prestataire travaille toujours sur votre projet. N\'hésitez pas à le contacter via la messagerie pour un point d\'avancement.',
-                    '/app.html#open-resa');
+                    '/app.html#client:order:' + order.id);
             }
         });
         if (changed) saveDispatches(dispatches);
@@ -15281,7 +15281,7 @@ function checkReferralAndMissionRewards(clientEmail) {
                                 notifyUser(users[parrainIdx].email, 'client', 'mission_complete',
                                     '🏆 Mission communauté accomplie !',
                                     'Vous avez invité ' + m.target + ' membre' + (m.target > 1 ? 's actifs' : ' actif') + ' dans GENESIS. +' + m.qg + ' Points QG crédités !',
-                                    '/app.html');
+                                    '/app.html#profil');
                             }
                         });
                         // Notification de classement Top Ambassadeurs
@@ -15319,7 +15319,7 @@ function checkReferralAndMissionRewards(clientEmail) {
                 notifyUser(clientEmail, 'client', 'mission_complete',
                     '🏆 Mission accomplie !',
                     'Vous avez collaboré avec 3 professionnels différents et gagnez +75 Points QG ! Votre progression GENESIS est mise à jour.',
-                    '/app.html');
+                    '/app.html#profil');
             }
         }
 
@@ -16984,7 +16984,7 @@ app.post('/api/partner/livrables/:id/publish', authenticatePartner, function(req
             if (clientEmail) {
                 notifyUser(clientEmail, 'client', 'livrable_published', '📦 Livrable disponible',
                     'Votre prestataire a mis à disposition "' + livrables[idx].title + '" pour "' + (order.product_name || 'votre prestation') + '".',
-                    '/app.html#tab:reservations');
+                    '/app.html#client:order:' + order.id);
             }
             // Publier un livrable rend le paiement validable et démarre le délai de sécurité
             // 7j (pour protéger le prestataire même sans réponse du client) — MAIS ne déclare
@@ -17007,7 +17007,7 @@ app.post('/api/partner/livrables/:id/publish', authenticatePartner, function(req
                 if (revClientEmail) {
                     notifyUser(revClientEmail, 'client', 'revision_addressed', '✏️ Révision traitée',
                         'Votre prestataire a mis à jour les livrables suite à votre demande de révision pour « ' + (order.product_name || 'votre prestation') + ' ». Merci de vérifier et valider.',
-                        '/app.html#tab:reservations');
+                        '/app.html#client:order:' + order.id);
                 }
             }
         }
@@ -17307,7 +17307,7 @@ app.post('/api/partner/dispatches/:id/mark-delivering', authenticatePartner, fun
         var order = loadOrders().find(function(o) { return o.id === dispatches[idx].order_id; });
         var clientEmail = order && order.client_info && order.client_info.email;
         if (clientEmail) {
-            notifyUser(clientEmail, 'client', 'mission-status', 'Livraison en cours', 'Votre prestataire finalise vos livrables.', '#reservations');
+            notifyUser(clientEmail, 'client', 'mission-status', 'Livraison en cours', 'Votre prestataire finalise vos livrables.', '#client:order:' + order.id);
         }
         res.json({ success: true, mission_status: 'delivering' });
     } catch(e) {
@@ -17459,7 +17459,7 @@ app.post('/api/partner/dispatches/:id/mark-delivered', authenticatePartner, asyn
             notifyUser(clientEmail, 'client', 'prestation_delivered',
                 '📦 Prestation livrée — confirmation requise',
                 'Votre prestataire a confirmé la livraison de « ' + (order.product_name || 'votre prestation') + ' ». Merci de valider si tout est conforme.',
-                '/app.html#open-resa');
+                '/app.html#client:order:' + order.id);
         }
 
         res.json({ success: true, delivery_confirmed: true });
@@ -17523,7 +17523,7 @@ app.post('/api/partner-requests', function(req, res) {
         requests.push(newRequest);
         savePartnerRequests(requests);
 
-        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', newRequest.client_name + ' souhaite vous engager pour : ' + service.label, '#partner:livrables');
+        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', newRequest.client_name + ' souhaite vous engager pour : ' + service.label, '#partner:mission:' + newRequest.id);
 
         res.json({ success: true, request: newRequest });
     } catch(e) {
@@ -17819,7 +17819,7 @@ app.post('/api/partner/requests/:id/accept', authenticatePartner, function(req, 
         savePartnerRequests(requests);
 
         var partnerName = req.partner.prenom || req.partner.email;
-        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande acceptée ✅', partnerName + ' a accepté votre demande pour : ' + requests[idx].service_label + '. Vous pouvez payer l\'acompte.', '/app.html#open-reservations');
+        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande acceptée ✅', partnerName + ' a accepté votre demande pour : ' + requests[idx].service_label + '. Vous pouvez payer l\'acompte.', '/app.html#client:proposal:' + requests[idx].id);
 
         res.json({ success: true, message: 'Demande acceptée.' });
     } catch(e) {
@@ -17924,7 +17924,7 @@ app.post('/api/partner/requests/:id/propose', authenticatePartner, function(req,
         requests[idx].status = 'proposed';
         savePartnerRequests(requests);
 
-        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Proposition reçue 📋', 'Le partenaire vous a envoyé une proposition pour : ' + requests[idx].service_label + '. Merci de la consulter et de signer le contrat.', '/app.html#open-reservations');
+        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Proposition reçue 📋', 'Le partenaire vous a envoyé une proposition pour : ' + requests[idx].service_label + '. Merci de la consulter et de signer le contrat.', '/app.html#client:proposal:' + requests[idx].id);
 
         res.json({ success: true, message: 'Proposition envoyée avec succès', request: requests[idx] });
     } catch(e) {
@@ -18179,7 +18179,7 @@ app.post('/api/partner/contract/sign', authenticatePartner, function(req, res) {
         notifyUser(partner.email, 'partner', 'contract_partnership_signed',
             'Contrat de partenariat signé ✅',
             'Votre contrat de partenariat FA GENESIS est disponible dans la section Livrables de votre espace.',
-            '/app.html');
+            '/app.html#partner:contract:' + contractId);
 
         console.log('[CONTRACT] Signature electronique partenariat:', partner.email, '(' + contractId + ')');
         res.json({ success: true, contract_signed: true, contract_signed_at: now, contract_version: PARTNER_CONTRACT_VERSION, contract_id: contractId });
@@ -18535,7 +18535,7 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
                 'Votre prestataire a déclaré "' + (order.product_name || 'votre prestation') + '" terminée. '
                 + 'Vous avez ' + AUTO_RELEASE_DAYS + ' jours pour valider ou signaler un problème. '
                 + 'Sans réponse, le paiement sera automatiquement libéré.',
-                '/app.html#tab:wallet');
+                '/app.html#client:order:' + order.id);
         }
 
         // ── GENESIS SAFE™ : le Transfer GENESIS → partenaire se déclenche APRÈS validation client ──
@@ -18811,7 +18811,7 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, functio
             notifyUser(clientEmail, 'client', 'prestation_complete',
                 'Prestation terminée — action requise',
                 partnerName + ' a déclaré votre prestation « ' + productName + ' » terminée. Validez la livraison pour finaliser.',
-                '/espace-client.html#validations'
+                '/app.html#client:order:' + orderId
             );
         }
 
@@ -19035,7 +19035,7 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
                 notifyUser(ptnrEmailN, 'partner', 'delivery_validated',
                     '⭐ Prestation validée par le client',
                     'Le client a confirmé la bonne livraison de « ' + (order.product_name || '') + ' ». Merci pour votre travail !',
-                    '/app.html#partner:home'
+                    '/app.html#partner:mission:' + orderId
                 );
             }
         } catch(ne) {}
@@ -19090,7 +19090,7 @@ app.post('/api/client/orders/:orderId/request-revision', function(req, res) {
         if (_ptnrEmailRev) {
             notifyUser(_ptnrEmailRev, 'partner', 'revision_requested', '✏️ Révision demandée',
                 ((user.prenom || 'Le client') + ' demande une révision sur « ' + (order.product_name || 'votre prestation') + ' » : ' + note),
-                '/app.html#partner:projects');
+                '/app.html#partner:mission:' + orderId);
         }
 
         res.json({ success: true });
@@ -19861,13 +19861,13 @@ app.post('/api/contracts/service/generate', function(req, res) {
             notifyUser(clientEmail, 'client', 'contract_ready',
                 'Contrat prêt à signer',
                 'Votre contrat de prestation avec ' + newContract.partner_name + ' est disponible. Signez-le pour démarrer la mission.',
-                '/app.html#mes-contrats');
+                '/app.html#client:contract:' + newContract.id);
         }
         // Notifier le partenaire
         notifyUser(partner.email, 'partner', 'contract_sent',
             'Contrat envoyé au client',
             'Le contrat pour la commande ' + order.id + ' a été envoyé à ' + (clientName || clientEmail) + '.',
-            '#partner:livrables');
+            '#partner:contract:' + newContract.id);
 
         console.log('[CONTRACT] Contrat prestation généré:', contractId, '→', clientEmail);
         res.json({ success: true, contract: newContract });
@@ -19949,7 +19949,7 @@ app.post('/api/contracts/:id/client-sign', function(req, res) {
         notifyUser(contract.partner_email, 'partner', 'contract_signed',
             'Contrat signé ✅',
             contract.client_name + ' a signé le contrat pour la mission ' + contract.order_id + '. Retrouvez-la dans Mes livrables.',
-            '#partner:livrables');
+            '#partner:contract:' + contract.id);
 
         console.log('[CONTRACT] Client a signé le contrat:', contract.id, '→', user.email);
         res.json({ success: true, contract: contracts[idx] });
@@ -19987,7 +19987,7 @@ app.post('/api/contracts/:id/client-refuse', function(req, res) {
         notifyUser(contract.partner_email, 'partner', 'contract_refused',
             'Contrat refusé ❌',
             contract.client_name + ' a refusé le contrat pour la commande ' + contract.order_id + (reason ? ' — Motif : ' + reason : '') + '.',
-            '/app.html');
+            '/app.html#partner:contract:' + contract.id);
 
         console.log('[CONTRACT] Client a refusé le contrat:', contract.id);
         res.json({ success: true, contract: contracts[idx] });
@@ -22578,7 +22578,7 @@ app.post('/api/reservations', function(req, res) {
         reservations.push(newResa);
         saveReservations(reservations);
         notifyUser(user.email, 'client', 'reservation_created', 'Réservation envoyée',
-            'Votre demande de réservation pour ' + newResa.product_name + ' a bien été reçue.', '/app.html');
+            'Votre demande de réservation pour ' + newResa.product_name + ' a bien été reçue.', '/app.html#reservations');
         res.json({ success: true, id: newResa.id, reservation: newResa });
     } catch(e) {
         console.error('[RESERVATIONS POST]', e);

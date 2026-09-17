@@ -7050,14 +7050,28 @@ function closeDetail(){
 }
 
 // ── RÉSERVATIONS (créneaux coworking + places événements) ──────
+// Une notification (proposition reçue d'un partenaire, demande acceptée) peut demander de faire
+// défiler directement jusqu'à CETTE proposition précise — voir renderProposalCard/prop-card-<id>.
+var _pendingScrollProposalId = null;
 function renderResaTab(){
   var c = document.getElementById('resaContent');
   if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations.'); return; }
   c.innerHTML = '<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Mes réservations</div></div>'
     + '<div id="resaList" style="padding:14px;padding-bottom:80px;">'+_skeletonRows(3)+'</div>';
+  // Demandes directes à un partenaire (hors annuaire de prestations) en attente d'une action du
+  // client — acceptée (à payer) ou avec une proposition reçue (à signer) — voir renderProposalCard.
+  // Chargées séparément de /api/reservations/me (coworking/événements), source de données distincte.
+  var _resaProposalsPromise = fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(d){ return (d&&Array.isArray(d.requests)) ? d.requests.filter(function(r){ return r.status==='accepted'||r.status==='proposed'; }) : []; })
+    .catch(function(){ return []; });
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
+      return _resaProposalsPromise.then(function(proposals){ return {data:data, proposals:proposals}; });
+    })
+    .then(function(combined){
+      var data = combined.data, proposals = combined.proposals;
       var list = Array.isArray(data)?data:[];
       var coworking = list.filter(function(r){ return r.type==='coworking'||(r.product_type==='coworking'); });
       var events    = list.filter(function(r){ return r.type==='event'||(r.product_type==='event'); });
@@ -7065,6 +7079,22 @@ function renderResaTab(){
       var all = coworking.concat(events).concat(other);
       var el = document.getElementById('resaList');
       if(!el) return;
+      var proposalsHtml = proposals.length
+        ? '<div style="margin-bottom:20px;"><div class="detail-feats-title" style="margin:0 0 10px;color:var(--yellow);"><i class="fa-solid fa-file-signature"></i> Demandes en attente ('+proposals.length+')</div>'+proposals.map(renderProposalCard).join('')+'</div>'
+        : '';
+      function _resaScrollToPendingProposal(){
+        if(!_pendingScrollProposalId) return;
+        var _pspId = _pendingScrollProposalId; _pendingScrollProposalId = null;
+        if(!proposals.some(function(r){ return r.id === _pspId; })) return;
+        setTimeout(function(){
+          var card = document.getElementById('prop-card-'+_pspId);
+          if(!card) return;
+          card.scrollIntoView({behavior:'smooth', block:'center'});
+          card.style.transition = 'box-shadow .3s ease';
+          card.style.boxShadow = '0 0 0 2px var(--yellow)';
+          setTimeout(function(){ card.style.boxShadow = ''; }, 2200);
+        }, 100);
+      }
 
       function resaCard(r){
         var sc = r.status==='confirmed'?'s-confirmed':r.status==='refused'?'s-refused':r.status==='pending'?'s-pending':'s-active';
@@ -7088,7 +7118,7 @@ function renderResaTab(){
       }
 
       if(!all.length){
-        el.innerHTML = ''
+        el.innerHTML = proposalsHtml
           // Section Coworking
           +'<div style="margin-bottom:24px;">'
           +'<div class="detail-feats-title" style="margin:0 0 10px;color:#60a5fa;"><i class="fa-solid fa-building"></i> Espaces Coworking</div>'
@@ -7105,6 +7135,7 @@ function renderResaTab(){
           +'<div style="font-size:13px;font-weight:700;color:#e5e5e5;margin-bottom:4px;">Aucune place réservée</div>'
           +'<div style="font-size:11px;color:var(--muted);line-height:1.5;">Inscrivez-vous aux prochains événements GENESIS depuis la section Explorer.</div>'
           +'</div></div>';
+        _resaScrollToPendingProposal();
         return;
       }
 
@@ -7115,7 +7146,8 @@ function renderResaTab(){
         ? '<div class="detail-feats-title" style="margin:'+(cwHtml?'20px':'0')+' 0 10px;color:var(--yellow);"><i class="fa-solid fa-ticket"></i> Événements GENESIS ('+events.length+')</div>'+events.map(resaCard).join('')
         : '';
       var otherHtml = other.length ? other.map(resaCard).join('') : '';
-      el.innerHTML = cwHtml + evHtml + otherHtml;
+      el.innerHTML = proposalsHtml + cwHtml + evHtml + otherHtml;
+      _resaScrollToPendingProposal();
     })
     .catch(function(){
       var el=document.getElementById('resaList');
@@ -10723,6 +10755,11 @@ function sendJeremieMessage(){
 // ── ESPACE CLIENT IN-APP ──────────────────────────────────────
 var _mesCommandesReqs = []; // cache pour la vue détail
 var _cmdRefreshTimer = null;
+// Une notification (mission créée, paiement confirmé, livrable publié, révision traitée...) peut
+// demander l'ouverture directe d'une commande précise — façon Instagram/Facebook : on saute la
+// liste et on ouvre directement le détail visé, plutôt que de laisser l'utilisateur chercher la
+// bonne carte. Consommé une seule fois par _fetchAndRenderCommandes(), dès que la liste répond.
+var _pendingScrollOrderId = null;
 
 function _stopCmdRefresh(){ if(_cmdRefreshTimer){clearInterval(_cmdRefreshTimer);_cmdRefreshTimer=null;} }
 
@@ -10742,6 +10779,14 @@ function _fetchAndRenderCommandes(){
           return new Date(b.created_at)-new Date(a.created_at);
         });
       _mesCommandesReqs = allReqs;
+      if(_pendingScrollOrderId){
+        // Accepte aussi bien l'id de la "request" (partner_requests, ce que showOrderDetail
+        // attend réellement) que l'id de la commande (order_id) — certaines notifications côté
+        // serveur ne connaissent que l'un ou l'autre selon le point exact du flux de paiement.
+        var _psoId = _pendingScrollOrderId; _pendingScrollOrderId = null;
+        var _psoMatch = allReqs.filter(function(r){ return r.id === _psoId || r.order_id === _psoId; })[0];
+        if(_psoMatch){ showOrderDetail(_psoMatch.id); }
+      }
       var el=document.getElementById("cmd-list"); if(!el){ _stopCmdRefresh(); return; }
       if(!allReqs.length){
         el.innerHTML="<div class='espace-empty'><i class='fa-solid fa-box-open' style='font-size:32px;color:var(--muted);display:block;margin-bottom:10px;'></i>Aucune commande pour le moment.</div>";
@@ -15779,6 +15824,69 @@ function _handleNotifHash(hash, _retryCount){
     setTimeout(function(){ if(typeof openConversation==='function') openConversation(_cmEmail, 'Prestataire', 'user-tie', _cmEmail); }, 400);
     return;
   }
+  // Commande/mission précise côté client (paiement confirmé, livraison, livrable publié,
+  // révision traitée, rappel d'échéance...) → ouvre directement le détail de CETTE commande,
+  // façon Instagram/Facebook, au lieu de laisser l'utilisateur la chercher dans la liste. Les
+  // livrables étant affichés à l'intérieur du détail de commande (voir showOrderDetail), les
+  // notifications de livrable réutilisent ce même mécanisme.
+  var clientOrderMatch = hash.match(/^client:order(?::(.+))?$/);
+  if(clientOrderMatch){
+    if(clientOrderMatch[1]) _pendingScrollOrderId = decodeURIComponent(clientOrderMatch[1]);
+    nav('profil');
+    setTimeout(function(){ if(typeof showMesCommandes==='function') showMesCommandes(); }, 400);
+    return;
+  }
+  // Mission précise côté prestataire (nouvelle demande, livraison validée, révision demandée,
+  // contrat signé, livrable...) → fait défiler directement jusqu'à la carte de CETTE mission
+  // dans la liste, façon Instagram/Facebook. Les livrables/contrats étant affichés à l'intérieur
+  // de la carte de mission elle-même, leurs notifications réutilisent ce même mécanisme.
+  var partnerMissionMatch = hash.match(/^partner:mission(?::(.+))?$/);
+  if(partnerMissionMatch){
+    if(partnerMissionMatch[1]) _ptnrPendingScrollMissionId = decodeURIComponent(partnerMissionMatch[1]);
+    _ptnrSetPendingNotifTarget({ screen: 'missions', threadEmail: null });
+    nav('partner');
+    return;
+  }
+  // Litige précis (nouveau message, résolution) — partagé client/prestataire, voir
+  // _disputeViewerRole. Ouvre directement le fil de CE litige, comme une conversation.
+  var clientLitigeMatch = hash.match(/^litige-(.+)$/);
+  if(clientLitigeMatch){
+    nav('profil');
+    setTimeout(function(){ if(typeof openMesLitiges==='function') openMesLitiges(clientLitigeMatch[1]); }, 500);
+    return;
+  }
+  var partnerLitigeMatch = hash.match(/^partner:litige-(.+)$/);
+  if(partnerLitigeMatch){
+    nav('partner');
+    setTimeout(function(){ if(typeof openMesLitiges==='function') openMesLitiges(partnerLitigeMatch[1]); }, 400);
+    return;
+  }
+  // Contrat précis côté client (à signer, signé, refusé) → ouvre directement l'écran de
+  // signature s'il est en attente, ou met en évidence le contrat dans la liste sinon.
+  var clientContractMatch = hash.match(/^client:contract:(.+)$/);
+  if(clientContractMatch){
+    _pendingScrollContractId = decodeURIComponent(clientContractMatch[1]);
+    nav('mes-contrats');
+    return;
+  }
+  // Demande directe à un partenaire précise côté client (acceptée, proposition reçue) → ouvre
+  // directement l'onglet où elle apparaît (voir renderResaTab/renderProposalCard) et la met en
+  // évidence, plutôt que de laisser le client la chercher.
+  var clientProposalMatch = hash.match(/^client:proposal:(.+)$/);
+  if(clientProposalMatch){
+    _pendingScrollProposalId = decodeURIComponent(clientProposalMatch[1]);
+    nav('reservations');
+    return;
+  }
+  // Contrat de prestation précis côté prestataire (signé par le client) → met en évidence CE
+  // contrat dans l'écran "Mes contrats" (nommé "livrables" en interne, voir _ptnrLoadLivrables).
+  var partnerContractMatch = hash.match(/^partner:contract:(.+)$/);
+  if(partnerContractMatch){
+    _ptnrPendingScrollContractId = decodeURIComponent(partnerContractMatch[1]);
+    _ptnrSetPendingNotifTarget({ screen: 'livrables', threadEmail: null });
+    nav('partner');
+    return;
+  }
   if(hash === 'open-admin' || hash === 'admin'){
     nav('partner'); setTimeout(function(){ if(typeof _openAdminPanel==='function') _openAdminPanel(); }, 400);
   } else if(hash === 'partner:missions' || hash === 'missions'){
@@ -16993,7 +17101,10 @@ function _submitDispute(){
     if(err){err.textContent='Erreur réseau, réessayez.';err.classList.add('on');}
   });
 }
-function openMesLitiges(){
+// Une notification (nouveau message dans un litige, litige résolu...) peut demander l'ouverture
+// directe d'un litige précis — façon Instagram/Facebook : passé en paramètre optionnel, il fait
+// sauter la liste et ouvre directement le fil visé, comme pour une conversation de messagerie.
+function openMesLitiges(targetDisputeId){
   var token=_currentAuthToken(); if(!token){ showLoginSheet&&showLoginSheet(); return; }
   try{sessionStorage.setItem('fa_nav_section','openMesLitiges');}catch(e){}
   var title=document.getElementById('dispute-hdr-title'); if(title) title.textContent='MES LITIGES';
@@ -17006,6 +17117,10 @@ function openMesLitiges(){
     .then(function(data){
       var disputes=(data&&Array.isArray(data.disputes))?data.disputes:[];
       _disputeListCache = disputes;
+      if(targetDisputeId){
+        var _tdMatch = disputes.filter(function(d){ return d.id === targetDisputeId; })[0];
+        if(_tdMatch){ _openDisputeThread(_tdMatch); return; }
+      }
       if(!listEl) return;
       if(disputes.length===0){ listEl.innerHTML='<div style="text-align:center;color:#666;font-size:12px;padding:20px 0;">Aucun litige en cours.</div>'; return; }
       var _slaLabel = data.sla_label || '48h ouvrées';
@@ -18290,6 +18405,25 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 /* ══════════════════════════════════════════════════
    DISPATCH — Système de missions partenaire
 ══════════════════════════════════════════════════ */
+// Une notification (nouvelle mission, livraison validée, révision demandée...) peut demander de
+// faire défiler directement jusqu'à une mission précise — façon Instagram/Facebook : au lieu de
+// laisser le prestataire chercher la bonne carte dans la liste, elle est mise en évidence dès
+// l'affichage. Consommé une seule fois par _ptnrRenderMissionsList(), dès que la liste répond.
+var _ptnrPendingScrollMissionId = null;
+function _ptnrScrollToMission(id){
+  // 'request-<id>' pour une mission déjà engagée (partner_requests) ; 'pdisp-<id>' pour une
+  // commande payée pas encore acceptée (dispatch) — deux espaces d'id distincts selon le stade
+  // exact de la mission au moment de la notification (voir createPartnerServiceDispatch côté
+  // serveur : un dispatch n'a pas encore de partner_request tant qu'il n'est pas accepté).
+  var card = document.getElementById('request-'+id) || document.getElementById('pdisp-'+id);
+  if(!card) return;
+  setTimeout(function(){
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+    card.style.transition = 'box-shadow .3s ease';
+    card.style.boxShadow = '0 0 0 2px var(--yellow, #FFD700)';
+    setTimeout(function(){ card.style.boxShadow = ''; }, 2200);
+  }, 100);
+}
 
 
 var _ptnrMissionsCache = [];
@@ -18400,6 +18534,19 @@ function _ptnrRenderMissionsList(){
   }
 
   if(el) el.innerHTML = html;
+  if(_ptnrPendingScrollMissionId){
+    // Accepte aussi bien l'id de la "request" (partner_requests, ce que rendent les cartes
+    // 'request-<id>') que l'id de la commande (order_id) ou du dispatch — certaines notifications
+    // côté serveur ne connaissent que l'un de ces trois selon le point exact du flux.
+    var _ppsm = _ptnrPendingScrollMissionId; _ptnrPendingScrollMissionId = null;
+    var _ppsmMatch = items.filter(function(r){ return r.id === _ppsm || r.order_id === _ppsm || r.dispatch_id === _ppsm; })[0];
+    if(_ppsmMatch){
+      _ptnrScrollToMission(_ppsmMatch.id);
+    } else {
+      var _ppsmDisp = pendingDispatches.filter(function(d){ return d.id === _ppsm || (d.order && d.order.id === _ppsm); })[0];
+      _ptnrScrollToMission(_ppsmDisp ? _ppsmDisp.id : _ppsm);
+    }
+  }
   // Charger les livrables pour chaque mission signée affichée
   filteredEngaged.forEach(function(r){ if(r.order_id) _ptnrLoadOrderLivrables(r.order_id); });
   var needsActionCount = items.filter(function(r){ return r.status === 'pending' || r.status === 'accepted'; }).length
@@ -20158,6 +20305,11 @@ function _ptnrProfilEditResponseTime(){
 
 // ── LIVRABLES (contrats disponibles en téléchargement) ──────────────────────
 
+// Une notification (contrat de prestation signé) peut demander de faire défiler directement
+// jusqu'au contrat précis dans cet écran (en réalité l'écran "Mes contrats" du prestataire,
+// malgré son nom d'origine "livrables" — les livrables de mission eux-mêmes sont affichés dans
+// la carte de la mission, voir _ptnrScrollToMission). Consommé une seule fois au chargement.
+var _ptnrPendingScrollContractId = null;
 function _ptnrLoadLivrables() {
   var c = document.getElementById('ptnr-livrables-content');
   if (!c) return;
@@ -20240,6 +20392,17 @@ function _ptnrLoadLivrables() {
       + '</div>';
 
     c.innerHTML = html;
+    if(_ptnrPendingScrollContractId){
+      var _ppsc = _ptnrPendingScrollContractId; _ptnrPendingScrollContractId = null;
+      setTimeout(function(){
+        var card = document.getElementById('ptnr-contract-'+_ppsc);
+        if(!card) return;
+        card.scrollIntoView({behavior:'smooth', block:'center'});
+        card.style.transition = 'box-shadow .3s ease';
+        card.style.boxShadow = '0 0 0 2px #FFD700';
+        setTimeout(function(){ card.style.boxShadow = ''; }, 2200);
+      }, 100);
+    }
   }).catch(function() {
     c.innerHTML = '<div style="padding:24px;text-align:center;color:#ef4444;font-size:12px;"><i class="fa-solid fa-circle-exclamation" style="margin-right:6px;"></i>Erreur de chargement. Vérifiez votre connexion.</div>';
   });
@@ -20250,7 +20413,7 @@ function _ptnrLivrableCard(opts) {
     ? '<button onclick="_ptnrDownloadContract(\''+opts.id+'\')" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#1a1200,#111);border:1px solid rgba(255,215,0,.25);border-radius:8px;color:#FFD700;font-size:11px;font-weight:700;padding:10px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;">'
       + '<i class="fa-solid fa-download"></i>Télécharger le PDF</button>'
     : '';
-  return '<div style="background:#161616;border:1px solid #252525;border-radius:12px;padding:14px;margin-bottom:10px;">'
+  return '<div id="ptnr-contract-'+opts.id+'" style="background:#161616;border:1px solid #252525;border-radius:12px;padding:14px;margin-bottom:10px;">'
     + '<div style="display:flex;align-items:flex-start;gap:12px;">'
     + '<div style="width:38px;height:38px;border-radius:10px;background:'+opts.iconBg+';border:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
     + '<i class="fa-solid '+opts.icon+'" style="color:'+opts.iconColor+';font-size:16px;"></i></div>'
@@ -21299,6 +21462,11 @@ var _clientContracts = [];
 var _cvClientCurrentId = null;
 var _cvClientCanvas = null, _cvClientCtx = null, _cvClientDrawing = false, _cvClientHasSignature = false;
 
+// Une notification (contrat à signer, contrat signé/refusé) peut demander l'ouverture directe
+// d'un contrat précis — façon Instagram/Facebook : un contrat en attente de signature s'ouvre
+// directement dans son écran de signature ; un contrat déjà signé/refusé est mis en évidence
+// dans la liste. Consommé une seule fois, dès que la liste répond.
+var _pendingScrollContractId = null;
 async function renderMesContrats() {
     var c = document.getElementById('mesContratsContent');
     if (!c) return;
@@ -21313,6 +21481,26 @@ async function renderMesContrats() {
         });
         var contracts = await resp.json();
         _clientContracts = Array.isArray(contracts) ? contracts : [];
+        if(_pendingScrollContractId){
+            var _pscId = _pendingScrollContractId; _pendingScrollContractId = null;
+            var _pscMatch = _clientContracts.filter(function(ct){ return ct.id === _pscId; })[0];
+            if(_pscMatch && _pscMatch.status === 'pending_client_signature'){
+                openClientContractSigner(_pscId);
+                return;
+            }
+            if(_pscMatch){
+                _renderClientContractsList(c);
+                setTimeout(function(){
+                    var card = document.getElementById('contract-card-'+_pscId);
+                    if(!card) return;
+                    card.scrollIntoView({behavior:'smooth', block:'center'});
+                    card.style.transition = 'box-shadow .3s ease';
+                    card.style.boxShadow = '0 0 0 2px #FFD700';
+                    setTimeout(function(){ card.style.boxShadow = ''; }, 2200);
+                }, 100);
+                return;
+            }
+        }
         _renderClientContractsList(c);
     } catch(e) {
         c.innerHTML = '<div style="padding:24px;color:#e44;font-size:13px;font-family:sans-serif;"><i class="fas fa-exclamation-triangle mr-1"></i>Erreur de chargement des contrats.</div>';
@@ -21348,7 +21536,7 @@ function _renderClientContractsList(c) {
             actions += '<button onclick="_downloadClientContractPdf(\'' + ct.id + '\')" style="background:#fff;border:2px solid #000;color:#000;font-weight:900;font-size:11px;padding:7px 14px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;">' +
                 '<i class="fas fa-download mr-1"></i>PDF</button>';
         }
-        return '<div style="background:#fff;border:2px solid #e0e0e0;margin-bottom:12px;padding:16px;">' +
+        return '<div id="contract-card-' + ct.id + '" style="background:#fff;border:2px solid #e0e0e0;margin-bottom:12px;padding:16px;">' +
             '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
                 '<div>' +
                     '<div style="font-weight:900;font-size:14px;font-family:sans-serif;color:#000;">' + (ct.service_name || '—') + '</div>' +
