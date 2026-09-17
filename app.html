@@ -2511,10 +2511,9 @@ a{text-decoration:none;color:inherit}
 // retirait dès qu'il affichait la WebView elle-même — bien avant qu'app.html n'ait fini d'être
 // téléchargé (jamais embarqué, toujours chargé en direct) et analysé, laissant un vide noir
 // entre l'icône et le contenu réel. Sans effet hors de l'app native, ou si le plugin natif n'est
-// pas encore disponible sur l'appareil (ancienne version installée) — purement additif. Le natif
-// n'active ce mécanisme que sur les appareils qu'IL juge capables (voir MainActivity.
-// isLowMemoryDevice, vérification indépendante de celle-ci) — un appel ici sur un appareil à RAM
-// limitée est donc sans effet, mais reste inoffensif.
+// pas encore disponible sur l'appareil (ancienne version installée) — purement additif. Ce
+// mécanisme s'applique désormais à TOUS les appareils, y compris à RAM limitée (voir MainActivity.
+// onCreate — l'ancien contournement RAM a été supprimé, il était lui-même la cause d'un écran noir).
 var _genesisNativeReadySignaled = false;
 function _genesisSignalNativeReady(){
   if(_genesisNativeReadySignaled) return;
@@ -2526,11 +2525,25 @@ function _genesisSignalNativeReady(){
     }
   }catch(e){}
 }
-// Filet de sécurité : si la vidéo ne démarre jamais (réseau très lent, format non supporté...),
-// ne jamais laisser l'écran de démarrage natif affiché indéfiniment — le natif a de toute façon
-// son propre filet, légèrement plus long (2,5s, voir MainActivity.onCreate), celui-ci est donc le
-// premier à se déclencher en temps normal.
-setTimeout(_genesisSignalNativeReady, 2000);
+// CORRECTIF EN PROFONDEUR (écran noir persistant sur Galaxy A06, réapparu malgré la suppression du
+// contournement RAM natif) : le seul signal "prêt" disponible jusqu'ici dépendait de la vidéo
+// (canplay/playing/error) ou d'un minuteur AVEUGLE fixé à 2 secondes. Or app.html est un très gros
+// document, toujours chargé en direct depuis le réseau (jamais embarqué) — sur une connexion lente
+// ou un appareil au CPU faible, le téléchargement + l'analyse de la page peuvent largement dépasser
+// 2 secondes, ce qui faisait déclencher ce minuteur AVANT que la page n'ait fini de charger,
+// exposant l'écran noir brut de la fenêtre pendant tout le reste du chargement réel. 'DOMContent
+// Loaded' (ou son équivalent si déjà passé au moment où ce script s'exécute) est un signal qui
+// s'adapte naturellement au temps de chargement réel de CET appareil précis, au lieu d'un délai
+// arbitraire identique pour tous : il ne se déclenche que lorsque la page a RÉELLEMENT fini d'être
+// analysée, quel que soit le temps que ça prenne. Le minuteur de 2s devient alors un filet de
+// tout dernier recours (relevé à 8s) : il ne devrait plus jamais être le premier à se déclencher
+// en pratique, seulement en cas de page qui échoue totalement à charger.
+if(document.readyState === 'interactive' || document.readyState === 'complete'){
+  _genesisSignalNativeReady();
+} else {
+  document.addEventListener('DOMContentLoaded', _genesisSignalNativeReady, {once:true});
+}
+setTimeout(_genesisSignalNativeReady, 8000);
 
 (function(){
   try{
