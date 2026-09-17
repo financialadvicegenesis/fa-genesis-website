@@ -2493,28 +2493,17 @@ a{text-decoration:none;color:inherit}
 <body>
 
 <!-- ══════════ VIDÉO FOND ══════════ -->
-<!-- Pas de poster par défaut : demandé explicitement pour que la vidéo (ou à défaut le
-     chargement) soit directement visible dès l'ouverture, sans logo statique avant elle. Le
-     poster reste néanmoins posé DYNAMIQUEMENT en JS ci-dessous, mais UNIQUEMENT sur les
-     appareils à RAM limitée où la vidéo est de toute façon retirée (voir plus bas) — c'est sur
-     CES appareils précis (ex: Galaxy A06) qu'un fond totalement noir avait été signalé, jamais
-     sur un appareil capable de lire la vidéo normalement. -->
+<!-- Vidéo toujours affichée sur tous les appareils, y compris d'entrée de gamme — la logique qui
+     retirait la vidéo (et affichait un logo statique à la place) sur les appareils à RAM limitée
+     a été supprimée à la demande explicite : elle produisait justement l'écran "logo statique"
+     jugé anormal. Le fichier vidéo lui-même a été ré-encodé pour être robuste sur du matériel de
+     décodage bas de gamme (profil H.264 Main/niveau 3.1, B-frames et images de référence limitées
+     — ce qui réduit la mémoire nécessaire au décodeur — flux de métadonnées superflu supprimé,
+     moov en tête de fichier pour un démarrage plus rapide). -->
 <video id="bgVideo" autoplay muted loop playsinline preload="auto">
   <source src="assets/videos/teaser.mp4" type="video/mp4">
 </video>
 <script>
-// Sur un appareil d'entrée/milieu de gamme à RAM limitée (ex: Galaxy A06, 4 Go — signalé à
-// plusieurs reprises avec un écran noir total au démarrage), décoder une vidéo en lecture
-// automatique dès le tout premier écran peut suffire à faire planter le moteur de rendu de la
-// WebView. navigator.deviceMemory (Chromium, donc disponible dans la WebView Android) donne une
-// estimation approximative de la RAM en Go — en dessous d'un seuil prudent, on retire la vidéo
-// AVANT qu'elle ne commence à charger. Seuil relevé à 4 Go (au lieu de 2) après un signalement
-// répété sur un appareil 4 Go précis : mieux vaut désactiver la vidéo sur davantage d'appareils
-// d'entrée de gamme que de risquer un écran noir sur l'un d'eux. Le poster n'est posé QUE dans
-// ce cas précis (pas par défaut, voir commentaire au-dessus) : sans vidéo à afficher, il
-// remplace le fond noir qui apparaîtrait sinon. Best-effort : l'API peut être absente (undefined)
-// sur certains WebView plus anciens — dans ce cas on ne change rien, la vidéo continue de se
-// charger normalement, sans poster (comportement par défaut demandé).
 
 // Signale au natif (MainActivity, voir TokenStorePlugin.notifyAppReady) qu'il y a désormais
 // quelque chose de significatif à montrer, pour qu'il retire l'écran de démarrage natif (icône,
@@ -2545,27 +2534,16 @@ setTimeout(_genesisSignalNativeReady, 2000);
 
 (function(){
   try{
-    if(typeof navigator.deviceMemory === 'number' && navigator.deviceMemory > 0 && navigator.deviceMemory <= 4){
-      var v = document.getElementById('bgVideo');
-      if(v){
-        v.removeAttribute('autoplay'); v.pause();
-        v.querySelectorAll('source').forEach(function(s){ s.remove(); });
-        v.load();
-        v.poster = 'assets/images/icon-app-512.png';
-      }
-      // Pas de vidéo sur cet appareil : rien à attendre pour afficher quelque chose, signale
-      // tout de suite plutôt que d'attendre inutilement le filet de sécurité à 2s.
-      _genesisSignalNativeReady();
-    } else {
-      var v2 = document.getElementById('bgVideo');
-      if(v2){
-        // 'canplay' (assez de données pour démarrer sans à-coup) déclenche généralement avant
-        // 'playing' (lecture effectivement démarrée) — écouter les deux fait signaler le natif
-        // dès le plus tôt des deux, réduisant le vide noir perçu sur un réseau/appareil correct.
-        v2.addEventListener('canplay', _genesisSignalNativeReady, {once:true});
-        v2.addEventListener('playing', _genesisSignalNativeReady, {once:true});
-        v2.addEventListener('error', _genesisSignalNativeReady, {once:true});
-      }
+    var v = document.getElementById('bgVideo');
+    if(v){
+      // 'canplay' (assez de données pour démarrer sans à-coup) déclenche généralement avant
+      // 'playing' (lecture effectivement démarrée) — écouter les deux fait signaler le natif dès
+      // le plus tôt des deux. 'error' couvre le cas d'un échec réel de lecture (réseau, format) :
+      // le fond reste alors noir (--bg, voir CSS de base) sans jamais bloquer l'affichage de
+      // l'interface elle-même, qui ne dépend pas de la vidéo.
+      v.addEventListener('canplay', _genesisSignalNativeReady, {once:true});
+      v.addEventListener('playing', _genesisSignalNativeReady, {once:true});
+      v.addEventListener('error', _genesisSignalNativeReady, {once:true});
     }
   }catch(e){ _genesisSignalNativeReady(); }
 })();
