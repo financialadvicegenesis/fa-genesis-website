@@ -1294,7 +1294,7 @@ async function processDispatchPayout(dispatch, stage) {
             console.log('[PAYOUT] ' + stage + ' → Wallet GENESIS crédité : +' + paidAmount + '€ pour ' + partner.email);
             notifyUser(partner.email, 'partner', 'wallet_credited', '💰 Gains disponibles !',
                 '+' + paidAmount.toFixed(2) + '€ viennent d\'être ajoutés à votre Wallet GENESIS. Retirez-les quand vous voulez.',
-                '#partner:versements');
+                '#partner:wallet:' + _dispId);
         } else {
             console.error('[PAYOUT] ' + stage + ' → Échec crédit wallet pour ' + partner.email);
         }
@@ -1340,7 +1340,7 @@ async function releaseOnHoldPayouts(dispatchId) {
                 if (p.order_id) updateOrder(p.order_id, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
                 notifyUser(p.partner_email, 'partner', 'wallet_credited', '💰 Litige résolu — versement débloqué',
                     '+' + p.amount.toFixed(2) + '€ viennent d\'être ajoutés à votre Wallet GENESIS suite à la résolution du litige.',
-                    '#partner:versements');
+                    '#partner:wallet:' + p.dispatch_id);
             } else {
                 notifyUser(null, 'admin', 'refund_manual', '⚠️ Échec du crédit wallet après résolution de litige',
                     'Dispatch ' + p.dispatch_id + ' — le litige a été résolu en faveur du prestataire mais le crédit wallet a échoué. Traiter manuellement.',
@@ -3417,7 +3417,7 @@ async function checkAutoPaymentRelease() {
                     notifyUser(_arPartnerEmail, 'partner', 'auto_release',
                         'Virement automatique déclenché',
                         'Le délai de 7 jours s\'est écoulé — votre paiement pour « ' + (_o.product_name || 'la prestation') + ' » a été automatiquement libéré.',
-                        '#partner:versements');
+                        '#partner:wallet:' + _o.id);
                 }
 
             } catch(arErr) {
@@ -7395,7 +7395,7 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
         // Notifier le partenaire
         notifyUser(req.partner.email, 'partner', 'withdrawal_pending', '📤 Retrait en cours',
             'Votre demande de retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' est en cours de traitement.',
-            '#partner:versements');
+            '#partner:wallet:' + withdrawal.id);
 
         // Notifier l'admin par email : montant à virer sur Wise avant l'envoi automatique
         var _wdPartnerName = ((req.partner.prenom || '') + ' ' + (req.partner.nom || '')).trim() || req.partner.email;
@@ -16688,7 +16688,7 @@ function notifyCapacityLimitedEvent(event) {
     try {
         var title = 'Événement exclusif : ' + event.title;
         var body = 'Un événement à places limitées est disponible dans Événements. Réservez vite !';
-        var link = '/app.html';
+        var link = '/app.html#evenement-' + event.id;
         var later24h = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
         var scheduled = loadScheduledNotifs();
         loadUsers().forEach(function(user) {
@@ -25039,7 +25039,7 @@ app.post('/api/admin/withdrawals/:id/mark-sent', function(req, res) {
         var p = partners.find(function(x) { return x.id === wdrs[idx].partner_id; });
         if (p && (p.email || p.contact_email)) {
             notifyUser(p.email || p.contact_email, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
-                'Votre retrait de ' + wdrs[idx].amount.toFixed(2) + ' € a été envoyé.', '#partner:versements');
+                'Votre retrait de ' + wdrs[idx].amount.toFixed(2) + ' € a été envoyé.', '#partner:wallet:' + wdrs[idx].id);
         }
 
         res.json({ ok: true, withdrawal: wdrs[idx] });
@@ -25180,7 +25180,7 @@ async function runWeeklyAutoPayouts() {
                 // Notifier le prestataire
                 notifyUser(_ap.email, 'partner', 'auto_payout', '💸 Virement automatique envoyé',
                     _apAmount.toFixed(2) + '€ ont été virés automatiquement sur votre compte ce lundi.',
-                    '#partner:versements');
+                    '#partner:wallet:' + _apWd.id);
 
                 processed++;
             } catch(_apErr) {

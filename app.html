@@ -9746,6 +9746,10 @@ function _renderFavList(){
 var _rvQueue = [];
 var _rvCurrent = null;
 var _rvRating = 0;
+// Une notification "review-request" cible un dispatch précis (voir server.js, d.id) — façon
+// Instagram/Facebook, on veut que CET avis précis s'affiche en premier, pas n'importe lequel de
+// la file. _checkPendingReviews() le fait remonter en tête de _rvQueue s'il s'y trouve.
+var _pendingReviewDispatchId = null;
 
 function _syncUserBadge(){
   if(!USER || GUEST || !USER._token) return;
@@ -9806,6 +9810,14 @@ function _checkPendingReviews(){
     .then(function(d){
       if(d && d.pendingReviewPrompts && d.pendingReviewPrompts.length>0){
         _rvQueue = d.pendingReviewPrompts.slice();
+        if(_pendingReviewDispatchId){
+          var _prdId = _pendingReviewDispatchId; _pendingReviewDispatchId = null;
+          var _prdIdx = _rvQueue.findIndex(function(q){ return q.dispatchId === _prdId; });
+          if(_prdIdx > 0){
+            var _prdItem = _rvQueue.splice(_prdIdx, 1)[0];
+            _rvQueue.unshift(_prdItem);
+          }
+        }
         _rvShowNext();
       }
     }).catch(function(){});
@@ -15878,6 +15890,29 @@ function _handleNotifHash(hash, _retryCount){
     nav('reservations');
     return;
   }
+  // Gain/retrait précis côté prestataire (crédit wallet, retrait en cours/envoyé, virement
+  // automatique) → met en évidence CETTE entrée précise dans l'écran Wallet.
+  var partnerWalletMatch = hash.match(/^partner:wallet:(.+)$/);
+  if(partnerWalletMatch){
+    _ptnrPendingScrollWalletId = decodeURIComponent(partnerWalletMatch[1]);
+    _ptnrSetPendingNotifTarget({ screen: 'versements', threadEmail: null });
+    nav('partner');
+    return;
+  }
+  // Événement précis (place limitée annoncée) → ouvre directement sa fiche détail, façon
+  // Instagram/Facebook, au lieu de laisser le client le chercher dans Explorer. openEventDetail()
+  // s'affiche en overlay indépendamment de l'onglet actif — il suffit que _eventsCache le
+  // connaisse, d'où le fetch dédié plutôt que de dépendre du rendu de l'onglet Explorer.
+  var eventMatch = hash.match(/^evenement-(.+)$/);
+  if(eventMatch){
+    var _evId = decodeURIComponent(eventMatch[1]);
+    fetch((window.FA_GENESIS_API||API)+'/api/events').then(function(r){ return r.json(); }).then(function(data){
+      var events = (data && data.events) || [];
+      events.forEach(function(ev){ _eventsCache[ev.id] = ev; });
+      if(typeof openEventDetail==='function') openEventDetail(_evId);
+    }).catch(function(){});
+    return;
+  }
   // Contrat de prestation précis côté prestataire (signé par le client) → met en évidence CE
   // contrat dans l'écran "Mes contrats" (nommé "livrables" en interne, voir _ptnrLoadLivrables).
   var partnerContractMatch = hash.match(/^partner:contract:(.+)$/);
@@ -15922,6 +15957,16 @@ function _handleNotifHash(hash, _retryCount){
   } else if(hash === 'open-resa'){
     nav('reservations');
   } else if(/^client-review-/.test(hash)){
+    // Le popup d'avis (voir _checkPendingReviews/_rvShowNext) s'affiche de toute façon
+    // automatiquement à chaque ouverture de l'app, par-dessus n'importe quel onglet — mais SANS
+    // garantie que ce soit CET avis précis qui apparaisse en premier s'il y en a plusieurs en
+    // attente. On fait remonter le dispatch visé en tête de file avant de (re)déclencher la
+    // vérification, façon Instagram/Facebook (le bon contenu, pas "un" contenu au hasard).
+    var _crMatch = hash.match(/^client-review-.+-(DSP-[A-Za-z0-9]+)$/);
+    if(_crMatch){
+      _pendingReviewDispatchId = _crMatch[1];
+      if(typeof _checkPendingReviews==='function') _checkPendingReviews();
+    }
     nav('reservations');
   }
 }
@@ -19209,6 +19254,11 @@ function _ptnrPendingRelease(estimatedReleaseAt){
   return { label:'Disponible estimé : '+dateStr, badge:badge, color:'#f59e0b' };
 }
 
+// Une notification (gain crédité, retrait en cours/envoyé, virement automatique) peut demander
+// de faire défiler directement jusqu'à CETTE entrée précise (transaction ou retrait) — voir
+// ptnr-wtx-<id>/ptnr-wd-<id> plus bas. Accepte aussi bien l'id de la transaction/du retrait que
+// celui du dispatch/de la commande d'origine, selon ce que le point d'envoi connaissait.
+var _ptnrPendingScrollWalletId = null;
 function _ptnrLoadVersements(){
   var listEl = document.getElementById('ptnr-versements-list');
   if(!listEl) return;
@@ -19285,7 +19335,7 @@ function _ptnrLoadVersements(){
       wdrs.slice(0,5).forEach(function(w){
         var sc = {pending:'#f59e0b',processing:'#818cf8',completed:'#22c55e',failed:'#f87171'}[w.status]||'#888';
         var sl = {pending:'En attente',processing:'En cours',completed:'Versé ✓',failed:'Échec'}[w.status]||w.status;
-        html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div id="ptnr-wd-'+w.id+'" style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
         html += '<div><div style="font-size:12px;font-weight:700;color:#ccc;">Retrait '+(w.method||'').toUpperCase().replace('_',' ')+'</div>';
         html += '<div style="font-size:11px;color:'+sc+';font-weight:700;margin-top:2px;">'+sl+'</div></div>';
         html += '<div style="font-size:15px;font-weight:900;color:#818cf8;">-'+fmt(w.amount)+' €</div>';
@@ -19301,7 +19351,7 @@ function _ptnrLoadVersements(){
       html += '<div style="font-size:11px;font-weight:800;color:#f59e0b;letter-spacing:.8px;text-transform:uppercase;margin:14px 0 8px;"><i class="fa-solid fa-hourglass-half" style="margin-right:5px"></i>En attente de libération ('+pendingTxns.length+')</div>';
       pendingTxns.forEach(function(t){
         var relInfo = _ptnrPendingRelease(t.estimated_release_at);
-        html += '<div style="background:#111;border:1px solid #1e1e1e;border-left:3px solid #f59e0b;border-radius:12px;padding:12px 14px;margin-bottom:8px;">';
+        html += '<div id="ptnr-wtx-'+t.id+'" style="background:#111;border:1px solid #1e1e1e;border-left:3px solid #f59e0b;border-radius:12px;padding:12px 14px;margin-bottom:8px;">';
         html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
         html += '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;color:#fff;">'+_escHtml(t.description||'Mission')+'</div>';
         html += '<div style="font-size:11px;color:#888;margin-top:3px;">'+relInfo.label+'</div></div>';
@@ -19317,7 +19367,7 @@ function _ptnrLoadVersements(){
         var isC = t.type==='credit';
         var col = isC ? '#22c55e' : '#f87171';
         var ico = isC ? 'fa-circle-arrow-down' : 'fa-circle-arrow-up';
-        html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div id="ptnr-wtx-'+t.id+'" style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
         html += '<div style="display:flex;align-items:center;gap:10px;">';
         html += '<div style="width:32px;height:32px;border-radius:50%;background:rgba(34,197,94,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid '+ico+'" style="color:'+col+';font-size:13px;"></i></div>';
         html += '<div><div style="font-size:12px;font-weight:700;color:#ccc;">'+_escHtml(t.description||'Transaction')+'</div>';
@@ -19332,6 +19382,22 @@ function _ptnrLoadVersements(){
     }
 
     listEl.innerHTML = html;
+    if(_ptnrPendingScrollWalletId){
+      var _ppswId = _ptnrPendingScrollWalletId; _ptnrPendingScrollWalletId = null;
+      var _ppswTxn = txns.filter(function(t){ return t.id === _ppswId || t.dispatch_id === _ppswId || t.order_id === _ppswId; })[0];
+      var _ppswWd  = !_ppswTxn ? wdrs.filter(function(w){ return w.id === _ppswId; })[0] : null;
+      var _ppswDomId = _ppswTxn ? ('ptnr-wtx-'+_ppswTxn.id) : (_ppswWd ? ('ptnr-wd-'+_ppswWd.id) : null);
+      if(_ppswDomId){
+        setTimeout(function(){
+          var card = document.getElementById(_ppswDomId);
+          if(!card) return;
+          card.scrollIntoView({behavior:'smooth', block:'center'});
+          card.style.transition = 'box-shadow .3s ease';
+          card.style.boxShadow = '0 0 0 2px #FFD700';
+          setTimeout(function(){ card.style.boxShadow = ''; }, 2200);
+        }, 100);
+      }
+    }
   }).catch(function(){
     listEl.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-wifi-slash"></i></div><div class="ptnr-empty-txt">Erreur de chargement</div><div style="font-size:12px;color:#555;margin-top:6px;">Vérifiez votre connexion et réessayez.</div></div>';
   });
