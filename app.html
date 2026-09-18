@@ -10573,10 +10573,10 @@ function _jeremieSpeak(text){
   }catch(e){}
 }
 // Voix d'entrée (parler à Jérémie). Deux chemins possibles :
-// 1) App native Android : GenesisSpeechPlugin (voir mobile-bridge.js) — la Web Speech API du
-//    navigateur (ci-dessous) n'est PAS implémentée par la WebView Android système (seulement par
-//    l'app Chrome elle-même), donc jamais disponible dans l'app native. Sans ce chemin natif, le
-//    micro y était silencieusement masqué pour tout le monde.
+// 1) App native Android : @capacitor-community/speech-recognition (voir mobile-bridge.js) — la
+//    Web Speech API du navigateur (ci-dessous) n'est PAS implémentée par la WebView Android
+//    système (seulement par l'app Chrome elle-même), donc jamais disponible dans l'app native.
+//    Sans ce chemin natif, le micro y était silencieusement masqué pour tout le monde.
 // 2) Web/PWA : SpeechRecognition du navigateur, inchangé — non supporté sur Safari/iOS.
 var _jeremieRecognition=null, _jeremieListening=false, _jeremieUseNativeSpeech=false, _jeremiePending=false;
 function _jeremieInitVoiceInput(){
@@ -10647,8 +10647,8 @@ function toggleJeremieVoiceInput(){
     if(nBtn) nBtn.classList.add('listening');
     if(nSheet) nSheet.classList.add('is-listening');
     // Deux étapes DISTINCTES et explicites, l'une après l'autre : demander la permission, PUIS
-    // démarrer l'écoute — jamais combinées dans un seul aller-retour natif (voir
-    // GenesisSpeechPlugin, historique du bug "ça ne passe pas" après avoir accordé la permission).
+    // démarrer l'écoute — jamais combinées dans un seul aller-retour natif (voir mobile-bridge.js,
+    // historique du bug "ça ne passe pas" après avoir accordé la permission).
     (async function(){
       try{
         if(!window.FAGMobile || typeof window.FAGMobile.requestMicPermission!=='function'){

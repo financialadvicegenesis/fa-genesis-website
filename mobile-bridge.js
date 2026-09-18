@@ -294,49 +294,65 @@
     };
 
     // ── Dictée vocale native (conversation Jérémie) ────────────────────────────
-    // GenesisSpeech (natif, com.fagenesis.genesis.GenesisSpeechPlugin) — la Web Speech API du
+    // SpeechRecognition (@capacitor-community/speech-recognition) — la Web Speech API du
     // navigateur (window.SpeechRecognition) n'est PAS implémentée par la WebView Android système
-    // (contrairement à l'app Chrome elle-même), donc jamais disponible ici : sans ce plugin natif,
-    // le micro de la conversation Jérémie était silencieusement indisponible sur tout appareil
-    // Android natif. Repli géré côté app.html si ce plugin n'est pas encore présent (ancienne
-    // version installée) — voir _jeremieInitVoiceInput.
+    // (contrairement à l'app Chrome elle-même), donc jamais disponible ici.
+    //
+    // HISTORIQUE : une implémentation maison (GenesisSpeechPlugin) a existé ici un temps, avant
+    // d'être remplacée par ce plugin communautaire éprouvé après plusieurs échecs de correctifs
+    // non reproductibles sans accès à un appareil réel. Cause probable enfin identifiée en
+    // inspectant ce plugin : depuis Android 11 (restrictions de visibilité des packages),
+    // SpeechRecognizer nécessite une déclaration <queries> explicite pour android.speech.
+    // RecognitionService dans AndroidManifest.xml — SANS elle, le moteur de reconnaissance peut
+    // échouer SILENCIEUSEMENT à se lier au service système, un symptôme rigoureusement
+    // indiscernable d'un bouton qui ne réagit pas. L'implémentation maison ne la déclarait jamais.
+    // Ce plugin la déclare nativement dans son propre AndroidManifest.xml (fusionné
+    // automatiquement), et AndroidManifest.xml de l'app la déclare aussi explicitement en plus,
+    // par prudence.
     window.FAGMobile.isNativeSpeechAvailable = async function() {
         try {
-            if (!Plugins.GenesisSpeech) return false;
-            var res = await Plugins.GenesisSpeech.isAvailable();
+            if (!Plugins.SpeechRecognition) return false;
+            var res = await Plugins.SpeechRecognition.available();
             return !!(res && res.available);
         } catch(e) { return false; }
     };
-    // Étape 1, séparée : demande UNIQUEMENT la permission micro (voir GenesisSpeechPlugin —
-    // combiner cette demande avec le démarrage de l'écoute dans le même appel s'est avéré
-    // impossible à garantir de façon fiable). app.html attend explicitement { granted: true }
-    // avant d'appeler startVoiceRecognition ci-dessous.
+    // Étape 1, séparée : demande UNIQUEMENT la permission micro. Combiner cette demande avec le
+    // démarrage de l'écoute dans le même appel (comme le faisait l'implémentation maison) s'est
+    // avéré impossible à garantir de façon fiable — app.html attend explicitement `true` avant
+    // d'appeler startVoiceRecognition ci-dessous.
     window.FAGMobile.requestMicPermission = async function() {
         try {
-            if (!Plugins.GenesisSpeech) return false;
-            var res = await Plugins.GenesisSpeech.requestPermission();
-            return !!(res && res.granted);
+            if (!Plugins.SpeechRecognition) return false;
+            var status = await Plugins.SpeechRecognition.checkPermissions();
+            if (status && status.speechRecognition === 'granted') return true;
+            status = await Plugins.SpeechRecognition.requestPermissions();
+            return !!(status && status.speechRecognition === 'granted');
         } catch(e) { return false; }
     };
     // Étape 2, séparée : suppose la permission déjà accordée (échoue clairement sinon plutôt que
-    // de tenter de la redemander depuis ici).
+    // de tenter de la redemander depuis ici). popup:false = pas de boîte de dialogue Google,
+    // exactement comme Claude/ChatGPT/Gemini — l'app affiche son propre indicateur d'écoute
+    // (voir listeningState ci-dessous).
     window.FAGMobile.startVoiceRecognition = async function() {
         try {
-            if (!Plugins.GenesisSpeech) return { text: null, error: 'Indisponible' };
-            var res = await Plugins.GenesisSpeech.startListening();
-            return { text: (res && res.text) || '', needsFeedback: !!(res && res.needsFeedback) };
+            if (!Plugins.SpeechRecognition) return { text: null, error: 'Indisponible' };
+            var res = await Plugins.SpeechRecognition.start({
+                language: 'fr-FR', maxResults: 1, popup: false, partialResults: false
+            });
+            var text = (res && res.matches && res.matches[0]) || '';
+            return { text: text, needsFeedback: !text };
         } catch(e) {
             return { text: null, error: (e && e.message) || 'Erreur micro' };
         }
     };
     window.FAGMobile.stopVoiceRecognition = async function() {
-        try { if (Plugins.GenesisSpeech) await Plugins.GenesisSpeech.stopListening(); } catch(e) {}
+        try { if (Plugins.SpeechRecognition) await Plugins.SpeechRecognition.stop(); } catch(e) {}
     };
     window.FAGMobile.onVoiceListeningChange = function(callback) {
         try {
-            if (!Plugins.GenesisSpeech || typeof callback !== 'function') return;
-            Plugins.GenesisSpeech.addListener('listeningStateChanged', function(data) {
-                callback(!!(data && data.listening));
+            if (!Plugins.SpeechRecognition || typeof callback !== 'function') return;
+            Plugins.SpeechRecognition.addListener('listeningState', function(data) {
+                callback(!!(data && data.status === 'started'));
             });
         } catch(e) {}
     };
