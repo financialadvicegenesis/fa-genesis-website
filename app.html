@@ -10646,21 +10646,43 @@ function toggleJeremieVoiceInput(){
     _jeremiePending=true;
     if(nBtn) nBtn.classList.add('listening');
     if(nSheet) nSheet.classList.add('is-listening');
-    window.FAGMobile.startVoiceRecognition().then(function(res){
-      _jeremiePending=false; _jeremieListening=false;
-      if(nBtn) nBtn.classList.remove('listening');
-      if(nSheet) nSheet.classList.remove('is-listening');
-      if(res && res.text){
-        var inp=document.getElementById('jeremie-input');
-        if(inp){ inp.value=(inp.value?inp.value+' ':'')+res.text; inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,120)+'px'; inp.focus(); }
-      } else if(res && res.error && typeof showToast==='function'){
-        showToast('Micro indisponible', res.error, 'error');
+    // Deux étapes DISTINCTES et explicites, l'une après l'autre : demander la permission, PUIS
+    // démarrer l'écoute — jamais combinées dans un seul aller-retour natif (voir
+    // GenesisSpeechPlugin, historique du bug "ça ne passe pas" après avoir accordé la permission).
+    (async function(){
+      try{
+        if(!window.FAGMobile || typeof window.FAGMobile.requestMicPermission!=='function'){
+          throw new Error('Indisponible');
+        }
+        var granted = await window.FAGMobile.requestMicPermission();
+        if(!granted){
+          _jeremiePending=false;
+          if(nBtn) nBtn.classList.remove('listening');
+          if(nSheet) nSheet.classList.remove('is-listening');
+          if(typeof showToast==='function') showToast('Micro indisponible','Autorisez le microphone dans les paramètres de l\'application pour parler à Jérémie.','error');
+          return;
+        }
+        var res = await window.FAGMobile.startVoiceRecognition();
+        _jeremiePending=false; _jeremieListening=false;
+        if(nBtn) nBtn.classList.remove('listening');
+        if(nSheet) nSheet.classList.remove('is-listening');
+        if(res && res.text){
+          var inp=document.getElementById('jeremie-input');
+          if(inp){ inp.value=(inp.value?inp.value+' ':'')+res.text; inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,120)+'px'; inp.focus(); }
+        } else if(res && res.error){
+          if(typeof showToast==='function') showToast('Micro indisponible', res.error, 'error');
+        } else if(res && res.needsFeedback && typeof showToast==='function'){
+          // Rien compris (silence, ou parole trop courte) — signalé explicitement au lieu d'un
+          // silence total qui donnerait l'impression que le bouton ne réagit pas.
+          showToast('Jérémie','Je n\'ai rien entendu, réessayez.','info');
+        }
+      }catch(e){
+        _jeremiePending=false; _jeremieListening=false;
+        if(nBtn) nBtn.classList.remove('listening');
+        if(nSheet) nSheet.classList.remove('is-listening');
+        if(typeof showToast==='function') showToast('Micro indisponible', (e&&e.message)||'Erreur micro', 'error');
       }
-    }).catch(function(){
-      _jeremiePending=false; _jeremieListening=false;
-      if(nBtn) nBtn.classList.remove('listening');
-      if(nSheet) nSheet.classList.remove('is-listening');
-    });
+    })();
     return;
   }
   if(!_jeremieRecognition) return;

@@ -307,11 +307,24 @@
             return !!(res && res.available);
         } catch(e) { return false; }
     };
+    // Étape 1, séparée : demande UNIQUEMENT la permission micro (voir GenesisSpeechPlugin —
+    // combiner cette demande avec le démarrage de l'écoute dans le même appel s'est avéré
+    // impossible à garantir de façon fiable). app.html attend explicitement { granted: true }
+    // avant d'appeler startVoiceRecognition ci-dessous.
+    window.FAGMobile.requestMicPermission = async function() {
+        try {
+            if (!Plugins.GenesisSpeech) return false;
+            var res = await Plugins.GenesisSpeech.requestPermission();
+            return !!(res && res.granted);
+        } catch(e) { return false; }
+    };
+    // Étape 2, séparée : suppose la permission déjà accordée (échoue clairement sinon plutôt que
+    // de tenter de la redemander depuis ici).
     window.FAGMobile.startVoiceRecognition = async function() {
         try {
             if (!Plugins.GenesisSpeech) return { text: null, error: 'Indisponible' };
             var res = await Plugins.GenesisSpeech.startListening();
-            return { text: (res && res.text) || '' };
+            return { text: (res && res.text) || '', needsFeedback: !!(res && res.needsFeedback) };
         } catch(e) {
             return { text: null, error: (e && e.message) || 'Erreur micro' };
         }
