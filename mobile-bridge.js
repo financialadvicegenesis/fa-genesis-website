@@ -293,6 +293,41 @@
         } catch(e) {}
     };
 
+    // ── Dictée vocale native (conversation Jérémie) ────────────────────────────
+    // GenesisSpeech (natif, com.fagenesis.genesis.GenesisSpeechPlugin) — la Web Speech API du
+    // navigateur (window.SpeechRecognition) n'est PAS implémentée par la WebView Android système
+    // (contrairement à l'app Chrome elle-même), donc jamais disponible ici : sans ce plugin natif,
+    // le micro de la conversation Jérémie était silencieusement indisponible sur tout appareil
+    // Android natif. Repli géré côté app.html si ce plugin n'est pas encore présent (ancienne
+    // version installée) — voir _jeremieInitVoiceInput.
+    window.FAGMobile.isNativeSpeechAvailable = async function() {
+        try {
+            if (!Plugins.GenesisSpeech) return false;
+            var res = await Plugins.GenesisSpeech.isAvailable();
+            return !!(res && res.available);
+        } catch(e) { return false; }
+    };
+    window.FAGMobile.startVoiceRecognition = async function() {
+        try {
+            if (!Plugins.GenesisSpeech) return { text: null, error: 'Indisponible' };
+            var res = await Plugins.GenesisSpeech.startListening();
+            return { text: (res && res.text) || '' };
+        } catch(e) {
+            return { text: null, error: (e && e.message) || 'Erreur micro' };
+        }
+    };
+    window.FAGMobile.stopVoiceRecognition = async function() {
+        try { if (Plugins.GenesisSpeech) await Plugins.GenesisSpeech.stopListening(); } catch(e) {}
+    };
+    window.FAGMobile.onVoiceListeningChange = function(callback) {
+        try {
+            if (!Plugins.GenesisSpeech || typeof callback !== 'function') return;
+            Plugins.GenesisSpeech.addListener('listeningStateChanged', function(data) {
+                callback(!!(data && data.listening));
+            });
+        } catch(e) {}
+    };
+
     // ── Safe-area (notch iPhone / Android) ─────────────────────────────────────
     document.documentElement.style.setProperty('--safe-top',    'env(safe-area-inset-top, 0px)');
     document.documentElement.style.setProperty('--safe-bottom', 'env(safe-area-inset-bottom, 0px)');

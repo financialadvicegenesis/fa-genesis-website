@@ -10572,9 +10572,38 @@ function _jeremieSpeak(text){
     window.speechSynthesis.speak(u);
   }catch(e){}
 }
-// Voix d'entrée (parler à Jérémie) - SpeechRecognition, non supporté sur Safari/iOS
-var _jeremieRecognition=null, _jeremieListening=false;
+// Voix d'entrée (parler à Jérémie). Deux chemins possibles :
+// 1) App native Android : GenesisSpeechPlugin (voir mobile-bridge.js) — la Web Speech API du
+//    navigateur (ci-dessous) n'est PAS implémentée par la WebView Android système (seulement par
+//    l'app Chrome elle-même), donc jamais disponible dans l'app native. Sans ce chemin natif, le
+//    micro y était silencieusement masqué pour tout le monde.
+// 2) Web/PWA : SpeechRecognition du navigateur, inchangé — non supporté sur Safari/iOS.
+var _jeremieRecognition=null, _jeremieListening=false, _jeremieUseNativeSpeech=false;
 function _jeremieInitVoiceInput(){
+  var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  if(isNative && window.FAGMobile && typeof window.FAGMobile.isNativeSpeechAvailable==='function'){
+    window.FAGMobile.isNativeSpeechAvailable().then(function(avail){
+      if(avail){
+        _jeremieUseNativeSpeech = true;
+        if(typeof window.FAGMobile.onVoiceListeningChange==='function'){
+          window.FAGMobile.onVoiceListeningChange(function(listening){
+            _jeremieListening = listening;
+            var b=document.getElementById('jeremie-mic-btn'); if(b) b.classList.toggle('listening', listening);
+            var s=document.getElementById('jeremie-sheet'); if(s) s.classList.toggle('is-listening', listening);
+          });
+        }
+      } else {
+        // Plugin absent (ancienne version de l'app pas encore mise à jour) ou matériel sans
+        // reconnaissance vocale — repli sur la Web Speech API, sans effet dans une WebView
+        // Android système (le bouton se masquera alors, comme avant ce correctif).
+        _jeremieInitWebSpeechInput();
+      }
+    }).catch(function(){ _jeremieInitWebSpeechInput(); });
+    return;
+  }
+  _jeremieInitWebSpeechInput();
+}
+function _jeremieInitWebSpeechInput(){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   var btn=document.getElementById('jeremie-mic-btn');
   if(!SR){ if(btn) btn.style.display='none'; return; }
@@ -10598,6 +10627,32 @@ function _jeremieInitVoiceInput(){
   };
 }
 function toggleJeremieVoiceInput(){
+  if(_jeremieUseNativeSpeech){
+    var nBtn=document.getElementById('jeremie-mic-btn'); var nSheet=document.getElementById('jeremie-sheet');
+    if(_jeremieListening){
+      if(window.FAGMobile && typeof window.FAGMobile.stopVoiceRecognition==='function') window.FAGMobile.stopVoiceRecognition();
+      return;
+    }
+    _jeremieListening=true;
+    if(nBtn) nBtn.classList.add('listening');
+    if(nSheet) nSheet.classList.add('is-listening');
+    window.FAGMobile.startVoiceRecognition().then(function(res){
+      _jeremieListening=false;
+      if(nBtn) nBtn.classList.remove('listening');
+      if(nSheet) nSheet.classList.remove('is-listening');
+      if(res && res.text){
+        var inp=document.getElementById('jeremie-input');
+        if(inp){ inp.value=(inp.value?inp.value+' ':'')+res.text; inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,120)+'px'; inp.focus(); }
+      } else if(res && res.error && typeof showToast==='function'){
+        showToast('Micro indisponible', res.error, 'error');
+      }
+    }).catch(function(){
+      _jeremieListening=false;
+      if(nBtn) nBtn.classList.remove('listening');
+      if(nSheet) nSheet.classList.remove('is-listening');
+    });
+    return;
+  }
   if(!_jeremieRecognition) return;
   var btn=document.getElementById('jeremie-mic-btn'); var sheet=document.getElementById('jeremie-sheet');
   if(_jeremieListening){
