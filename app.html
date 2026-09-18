@@ -22050,6 +22050,10 @@ async function _confirmBalancePayment(){
 </script>
 
 <!-- Mobile bridge FCM — chargé uniquement dans l'app Capacitor native -->
-<script src="mobile-bridge.js" defer></script>
+<!-- ?v= : évite qu'une WebView Android garde en cache une ancienne copie de ce fichier
+     indéfiniment (contrairement à app.html, rechargé à chaque navigation, un <script src> externe
+     peut rester en cache bien au-delà de l'en-tête Cache-Control du serveur selon l'implémentation
+     exacte du cache HTTP de la WebView) — à incrémenter à chaque modification de ce fichier. -->
+<script src="mobile-bridge.js?v=20260918c" defer></script>
 </body>
 </html>
