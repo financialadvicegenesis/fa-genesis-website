@@ -10515,7 +10515,7 @@ app.post('/api/auth/register', async (req, res) => {
             notifyUser(email, 'client', 'welcome_bonus',
                 'Bonus de bienvenue — +' + _bonusQG + ' QG !',
                 'Félicitations ' + prenom + ' ! Vous recevez ' + _bonusQG + ' QG en bonus de bienvenue. Cumulez des points en réalisant des prestations et montez en niveau !',
-                '/app.html'
+                '/app.html#profil'
             );
         }
 
