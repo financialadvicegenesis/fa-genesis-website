@@ -10578,7 +10578,7 @@ function _jeremieSpeak(text){
 //    l'app Chrome elle-même), donc jamais disponible dans l'app native. Sans ce chemin natif, le
 //    micro y était silencieusement masqué pour tout le monde.
 // 2) Web/PWA : SpeechRecognition du navigateur, inchangé — non supporté sur Safari/iOS.
-var _jeremieRecognition=null, _jeremieListening=false, _jeremieUseNativeSpeech=false;
+var _jeremieRecognition=null, _jeremieListening=false, _jeremieUseNativeSpeech=false, _jeremiePending=false;
 function _jeremieInitVoiceInput(){
   var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   if(isNative && window.FAGMobile && typeof window.FAGMobile.isNativeSpeechAvailable==='function'){
@@ -10586,10 +10586,16 @@ function _jeremieInitVoiceInput(){
       if(avail){
         _jeremieUseNativeSpeech = true;
         if(typeof window.FAGMobile.onVoiceListeningChange==='function'){
+          // Reflète l'écoute RÉELLEMENT confirmée côté natif (après l'éventuelle boîte de
+          // dialogue de permission) — _jeremiePending couvre l'attente avant cette confirmation,
+          // pour qu'un appui pendant ce court instant déclenche bien "arrêter" plutôt que de
+          // repartir sur "démarrer" une deuxième fois en parallèle.
           window.FAGMobile.onVoiceListeningChange(function(listening){
             _jeremieListening = listening;
-            var b=document.getElementById('jeremie-mic-btn'); if(b) b.classList.toggle('listening', listening);
-            var s=document.getElementById('jeremie-sheet'); if(s) s.classList.toggle('is-listening', listening);
+            if(listening) _jeremiePending = false;
+            var active = listening || _jeremiePending;
+            var b=document.getElementById('jeremie-mic-btn'); if(b) b.classList.toggle('listening', active);
+            var s=document.getElementById('jeremie-sheet'); if(s) s.classList.toggle('is-listening', active);
           });
         }
       } else {
@@ -10629,15 +10635,19 @@ function _jeremieInitWebSpeechInput(){
 function toggleJeremieVoiceInput(){
   if(_jeremieUseNativeSpeech){
     var nBtn=document.getElementById('jeremie-mic-btn'); var nSheet=document.getElementById('jeremie-sheet');
-    if(_jeremieListening){
+    // _jeremiePending couvre la fenêtre entre l'appui et la confirmation native (boîte de
+    // dialogue de permission éventuelle incluse) — sans ce cas, un appui pendant cette fenêtre
+    // ne correspondait à AUCUNE des deux branches ci-dessous (ni "en écoute" puisque pas encore
+    // confirmé, ni "au repos" puisqu'un appel était déjà parti) et ne faisait donc rien.
+    if(_jeremieListening || _jeremiePending){
       if(window.FAGMobile && typeof window.FAGMobile.stopVoiceRecognition==='function') window.FAGMobile.stopVoiceRecognition();
       return;
     }
-    _jeremieListening=true;
+    _jeremiePending=true;
     if(nBtn) nBtn.classList.add('listening');
     if(nSheet) nSheet.classList.add('is-listening');
     window.FAGMobile.startVoiceRecognition().then(function(res){
-      _jeremieListening=false;
+      _jeremiePending=false; _jeremieListening=false;
       if(nBtn) nBtn.classList.remove('listening');
       if(nSheet) nSheet.classList.remove('is-listening');
       if(res && res.text){
@@ -10647,7 +10657,7 @@ function toggleJeremieVoiceInput(){
         showToast('Micro indisponible', res.error, 'error');
       }
     }).catch(function(){
-      _jeremieListening=false;
+      _jeremiePending=false; _jeremieListening=false;
       if(nBtn) nBtn.classList.remove('listening');
       if(nSheet) nSheet.classList.remove('is-listening');
     });
