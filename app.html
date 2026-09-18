@@ -10530,7 +10530,7 @@ function _jeremieInitAvatars(){
     var el=document.getElementById(ids[i]);
     if(el) el.innerHTML=_jeremieAvatarMarkup();
   }
-  _jeremieUpdateVoiceBtn();
+  _jeremieInitVoiceOutput();
 }
 function _jeremieSetEmotion(emoji){
   var ids=['jeremie-fab-emotion','jeremie-hdr-emotion','jeremie-immersive-emotion'];
@@ -10549,22 +10549,52 @@ function toggleJeremieImmersive(){
   var isImmersive=sheet.classList.contains('immersive');
   if(btn) btn.innerHTML=isImmersive?'<i class="fa-solid fa-compress"></i>':'<i class="fa-solid fa-expand"></i>';
 }
-// Voix de sortie (Jérémie lit ses réponses) - speechSynthesis, natif navigateur
+// Voix de sortie (Jérémie lit ses réponses). Deux moteurs possibles : le plugin natif
+// @capacitor-community/text-to-speech (app Android/iOS, via window.FAGMobile.speak) ou
+// speechSynthesis du navigateur (web/PWA). speechSynthesis n'existe PAS dans la WebView
+// Android système (même limitation que window.SpeechRecognition pour la dictée, voir
+// mobile-bridge.js) : sans le chemin natif, ce bouton restait invisible sur l'app native.
 var _jeremieVoiceOn=(function(){ try{ return localStorage.getItem('fa_genesis_jeremie_voice')==='1'; }catch(e){ return false; } })();
+var _jeremieUseNativeVoiceOutput=false;
+function _jeremieInitVoiceOutput(){
+  var check=function(){
+    if(window.FAGMobile && typeof window.FAGMobile.isNativeVoiceOutputAvailable==='function' && window.FAGMobile.isNativeVoiceOutputAvailable()){
+      _jeremieUseNativeVoiceOutput=true;
+    }
+    _jeremieUpdateVoiceBtn();
+  };
+  var isNative=!!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  if(isNative && !(window.FAGMobile && window.FAGMobile.ready)){
+    // mobile-bridge.js est chargé en `defer` : il peut ne pas encore avoir tourné quand cette
+    // fonction est appelée (script inline exécuté pendant le parsing du document) - attendre
+    // l'événement fagmobile:ready plutôt que de conclure à tort que le natif est indisponible.
+    document.addEventListener('fagmobile:ready', check, { once:true });
+  }
+  check();
+}
 function _jeremieUpdateVoiceBtn(){
   var btn=document.getElementById('jeremie-voice-toggle'); if(!btn) return;
-  if(!('speechSynthesis' in window)){ btn.style.display='none'; return; }
+  if(!_jeremieUseNativeVoiceOutput && !('speechSynthesis' in window)){ btn.style.display='none'; return; }
+  btn.style.display='';
   btn.innerHTML=_jeremieVoiceOn?'<i class="fa-solid fa-volume-high"></i>':'<i class="fa-solid fa-volume-xmark"></i>';
   btn.classList.toggle('active',_jeremieVoiceOn);
 }
 function toggleJeremieVoiceOutput(){
   _jeremieVoiceOn=!_jeremieVoiceOn;
   try{ localStorage.setItem('fa_genesis_jeremie_voice',_jeremieVoiceOn?'1':'0'); }catch(e){}
-  if(!_jeremieVoiceOn && ('speechSynthesis' in window)) window.speechSynthesis.cancel();
+  if(!_jeremieVoiceOn){
+    if(_jeremieUseNativeVoiceOutput && window.FAGMobile && typeof window.FAGMobile.stopSpeaking==='function') window.FAGMobile.stopSpeaking();
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  }
   _jeremieUpdateVoiceBtn();
 }
 function _jeremieSpeak(text){
-  if(!('speechSynthesis' in window)||!text) return;
+  if(!text) return;
+  if(_jeremieUseNativeVoiceOutput){
+    if(window.FAGMobile && typeof window.FAGMobile.speak==='function') window.FAGMobile.speak(text,'fr-FR');
+    return;
+  }
+  if(!('speechSynthesis' in window)) return;
   try{
     window.speechSynthesis.cancel();
     var u=new SpeechSynthesisUtterance(text);

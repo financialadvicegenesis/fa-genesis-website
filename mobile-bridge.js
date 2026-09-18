@@ -300,6 +300,31 @@
     // Android lui-même (Gboard) — gratuit, sans clé API, et confirmé fiable sur ce même appareil
     // là où l'intégration native ne l'était pas. Rien à faire ici : un <textarea> standard suffit.
 
+    // ── Voix de sortie native (Jérémie lit ses réponses) ───────────────────────
+    // @capacitor-community/text-to-speech — window.speechSynthesis (Web Speech Synthesis API) du
+    // navigateur n'est PAS implémenté par la WebView Android système (même limitation déjà
+    // rencontrée avec window.SpeechRecognition pour la dictée) : découvert après coup, le bouton
+    // haut-parleur de la conversation Jérémie se masquait donc silencieusement dans l'app native
+    // (voir app.html, _jeremieUpdateVoiceBtn) sans que ça ait jamais été vérifié avant. Ce plugin
+    // utilise le moteur de synthèse vocale du SYSTÈME Android (android.speech.tts.TextToSpeech),
+    // un sous-système nettement plus universellement disponible que la reconnaissance vocale
+    // (pas la même restriction de visibilité de package pour les apps tierces).
+    window.FAGMobile.isNativeVoiceOutputAvailable = function() {
+        return !!Plugins.TextToSpeech;
+    };
+    window.FAGMobile.speak = async function(text, lang) {
+        try {
+            if (!Plugins.TextToSpeech || !text) return false;
+            await Plugins.TextToSpeech.speak({
+                text: text, lang: lang || 'fr-FR', rate: 1.0, pitch: 1.0, volume: 1.0
+            });
+            return true;
+        } catch(e) { console.warn('[FAG Mobile] speak:', e.message); return false; }
+    };
+    window.FAGMobile.stopSpeaking = async function() {
+        try { if (Plugins.TextToSpeech) await Plugins.TextToSpeech.stop(); } catch(e) {}
+    };
+
     // ── Safe-area (notch iPhone / Android) ─────────────────────────────────────
     document.documentElement.style.setProperty('--safe-top',    'env(safe-area-inset-top, 0px)');
     document.documentElement.style.setProperty('--safe-bottom', 'env(safe-area-inset-bottom, 0px)');
