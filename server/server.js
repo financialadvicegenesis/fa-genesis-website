@@ -2335,6 +2335,26 @@ app.post('/api/notifications/read-all', function(req, res) {
     res.json({ ok: true });
 });
 
+// POST /api/notifications/:id/delete — suppression d'une notification précise par son
+// destinataire (façon Facebook : "Supprimer cette notification"). Les messages n'apparaissent
+// jamais ici (voir GET /api/notifications, filtre message-client/message-partner) — leur
+// suppression suit son propre mécanisme dédié (voir /api/partner/inbox/:id/delete).
+app.post('/api/notifications/:id/delete', function(req, res) {
+    var identity = resolveCurrentIdentity(req);
+    if (!identity) return res.status(401).json({ error: 'Non autorise' });
+
+    var all = loadNotifications();
+    var idx = all.findIndex(function(n) { return n.id === req.params.id; });
+    if (idx === -1) return res.status(404).json({ error: 'Notification non trouvee' });
+    var n = all[idx];
+    var owns = identity.role === 'admin' ? n.role === 'admin' : (n.role === identity.role && n.email && n.email.toLowerCase() === identity.email.toLowerCase());
+    if (!owns) return res.status(403).json({ error: 'Acces non autorise' });
+
+    all.splice(idx, 1);
+    saveNotifications(all);
+    res.json({ ok: true });
+});
+
 // ── Litiges (Phase 6) ──
 
 function buildDisputeSystemPrompt(dispute) {

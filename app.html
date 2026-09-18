@@ -9395,11 +9395,45 @@ function loadNotifInbox(){
     }).catch(function(){});
 }
 function _renderNotifItem(n){
-  return '<div class="notif-item'+(n.read?'':' unread')+'" onclick="openNotifItem(\''+n.id+'\',\''+(n.link||'').replace(/'/g,"\\'")+'\')">'
-    +'<div class="notif-item-title">'+(n.title||'')+'</div>'
+  return '<div class="notif-item'+(n.read?'':' unread')+'" id="notif-item-'+n.id+'" style="position:relative;" onclick="openNotifItem(\''+n.id+'\',\''+(n.link||'').replace(/'/g,"\\'")+'\')">'
+    +'<button onclick="event.stopPropagation();deleteNotifItem(\''+n.id+'\')" aria-label="Supprimer cette notification" style="position:absolute;top:8px;right:8px;width:26px;height:26px;border:none;background:none;color:#666;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:50%;"><i class="fa-solid fa-xmark"></i></button>'
+    +'<div class="notif-item-title" style="padding-right:26px;">'+(n.title||'')+'</div>'
     +'<div class="notif-item-body">'+(n.body||'')+'</div>'
     +'<div class="notif-item-time">'+_notifRelTime(n.created_at)+'</div>'
     +'</div>';
+}
+// Suppression d'une notification (façon Facebook : "Supprimer cette notification") — jamais
+// pour les messages, qui n'apparaissent de toute façon jamais dans cette liste (voir GET
+// /api/notifications côté serveur) et suivent leur propre mécanisme de suppression dédié.
+// Retire la carte immédiatement (retour visuel instantané) sans attendre la réponse serveur ;
+// la remet en cas d'échec réseau pour ne jamais désynchroniser silencieusement l'affichage.
+function deleteNotifItem(id){
+  var token = _currentAuthToken();
+  if(!token) return;
+  var el = document.getElementById('notif-item-'+id);
+  var placeholder = null;
+  if(el){
+    placeholder = document.createComment('notif-'+id);
+    el.parentNode.insertBefore(placeholder, el);
+    el.remove();
+  }
+  fetch((window.FA_GENESIS_API||API)+'/api/notifications/'+id+'/delete',{method:'POST',headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if(res && res.ok){
+        if(placeholder && placeholder.parentNode) placeholder.remove();
+        if(typeof loadNotifInbox==='function') loadNotifInbox();
+      } else if(el && placeholder && placeholder.parentNode){
+        placeholder.parentNode.insertBefore(el, placeholder);
+        placeholder.remove();
+      }
+    })
+    .catch(function(){
+      if(el && placeholder && placeholder.parentNode){
+        placeholder.parentNode.insertBefore(el, placeholder);
+        placeholder.remove();
+      }
+    });
 }
 function _notifRelTime(iso){
   try{
