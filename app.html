@@ -186,7 +186,6 @@ a{text-decoration:none;color:inherit}
   .jeremie-avatar,
   .jeremie-hdr-ico,
   .jeremie-hdr-ico::before,
-  .jeremie-mic-btn.listening,
   .jeremie-thinking i {
     animation: none !important;
   }
@@ -2171,8 +2170,6 @@ a{text-decoration:none;color:inherit}
 #jeremie-sheet .chat-compose{position:relative;z-index:1;padding-bottom:calc(10px + var(--safe));align-items:flex-end;}
 #jeremie-sheet .chat-text-input{border-radius:22px;padding:11px 16px;resize:none;max-height:120px;min-height:42px;line-height:1.35;overflow-y:auto;}
 #jeremie-sheet .chat-send-btn{width:38px;height:38px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.jeremie-mic-btn{width:38px;height:38px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#1a1a1a;border:1.5px solid #262626;color:#aaa;cursor:pointer;font-size:14px;}
-.jeremie-mic-btn.listening{background:#FFD700;color:#000;border-color:#FFD700;animation:jeremieMicPulse 1s ease-in-out infinite;}
 .jeremie-thinking{position:relative;z-index:1;align-self:flex-start;display:flex;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #222;padding:10px 14px;color:#FFD700;font-size:12px;}
 .jeremie-thinking i{animation:jeremieBrainPulse 1.3s ease-in-out infinite;}
 @keyframes jeremieOrbPulse{0%,100%{box-shadow:0 4px 18px rgba(255,215,0,.5),0 0 0 1px rgba(255,215,0,.25);}50%{box-shadow:0 4px 28px rgba(255,215,0,.85),0 0 0 1px rgba(255,215,0,.45);}}
@@ -2183,7 +2180,6 @@ a{text-decoration:none;color:inherit}
 @keyframes jeremieBlink{0%,90%,100%{transform:scaleY(1);}93%,96%{transform:scaleY(.08);}}
 @keyframes jeremieTalk{0%,100%{transform:scaleY(1);}50%{transform:scaleY(.4);}}
 @keyframes jeremieListenGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(255,215,0,0));}50%{filter:drop-shadow(0 0 7px rgba(255,215,0,.85));}}
-@keyframes jeremieMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,.6);}50%{box-shadow:0 0 0 6px rgba(255,215,0,0);}}
 @keyframes jeremieBrainPulse{0%,100%{opacity:.45;transform:scale(.9);}50%{opacity:1;transform:scale(1.1);}}
 
 /* ── ESPACE CLIENT IN-APP ── */
@@ -3493,8 +3489,13 @@ setTimeout(_genesisSignalNativeReady, 8000);
       </div>
       <div class="chat-messages" id="jeremie-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>
       <div class="chat-compose">
+        <!-- Pas de bouton micro personnalisé : la dictée vocale passe par le micro du clavier
+             Android lui-même (Gboard, à côté de la barre d'espace) directement dans ce champ de
+             texte standard — gratuit, sans clé API, et confirmé fiable sur appareil réel, là où
+             quatre tentatives successives d'intégration native (API Android SpeechRecognizer
+             directe, puis via un plugin Capacitor tiers éprouvé) ont toutes échoué de façon
+             silencieuse et inexpliquée sur au moins un appareil de test réel. -->
         <textarea id="jeremie-input" class="chat-text-input" rows="1" placeholder="Posez votre question..." oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';" onkeydown="if((event.key==='Enter'||event.keyCode===13)&&!event.shiftKey){event.preventDefault();sendJeremieMessage();}" onfocus="var s=document.getElementById('jeremie-sheet');if(s)s.classList.add('is-listening');" onblur="var s=document.getElementById('jeremie-sheet');if(s)s.classList.remove('is-listening');"></textarea>
-        <button class="jeremie-mic-btn" id="jeremie-mic-btn" onclick="toggleJeremieVoiceInput()" aria-label="Parler à Jérémie"><i class="fa-solid fa-microphone"></i></button>
         <button class="chat-send-btn" id="jeremie-send-btn" onclick="sendJeremieMessage()">&#8593;</button>
       </div>
     </div>
@@ -10530,7 +10531,6 @@ function _jeremieInitAvatars(){
     if(el) el.innerHTML=_jeremieAvatarMarkup();
   }
   _jeremieUpdateVoiceBtn();
-  _jeremieInitVoiceInput();
 }
 function _jeremieSetEmotion(emoji){
   var ids=['jeremie-fab-emotion','jeremie-hdr-emotion','jeremie-immersive-emotion'];
@@ -10572,132 +10572,13 @@ function _jeremieSpeak(text){
     window.speechSynthesis.speak(u);
   }catch(e){}
 }
-// Voix d'entrée (parler à Jérémie). Deux chemins possibles :
-// 1) App native Android : @capacitor-community/speech-recognition (voir mobile-bridge.js) — la
-//    Web Speech API du navigateur (ci-dessous) n'est PAS implémentée par la WebView Android
-//    système (seulement par l'app Chrome elle-même), donc jamais disponible dans l'app native.
-//    Sans ce chemin natif, le micro y était silencieusement masqué pour tout le monde.
-// 2) Web/PWA : SpeechRecognition du navigateur, inchangé — non supporté sur Safari/iOS.
-var _jeremieRecognition=null, _jeremieListening=false, _jeremieUseNativeSpeech=false, _jeremiePending=false;
-function _jeremieInitVoiceInput(){
-  var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-  if(isNative && window.FAGMobile && typeof window.FAGMobile.isNativeSpeechAvailable==='function'){
-    window.FAGMobile.isNativeSpeechAvailable().then(function(avail){
-      if(avail){
-        _jeremieUseNativeSpeech = true;
-        if(typeof window.FAGMobile.onVoiceListeningChange==='function'){
-          // Reflète l'écoute RÉELLEMENT confirmée côté natif (après l'éventuelle boîte de
-          // dialogue de permission) — _jeremiePending couvre l'attente avant cette confirmation,
-          // pour qu'un appui pendant ce court instant déclenche bien "arrêter" plutôt que de
-          // repartir sur "démarrer" une deuxième fois en parallèle.
-          window.FAGMobile.onVoiceListeningChange(function(listening){
-            _jeremieListening = listening;
-            if(listening) _jeremiePending = false;
-            var active = listening || _jeremiePending;
-            var b=document.getElementById('jeremie-mic-btn'); if(b) b.classList.toggle('listening', active);
-            var s=document.getElementById('jeremie-sheet'); if(s) s.classList.toggle('is-listening', active);
-          });
-        }
-      } else {
-        // Plugin absent (ancienne version de l'app pas encore mise à jour) ou matériel sans
-        // reconnaissance vocale — repli sur la Web Speech API, sans effet dans une WebView
-        // Android système (le bouton se masquera alors, comme avant ce correctif).
-        _jeremieInitWebSpeechInput();
-      }
-    }).catch(function(){ _jeremieInitWebSpeechInput(); });
-    return;
-  }
-  _jeremieInitWebSpeechInput();
-}
-function _jeremieInitWebSpeechInput(){
-  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  var btn=document.getElementById('jeremie-mic-btn');
-  if(!SR){ if(btn) btn.style.display='none'; return; }
-  _jeremieRecognition=new SR();
-  _jeremieRecognition.lang='fr-FR';
-  _jeremieRecognition.interimResults=false;
-  _jeremieRecognition.maxAlternatives=1;
-  _jeremieRecognition.onresult=function(e){
-    var text=(e.results&&e.results[0]&&e.results[0][0]&&e.results[0][0].transcript)||'';
-    var inp=document.getElementById('jeremie-input');
-    if(inp&&text){ inp.value=(inp.value?inp.value+' ':'')+text; inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,120)+'px'; inp.focus(); }
-  };
-  _jeremieRecognition.onend=function(){
-    _jeremieListening=false;
-    var b=document.getElementById('jeremie-mic-btn'); if(b) b.classList.remove('listening');
-    var s=document.getElementById('jeremie-sheet'); if(s) s.classList.remove('is-listening');
-  };
-  _jeremieRecognition.onerror=function(){
-    _jeremieListening=false;
-    var b=document.getElementById('jeremie-mic-btn'); if(b) b.classList.remove('listening');
-  };
-}
-function toggleJeremieVoiceInput(){
-  if(_jeremieUseNativeSpeech){
-    var nBtn=document.getElementById('jeremie-mic-btn'); var nSheet=document.getElementById('jeremie-sheet');
-    // _jeremiePending couvre la fenêtre entre l'appui et la confirmation native (boîte de
-    // dialogue de permission éventuelle incluse) — sans ce cas, un appui pendant cette fenêtre
-    // ne correspondait à AUCUNE des deux branches ci-dessous (ni "en écoute" puisque pas encore
-    // confirmé, ni "au repos" puisqu'un appel était déjà parti) et ne faisait donc rien.
-    if(_jeremieListening || _jeremiePending){
-      if(window.FAGMobile && typeof window.FAGMobile.stopVoiceRecognition==='function') window.FAGMobile.stopVoiceRecognition();
-      return;
-    }
-    _jeremiePending=true;
-    if(nBtn) nBtn.classList.add('listening');
-    if(nSheet) nSheet.classList.add('is-listening');
-    // Deux étapes DISTINCTES et explicites, l'une après l'autre : demander la permission, PUIS
-    // démarrer l'écoute — jamais combinées dans un seul aller-retour natif (voir mobile-bridge.js,
-    // historique du bug "ça ne passe pas" après avoir accordé la permission).
-    (async function(){
-      try{
-        if(!window.FAGMobile || typeof window.FAGMobile.requestMicPermission!=='function'){
-          throw new Error('Indisponible');
-        }
-        var granted = await window.FAGMobile.requestMicPermission();
-        if(!granted){
-          _jeremiePending=false;
-          if(nBtn) nBtn.classList.remove('listening');
-          if(nSheet) nSheet.classList.remove('is-listening');
-          if(typeof showToast==='function') showToast('Micro indisponible','Autorisez le microphone dans les paramètres de l\'application pour parler à Jérémie.','error');
-          return;
-        }
-        var res = await window.FAGMobile.startVoiceRecognition();
-        _jeremiePending=false; _jeremieListening=false;
-        if(nBtn) nBtn.classList.remove('listening');
-        if(nSheet) nSheet.classList.remove('is-listening');
-        if(res && res.text){
-          var inp=document.getElementById('jeremie-input');
-          if(inp){ inp.value=(inp.value?inp.value+' ':'')+res.text; inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,120)+'px'; inp.focus(); }
-        } else if(res && res.error){
-          if(typeof showToast==='function') showToast('Micro indisponible', res.error, 'error');
-        } else if(res && res.needsFeedback && typeof showToast==='function'){
-          // Rien compris (silence, ou parole trop courte) — signalé explicitement au lieu d'un
-          // silence total qui donnerait l'impression que le bouton ne réagit pas.
-          showToast('Jérémie','Je n\'ai rien entendu, réessayez.','info');
-        }
-      }catch(e){
-        _jeremiePending=false; _jeremieListening=false;
-        if(nBtn) nBtn.classList.remove('listening');
-        if(nSheet) nSheet.classList.remove('is-listening');
-        if(typeof showToast==='function') showToast('Micro indisponible', (e&&e.message)||'Erreur micro', 'error');
-      }
-    })();
-    return;
-  }
-  if(!_jeremieRecognition) return;
-  var btn=document.getElementById('jeremie-mic-btn'); var sheet=document.getElementById('jeremie-sheet');
-  if(_jeremieListening){
-    _jeremieRecognition.stop();
-  } else {
-    try{
-      _jeremieRecognition.start();
-      _jeremieListening=true;
-      if(btn) btn.classList.add('listening');
-      if(sheet) sheet.classList.add('is-listening');
-    }catch(e){}
-  }
-}
+// Dictée vocale (parler à Jérémie) : AUCUN bouton micro personnalisé — le champ de texte
+// ci-dessus (#jeremie-input) est un <textarea> standard, ce qui suffit pour que le micro du
+// clavier Android (Gboard) y dicte directement. Quatre tentatives successives d'intégration
+// native (API Android SpeechRecognizer directe, puis via un plugin Capacitor tiers éprouvé) ont
+// toutes échoué de façon silencieuse et inexpliquée sur au moins un appareil de test réel, alors
+// que la dictée du clavier système fonctionnait parfaitement sur ce même appareil — gratuit,
+// sans clé API, et déjà confirmé fiable là où l'intégration maison ne l'était pas.
 // ── JÉRÉMIE FAB — DRAGGABLE (top/left, plein écran) ─────────
 var _jerMoved = false;
 function _initJeremieDrag(){
@@ -10781,7 +10662,6 @@ function closeJeremieChat(){
   var sheet=document.getElementById('jeremie-sheet'); var overlay=document.getElementById('jeremie-overlay');
   if(!sheet||!overlay) return;
   sheet.classList.remove('up');
-  if(_jeremieListening&&_jeremieRecognition) _jeremieRecognition.stop();
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
   setTimeout(function(){ overlay.classList.remove('open'); },460);
 }
