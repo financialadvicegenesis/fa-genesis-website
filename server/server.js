@@ -2526,12 +2526,6 @@ app.post('/api/admin/students/:id/verify', function(req, res) {
         users[idx].updatedAt = new Date().toISOString();
         saveUsers(users);
         notifyUser(users[idx].email, 'client', 'student_verified', 'Compte étudiant vérifié ✓', 'Votre justificatif étudiant a été validé par FA GENESIS. Vous bénéficiez maintenant des offres étudiants.', '#profil');
-        // FCM natif Android : inclure type dans data pour que l'app mette à jour l'UI sans rechargement
-        sendFcmToUser(users[idx].id, {
-            title: 'Compte étudiant vérifié ✓',
-            body: 'Votre justificatif a été validé. Vous bénéficiez maintenant des tarifs étudiants.',
-            data: { type: 'student_verified', url: '/app.html' }
-        });
         emailService.sendEmail && emailService.sendEmail({
             to: users[idx].email,
             subject: 'Votre compte étudiant FA GENESIS est vérifié ✓',
@@ -10743,7 +10737,7 @@ app.get('/api/auth/me', (req, res) => {
             notifyUser(user.email, 'client', 'level_up',
                 '🎉 Vous avez atteint le niveau ' + newLevel.label + ' !',
                 'Félicitations ! De nouveaux avantages sont maintenant débloqués.',
-                '/app.html');
+                '/app.html#profil');
             try {
                 emailService.sendLevelUpEmail(user.email, (user.prenom || user.email), newLevel.label)
                     .catch(function(e) { console.warn('[LEVEL_UP_EMAIL]', e.message); });
@@ -22724,7 +22718,7 @@ app.put('/api/reservations/:id/status', function(req, res) {
         var clientEmailRes = reservations[idx].client_email;
         if (clientEmailRes) {
             var labelRes = newStatus === 'confirmed' ? 'confirmée ✅' : 'refusée ❌';
-            sendPushToUser(clientEmailRes, { title: 'Réservation ' + labelRes, body: (reservations[idx].product_name || 'Coworking') + ' — ' + labelRes, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html', tag: 'reservation' });
+            sendPushToUser(clientEmailRes, { title: 'Réservation ' + labelRes, body: (reservations[idx].product_name || 'Coworking') + ' — ' + labelRes, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#reservations', tag: 'reservation' });
         }
         res.json({ ok: true, reservation: reservations[idx] });
     } catch (e) {
@@ -22887,7 +22881,7 @@ app.post('/api/coworking/messages', function(req, res) {
                 if (orderForPush && orderForPush.client_info) resForPush = { client_email: orderForPush.client_info.email };
             }
             if (resForPush && resForPush.client_email) {
-                sendPushToUser(resForPush.client_email, { title: 'Nouveau message', body: 'COM VISA : ' + content.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html', tag: 'message-cw' });
+                sendPushToUser(resForPush.client_email, { title: 'Nouveau message', body: 'COM VISA : ' + content.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#reservations', tag: 'message-cw' });
             }
         }
         res.json({ ok: true, message: msg });
