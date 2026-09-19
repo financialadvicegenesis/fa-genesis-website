@@ -1437,6 +1437,22 @@ function createPartnerServiceDispatch(order) {
         saveDispatches(dispatches);
         console.log('[DISPATCH] Mission partenaire créée — en attente acceptation : ' + order.id + ' → ' + order.partner_id);
 
+        // Notification prestataire CENTRALISÉE ICI (et non chez chaque appelant) : cette fonction
+        // est appelée depuis au moins 8 endroits différents (webhooks Stripe, PayPal, /api/payments/
+        // verify, /api/payments/stripe/sync-intent...) et un audit a montré que seuls 2 des 8
+        // notifiaient réellement le prestataire — les autres (PayPal, verify tier "large", le
+        // fallback sync-intent) créaient la mission "en attente d'acceptation" (délai 24h) SANS
+        // jamais prévenir le prestataire, qui ne pouvait la découvrir qu'en ouvrant l'app par
+        // hasard. En notifiant ici, à la source, un futur appelant ne peut plus oublier cette
+        // étape. Ne pas dupliquer un notifyUser(..., 'partner', 'mission_pending', ...) séparé
+        // chez un appelant : il ferait doublon avec celui-ci.
+        var _dispPartnerEmail = partner && (partner.email || partner.contact_email);
+        if (_dispPartnerEmail) {
+            notifyUser(_dispPartnerEmail, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
+                clientPrenom + ' a réservé « ' + (order.product_name || 'votre prestation') + ' ». Le paiement est sécurisé. Acceptez ou refusez dans les 24h.',
+                '#partner:mission:' + dispatch.id);
+        }
+
         // Afficher immédiatement l'acompte comme "En attente" dans le wallet du prestataire (modèle Fiverr)
         if (partnerDeposit > 0) {
             var _pendingDesc = 'Mission : ' + (order.product_name || 'Prestation') + _paymentStageSuffix('deposit', order) + ' (en attente)';
@@ -1678,15 +1694,11 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                         var _psNewDispAuth = createPartnerServiceDispatch(_psOrderAuth);
                         if (_psNewDispAuth) {
                             var _psPartnerAuth = getPartnerById(_psOrderAuth.partner_id);
-                            var _psPartnerEmailAuth = (_psPartnerAuth && (_psPartnerAuth.email || _psPartnerAuth.contact_email)) || _psOrderAuth.partner_email || null;
                             var _psPartnerNameAuth  = (_psPartnerAuth && (_psPartnerAuth.prenom ? (_psPartnerAuth.prenom + ' ' + (_psPartnerAuth.nom || '')) : _psPartnerAuth.company)) || _psOrderAuth.partner_name || 'votre prestataire';
-                            var _psClientFnAuth  = (_psOrderAuth.client_info && _psOrderAuth.client_info.first_name) || 'Un client';
                             var _psClientEmailAuth = _psOrderAuth.client_info && _psOrderAuth.client_info.email;
-                            if (_psPartnerEmailAuth) {
-                                notifyUser(_psPartnerEmailAuth, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
-                                    _psClientFnAuth + ' a réservé « ' + (_psOrderAuth.product_name || 'votre prestation') + ' ». Le paiement est sécurisé par GENESIS SAFE™. Acceptez ou refusez dans les 24h.',
-                                    '#partner:mission:' + _psNewDispAuth.id);
-                            }
+                            // Notification prestataire désormais centralisée dans
+                            // createPartnerServiceDispatch() elle-même (voir son commentaire) -
+                            // ne pas la dupliquer ici.
                             if (_psClientEmailAuth) {
                                 notifyUser(_psClientEmailAuth, 'client', 'payment_success', '✅ Paiement GENESIS SAFE™ sécurisé !',
                                     'Votre paiement est sécurisé. ' + _psPartnerNameAuth + ' va prendre en charge votre demande sous 24h.',
@@ -1753,15 +1765,11 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                             var _psNewDispWh = createPartnerServiceDispatch(_psOrderWh);
                             if (_psNewDispWh) {
                                 var _psPartnerWh = getPartnerById(_psOrderWh.partner_id);
-                                var _psPartnerEmailWh = (_psPartnerWh && (_psPartnerWh.email || _psPartnerWh.contact_email)) || _psOrderWh.partner_email || null;
                                 var _psPartnerNameWh  = (_psPartnerWh && (_psPartnerWh.prenom ? (_psPartnerWh.prenom + ' ' + (_psPartnerWh.nom || '')) : _psPartnerWh.company)) || _psOrderWh.partner_name || 'votre prestataire';
-                                var _psClientFnWh  = (_psOrderWh.client_info && _psOrderWh.client_info.first_name) || 'Un client';
                                 var _psClientEmailWh = _psOrderWh.client_info && _psOrderWh.client_info.email;
-                                if (_psPartnerEmailWh) {
-                                    notifyUser(_psPartnerEmailWh, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
-                                        _psClientFnWh + ' a payé pour "' + (_psOrderWh.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
-                                        '#partner:mission:' + _psNewDispWh.id);
-                                }
+                                // Notification prestataire désormais centralisée dans
+                                // createPartnerServiceDispatch() elle-même (voir son commentaire) -
+                                // ne pas la dupliquer ici.
                                 if (_psClientEmailWh) {
                                     notifyUser(_psClientEmailWh, 'client', 'payment_success', '✅ Paiement réussi !',
                                         'Votre paiement a bien été reçu. ' + _psPartnerNameWh + ' va prendre en charge votre demande sous 24h.',
@@ -6030,7 +6038,6 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
             } catch(e) { console.error('[PAY_CONFIRM] Email setup:', e.message); }
             if (updatedOrder.product_type === 'partner_service') {
                 const psPartner = getPartnerById(updatedOrder.partner_id);
-                const psPartnerEmail = psPartner ? (psPartner.email || psPartner.contact_email || null) : null;
                 const psPartnerName = psPartner ? (psPartner.prenom ? (psPartner.prenom + ' ' + (psPartner.nom || '')) : psPartner.company || 'votre prestataire') : 'votre prestataire';
                 // Email récapitulatif envoyé immédiatement — indépendamment de la création du dispatch
                 emailService.sendPartnerServiceOrderConfirmation(
@@ -6041,13 +6048,9 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                 ).catch(function(e){ console.error('[PAY_CONFIRM] Email commande partenaire:', e.message); });
                 const disp = createPartnerServiceDispatch(updatedOrder);
                 if (disp) {
-                    // Notifier le PRESTATAIRE : nouvelle commande payée, acceptation requise
-                    if (psPartnerEmail) {
-                        notifyUser(psPartnerEmail, 'partner', 'mission_pending',
-                            '🆕 Nouvelle commande !',
-                            ((updatedOrder.client_info && updatedOrder.client_info.first_name) || 'Un client') + ' a payé pour "' + (updatedOrder.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
-                            '#partner:mission:' + disp.id);
-                    }
+                    // Notification prestataire désormais centralisée dans
+                    // createPartnerServiceDispatch() elle-même (voir son commentaire) - ne pas
+                    // la dupliquer ici.
                     // Notifier le CLIENT : paiement réussi
                     notifyUser(ce, 'client', 'payment_success',
                         '✅ Paiement réussi !',
