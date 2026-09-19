@@ -3469,7 +3469,7 @@ setTimeout(_genesisSignalNativeReady, 8000);
     <span class="jeremie-avatar-clip" id="jeremie-fab-avatar"></span>
     <span class="jeremie-emotion-badge" id="jeremie-fab-emotion"></span>
   </button>
-  <div id="jeremie-overlay" onclick="if(event.target===this)closeJeremieChat()">
+  <div id="jeremie-overlay" onclick="if(event.target===this && !_jerOpenedViaTouch)closeJeremieChat()">
     <div id="jeremie-sheet">
       <div class="jeremie-hdr">
         <div class="jeremie-hdr-ico">
@@ -10627,6 +10627,13 @@ function _jeremieSpeak(text){
 // correspondre au clic en cours, donc n'est plus honoré.
 var _jerMoved = false;
 var _jerMovedAt = 0;
+// true pendant 500ms juste après une ouverture déclenchée par onEnd() (voir plus bas) :
+// 1) évite qu'un click synthétique tardif (qui suit le touchend) ne rouvre/refetch une
+//    deuxième fois via openJeremieChat() ;
+// 2) évite AUSSI que ce même click tardif, désormais reçu par le fond de #jeremie-overlay
+//    (qui vient d'apparaître par-dessus l'icône à ces mêmes coordonnées écran) plutôt que
+//    par l'icône elle-même, ne referme le chat qu'on vient tout juste d'ouvrir - symptôme
+//    observé : la conversation s'affichait puis disparaissait aussitôt au premier tap.
 var _jerOpenedViaTouch = false;
 function _initJeremieDrag(){
   var fab = document.getElementById('jeremie-fab');
