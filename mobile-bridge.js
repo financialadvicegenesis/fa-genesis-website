@@ -312,75 +312,48 @@
     window.FAGMobile.isNativeVoiceOutputAvailable = function() {
         return !!Plugins.TextToSpeech;
     };
-    // Android n'expose pas de champ "genre" sur les voix TTS (android.speech.tts.Voice) : la seule
-    // façon fiable, quel que soit le moteur/fabricant, de rendre la voix nettement plus masculine
-    // est de baisser le pitch. En bonus, si le moteur installé donne des noms de voix lisibles
-    // (certains moteurs OEM le font, contrairement au moteur Google qui utilise des codes du type
-    // "fr-fr-x-frd-local"), on tente aussi de repérer une voix explicitement masculine par son nom.
-    var _ttsMaleVoiceIdx, _ttsMaleVoiceLookupDone = false;
-    async function _resolveMaleVoiceIndex(lang) {
-        if (_ttsMaleVoiceLookupDone) return _ttsMaleVoiceIdx;
-        _ttsMaleVoiceLookupDone = true;
+    // Voix par défaut de Jérémie, identifiée avec l'utilisateur directement sur son appareil via
+    // un sélecteur temporaire (testé une voix à la fois, à l'oreille) : "fr-fr-x-frd-local" est
+    // l'identifiant interne (voice.getName() côté Android) d'une voix masculine du moteur Google
+    // Text-to-Speech - le moteur TTS le plus répandu sur Android, donc un bon choix par défaut
+    // pour la majorité des appareils. Android n'a pas de champ "genre" sur les voix TTS, donc pas
+    // de moyen de sélectionner "une voix d'homme" autrement que par cet identifiant précis validé
+    // manuellement. Si cette voix n'existe pas sur l'appareil (moteur OEM différent de Google TTS),
+    // repli sur un pitch abaissé + tentative de repérage par nom, moins fiable mais sans dépendance
+    // à un identifiant figé.
+    var JEREMIE_VOICE_URI = 'fr-fr-x-frd-local';
+    var _ttsResolved;
+    async function _resolveJeremieVoice(lang) {
+        if (_ttsResolved) return _ttsResolved;
+        var result = { pitch: 0.82 };
         try {
             var res = await Plugins.TextToSpeech.getSupportedVoices();
             var voices = (res && res.voices) || [];
             var langPrefix = (lang || 'fr-FR').split('-')[0].toLowerCase();
+            var maleGuessIdx;
             for (var i = 0; i < voices.length; i++) {
                 var v = voices[i];
                 if (!v.lang || v.lang.toLowerCase().indexOf(langPrefix) !== 0) continue;
-                // `name` est un libellé de langue générique ("français France"), identique pour
-                // toutes les voix - seul `voiceURI` (code interne, ex. "fr-fr-x-xxx-local") peut
-                // éventuellement contenir un indice de genre sur certains moteurs OEM.
-                if (/(^|[^a-z])(male|homme|man)([^a-z]|$)/i.test(v.voiceURI || v.name || '')) { _ttsMaleVoiceIdx = i; break; }
+                if (v.voiceURI === JEREMIE_VOICE_URI) { result.voice = i; result.pitch = 1.0; break; }
+                if (maleGuessIdx === undefined && /(^|[^a-z])(male|homme|man)([^a-z]|$)/i.test(v.voiceURI || v.name || '')) maleGuessIdx = i;
             }
+            if (result.voice === undefined && maleGuessIdx !== undefined) result.voice = maleGuessIdx;
         } catch(e) {}
-        return _ttsMaleVoiceIdx;
+        _ttsResolved = result;
+        return result;
     }
-    // voiceIndex : passé explicitement quand l'utilisateur a choisi une voix précise via le
-    // sélecteur de voix (app.html, openJeremieVoicePicker) - dans ce cas on respecte son choix
-    // tel quel (pitch neutre, l'utilisateur a déjà validé le rendu à l'oreille). Sans choix
-    // explicite, on retombe sur l'heuristique automatique (pitch abaissé + tentative de nom).
-    window.FAGMobile.speak = async function(text, lang, voiceIndex) {
+    window.FAGMobile.speak = async function(text, lang) {
         try {
             if (!Plugins.TextToSpeech || !text) return false;
-            var opts = { text: text, lang: lang || 'fr-FR', rate: 1.0, pitch: 1.0, volume: 1.0 };
-            if (typeof voiceIndex === 'number' && !isNaN(voiceIndex)) {
-                opts.voice = voiceIndex;
-            } else {
-                opts.pitch = 0.82;
-                var autoIdx = await _resolveMaleVoiceIndex(lang);
-                if (autoIdx !== undefined) opts.voice = autoIdx;
-            }
+            var resolved = await _resolveJeremieVoice(lang);
+            var opts = { text: text, lang: lang || 'fr-FR', rate: 1.0, pitch: resolved.pitch, volume: 1.0 };
+            if (resolved.voice !== undefined) opts.voice = resolved.voice;
             await Plugins.TextToSpeech.speak(opts);
             return true;
         } catch(e) { console.warn('[FAG Mobile] speak:', e.message); return false; }
     };
     window.FAGMobile.stopSpeaking = async function() {
         try { if (Plugins.TextToSpeech) await Plugins.TextToSpeech.stop(); } catch(e) {}
-    };
-    // Liste des voix disponibles pour une langue donnée, utilisée par le sélecteur de voix
-    // (app.html, openJeremieVoicePicker) pour laisser l'utilisateur tester et choisir lui-même -
-    // aucune API Android ne permettant de détecter le genre d'une voix de façon fiable, c'est la
-    // seule méthode garantie de trouver une voix masculine si l'appareil en propose une.
-    // IMPORTANT : le champ `name` du plugin (côté natif Android, TextToSpeech.java
-    // convertVoiceToJSObject) vaut juste `locale.getDisplayLanguage()+" "+locale.getDisplayCountry()`
-    // ("français France") - IDENTIQUE pour toutes les voix d'une même langue, donc inutile pour
-    // les distinguer. Le vrai identifiant unique par voix est `voiceURI` (= voice.getName() côté
-    // Android, ex. "fr-fr-x-xxx-local") - c'est lui qu'il faut afficher/comparer, pas `name`.
-    window.FAGMobile.listVoices = async function(lang) {
-        try {
-            if (!Plugins.TextToSpeech) return [];
-            var res = await Plugins.TextToSpeech.getSupportedVoices();
-            var voices = (res && res.voices) || [];
-            var langPrefix = (lang || 'fr-FR').split('-')[0].toLowerCase();
-            var out = [];
-            for (var i = 0; i < voices.length; i++) {
-                if (voices[i].lang && voices[i].lang.toLowerCase().indexOf(langPrefix) === 0) {
-                    out.push({ index: i, name: voices[i].name, voiceURI: voices[i].voiceURI, lang: voices[i].lang });
-                }
-            }
-            return out;
-        } catch(e) { return []; }
     };
 
     // ── Safe-area (notch iPhone / Android) ─────────────────────────────────────
