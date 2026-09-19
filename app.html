@@ -10633,15 +10633,27 @@ var _jerOpenedViaTouch = false;
 // non attrapées, au cas où une exception silencieuse interromprait l'exécution avant même
 // d'atteindre les points de log habituels.
 var _jerDiagEl = null;
+var _jerDiagCount = 0;
+function _jerDiagClear(){ if(_jerDiagEl) _jerDiagEl.textContent = ''; _jerDiagCount = 0; }
 function _jerDiag(msg){
   try{
     if(!_jerDiagEl){
-      _jerDiagEl = document.createElement('div');
+      var wrap = document.createElement('div');
       // Positionné en HAUT de l'écran, volontairement à distance du bouton Jérémie (bas-droite)
       // pour ne surtout pas devenir lui-même un obstacle par-dessus l'élément à tester.
-      _jerDiagEl.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;max-height:35vh;overflow-y:auto;background:rgba(0,0,0,.92);color:#0f0;font-size:10px;line-height:1.5;padding:8px;border-radius:8px;z-index:999999;font-family:monospace;white-space:pre-wrap;border:1px solid #0f0;pointer-events:none;';
-      document.body.appendChild(_jerDiagEl);
+      wrap.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;z-index:999999;pointer-events:none;';
+      var btn = document.createElement('button');
+      btn.textContent = 'Vider le journal';
+      btn.style.cssText = 'pointer-events:auto;display:block;margin-bottom:4px;background:#0f0;color:#000;font-weight:700;font-size:11px;padding:6px 10px;border-radius:6px;border:none;';
+      btn.onclick = _jerDiagClear;
+      wrap.appendChild(btn);
+      _jerDiagEl = document.createElement('div');
+      _jerDiagEl.style.cssText = 'pointer-events:none;max-height:32vh;overflow-y:auto;background:rgba(0,0,0,.92);color:#0f0;font-size:10px;line-height:1.5;padding:8px;border-radius:8px;font-family:monospace;white-space:pre-wrap;border:1px solid #0f0;';
+      wrap.appendChild(_jerDiagEl);
+      document.body.appendChild(wrap);
     }
+    _jerDiagCount++;
+    msg = '#'+_jerDiagCount+' '+msg;
     var t = new Date().toISOString().substr(11,12);
     _jerDiagEl.textContent += '['+t+'] '+msg+'\n';
     _jerDiagEl.scrollTop = _jerDiagEl.scrollHeight;
