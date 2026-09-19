@@ -10740,7 +10740,18 @@ function openJeremieChat(){
   var overlay=document.getElementById('jeremie-overlay'); var sheet=document.getElementById('jeremie-sheet');
   if(!overlay||!sheet){ _jerDiag('  -> bloqué : overlay/sheet introuvable'); return; }
   overlay.classList.add('open');
-  setTimeout(function(){ sheet.classList.add('up'); },20);
+  setTimeout(function(){
+    sheet.classList.add('up');
+    try{
+      var cs = getComputedStyle(overlay);
+      var r = overlay.getBoundingClientRect();
+      _jerDiag('  overlay computed: display='+cs.display+' opacity='+cs.opacity+' visibility='+cs.visibility+' z-index='+cs.zIndex+' rect='+Math.round(r.width)+'x'+Math.round(r.height));
+      var p = overlay.parentElement;
+      var chain = [];
+      while(p && p !== document.body){ var pcs = getComputedStyle(p); chain.push((p.id||p.className||p.tagName)+':display='+pcs.display); p = p.parentElement; }
+      _jerDiag('  ancêtres: '+(chain.join(' < ')||'(aucun avant body)'));
+    }catch(e){ _jerDiag('  erreur inspection: '+e.message); }
+  },50);
   loadJeremieHistory();
   _jerDiag('  -> OK, chat ouvert (overlay.open ajouté)');
 }
