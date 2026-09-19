@@ -2156,9 +2156,10 @@ a{text-decoration:none;color:inherit}
 .jeremie-hdr{position:relative;z-index:1;display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #1a1a1a;flex-shrink:0;}
 .jeremie-hdr-ico{position:relative;width:38px;height:38px;border-radius:50%;color:#000;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 0 14px rgba(255,215,0,.5);animation:jeremieOrbPulse 3.2s ease-in-out infinite;}
 .jeremie-hdr-ico::before{content:'';position:absolute;inset:-5px;border-radius:50%;border:1.5px solid rgba(255,215,0,.4);animation:jeremieOrbRing 5s linear infinite;}
-.jeremie-hdr-title{font-family:'Unbounded',cursive;font-size:13px;font-weight:900;color:#fff;flex:1;}
-.jeremie-hdr-sub{font-size:11px;color:#666;margin-top:2px;}
-.jeremie-hdr-btn{position:relative;z-index:1;background:none;border:none;color:#666;font-size:15px;cursor:pointer;padding:4px 7px;line-height:1;}
+.jeremie-hdr-titles{flex:1;min-width:0;overflow:hidden;}
+.jeremie-hdr-title{font-family:'Unbounded',cursive;font-size:13px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.jeremie-hdr-sub{font-size:11px;color:#666;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.jeremie-hdr-btn{position:relative;z-index:1;background:none;border:none;color:#666;font-size:15px;cursor:pointer;padding:4px 7px;line-height:1;flex-shrink:0;}
 .jeremie-hdr-btn.active{color:#FFD700;}
 .jeremie-close-btn{position:relative;z-index:1;background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:4px 6px;line-height:1;}
 .jeremie-immersive-avatar{display:none;align-items:center;justify-content:center;padding:18px 0 4px;position:relative;flex-shrink:0;z-index:1;}
@@ -3475,7 +3476,7 @@ setTimeout(_genesisSignalNativeReady, 8000);
           <span class="jeremie-avatar-clip" id="jeremie-hdr-avatar"></span>
           <span class="jeremie-emotion-badge" id="jeremie-hdr-emotion"></span>
         </div>
-        <div>
+        <div class="jeremie-hdr-titles">
           <div class="jeremie-hdr-title">Jérémie</div>
           <div class="jeremie-hdr-sub">Votre conseiller Genesis</div>
         </div>
