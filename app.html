@@ -10628,42 +10628,9 @@ function _jeremieSpeak(text){
 var _jerMoved = false;
 var _jerMovedAt = 0;
 var _jerOpenedViaTouch = false;
-// DIAGNOSTIC TEMPORAIRE (à retirer une fois la cause confirmée) : panneau permanent à l'écran
-// (les toasts disparaissent trop vite pour être lus de façon fiable) + capture des erreurs JS
-// non attrapées, au cas où une exception silencieuse interromprait l'exécution avant même
-// d'atteindre les points de log habituels.
-var _jerDiagEl = null;
-var _jerDiagCount = 0;
-function _jerDiagClear(){ if(_jerDiagEl) _jerDiagEl.textContent = ''; _jerDiagCount = 0; }
-function _jerDiag(msg){
-  try{
-    if(!_jerDiagEl){
-      var wrap = document.createElement('div');
-      // Positionné en HAUT de l'écran, volontairement à distance du bouton Jérémie (bas-droite)
-      // pour ne surtout pas devenir lui-même un obstacle par-dessus l'élément à tester.
-      wrap.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 50px);left:8px;right:8px;z-index:999999;pointer-events:none;';
-      var btn = document.createElement('button');
-      btn.textContent = 'Vider le journal';
-      btn.style.cssText = 'pointer-events:auto;display:block;margin-bottom:4px;background:#0f0;color:#000;font-weight:700;font-size:11px;padding:6px 10px;border-radius:6px;border:none;';
-      btn.onclick = _jerDiagClear;
-      wrap.appendChild(btn);
-      _jerDiagEl = document.createElement('div');
-      _jerDiagEl.style.cssText = 'pointer-events:none;max-height:32vh;overflow-y:auto;background:rgba(0,0,0,.92);color:#0f0;font-size:10px;line-height:1.5;padding:8px;border-radius:8px;font-family:monospace;white-space:pre-wrap;border:1px solid #0f0;';
-      wrap.appendChild(_jerDiagEl);
-      document.body.appendChild(wrap);
-    }
-    _jerDiagCount++;
-    msg = '#'+_jerDiagCount+' '+msg;
-    var t = new Date().toISOString().substr(11,12);
-    _jerDiagEl.textContent += '['+t+'] '+msg+'\n';
-    _jerDiagEl.scrollTop = _jerDiagEl.scrollHeight;
-  }catch(e){}
-}
-window.addEventListener('error', function(e){ _jerDiag('ERREUR JS: '+e.message+' @'+e.filename+':'+e.lineno); });
-_jerDiag('Diagnostic Jérémie chargé, prêt.');
 function _initJeremieDrag(){
   var fab = document.getElementById('jeremie-fab');
-  if(!fab){ _jerDiag('_initJeremieDrag() : FAB INTROUVABLE, écouteurs jamais attachés !'); return; }
+  if(!fab) return;
   // Restaurer position sauvegardée (top/left)
   try{
     var saved = JSON.parse(localStorage.getItem('jer_pos2') || 'null');
@@ -10707,7 +10674,6 @@ function _initJeremieDrag(){
     fab.style.top  = nt + 'px';
   }
   function onEnd(){
-    _jerDiag('onEnd() dragging='+dragging+' jerMoved='+_jerMoved);
     if(!dragging) return;
     dragging = false;
     fab.classList.remove('dragging');
@@ -10725,47 +10691,38 @@ function _initJeremieDrag(){
       setTimeout(function(){ _jerOpenedViaTouch = false; }, 500);
     }
   }
-  fab.addEventListener('touchstart', function(e){
-    _jerDiag('touchstart FAB');
-    onStart(e);
-  }, {passive:true});
+  fab.addEventListener('touchstart', onStart, {passive:true});
   fab.addEventListener('touchmove',  onMove,  {passive:false});
   fab.addEventListener('touchend',   onEnd,   {passive:true});
-  fab.addEventListener('touchcancel', function(){ _jerDiag('touchcancel FAB !'); }, {passive:true});
   fab.addEventListener('mousedown',  onStart);
   document.addEventListener('mousemove', function(e){ if(dragging) onMove(e); });
   document.addEventListener('mouseup',   function(){ if(dragging) onEnd(); });
-  _jerDiag('_initJeremieDrag() : FAB trouvé, écouteurs attachés.');
 }
 if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', _initJeremieDrag); }
 else { setTimeout(_initJeremieDrag, 0); }
 
 function openJeremieChat(){
-  _jerDiag('openJeremieChat() viaTouch='+_jerOpenedViaTouch+' USER='+(!!USER)+' GUEST='+(!!GUEST)+' jerMoved='+_jerMoved);
   // Un tap tactile vient tout juste d'ouvrir le chat directement depuis onEnd() (voir
   // _initJeremieDrag) : si le navigateur envoie quand même un click synthétique juste après,
   // on l'ignore pour éviter un double appel (double fetch d'historique).
   if(_jerOpenedViaTouch) return;
-  if(_jerMoved && (Date.now() - _jerMovedAt) < 1000){ _jerMoved = false; _jerDiag('  -> bloqué : flag glissement récent'); return; }
+  if(_jerMoved && (Date.now() - _jerMovedAt) < 1000){ _jerMoved = false; return; }
   _jerMoved = false;
-  if(!USER && !GUEST){ _jerDiag('  -> bloqué : ni USER ni GUEST'); if(typeof showLoginSheet==='function') showLoginSheet(); return; }
+  if(!USER && !GUEST){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
   var overlay=document.getElementById('jeremie-overlay'); var sheet=document.getElementById('jeremie-sheet');
-  if(!overlay||!sheet){ _jerDiag('  -> bloqué : overlay/sheet introuvable'); return; }
+  if(!overlay||!sheet) return;
+  // _showRoleChoiceAfterDelete() (fonction de déconnexion générale, cf bouton "Se déconnecter")
+  // force overlay.style.display='none' EN STYLE INLINE pour fermer tous les popups à la
+  // déconnexion - un style inline prime sur n'importe quelle règle CSS de classe, donc sans
+  // cette ligne, une fois déconnecté puis reconnecté dans la MÊME session (sans redémarrer
+  // l'app), #jeremie-overlay.open{display:flex} du CSS ne pouvait plus jamais reprendre la
+  // main : la classe 'open' était bien ajoutée, mais display restait 'none' pour toujours.
+  // Seul un redémarrage complet de l'app (DOM neuf, sans ce style inline) faisait "marcher"
+  // le chat.
+  overlay.style.display='';
   overlay.classList.add('open');
-  setTimeout(function(){
-    sheet.classList.add('up');
-    try{
-      var cs = getComputedStyle(overlay);
-      var r = overlay.getBoundingClientRect();
-      _jerDiag('  overlay computed: display='+cs.display+' opacity='+cs.opacity+' visibility='+cs.visibility+' z-index='+cs.zIndex+' rect='+Math.round(r.width)+'x'+Math.round(r.height));
-      var p = overlay.parentElement;
-      var chain = [];
-      while(p && p !== document.body){ var pcs = getComputedStyle(p); chain.push((p.id||p.className||p.tagName)+':display='+pcs.display); p = p.parentElement; }
-      _jerDiag('  ancêtres: '+(chain.join(' < ')||'(aucun avant body)'));
-    }catch(e){ _jerDiag('  erreur inspection: '+e.message); }
-  },50);
+  setTimeout(function(){ sheet.classList.add('up'); },20);
   loadJeremieHistory();
-  _jerDiag('  -> OK, chat ouvert (overlay.open ajouté)');
 }
 // Affiche Jeremie automatiquement, une fois par session, juste apres l'entree dans
 // l'app (inscription, connexion ou mode invite) - cf showApp().
@@ -18394,24 +18351,6 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 </div>
 
 <script>_jeremieInitAvatars();</script>
-<script>
-// DIAGNOSTIC TEMPORAIRE (à retirer une fois la cause confirmée) : complète le panneau _jerDiag
-// avec ce qui se passe au niveau document (avant que quoi que ce soit d'autre puisse agir).
-document.addEventListener('click', function(e){
-  var fab = document.getElementById('jeremie-fab'); if(!fab) return;
-  var r = fab.getBoundingClientRect();
-  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) return;
-  _jerDiag('document click sur zone FAB, target='+e.target.tagName+(e.target.id?'#'+e.target.id:''));
-}, true);
-document.addEventListener('touchstart', function(e){
-  if(!e.touches||!e.touches[0]) return;
-  var fab = document.getElementById('jeremie-fab'); if(!fab) return;
-  var r = fab.getBoundingClientRect();
-  var x=e.touches[0].clientX, y=e.touches[0].clientY;
-  if(x<r.left||x>r.right||y<r.top||y>r.bottom) return;
-  _jerDiag('document touchstart sur zone FAB, sommet='+(document.elementFromPoint(x,y)||{}).tagName);
-}, true);
-</script>
 
 <!-- Font Awesome async -->
 <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
