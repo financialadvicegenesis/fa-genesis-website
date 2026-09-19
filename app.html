@@ -10674,6 +10674,8 @@ function _initJeremieDrag(){
     fab.style.top  = nt + 'px';
   }
   function onEnd(){
+    // DIAGNOSTIC TEMPORAIRE (à retirer une fois la cause confirmée)
+    if(typeof showToast==='function') showToast('[DIAG] onEnd appelé','dragging='+dragging+' jerMoved='+_jerMoved,'info');
     if(!dragging) return;
     dragging = false;
     fab.classList.remove('dragging');
@@ -10691,9 +10693,13 @@ function _initJeremieDrag(){
       setTimeout(function(){ _jerOpenedViaTouch = false; }, 500);
     }
   }
-  fab.addEventListener('touchstart', onStart, {passive:true});
+  fab.addEventListener('touchstart', function(e){
+    if(typeof showToast==='function') showToast('[DIAG] touchstart FAB','','info');
+    onStart(e);
+  }, {passive:true});
   fab.addEventListener('touchmove',  onMove,  {passive:false});
   fab.addEventListener('touchend',   onEnd,   {passive:true});
+  fab.addEventListener('touchcancel', function(){ if(typeof showToast==='function') showToast('[DIAG] touchcancel FAB','','error'); }, {passive:true});
   fab.addEventListener('mousedown',  onStart);
   document.addEventListener('mousemove', function(e){ if(dragging) onMove(e); });
   document.addEventListener('mouseup',   function(){ if(dragging) onEnd(); });
@@ -10702,18 +10708,21 @@ if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoad
 else { setTimeout(_initJeremieDrag, 0); }
 
 function openJeremieChat(){
+  // DIAGNOSTIC TEMPORAIRE (à retirer une fois la cause confirmée)
+  if(typeof showToast==='function') showToast('[DIAG] openJeremieChat appelé','viaTouch='+_jerOpenedViaTouch+' USER='+(!!USER)+' GUEST='+(!!GUEST),'info');
   // Un tap tactile vient tout juste d'ouvrir le chat directement depuis onEnd() (voir
   // _initJeremieDrag) : si le navigateur envoie quand même un click synthétique juste après,
   // on l'ignore pour éviter un double appel (double fetch d'historique).
   if(_jerOpenedViaTouch) return;
   if(_jerMoved && (Date.now() - _jerMovedAt) < 1000){ _jerMoved = false; return; }
   _jerMoved = false;
-  if(!USER && !GUEST){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
+  if(!USER && !GUEST){ if(typeof showToast==='function') showToast('[DIAG] Bloqué','ni USER ni GUEST','error'); if(typeof showLoginSheet==='function') showLoginSheet(); return; }
   var overlay=document.getElementById('jeremie-overlay'); var sheet=document.getElementById('jeremie-sheet');
-  if(!overlay||!sheet) return;
+  if(!overlay||!sheet){ if(typeof showToast==='function') showToast('[DIAG] Bloqué','overlay/sheet introuvable','error'); return; }
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); },20);
   loadJeremieHistory();
+  if(typeof showToast==='function') showToast('[DIAG] Chat ouvert avec succès','','success');
 }
 // Affiche Jeremie automatiquement, une fois par session, juste apres l'entree dans
 // l'app (inscription, connexion ou mode invite) - cf showApp().
