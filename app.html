@@ -18330,6 +18330,32 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 </div>
 
 <script>_jeremieInitAvatars();</script>
+<script>
+// DIAGNOSTIC TEMPORAIRE (à retirer une fois la cause confirmée) : le clic sur l'icône Jérémie
+// n'atteint parfois jamais openJeremieChat() (aucun toast [DIAG] ne s'affiche) - signe qu'un
+// autre élément, invisible, capte le clic avant. Ce listener en phase de capture sur document
+// s'exécute avant tout autre gestionnaire, et document.elementFromPoint() révèle l'élément
+// réellement au sommet à cet endroit précis de l'écran, quel que soit ce qui intercepte le clic.
+function _diagJeremieFabHit(x, y, via){
+  try{
+    var fab = document.getElementById('jeremie-fab');
+    if(!fab) return;
+    var r = fab.getBoundingClientRect();
+    if(x < r.left || x > r.right || y < r.top || y > r.bottom) return;
+    var top = document.elementFromPoint(x, y);
+    var desc = top ? (top.tagName + (top.id?'#'+top.id:'') + (top.className && typeof top.className==='string' ? '.'+top.className.split(' ').join('.') : '')) : 'aucun';
+    if(typeof showToast==='function') showToast('[DIAG-'+via+'] Zone icône touchée', 'Sommet : '+desc, 'info');
+  }catch(err){}
+}
+// Deux écouteurs : 'click' peut ne jamais se déclencher si un handler ailleurs appelle
+// preventDefault() sur le touchstart correspondant (comportement standard des navigateurs qui
+// supprime alors le click synthétique) - 'touchstart' en capture reste fiable dans ce cas.
+document.addEventListener('click', function(e){ _diagJeremieFabHit(e.clientX, e.clientY, 'click'); }, true);
+document.addEventListener('touchstart', function(e){
+  if(!e.touches || !e.touches[0]) return;
+  _diagJeremieFabHit(e.touches[0].clientX, e.touches[0].clientY, 'touch');
+}, true);
+</script>
 
 <!-- Font Awesome async -->
 <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
