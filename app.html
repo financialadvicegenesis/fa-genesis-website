@@ -3480,6 +3480,7 @@ setTimeout(_genesisSignalNativeReady, 8000);
           <div class="jeremie-hdr-sub">Votre conseiller Genesis</div>
         </div>
         <button class="jeremie-hdr-btn" id="jeremie-voice-toggle" onclick="toggleJeremieVoiceOutput()" aria-label="Activer la voix"><i class="fa-solid fa-volume-xmark"></i></button>
+        <button class="jeremie-hdr-btn" id="jeremie-voice-pick-btn" onclick="openJeremieVoicePicker()" aria-label="Choisir la voix"><i class="fa-solid fa-sliders"></i></button>
         <button class="jeremie-hdr-btn" id="jeremie-immersive-toggle" onclick="toggleJeremieImmersive()" aria-label="Mode immersif"><i class="fa-solid fa-expand"></i></button>
         <button class="jeremie-close-btn" onclick="closeJeremieChat()" aria-label="Fermer">&#x2715;</button>
       </div>
@@ -10588,10 +10589,22 @@ function toggleJeremieVoiceOutput(){
   }
   _jeremieUpdateVoiceBtn();
 }
+function _jeremieSavedVoice(){
+  try{
+    var src=localStorage.getItem('fa_genesis_jeremie_voice_source');
+    var raw=localStorage.getItem('fa_genesis_jeremie_voice_idx');
+    var idx=raw!==null?parseInt(raw,10):NaN;
+    if(src&&!isNaN(idx)) return { source:src, index:idx };
+  }catch(e){}
+  return null;
+}
 function _jeremieSpeak(text){
   if(!text) return;
+  var saved=_jeremieSavedVoice();
   if(_jeremieUseNativeVoiceOutput){
-    if(window.FAGMobile && typeof window.FAGMobile.speak==='function') window.FAGMobile.speak(text,'fr-FR');
+    if(window.FAGMobile && typeof window.FAGMobile.speak==='function'){
+      window.FAGMobile.speak(text,'fr-FR',(saved&&saved.source==='native')?saved.index:undefined);
+    }
     return;
   }
   if(!('speechSynthesis' in window)) return;
@@ -10599,12 +10612,107 @@ function _jeremieSpeak(text){
     window.speechSynthesis.cancel();
     var u=new SpeechSynthesisUtterance(text);
     u.lang='fr-FR';
-    u.pitch=0.82;
     var voices=window.speechSynthesis.getVoices()||[];
-    for(var i=0;i<voices.length;i++){
-      if(/^fr/i.test(voices[i].lang||'') && /(^|[^a-z])(male|homme|man)([^a-z]|$)/i.test(voices[i].name||'')){ u.voice=voices[i]; break; }
+    if(saved&&saved.source==='web'&&voices[saved.index]){
+      u.voice=voices[saved.index];
+    } else {
+      u.pitch=0.82;
+      for(var i=0;i<voices.length;i++){
+        if(/^fr/i.test(voices[i].lang||'') && /(^|[^a-z])(male|homme|man)([^a-z]|$)/i.test(voices[i].name||'')){ u.voice=voices[i]; break; }
+      }
     }
     window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+function openJeremieVoicePicker(){
+  try{
+    var old=document.getElementById('jeremie-voice-picker-overlay'); if(old) old.remove();
+    var lang='fr-FR';
+    var renderList=function(list, source){
+      var overlay=document.createElement('div');
+      overlay.id='jeremie-voice-picker-overlay';
+      overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:flex-end;justify-content:center;';
+      var panel=document.createElement('div');
+      panel.style.cssText='background:#1b1b1f;color:#fff;width:100%;max-width:480px;max-height:70vh;overflow-y:auto;border-radius:16px 16px 0 0;padding:16px;box-sizing:border-box;';
+      var title=document.createElement('div');
+      title.textContent='Choisir la voix de Jérémie';
+      title.style.cssText='font-weight:700;font-size:16px;margin-bottom:4px;';
+      panel.appendChild(title);
+      var sub=document.createElement('div');
+      sub.textContent='Testez chaque voix puis choisissez celle que vous préférez.';
+      sub.style.cssText='opacity:.65;font-size:13px;margin-bottom:12px;';
+      panel.appendChild(sub);
+      if(!list.length){
+        var empty=document.createElement('div');
+        empty.textContent='Aucune voix française détectée sur cet appareil.';
+        empty.style.cssText='opacity:.7;font-size:14px;padding:12px 0;';
+        panel.appendChild(empty);
+      }
+      for(var i=0;i<list.length;i++){
+        (function(v){
+          var row=document.createElement('div');
+          row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);';
+          var label=document.createElement('div');
+          label.textContent=v.name||('Voix '+(v.index+1));
+          label.style.cssText='font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+          var btnWrap=document.createElement('div'); btnWrap.style.cssText='display:flex;gap:8px;flex-shrink:0;';
+          var testBtn=document.createElement('button');
+          testBtn.innerHTML='<i class="fa-solid fa-play"></i>';
+          testBtn.setAttribute('aria-label','Tester cette voix');
+          testBtn.style.cssText='background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;flex-shrink:0;';
+          testBtn.onclick=function(){
+            var sample='Bonjour, je suis Jérémie, votre assistant Genesis.';
+            if(source==='native' && window.FAGMobile && typeof window.FAGMobile.speak==='function'){
+              window.FAGMobile.speak(sample,lang,v.index);
+            } else if('speechSynthesis' in window){
+              window.speechSynthesis.cancel();
+              var u=new SpeechSynthesisUtterance(sample);
+              u.lang=lang; if(v.voiceObj) u.voice=v.voiceObj;
+              window.speechSynthesis.speak(u);
+            }
+          };
+          var chooseBtn=document.createElement('button');
+          chooseBtn.textContent='Choisir';
+          chooseBtn.style.cssText='background:#d4af37;border:none;color:#111;font-weight:700;padding:8px 14px;border-radius:20px;font-size:13px;flex-shrink:0;';
+          chooseBtn.onclick=function(){
+            try{
+              localStorage.setItem('fa_genesis_jeremie_voice_source',source);
+              localStorage.setItem('fa_genesis_jeremie_voice_idx',String(v.index));
+            }catch(e){}
+            overlay.remove();
+          };
+          btnWrap.appendChild(testBtn); btnWrap.appendChild(chooseBtn);
+          row.appendChild(label); row.appendChild(btnWrap);
+          panel.appendChild(row);
+        })(list[i]);
+      }
+      var resetBtn=document.createElement('button');
+      resetBtn.textContent='Revenir au réglage automatique';
+      resetBtn.style.cssText='margin-top:14px;width:100%;background:transparent;border:1px solid rgba(255,255,255,.2);color:#fff;padding:11px;border-radius:10px;font-size:13px;';
+      resetBtn.onclick=function(){
+        try{ localStorage.removeItem('fa_genesis_jeremie_voice_source'); localStorage.removeItem('fa_genesis_jeremie_voice_idx'); }catch(e){}
+        overlay.remove();
+      };
+      panel.appendChild(resetBtn);
+      var closeBtn=document.createElement('button');
+      closeBtn.textContent='Fermer';
+      closeBtn.style.cssText='margin-top:8px;width:100%;background:rgba(255,255,255,.1);border:none;color:#fff;padding:12px;border-radius:10px;font-size:14px;';
+      closeBtn.onclick=function(){ overlay.remove(); };
+      panel.appendChild(closeBtn);
+      overlay.appendChild(panel);
+      overlay.onclick=function(e){ if(e.target===overlay) overlay.remove(); };
+      document.body.appendChild(overlay);
+    };
+    if(_jeremieUseNativeVoiceOutput && window.FAGMobile && typeof window.FAGMobile.listVoices==='function'){
+      window.FAGMobile.listVoices(lang).then(function(list){ renderList(list||[],'native'); });
+    } else if('speechSynthesis' in window){
+      var raw=window.speechSynthesis.getVoices()||[];
+      var list=[];
+      for(var i=0;i<raw.length;i++){ if(/^fr/i.test(raw[i].lang||'')) list.push({ index:i, name:raw[i].name, voiceObj:raw[i] }); }
+      renderList(list,'web');
+    } else {
+      renderList([],'native');
+    }
   }catch(e){}
 }
 // Dictée vocale (parler à Jérémie) : AUCUN bouton micro personnalisé — le champ de texte

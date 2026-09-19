@@ -333,18 +333,46 @@
         } catch(e) {}
         return _ttsMaleVoiceIdx;
     }
-    window.FAGMobile.speak = async function(text, lang) {
+    // voiceIndex : passé explicitement quand l'utilisateur a choisi une voix précise via le
+    // sélecteur de voix (app.html, openJeremieVoicePicker) - dans ce cas on respecte son choix
+    // tel quel (pitch neutre, l'utilisateur a déjà validé le rendu à l'oreille). Sans choix
+    // explicite, on retombe sur l'heuristique automatique (pitch abaissé + tentative de nom).
+    window.FAGMobile.speak = async function(text, lang, voiceIndex) {
         try {
             if (!Plugins.TextToSpeech || !text) return false;
-            var voiceIdx = await _resolveMaleVoiceIndex(lang);
-            var opts = { text: text, lang: lang || 'fr-FR', rate: 1.0, pitch: 0.82, volume: 1.0 };
-            if (voiceIdx !== undefined) opts.voice = voiceIdx;
+            var opts = { text: text, lang: lang || 'fr-FR', rate: 1.0, pitch: 1.0, volume: 1.0 };
+            if (typeof voiceIndex === 'number' && !isNaN(voiceIndex)) {
+                opts.voice = voiceIndex;
+            } else {
+                opts.pitch = 0.82;
+                var autoIdx = await _resolveMaleVoiceIndex(lang);
+                if (autoIdx !== undefined) opts.voice = autoIdx;
+            }
             await Plugins.TextToSpeech.speak(opts);
             return true;
         } catch(e) { console.warn('[FAG Mobile] speak:', e.message); return false; }
     };
     window.FAGMobile.stopSpeaking = async function() {
         try { if (Plugins.TextToSpeech) await Plugins.TextToSpeech.stop(); } catch(e) {}
+    };
+    // Liste des voix disponibles pour une langue donnée, utilisée par le sélecteur de voix
+    // (app.html, openJeremieVoicePicker) pour laisser l'utilisateur tester et choisir lui-même -
+    // aucune API Android ne permettant de détecter le genre d'une voix de façon fiable, c'est la
+    // seule méthode garantie de trouver une voix masculine si l'appareil en propose une.
+    window.FAGMobile.listVoices = async function(lang) {
+        try {
+            if (!Plugins.TextToSpeech) return [];
+            var res = await Plugins.TextToSpeech.getSupportedVoices();
+            var voices = (res && res.voices) || [];
+            var langPrefix = (lang || 'fr-FR').split('-')[0].toLowerCase();
+            var out = [];
+            for (var i = 0; i < voices.length; i++) {
+                if (voices[i].lang && voices[i].lang.toLowerCase().indexOf(langPrefix) === 0) {
+                    out.push({ index: i, name: voices[i].name, lang: voices[i].lang });
+                }
+            }
+            return out;
+        } catch(e) { return []; }
     };
 
     // ── Safe-area (notch iPhone / Android) ─────────────────────────────────────
