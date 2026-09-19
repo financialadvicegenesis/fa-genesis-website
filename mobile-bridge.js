@@ -309,8 +309,27 @@
     // utilise le moteur de synthèse vocale du SYSTÈME Android (android.speech.tts.TextToSpeech),
     // un sous-système nettement plus universellement disponible que la reconnaissance vocale
     // (pas la même restriction de visibilité de package pour les apps tierces).
+    // android.speech.tts.TextToSpeech (moteur natif Android) s'initialise de façon ASYNCHRONE en
+    // interne (callback onInit, après la construction de l'objet) - mais le plugin ne vérifie
+    // jamais si cette init est terminée avant d'appeler speak()/getSupportedVoices(), donc un
+    // appel trop précoce (juste après le tout premier lancement de l'app, avant que le service
+    // TTS du système ait fini de se lier) échoue silencieusement (aucune erreur JS, juste rien ne
+    // se passe). Repéré via un signalement précis : la voix de Jérémie ne se déclenchait jamais
+    // juste après une inscription/connexion fraîche, mais fonctionnait après avoir complètement
+    // fermé puis rouvert l'app (l'écran de démarrage laisse alors le temps au moteur de s'initialiser
+    // avant que l'utilisateur n'atteigne la conversation). Mitigé en "réchauffant" le moteur au plus
+    // tôt (un appel speak() quasi silencieux, volume 0, dès que le pont natif est détecté) pour lui
+    // laisser le temps de s'initialiser bien avant le premier vrai message de Jérémie.
+    var _ttsWarmedUp = false;
+    function _warmUpTts() {
+        if (_ttsWarmedUp || !Plugins.TextToSpeech) return;
+        _ttsWarmedUp = true;
+        try { Plugins.TextToSpeech.speak({ text: '.', lang: 'fr-FR', rate: 1.0, pitch: 1.0, volume: 0 }).catch(function(){}); } catch(e) {}
+    }
     window.FAGMobile.isNativeVoiceOutputAvailable = function() {
-        return !!Plugins.TextToSpeech;
+        var available = !!Plugins.TextToSpeech;
+        if (available) _warmUpTts();
+        return available;
     };
     // Voix par défaut de Jérémie, identifiée avec l'utilisateur directement sur son appareil via
     // un sélecteur temporaire (testé une voix à la fois, à l'oreille) : "fr-fr-x-frd-local" est
@@ -323,24 +342,33 @@
     // à un identifiant figé.
     var JEREMIE_VOICE_URI = 'fr-fr-x-frd-local';
     var _ttsResolved;
+    function _wait(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
     async function _resolveJeremieVoice(lang) {
         if (_ttsResolved) return _ttsResolved;
-        var result = { pitch: 0.82 };
-        try {
-            var res = await Plugins.TextToSpeech.getSupportedVoices();
-            var voices = (res && res.voices) || [];
-            var langPrefix = (lang || 'fr-FR').split('-')[0].toLowerCase();
-            var maleGuessIdx;
-            for (var i = 0; i < voices.length; i++) {
-                var v = voices[i];
-                if (!v.lang || v.lang.toLowerCase().indexOf(langPrefix) !== 0) continue;
-                if (v.voiceURI === JEREMIE_VOICE_URI) { result.voice = i; result.pitch = 1.0; break; }
-                if (maleGuessIdx === undefined && /(^|[^a-z])(male|homme|man)([^a-z]|$)/i.test(v.voiceURI || v.name || '')) maleGuessIdx = i;
-            }
-            if (result.voice === undefined && maleGuessIdx !== undefined) result.voice = maleGuessIdx;
-        } catch(e) {}
-        _ttsResolved = result;
-        return result;
+        var langPrefix = (lang || 'fr-FR').split('-')[0].toLowerCase();
+        // Jusqu'à 3 tentatives : une liste de voix vide est le signe que le moteur TTS natif n'a
+        // pas fini de s'initialiser (voir _warmUpTts ci-dessus) - on ne fige pas ce resultat en
+        // cache tant qu'on n'a pas eu au moins une liste non vide ou epuise les tentatives.
+        for (var attempt = 0; attempt < 3; attempt++) {
+            var result = { pitch: 0.82 };
+            try {
+                var res = await Plugins.TextToSpeech.getSupportedVoices();
+                var voices = (res && res.voices) || [];
+                if (!voices.length && attempt < 2) { await _wait(400); continue; }
+                var maleGuessIdx;
+                for (var i = 0; i < voices.length; i++) {
+                    var v = voices[i];
+                    if (!v.lang || v.lang.toLowerCase().indexOf(langPrefix) !== 0) continue;
+                    if (v.voiceURI === JEREMIE_VOICE_URI) { result.voice = i; result.pitch = 1.0; break; }
+                    if (maleGuessIdx === undefined && /(^|[^a-z])(male|homme|man)([^a-z]|$)/i.test(v.voiceURI || v.name || '')) maleGuessIdx = i;
+                }
+                if (result.voice === undefined && maleGuessIdx !== undefined) result.voice = maleGuessIdx;
+            } catch(e) {}
+            _ttsResolved = result;
+            return result;
+        }
+        _ttsResolved = { pitch: 0.82 };
+        return _ttsResolved;
     }
     window.FAGMobile.speak = async function(text, lang) {
         try {
