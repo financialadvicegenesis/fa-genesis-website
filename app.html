@@ -10687,14 +10687,21 @@ if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoad
 else { setTimeout(_initJeremieDrag, 0); }
 
 function openJeremieChat(){
-  if(_jerMoved && (Date.now() - _jerMovedAt) < 1000){ _jerMoved = false; return; }
+  // DIAGNOSTIC TEMPORAIRE (à retirer une fois la cause confirmée) : un toast visible à chaque
+  // étape, pour distinguer "le clic n'atteint jamais cette fonction" (un autre élément capte le
+  // clic avant, ex. un overlay invisible resté au-dessus) de "la fonction s'arrête sur une garde
+  // interne précise". Si aucun toast n'apparaît du tout au clic, le problème est ailleurs que
+  // dans cette fonction.
+  if(typeof showToast==='function') showToast('[DIAG] Clic Jérémie reçu','USER='+(!!USER)+' GUEST='+(!!GUEST)+' jerMoved='+_jerMoved,'info');
+  if(_jerMoved && (Date.now() - _jerMovedAt) < 1000){ _jerMoved = false; if(typeof showToast==='function') showToast('[DIAG] Bloqué','flag glissement récent','error'); return; }
   _jerMoved = false;
-  if(!USER && !GUEST){ console.warn('[JEREMIE] chat non ouvert : ni USER ni GUEST'); if(typeof showLoginSheet==='function') showLoginSheet(); return; }
+  if(!USER && !GUEST){ if(typeof showToast==='function') showToast('[DIAG] Bloqué','ni USER ni GUEST','error'); if(typeof showLoginSheet==='function') showLoginSheet(); return; }
   var overlay=document.getElementById('jeremie-overlay'); var sheet=document.getElementById('jeremie-sheet');
-  if(!overlay||!sheet){ console.warn('[JEREMIE] chat non ouvert : overlay/sheet introuvable dans le DOM'); return; }
+  if(!overlay||!sheet){ if(typeof showToast==='function') showToast('[DIAG] Bloqué','overlay/sheet introuvable','error'); return; }
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); },20);
   loadJeremieHistory();
+  if(typeof showToast==='function') showToast('[DIAG] Chat ouvert normalement','','success');
 }
 // Affiche Jeremie automatiquement, une fois par session, juste apres l'entree dans
 // l'app (inscription, connexion ou mode invite) - cf showApp().
