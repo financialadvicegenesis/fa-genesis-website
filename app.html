@@ -10641,7 +10641,7 @@ function _jerDiag(msg){
       var wrap = document.createElement('div');
       // Positionné en HAUT de l'écran, volontairement à distance du bouton Jérémie (bas-droite)
       // pour ne surtout pas devenir lui-même un obstacle par-dessus l'élément à tester.
-      wrap.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;z-index:999999;pointer-events:none;';
+      wrap.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 50px);left:8px;right:8px;z-index:999999;pointer-events:none;';
       var btn = document.createElement('button');
       btn.textContent = 'Vider le journal';
       btn.style.cssText = 'pointer-events:auto;display:block;margin-bottom:4px;background:#0f0;color:#000;font-weight:700;font-size:11px;padding:6px 10px;border-radius:6px;border:none;';
