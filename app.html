@@ -10656,7 +10656,11 @@ function openJeremieVoicePicker(){
           var row=document.createElement('div');
           row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);';
           var label=document.createElement('div');
-          label.textContent=(v.name||('Voix '+(v.index+1)))+(isCurrent?'  ✓ (voix actuelle)':'');
+          // `v.name` (natif Android) vaut juste "français France", identique pour toutes les voix -
+          // `voiceURI` (code interne, ex. "fr-fr-x-xxx-local") est le seul identifiant qui distingue
+          // vraiment une voix d'une autre. Sur le web, `name` est un vrai nom de voix, on le garde.
+          var displayName=v.voiceURI||v.name||('Voix '+(v.index+1));
+          label.textContent=displayName+(isCurrent?'  ✓ (voix actuelle)':'');
           label.style.cssText='font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+(isCurrent?'color:#d4af37;font-weight:700;':'');
           var btnWrap=document.createElement('div'); btnWrap.style.cssText='display:flex;gap:8px;flex-shrink:0;';
           var testBtn=document.createElement('button');
@@ -10681,6 +10685,7 @@ function openJeremieVoicePicker(){
             try{
               localStorage.setItem('fa_genesis_jeremie_voice_source',source);
               localStorage.setItem('fa_genesis_jeremie_voice_idx',String(v.index));
+              if(v.voiceURI) localStorage.setItem('fa_genesis_jeremie_voice_uri',v.voiceURI);
             }catch(e){}
             overlay.remove();
           };

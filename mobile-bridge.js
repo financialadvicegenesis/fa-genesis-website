@@ -328,7 +328,10 @@
             for (var i = 0; i < voices.length; i++) {
                 var v = voices[i];
                 if (!v.lang || v.lang.toLowerCase().indexOf(langPrefix) !== 0) continue;
-                if (/(^|[^a-z])(male|homme|man)([^a-z]|$)/i.test(v.name || '')) { _ttsMaleVoiceIdx = i; break; }
+                // `name` est un libellé de langue générique ("français France"), identique pour
+                // toutes les voix - seul `voiceURI` (code interne, ex. "fr-fr-x-xxx-local") peut
+                // éventuellement contenir un indice de genre sur certains moteurs OEM.
+                if (/(^|[^a-z])(male|homme|man)([^a-z]|$)/i.test(v.voiceURI || v.name || '')) { _ttsMaleVoiceIdx = i; break; }
             }
         } catch(e) {}
         return _ttsMaleVoiceIdx;
@@ -359,6 +362,11 @@
     // (app.html, openJeremieVoicePicker) pour laisser l'utilisateur tester et choisir lui-même -
     // aucune API Android ne permettant de détecter le genre d'une voix de façon fiable, c'est la
     // seule méthode garantie de trouver une voix masculine si l'appareil en propose une.
+    // IMPORTANT : le champ `name` du plugin (côté natif Android, TextToSpeech.java
+    // convertVoiceToJSObject) vaut juste `locale.getDisplayLanguage()+" "+locale.getDisplayCountry()`
+    // ("français France") - IDENTIQUE pour toutes les voix d'une même langue, donc inutile pour
+    // les distinguer. Le vrai identifiant unique par voix est `voiceURI` (= voice.getName() côté
+    // Android, ex. "fr-fr-x-xxx-local") - c'est lui qu'il faut afficher/comparer, pas `name`.
     window.FAGMobile.listVoices = async function(lang) {
         try {
             if (!Plugins.TextToSpeech) return [];
@@ -368,7 +376,7 @@
             var out = [];
             for (var i = 0; i < voices.length; i++) {
                 if (voices[i].lang && voices[i].lang.toLowerCase().indexOf(langPrefix) === 0) {
-                    out.push({ index: i, name: voices[i].name, lang: voices[i].lang });
+                    out.push({ index: i, name: voices[i].name, voiceURI: voices[i].voiceURI, lang: voices[i].lang });
                 }
             }
             return out;
