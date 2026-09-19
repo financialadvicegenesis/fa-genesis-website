@@ -312,12 +312,34 @@
     window.FAGMobile.isNativeVoiceOutputAvailable = function() {
         return !!Plugins.TextToSpeech;
     };
+    // Android n'expose pas de champ "genre" sur les voix TTS (android.speech.tts.Voice) : la seule
+    // façon fiable, quel que soit le moteur/fabricant, de rendre la voix nettement plus masculine
+    // est de baisser le pitch. En bonus, si le moteur installé donne des noms de voix lisibles
+    // (certains moteurs OEM le font, contrairement au moteur Google qui utilise des codes du type
+    // "fr-fr-x-frd-local"), on tente aussi de repérer une voix explicitement masculine par son nom.
+    var _ttsMaleVoiceIdx, _ttsMaleVoiceLookupDone = false;
+    async function _resolveMaleVoiceIndex(lang) {
+        if (_ttsMaleVoiceLookupDone) return _ttsMaleVoiceIdx;
+        _ttsMaleVoiceLookupDone = true;
+        try {
+            var res = await Plugins.TextToSpeech.getSupportedVoices();
+            var voices = (res && res.voices) || [];
+            var langPrefix = (lang || 'fr-FR').split('-')[0].toLowerCase();
+            for (var i = 0; i < voices.length; i++) {
+                var v = voices[i];
+                if (!v.lang || v.lang.toLowerCase().indexOf(langPrefix) !== 0) continue;
+                if (/(^|[^a-z])(male|homme|man)([^a-z]|$)/i.test(v.name || '')) { _ttsMaleVoiceIdx = i; break; }
+            }
+        } catch(e) {}
+        return _ttsMaleVoiceIdx;
+    }
     window.FAGMobile.speak = async function(text, lang) {
         try {
             if (!Plugins.TextToSpeech || !text) return false;
-            await Plugins.TextToSpeech.speak({
-                text: text, lang: lang || 'fr-FR', rate: 1.0, pitch: 1.0, volume: 1.0
-            });
+            var voiceIdx = await _resolveMaleVoiceIndex(lang);
+            var opts = { text: text, lang: lang || 'fr-FR', rate: 1.0, pitch: 0.82, volume: 1.0 };
+            if (voiceIdx !== undefined) opts.voice = voiceIdx;
+            await Plugins.TextToSpeech.speak(opts);
             return true;
         } catch(e) { console.warn('[FAG Mobile] speak:', e.message); return false; }
     };

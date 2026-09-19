@@ -10599,6 +10599,11 @@ function _jeremieSpeak(text){
     window.speechSynthesis.cancel();
     var u=new SpeechSynthesisUtterance(text);
     u.lang='fr-FR';
+    u.pitch=0.82;
+    var voices=window.speechSynthesis.getVoices()||[];
+    for(var i=0;i<voices.length;i++){
+      if(/^fr/i.test(voices[i].lang||'') && /(^|[^a-z])(male|homme|man)([^a-z]|$)/i.test(voices[i].name||'')){ u.voice=voices[i]; break; }
+    }
     window.speechSynthesis.speak(u);
   }catch(e){}
 }
