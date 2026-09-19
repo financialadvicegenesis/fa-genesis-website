@@ -10617,7 +10617,16 @@ function _jeremieSpeak(text){
 // que la dictée du clavier système fonctionnait parfaitement sur ce même appareil — gratuit,
 // sans clé API, et déjà confirmé fiable là où l'intégration maison ne l'était pas.
 // ── JÉRÉMIE FAB — DRAGGABLE (top/left, plein écran) ─────────
+// _jerMoved évite d'ouvrir le chat juste après avoir glissé le bouton (le "click" qui suit un
+// drag ne doit pas aussi ouvrir la conversation). _jerMovedAt horodate ce flag : sans ça, un
+// geste résiduel sur ce bouton (ex. pendant l'écran de connexion, avant que l'utilisateur n'ait
+// consciemment voulu glisser quoi que ce soit) pourrait le laisser bloqué à `true`
+// indéfiniment, empêchant silencieusement TOUT appui ultérieur sur l'icône d'ouvrir la
+// conversation jusqu'à un redémarrage complet de l'app (le flag n'étant remis à zéro que par
+// openJeremieChat() lui-même, jamais par un timeout). Un flag vieux de plus d'1s ne peut plus
+// correspondre au clic en cours, donc n'est plus honoré.
 var _jerMoved = false;
+var _jerMovedAt = 0;
 function _initJeremieDrag(){
   var fab = document.getElementById('jeremie-fab');
   if(!fab) return;
@@ -10650,7 +10659,7 @@ function _initJeremieDrag(){
     if(!dragging) return;
     var c = getXY(e);
     var dx = c.x - startX, dy = c.y - startY;
-    if(Math.abs(dx) > 5 || Math.abs(dy) > 5) _jerMoved = true;
+    if(Math.abs(dx) > 5 || Math.abs(dy) > 5) { _jerMoved = true; _jerMovedAt = Date.now(); }
     if(!_jerMoved) return;
     e.preventDefault();
     // Libre de haut en bas, contraint juste pour ne pas sortir de l'écran
@@ -10678,10 +10687,11 @@ if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoad
 else { setTimeout(_initJeremieDrag, 0); }
 
 function openJeremieChat(){
-  if(_jerMoved){ _jerMoved = false; return; }
-  if(!USER && !GUEST){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
+  if(_jerMoved && (Date.now() - _jerMovedAt) < 1000){ _jerMoved = false; return; }
+  _jerMoved = false;
+  if(!USER && !GUEST){ console.warn('[JEREMIE] chat non ouvert : ni USER ni GUEST'); if(typeof showLoginSheet==='function') showLoginSheet(); return; }
   var overlay=document.getElementById('jeremie-overlay'); var sheet=document.getElementById('jeremie-sheet');
-  if(!overlay||!sheet) return;
+  if(!overlay||!sheet){ console.warn('[JEREMIE] chat non ouvert : overlay/sheet introuvable dans le DOM'); return; }
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); },20);
   loadJeremieHistory();
