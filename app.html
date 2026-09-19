@@ -17539,7 +17539,10 @@ function regShowSuccess(prenom, isStudentPending){
     setTimeout(function(){
       if(hdr) hdr.style.opacity='';
       var welcome=document.getElementById('welcome');
-      if(welcome&&welcome.style.display!=='none'){ showApp(); nav('profil'); } else { if(typeof renderProfil==='function') renderProfil(); if(typeof nav==='function') nav('profil'); }
+      // nav('home'), pas 'profil' : après inscription, le client doit arriver sur l'accueil
+      // comme après une connexion normale - 'profil' n'a pas lieu d'être la destination par
+      // défaut ici. renderProfil() reste utile en pré-chargement silencieux de cet onglet.
+      if(welcome&&welcome.style.display!=='none'){ showApp(); nav('home'); } else { if(typeof renderProfil==='function') renderProfil(); if(typeof nav==='function') nav('home'); }
       setTimeout(_showWelcomeQGOverlay, 400);
     }, 500);
   }, 2800);
