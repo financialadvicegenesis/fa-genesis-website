@@ -14590,9 +14590,14 @@ function getClientQGBadgeProgress(points) {
     return { currentBadge: currentBadge, nextBadge: null, current: p, target: p, prevTarget: 0, percent: 100 };
 }
 
-// Aliases backward-compat — anciens appels à getClientBadge/getClientBadgeProgress
-function getClientBadge(completedOrdersOrPoints) { return getClientQGBadge(completedOrdersOrPoints); }
-function getClientBadgeProgress(completedOrders) { return getClientQGBadgeProgress(completedOrders); }
+// NB : une fonction getClientBadge(completedCount) basee sur un nombre de commandes et un
+// tableau CLIENT_BADGE_TIERS jamais defini existait plus bas dans ce fichier et ecrasait
+// silencieusement un alias getClientBadge(points)->getClientQGBadge(points) declare ici
+// (function hoisting) — chaque appel plantait avec "CLIENT_BADGE_TIERS is not defined",
+// capture silencieusement par un try/catch, cassant entierement la personnalisation de
+// Jeremie IA pour les clients (buildJeremieSystemPrompt) et le calcul mensuel du Hall of
+// Fame ("plus productif du mois"). Les deux definitions et leurs alias ont ete supprimes ;
+// les deux appelants utilisent desormais directement getClientQGBadge(points).
 
 // Une commande "realisee" = solde paye (convention deja utilisee dans /api/auth/me, cf paymentStatus 'fully_paid')
 // Renvoie true si le client n'a encore jamais effectué de premier paiement (acompte)
@@ -14617,31 +14622,6 @@ function getClientCompletedOrders(email) {
         // la commande est realisee des que le client valide (ou auto-liberation 7j).
         return o.balance_paid === true || o.client_validated === true;
     }).length;
-}
-
-function getClientBadge(completedCount) {
-    for (const tier of CLIENT_BADGE_TIERS) {
-        if (completedCount >= tier.orders) return tier.id;
-    }
-    return null;
-}
-
-// Progression vers le palier suivant (CLIENT_BADGE_TIERS est trie du plus haut au plus bas)
-function getClientBadgeProgress(completedCount) {
-    const tiersAsc = CLIENT_BADGE_TIERS.slice().reverse();
-    const currentBadge = getClientBadge(completedCount);
-    for (const tier of tiersAsc) {
-        if (completedCount < tier.orders) {
-            return {
-                currentBadge,
-                nextBadge: tier.id,
-                current: completedCount,
-                target: tier.orders,
-                percent: Math.min(100, Math.round((completedCount / tier.orders) * 100))
-            };
-        }
-    }
-    return { currentBadge, nextBadge: null, current: completedCount, target: completedCount, percent: 100 };
 }
 
 // Parrainage client : un filleul ne compte que s'il a effectue son premier paiement (evite les faux comptes)
@@ -15070,7 +15050,8 @@ function computeHallOfFameForMonth(monthStr) {
     (function() {
         var candidates = Object.keys(clientCounts).map(function(email) {
             var completed = getClientCompletedOrders(email);
-            var badge = getClientBadge(completed);
+            var user = users.find(function(u) { return u.email.toLowerCase() === email; });
+            var badge = user ? getClientQGBadge(getClientGenesisPoints(user, completed)) : null;
             return { email: email, completed: completed, badge: badge };
         }).filter(function(c) {
             return c.badge && GENESIS_LEVEL_META[c.badge].order >= GENESIS_LEVEL_META.argent.order;
@@ -15561,9 +15542,14 @@ function buildJeremieSystemPrompt(person, personType) {
     try {
         if (personType === 'client') {
             var completedOrders = getClientCompletedOrders(person.email);
-            var badge = getClientBadge(completedOrders);
-            var level = getGenesisLevel(badge);
             var genesisPoints = getClientGenesisPoints(person, completedOrders);
+            // Niveau base sur les points QG (coherent avec le reste de l'app : badges, priorite
+            // de reservation, Hall of Fame) — PAS sur le nombre de commandes seul, qui ignorait
+            // parrainages/avis/evenements et desynchronisait ce niveau de celui affiche partout
+            // ailleurs (getClientBadge base sur les commandes referencait un tableau
+            // CLIENT_BADGE_TIERS jamais defini et plantait a chaque appel, voir plus haut).
+            var badge = getClientQGBadge(genesisPoints);
+            var level = getGenesisLevel(badge);
             var missions = getGenesisMissions(person, 'client');
             var preferredCategories = getClientPreferredCategories(person.email);
             var referralCount = getClientReferralCount(person.id);
@@ -15582,8 +15568,7 @@ function buildJeremieSystemPrompt(person, personType) {
                 'detection d\'opportunites (lui suggerer la prochaine mission ou le prochain palier de Cercle Genesis a portee ' +
                 'de main), et explication pedagogique du systeme de fidelisation s\'il pose des questions dessus.');
             // Jérémie IA Plus : analyse des habitudes pour les clients Bâtisseur+ (argent/or/elite)
-            var argBadge = getClientQGBadge(genesisPoints);
-            if (['argent','or','elite'].indexOf(argBadge) !== -1) {
+            if (['argent','or','elite'].indexOf(badge) !== -1) {
                 var habits = buildClientHabitAnalysis(person.email);
                 if (habits) {
                     lines.push('');
@@ -15601,7 +15586,7 @@ function buildJeremieSystemPrompt(person, personType) {
                 }
             }
             // Jérémie IA Pro — comparaison multicritères & préparation de projet pour Visionnaire+ (or/elite)
-            if (['or','elite'].indexOf(argBadge) !== -1) {
+            if (['or','elite'].indexOf(badge) !== -1) {
                 lines.push('');
                 lines.push('Jeremie IA Pro — Mode Visionnaire (comparaison multicriteres & preparation de projet) :');
                 lines.push('Tu as des capacites enrichies pour ce client de niveau Visionnaire ou superieur :');
@@ -15615,7 +15600,7 @@ function buildJeremieSystemPrompt(person, personType) {
                     'sessions reseau disponibles qui correspondent au secteur ou aux projets du client.');
             }
             // Jérémie IA Expert — assistant personnel multi-projets & conseils continus pour Générateur (elite uniquement)
-            if (argBadge === 'elite') {
+            if (badge === 'elite') {
                 lines.push('');
                 lines.push('Jeremie IA Expert — Mode Generateur (assistant personnel multi-projets & conseils continus) :');
                 lines.push('Ce client est au niveau GENERATEUR, le niveau le plus eleve de GENESIS. Tu es son assistant personnel IA ' +

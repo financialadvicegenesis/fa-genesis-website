@@ -8025,9 +8025,6 @@ function _partnerDistinctionBadges(distinctions) {
       +'<i class="fa-solid '+icon+'" style="font-size:9px;"></i>'+d.label+'</span>';
   }).join(' ');
 }
-// Seuils de commandes par palier (miroir côté client des CLIENT_BADGE_TIERS serveur)
-var _CLIENT_TIER_REQS = {bronze:1, argent:5, or:10};
-var _CLIENT_TIER_ICONS = {bronze:'fa-fire', argent:'fa-bolt', or:'fa-crown'};
 function badgeProgressHtml(progress){
   if(!progress) return '';
   return _tierRoadmapHtml(progress);
