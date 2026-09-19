@@ -10649,13 +10649,15 @@ function openJeremieVoicePicker(){
         empty.style.cssText='opacity:.7;font-size:14px;padding:12px 0;';
         panel.appendChild(empty);
       }
+      var saved=_jeremieSavedVoice();
       for(var i=0;i<list.length;i++){
         (function(v){
+          var isCurrent=!!(saved && saved.source===source && saved.index===v.index);
           var row=document.createElement('div');
           row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);';
           var label=document.createElement('div');
-          label.textContent=v.name||('Voix '+(v.index+1));
-          label.style.cssText='font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+          label.textContent=(v.name||('Voix '+(v.index+1)))+(isCurrent?'  ✓ (voix actuelle)':'');
+          label.style.cssText='font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+(isCurrent?'color:#d4af37;font-weight:700;':'');
           var btnWrap=document.createElement('div'); btnWrap.style.cssText='display:flex;gap:8px;flex-shrink:0;';
           var testBtn=document.createElement('button');
           testBtn.innerHTML='<i class="fa-solid fa-play"></i>';
