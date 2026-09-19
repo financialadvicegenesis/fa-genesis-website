@@ -3778,11 +3778,22 @@ function _showRoleChoiceAfterDelete(){
   // ── Réinitialiser l'état global ──────────────────────────────
   try{ USER = null; GUEST = false; }catch(e){}
   // Fermer tous les overlays fixes qui pourraient être ouverts
+  // ATTENTION avant de toucher à ceci ou d'ajouter un nouvel id à _ids : el.style.display='none'
+  // ci-dessous est un STYLE INLINE, qui prime sur n'importe quelle règle CSS de classe
+  // (ex. #jeremie-overlay.open{display:flex}). Pour jeremie-overlay, ce style inline n'était
+  // JAMAIS nettoyé ensuite, donc après une déconnexion puis reconnexion dans la MÊME session
+  // (sans redémarrer l'app), la classe 'open' pouvait être ré-ajoutée sans effet visuel : le
+  // chat Jérémie restait invisible pour toujours, jusqu'au redémarrage complet de l'app (voir
+  // openJeremieChat(), qui fait désormais overlay.style.display='' avant d'ajouter sa classe).
+  // Tout AUTRE overlay listé ici a très probablement le même bug latent, juste jamais signalé :
+  // sa fonction d'ouverture doit, elle aussi, réinitialiser style.display avant de (re)basculer
+  // sur sa classe d'affichage - sinon ce même symptôme ("marche seulement après redémarrage
+  // complet de l'app") réapparaîtra pour ce popup le jour où quelqu'un le remarquera.
   try{
     var _ids = ['ptnr-contract-overlay','ptnr-drawer-overlay','notif-overlay','jeremie-overlay',
                 'tuto-overlay','reg-overlay','login-overlay','cart-overlay','pay-overlay',
                 'dispatch-claim-overlay','avail-overlay','msg-compose-overlay','dispute-overlay',
-                'doc-viewer-overlay','jeremie-overlay','cw-booking-overlay','pb-overlay'];
+                'doc-viewer-overlay','cw-booking-overlay','pb-overlay'];
     _ids.forEach(function(id){
       var el = document.getElementById(id);
       if(el){ el.style.display='none'; el.className=el.className.replace(/\b(on|open)\b/g,'').trim(); }
