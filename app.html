@@ -12569,7 +12569,19 @@ function closeDocViewer(){
 }
 function docViewerDownload(){if(_dvoUrl)_blobDownload(_dvoUrl,_dvoFile);}
 function _blobDownload(url,filename){
+  var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   fetch(url).then(function(r){return r.blob();}).then(function(blob){
+    // <a download> pointant vers un blob: n'est pas fiable dans la WebView Android système
+    // (contrairement à Chrome, elle ne route pas forcément ce clic vers le gestionnaire de
+    // téléchargements - le clic peut silencieusement ne rien faire, symptôme signalé sur le
+    // téléchargement des livrables). Sur l'app native, on passe par le système de fichiers +
+    // la feuille de partage natifs (voir mobile-bridge.js, FAGMobile.downloadFile) à la place.
+    if(isNative && window.FAGMobile && typeof window.FAGMobile.downloadFile==='function'){
+      window.FAGMobile.downloadFile(blob, filename||'document').then(function(ok){
+        if(!ok && typeof showToast==='function') showToast('Erreur','Téléchargement impossible, réessayez.','error');
+      });
+      return;
+    }
     var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename||'document';
     document.body.appendChild(a);a.click();
     setTimeout(function(){URL.revokeObjectURL(a.href);if(a.parentNode)a.parentNode.removeChild(a);},1500);

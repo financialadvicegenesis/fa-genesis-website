@@ -424,6 +424,36 @@
         });
     }
 
+    // ── Téléchargement de fichiers (livrables) ───────────────────────────────────
+    // window.URL.createObjectURL()+<a download> (utilisé côté web/PWA, voir app.html
+    // _blobDownload) n'est pas fiable dans la WebView Android système : contrairement à Chrome,
+    // elle ne route pas systématiquement un clic sur <a download> pointant vers un blob: vers
+    // le gestionnaire de téléchargements - le clic peut silencieusement ne rien faire. On passe
+    // ici par le système de fichiers natif (@capacitor/filesystem, écriture dans le cache de
+    // l'app - pas besoin de la permission de stockage externe, dépréciée sur Android récent)
+    // puis la feuille de partage native (@capacitor/share), qui laisse le client choisir où
+    // enregistrer ou ouvrir le fichier (Téléchargements, Drive, une appli de visionnage...).
+    // Fonctionne pour tout type de livrable (image, PDF, fichier générique).
+    window.FAGMobile.downloadFile = async function(blob, filename) {
+        try {
+            if (!Plugins.Filesystem || !Plugins.Share || !blob) return false;
+            var base64Data = await new Promise(function(resolve, reject) {
+                var reader = new FileReader();
+                reader.onloadend = function() {
+                    var result = reader.result || '';
+                    var idx = result.indexOf(',');
+                    resolve(idx !== -1 ? result.slice(idx + 1) : result);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+            var safeName = (filename || 'livrable').replace(/[\\/:*?"<>|]/g, '_');
+            var written = await Plugins.Filesystem.writeFile({ path: safeName, data: base64Data, directory: 'CACHE' });
+            await Plugins.Share.share({ url: written.uri, title: safeName });
+            return true;
+        } catch(e) { console.warn('[FAG Mobile] downloadFile:', e.message); return false; }
+    };
+
     window.FAGMobile.ready = true;
     document.dispatchEvent(new CustomEvent('fagmobile:ready', { detail: { platform: window.Capacitor.getPlatform() } }));
 
