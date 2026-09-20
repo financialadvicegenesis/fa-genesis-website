@@ -1396,7 +1396,17 @@ function createPartnerServiceDispatch(order) {
         var welcomeDiscount = parseFloat(order.welcome_discount_amount || 0);
         var totalAmount = discountedTotal + welcomeDiscount;     // prix plein
         var depositAmount = parseFloat(order.deposit_amount || 0);
-        var fullDeposit = welcomeDiscount > 0 ? parseFloat((totalAmount * 0.30).toFixed(2)) : depositAmount;
+        // BUG CORRIGÉ : cette ligne supposait à tort un acompte fixe de 30% dès qu'une réduction
+        // de bienvenue s'appliquait - correct pour un palier "acompte + solde" (30% dû
+        // maintenant), mais faux pour un palier "paiement intégral" (100% dû maintenant,
+        // deposit_amount == total). Un client ayant payé 2€ avec -15% première commande (donc
+        // deposit_amount réel = 1,70€, welcomeDiscount = 0,30€, prix plein = 2€) recevait un
+        // partenaire payé sur 2€×30%=0,60€ au lieu de 2€ (le vrai acompte à 100% remis à
+        // l'échelle du prix plein) - soit 0,45€ au lieu de 1,50€ pour un partenaire à 75%. On
+        // préserve maintenant le RATIO réel (acompte / total réellement dû) et on le réapplique
+        // au prix plein, au lieu de réécraser ce ratio par 30% en dur.
+        var depositRatio = discountedTotal > 0 ? (depositAmount / discountedTotal) : 1;
+        var fullDeposit = welcomeDiscount > 0 ? parseFloat((totalAmount * depositRatio).toFixed(2)) : depositAmount;
         var partnerDeposit = parseFloat((fullDeposit * partnerPct / 100).toFixed(2));
         var partnerTotal = parseFloat((totalAmount * partnerPct / 100).toFixed(2));
 
