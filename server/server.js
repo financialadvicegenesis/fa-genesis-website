@@ -1146,20 +1146,42 @@ async function processDispatchPayout(dispatch, stage) {
                 paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
             }
         } else {
-            // Toute étape non-acompte : 'balance' (2 tranches) ou 'installment_2'/'installment_3'/…
-            // (3+ tranches — palier "plusieurs fois" ou legacy "large"). On paie UNIQUEMENT la
-            // part du prestataire sur CETTE tranche précise, jamais "tout ce qu'il reste" —
-            // sinon un plan à 3+ mensualités verserait au prestataire la totalité du solde dès
-            // le 2ème versement, avant même que le client ait fini de payer les suivantes.
-            // Source de vérité : le montant CLIENT exact de cette tranche dans
-            // order.installments (généré par generateUserInstallmentPlan/generatePartnerSplit/
-            // generateGenesisSplit), au prorata du pourcentage partenaire.
-            var _stageInst = order && Array.isArray(order.installments)
-                ? order.installments.find(function(i) { return i.stage === stage; })
-                : null;
-            if (_stageInst && parseFloat(_stageInst.amount) > 0) {
-                stageTotal = parseFloat(_stageInst.amount);
-                paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
+            // Toute étape non-acompte : 'balance' (2 tranches, ou 3+ tranches "plusieurs fois" -
+            // voir plus bas) ou 'installment_2'/'installment_3'/… (legacy "large", 3 tranches
+            // fixes 30/40/30, product_type accompagnement/prestation_individuelle uniquement).
+            // BUG CORRIGÉ : generateUserInstallmentPlan() (mode "plusieurs fois" du partenaire,
+            // 2 à 8 mensualités) étiquette TOUTES les tranches après la première 'balance' -
+            // identique pour la mensualité 2, 3, 4... - et le client ne les paie de toute façon
+            // pas une par une : le seul bouton client existant ("Payer le solde",
+            // openPayBalanceSheet) règle TOUJOURS la somme de tout ce qui reste en une seule
+            // fois (order.balance_amount = somme des tranches après la première). Utiliser
+            // .find() (un seul match) ne prenait donc que le montant de la 2ème mensualité
+            // SEULE, sous-payant gravement le prestataire dès qu'un service comptait 3
+            // mensualités ou plus. Somme de TOUTES les tranches partageant ce stage, qui
+            // correspond exactement à ce qui est réellement capturé en une fois.
+            var _stageInsts = order && Array.isArray(order.installments)
+                ? order.installments.filter(function(i) { return i.stage === stage; })
+                : [];
+            var _stageInstsSum = _stageInsts.reduce(function(s, i) { return s + (parseFloat(i.amount) || 0); }, 0);
+            if (_stageInsts.length > 0 && _stageInstsSum > 0) {
+                stageTotal = parseFloat(_stageInstsSum.toFixed(2));
+                // BUG CORRIGÉ (même famille que createPartnerServiceDispatch, voir son
+                // commentaire) : si une réduction de bienvenue a été absorbée par GENESIS,
+                // order.total_amount (réellement capturé côté client) est INFÉRIEUR au prix
+                // plein sur lequel le partenaire doit être payé - order.installments[].amount
+                // est calculé sur ce total réduit, donc verser partnerPct% direct dessus
+                // sous-payait le partenaire sur le solde/les mensualités suivantes aussi (seul
+                // le tout premier versement était corrigé). On reconstitue la part du
+                // partenaire au prorata de cette tranche dans dispatch.partner_total_amount
+                // (déjà calculé sur le prix plein) - mathématiquement identique à l'ancien
+                // calcul quand aucune réduction n'a été absorbée, donc sans régression.
+                var _pdoTotal = order ? parseFloat(order.total_amount || 0) : 0;
+                var _pdoTarget = parseFloat(dispatch.partner_total_amount || 0);
+                if (_pdoTotal > 0 && _pdoTarget > 0) {
+                    paidAmount = parseFloat((_pdoTarget * (stageTotal / _pdoTotal)).toFixed(2));
+                } else {
+                    paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
+                }
             } else {
                 // Repli : pas de détail par tranche disponible — verser tout le solde restant
                 // (comportement historique, correct uniquement pour un plan à exactement 2
