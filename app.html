@@ -7352,9 +7352,17 @@ function renderOrderTrackingCard(r){
   else if(ds.key==='delivered')heroSub='Vos livrables sont prêts. Validez-les depuis cette page.';
   else if(ds.key==='completed'||ds.key==='reviewed')heroSub='Mission accomplie avec succès. Merci !';
 
+  // Projet terminé (completed/reviewed) : le DERNIER repère lui-même ("Projet terminé") reste
+  // toujours à i===currentIdx (voir _trackStepIdx), donc classé 'ts-active' (jaune, "en cours")
+  // par la logique normale ci-dessous - jamais 'ts-done' (vert), même une fois le projet
+  // réellement fini. La ligne menant à ce dernier repère devient bien verte entre-temps (le
+  // repère précédent, lui, passe correctement à 'ts-done'), mais le tout dernier point restait
+  // visuellement "en cours" pour toujours plutôt que "terminé" - la frise ne semblait donc
+  // jamais aller "jusqu'au bout". Forcer tous les repères en 'ts-done' dans ce cas précis.
+  var _isFullyDone = (ds.key === 'completed' || ds.key === 'reviewed');
   var stepsHtml = TRACK_STEPS.map(function(step, i){
-    var cls = i < currentIdx ? 'ts-done' : (i===currentIdx ? 'ts-active' : (i===currentIdx+1?'ts-next':'ts-pending'));
-    var iconEl = i < currentIdx
+    var cls = _isFullyDone || i < currentIdx ? 'ts-done' : (i===currentIdx ? 'ts-active' : (i===currentIdx+1?'ts-next':'ts-pending'));
+    var iconEl = (_isFullyDone || i < currentIdx)
       ? '<i class="fa-solid fa-check"></i>'
       : (i===currentIdx ? '<i class="fa-solid '+step.icon+'"></i>' : '<i class="fa-solid fa-lock"></i>');
     var timeHtml = stepTimes[i] && i <= currentIdx ? '<div class="track-step-time">'+_fmtTrackTime(stepTimes[i])+'</div>' : '';
@@ -7362,7 +7370,7 @@ function renderOrderTrackingCard(r){
     return '<li class="track-step '+cls+'">'
       +'<div class="track-step-icon">'+iconEl+'</div>'
       +'<div class="track-step-body">'
-      +'<div class="track-step-label">'+step.label+(i===currentIdx?'&nbsp;<span style="font-size:9px;background:#FFD700;color:#000;padding:1px 5px;border-radius:4px;font-weight:900;vertical-align:middle;">MAINTENANT</span>':'')+'</div>'
+      +'<div class="track-step-label">'+step.label+(i===currentIdx&&!_isFullyDone?'&nbsp;<span style="font-size:9px;background:#FFD700;color:#000;padding:1px 5px;border-radius:4px;font-weight:900;vertical-align:middle;">MAINTENANT</span>':'')+'</div>'
       +descHtml+timeHtml
       +'</div>'
       +'</li>';
@@ -7942,9 +7950,17 @@ function missionTimelineHtml(displayStatus){
   if(!displayStatus || !displayStatus.key) return '';
   var idx = MISSION_STATUS_ORDER.indexOf(displayStatus.key);
   if(idx === -1) idx = 0;
-  var pct = (idx/(MISSION_STATUS_ORDER.length-1))*100;
+  // BUG CORRIGÉ : 'completed' est l'avant-dernier statut de MISSION_STATUS_ORDER (index 5 sur
+  // 7, 'reviewed' étant le dernier) - le calcul direct idx/(length-1) plafonnait donc la barre
+  // à environ 83% dès que le projet était réellement terminé, et ne montrait 100% qu'une fois
+  // qu'un avis avait EN PLUS été laissé (statut 'reviewed'), ce qui n'arrive pas toujours. Un
+  // projet "terminé" doit afficher une barre pleine immédiatement, que l'avis suive ou non.
+  var _isDone = (displayStatus.key === 'completed' || displayStatus.key === 'reviewed');
+  var pct = _isDone ? 100 : (idx/(MISSION_STATUS_ORDER.length-1))*100;
   var dots = MISSION_STATUS_ORDER.map(function(s,i){
-    return '<div class="mission-ladder-dot'+(i<idx?' done':(i===idx?' current':''))+'"></div>';
+    // Même correctif que pour pct ci-dessus : sans _isDone, le tout dernier point ('reviewed')
+    // restait visuellement verrouillé/en attente même une fois le projet 'completed'.
+    return '<div class="mission-ladder-dot'+(_isDone || i<idx?' done':(i===idx?' current':''))+'"></div>';
   }).join('');
   return '<div class="mission-status-row">'
     +'<div class="mission-status-text">'+(displayStatus.emoji||'')+' '+(displayStatus.label||'')+'</div>'
@@ -7966,16 +7982,20 @@ var PARTNER_TRACK_STEPS = [
 function partnerMissionTrackingHtml(displayStatus){
   if(!displayStatus || !displayStatus.key) return '';
   var idx = (_trackStepIdx[displayStatus.key] !== undefined) ? _trackStepIdx[displayStatus.key] : 0;
+  // Même correctif que côté client (renderOrderTrackingCard) : 'completed' pointe sur le
+  // DERNIER repère ("Mission terminée"), qui restait classé 'ts-active' (jaune, "en cours")
+  // pour toujours au lieu de 'ts-done' (vert) une fois la mission réellement terminée.
+  var _isFullyDone = (displayStatus.key === 'completed' || displayStatus.key === 'reviewed');
   var stepsHtml = PARTNER_TRACK_STEPS.map(function(step, i){
-    var cls = i < idx ? 'ts-done' : (i===idx ? 'ts-active' : (i===idx+1?'ts-next':'ts-pending'));
-    var iconEl = i < idx
+    var cls = _isFullyDone || i < idx ? 'ts-done' : (i===idx ? 'ts-active' : (i===idx+1?'ts-next':'ts-pending'));
+    var iconEl = (_isFullyDone || i < idx)
       ? '<i class="fa-solid fa-check"></i>'
       : (i===idx ? '<i class="fa-solid '+step.icon+'"></i>' : '<i class="fa-solid fa-lock"></i>');
     var descHtml = (i===idx) ? '<div class="track-step-desc">'+step.desc+'</div>' : '';
     return '<li class="track-step '+cls+'">'
       +'<div class="track-step-icon">'+iconEl+'</div>'
       +'<div class="track-step-body">'
-      +'<div class="track-step-label">'+step.label+(i===idx?'&nbsp;<span style="font-size:9px;background:#FFD700;color:#000;padding:1px 5px;border-radius:4px;font-weight:900;vertical-align:middle;">MAINTENANT</span>':'')+'</div>'
+      +'<div class="track-step-label">'+step.label+(i===idx&&!_isFullyDone?'&nbsp;<span style="font-size:9px;background:#FFD700;color:#000;padding:1px 5px;border-radius:4px;font-weight:900;vertical-align:middle;">MAINTENANT</span>':'')+'</div>'
       +descHtml
       +'</div></li>';
   }).join('');
