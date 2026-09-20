@@ -9548,16 +9548,26 @@ function openNotifItem(id, link){
     if(typeof nav === 'function') nav(tabName);
     return;
   }
+  // Réutilise EXACTEMENT le même routeur que le tap sur une notification système/push (voir
+  // _handleNotifHash, qui gère commande, litige, contrat, mission, wallet, événement, avis,
+  // parrainage...). Avant ce correctif, tout ce qui n'était pas '#tab:'/'#partner:missions'
+  // passait par window.location.href = link : comme aucun code n'écoute 'hashchange', le hash
+  // changeait silencieusement sans que rien ne s'affiche - le panneau se fermait et l'utilisateur
+  // restait sur le même écran, pour la quasi-totalité des types de notification (commande,
+  // litige, contrat, remboursement, avis...).
+  if(typeof _handleNotifHash === 'function'){
+    _handleNotifHash(link.replace(/^\/?app\.html/,'').replace(/^#/,''));
+    return;
+  }
+  // Repli si _handleNotifHash n'est pas encore chargé (ne devrait pas arriver en pratique).
   if(link.indexOf('#partner:') === 0){
     var pSection = link.replace('#partner:','');
-    // Basculer en vue partenaire et ouvrir la section
     if(typeof _showPartnerView === 'function') _showPartnerView();
     if(pSection === 'missions' && typeof _ptnrLoadMissions === 'function'){
       setTimeout(function(){ _ptnrLoadMissions(); }, 300);
     }
     return;
   }
-  // Lien externe ou page différente
   window.location.href = link;
 }
 function markAllNotifsRead(){
