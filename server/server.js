@@ -22756,7 +22756,8 @@ app.put('/api/reservations/:id/status', function(req, res) {
         var clientEmailRes = reservations[idx].client_email;
         if (clientEmailRes) {
             var labelRes = newStatus === 'confirmed' ? 'confirmée ✅' : 'refusée ❌';
-            sendPushToUser(clientEmailRes, { title: 'Réservation ' + labelRes, body: (reservations[idx].product_name || 'Coworking') + ' — ' + labelRes, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#reservations', tag: 'reservation' });
+            // notifyUser (pas sendPushToUser seul) pour atteindre aussi l'app Android native via FCM.
+            notifyUser(clientEmailRes, 'client', 'reservation-status', 'Réservation ' + labelRes, (reservations[idx].product_name || 'Coworking') + ' — ' + labelRes, '/app.html#reservations');
         }
         res.json({ ok: true, reservation: reservations[idx] });
     } catch (e) {
@@ -22910,6 +22911,12 @@ app.post('/api/coworking/messages', function(req, res) {
         saveCwMessages(all);
         // Push au destinataire
         if (isPartner) {
+            // NOTE : diffusé à TOUT le rôle 'partner' (aucun champ partner_email/partner_id sur
+            // les réservations coworking - un seul espace, pas un annuaire multi-prestataires) -
+            // laissé en Web Push seul comme avant, pas basculé sur notifyUser/FCM ici : ça
+            // enverrait une notification FCM bruyante à TOUS les prestataires du marketplace
+            // pour un message qui ne les concerne pas. À corriger seulement si un ciblage précis
+            // (compte(s) staff coworking) est identifié.
             sendPushToRole('partner', { title: 'Nouveau message client', body: (senderName || 'Client') + ' : ' + content.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-partner', tag: 'message-cw' });
         } else {
             // Trouver l'email du client pour lui envoyer le push si le partenaire répond
@@ -22919,7 +22926,8 @@ app.post('/api/coworking/messages', function(req, res) {
                 if (orderForPush && orderForPush.client_info) resForPush = { client_email: orderForPush.client_info.email };
             }
             if (resForPush && resForPush.client_email) {
-                sendPushToUser(resForPush.client_email, { title: 'Nouveau message', body: 'COM VISA : ' + content.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#reservations', tag: 'message-cw' });
+                // notifyUser (pas sendPushToUser seul) pour atteindre aussi l'app Android native via FCM.
+                notifyUser(resForPush.client_email, 'client', 'message-coworking', 'Nouveau message', 'COM VISA : ' + content.substring(0, 80), '/app.html#reservations');
             }
         }
         res.json({ ok: true, message: msg });
