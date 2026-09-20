@@ -23384,7 +23384,10 @@ app.post('/api/admin/support/:id/reply', authenticateAdmin, function(req, res) {
     tickets[idx].status = 'replied';
     tickets[idx].updated_at = now;
     saveSupportTickets(tickets);
-    try { sendPushToUser(tickets[idx].client_email, { title: 'Réponse FA Genesis', body: message.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', url: '/app.html#support-reply-' + tickets[idx].id }); } catch(e){}
+    // sendPushToUser() seul (Web Push) ne joint jamais l'app Android native — seul notifyUser()
+    // est câblé sur FCM (voir _resolveUserIdForFcm/sendFcmToUser). Sans ça, un client qui répond
+    // au support depuis l'app mobile ne recevait AUCUNE notification quand le support répondait.
+    try { notifyUser(tickets[idx].client_email, 'client', 'support-reply', 'Réponse FA Genesis', message.substring(0, 80), '/app.html#support-reply-' + tickets[idx].id); } catch(e){}
     res.json({ ok: true });
 });
 
