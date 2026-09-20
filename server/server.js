@@ -3441,6 +3441,12 @@ async function checkAutoPaymentRelease() {
                         'Le délai de 7 jours s\'est écoulé — votre paiement pour « ' + (_o.product_name || 'la prestation') + ' » a été automatiquement libéré.',
                         '#partner:wallet:' + _o.id);
                 }
+                // Demande d'avis client — même correctif que dans validate-delivery (voir son
+                // commentaire) : sans ça, une commande auto-libérée après 7 jours sans réponse
+                // du client ne déclenchait jamais non plus le popup d'avis.
+                if (_arClientEmail && _arDisp && _arDisp.status !== 'cancelled') {
+                    requestPartnerReviews(_arClientEmail, [_arDisp]);
+                }
 
             } catch(arErr) {
                 console.error('[AUTO-RELEASE] Erreur pour commande', _o.id, ':', arErr.message);
@@ -19039,6 +19045,18 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
                     'Le client a confirmé la bonne livraison de « ' + (order.product_name || '') + ' ». Merci pour votre travail !',
                     '/app.html#partner:mission:' + orderId
                 );
+            }
+            // Demande d'avis client — CRITIQUE, ne pas retirer : requestPartnerReviews() est le
+            // SEUL endroit qui pose review_requested=true sur le dispatch, condition nécessaire
+            // pour que le popup d'avis (app.html, _checkPendingReviews) apparaisse un jour côté
+            // client. Avant ce correctif, elle n'était appelée que depuis les deux flux de
+            // confirmation de paiement direct (_applyPaymentConfirmation, /api/payments/verify)
+            // - JAMAIS depuis validate-delivery (la validation GENESIS SAFE™ par le client, le
+            // parcours de complétion principal de la plateforme) ni depuis
+            // checkAutoPaymentRelease (libération automatique à 7 jours) : un client validant sa
+            // prestation via GENESIS SAFE™ n'était donc quasiment jamais invité à laisser un avis.
+            if (dispN && dispN.status !== 'cancelled') {
+                requestPartnerReviews(clientEmail, [dispN]);
             }
         } catch(ne) {}
 
