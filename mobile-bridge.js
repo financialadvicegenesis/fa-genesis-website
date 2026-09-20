@@ -454,6 +454,19 @@
         } catch(e) { console.warn('[FAG Mobile] downloadFile:', e.message); return false; }
     };
 
+    // ── Partage natif (parrainage, profil prestataire...) ─────────────────────────
+    // navigator.share() n'est pas fiable dans la WebView Android système (peut ne pas
+    // exister, ou exister mais échouer silencieusement selon la version). On passe par
+    // la feuille de partage native @capacitor/share (déjà utilisée par downloadFile
+    // ci-dessus) qui est garantie de fonctionner puisqu'elle est compilée nativement.
+    window.FAGMobile.shareContent = async function(opts) {
+        try {
+            if (!Plugins.Share) return false;
+            await Plugins.Share.share(opts || {});
+            return true;
+        } catch(e) { console.warn('[FAG Mobile] shareContent:', e.message); return false; }
+    };
+
     window.FAGMobile.ready = true;
     document.dispatchEvent(new CustomEvent('fagmobile:ready', { detail: { platform: window.Capacitor.getPlatform() } }));
 

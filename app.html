@@ -6958,15 +6958,13 @@ function closeServiceDetail(){
 function sharePartnerProfile(partnerId, partnerName){
   var url = window.location.origin + window.location.pathname + '#partner-'+partnerId;
   var title = partnerName + ' — FA GENESIS';
-  if(navigator.share){
-    navigator.share({ title: title, text: 'Découvre le profil de '+partnerName+' sur FA GENESIS', url: url }).catch(function(){});
-  } else if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(url).then(function(){
-      showToast('Lien copié', 'Lien du profil copié dans le presse-papiers', 'success');
-    }).catch(function(){});
-  } else {
-    showToast('Partage', 'Copiez le lien depuis la barre d\'adresse', 'info');
-  }
+  _shareRobust({ title: title, text: 'Découvre le profil de '+partnerName+' sur FA GENESIS', url: url }).then(function(shared){
+    if(shared) return;
+    _copyTextRobust(url).then(function(ok){
+      if(ok){ showToast('Lien copié', 'Lien du profil copié dans le presse-papiers', 'success'); }
+      else { showToast('Erreur', 'Impossible de partager ou copier le lien.', 'error'); }
+    });
+  });
 }
 function togglePartnerServiceSearch(partnerId){
   var wrap = document.getElementById('svc-search-wrap-'+partnerId);
@@ -8215,40 +8213,89 @@ function referralBoxHtml(){
     + '<div style="font-size:13px;color:#4caf50;font-weight:800;"><i class="fa-solid fa-circle-check" style="margin-right:5px;"></i>+100 Points QG</div>'
     + '</div></div>';
 }
+// navigator.clipboard/navigator.share ne sont pas fiables dans la WebView Android
+// système (peuvent être absents, ou échouer silencieusement) — voir mobile-bridge.js
+// FAGMobile.shareContent (passe par @capacitor/share, natif, déjà utilisé pour les
+// téléchargements). _copyTextRobust ajoute un repli document.execCommand('copy') et,
+// surtout, ne prétend JAMAIS avoir réussi si la copie a réellement échoué (avant ce
+// correctif, le bouton affichait "Copié !" même quand rien n'avait été copié).
+function _copyTextFallback(text){
+  try{
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly','');
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    var ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  }catch(e){ return false; }
+}
+function _copyTextRobust(text){
+  return new Promise(function(resolve){
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){ resolve(true); }).catch(function(){ resolve(_copyTextFallback(text)); });
+        return;
+      }
+    }catch(e){}
+    resolve(_copyTextFallback(text));
+  });
+}
+function _shareRobust(opts){
+  return new Promise(function(resolve){
+    if(window.FAGMobile && typeof window.FAGMobile.shareContent==='function'){
+      window.FAGMobile.shareContent(opts).then(resolve).catch(function(){ resolve(false); });
+      return;
+    }
+    if(navigator.share){
+      navigator.share(opts).then(function(){ resolve(true); }).catch(function(){ resolve(false); });
+      return;
+    }
+    resolve(false);
+  });
+}
 function copyReferralLink(){
   if(!USER || !USER.referralCode) return;
   var link = 'https://fagenesis.com/ref/' + USER.referralCode;
-  var doCopy = function(){
-    if(navigator.clipboard && navigator.clipboard.writeText){ return navigator.clipboard.writeText(link); }
-    return Promise.reject();
-  };
-  doCopy().catch(function(){}).then(function(){
+  _copyTextRobust(link).then(function(ok){
     var btn = document.querySelector('[onclick="copyReferralLink()"]');
-    if(btn){ var orig = btn.textContent; btn.textContent = 'Copié !'; setTimeout(function(){ btn.textContent = orig; }, 1500); }
+    if(ok){
+      if(btn){ var orig = btn.textContent; btn.textContent = 'Copié !'; setTimeout(function(){ btn.textContent = orig; }, 1500); }
+    } else {
+      showToast('Erreur', 'Impossible de copier le lien, réessayez.', 'error');
+    }
   });
 }
 function copyReferralCode(){
   if(!USER || !USER.referralCode) return;
-  var doCopy = function(){
-    if(navigator.clipboard && navigator.clipboard.writeText){ return navigator.clipboard.writeText(USER.referralCode); }
-    return Promise.reject();
-  };
-  doCopy().catch(function(){}).then(function(){
+  _copyTextRobust(USER.referralCode).then(function(ok){
     var btn = document.querySelector('.ref-box-v2-copy,.p-ref-copy-btn');
-    if(btn){ var orig = btn.textContent; btn.textContent = 'Copié !'; setTimeout(function(){ btn.textContent = orig; }, 1500); }
+    if(ok){
+      if(btn){ var orig = btn.textContent; btn.textContent = 'Copié !'; setTimeout(function(){ btn.textContent = orig; }, 1500); }
+    } else {
+      showToast('Erreur', 'Impossible de copier le code, réessayez.', 'error');
+    }
   });
 }
 function shareReferralCode(){
   if(!USER || !USER.referralCode) return;
   var link = 'https://fagenesis.com/ref/' + USER.referralCode;
-  if(navigator.share){
-    navigator.share({title:'GENESIS — Parrainage', text:'Rejoins GENESIS avec mon lien de parrainage !', url:link}).catch(function(){});
-  } else if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(link).then(function(){
+  _shareRobust({title:'GENESIS — Parrainage', text:'Rejoins GENESIS avec mon lien de parrainage !', url:link}).then(function(shared){
+    if(shared) return;
+    _copyTextRobust(link).then(function(ok){
       var btn = document.querySelector('.ref-box-v2-share');
-      if(btn){ var orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-check"></i> Lien copié !'; setTimeout(function(){ btn.innerHTML = orig; }, 1600); }
+      if(ok){
+        if(btn){ var orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-check"></i> Lien copié !'; setTimeout(function(){ btn.innerHTML = orig; }, 1600); }
+      } else {
+        showToast('Erreur', 'Impossible de partager ou copier le lien.', 'error');
+      }
     });
-  }
+  });
 }
 function showParrainageScreen(){
   var c = document.getElementById('profilContent'); if(!c) return;
@@ -8977,6 +9024,14 @@ function renderProfil(){
 }
 
 function openInBrowser(url){
+  // window.open() ne fonctionne pas de façon fiable dans la WebView Android de Capacitor
+  // (pas de support multi-fenêtres par défaut - même limitation que pour le PDF de contrat,
+  // voir _blobDownload). fagenesis.com est dans allowNavigation (capacitor.config.json) :
+  // en natif, on laisse simplement le lien <a href target="_blank"> naviguer normalement -
+  // la WebView charge la page dans l'app (retour possible via le bouton retour Android).
+  if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+    return true;
+  }
   window.open(url, '_blank', 'noopener,noreferrer');
   return false;
 }
@@ -20426,7 +20481,7 @@ function _ptnrLoadProfil(){
   var _ptnrRefBlockHtml = _pr.id ? '<div class="p-ref-box" style="margin:20px 0 0;">'
     + '<div class="p-ref-box-title"><i class="fa-solid fa-user-plus" style="color:#FFD700;margin-right:6px;font-size:10px;"></i>Mon code de parrainage</div>'
     + '<div class="p-ref-code-row"><span class="p-ref-code">'+_pr.id+'</span>'
-    + '<button class="p-ref-copy-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+_pr.id+'\')" style="cursor:pointer;">Copier</button></div>'
+    + '<button class="p-ref-copy-btn" onclick="_ptnrCopyRefCode(\''+_pr.id+'\', this)" style="cursor:pointer;">Copier</button></div>'
     + '<div class="p-ref-count">Invitez vos collègues prestataires à rejoindre GENESIS</div>'
     + '<button onclick="_ptnrShareRef(\''+_pr.id+'\')" style="margin-top:12px;width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:12px;padding:11px 0;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:.3px;"><i class="fa-solid fa-share-nodes" style="margin-right:7px;"></i>Inviter un ami</button>'
     + '</div>' : '';
@@ -20436,16 +20491,28 @@ function _ptnrLoadProfil(){
 // ── SOUS-FORMULAIRES PROFIL ──────────────────────────────────
 function _ptnrProfilBack(){ _ptnrLoadProfil(); }
 
+function _ptnrCopyRefCode(code, btn){
+  _copyTextRobust(code).then(function(ok){
+    if(ok){
+      if(btn){ var orig=btn.textContent; btn.textContent='Copié !'; setTimeout(function(){ btn.textContent=orig; },1500); }
+    } else if(typeof showToast==='function'){
+      showToast('Erreur', 'Impossible de copier le code, réessayez.', 'error');
+    }
+  });
+}
 function _ptnrShareRef(code){
   var link = 'https://fagenesis.com/ref/' + code;
-  if(navigator.share){
-    navigator.share({ title: 'GENESIS — Parrainage prestataire', text: 'Rejoins GENESIS en tant que prestataire avec mon lien !', url: link }).catch(function(){});
-  } else if(navigator.clipboard){
-    navigator.clipboard.writeText(link).then(function(){
+  _shareRobust({ title: 'GENESIS — Parrainage prestataire', text: 'Rejoins GENESIS en tant que prestataire avec mon lien !', url: link }).then(function(shared){
+    if(shared) return;
+    _copyTextRobust(link).then(function(ok){
       var btn = document.querySelector('.p-ref-box button[onclick*="_ptnrShareRef"]');
-      if(btn){ var orig=btn.innerHTML; btn.innerHTML='<i class="fa-solid fa-check" style="margin-right:7px;"></i>Lien copié !'; setTimeout(function(){ btn.innerHTML=orig; },2000); }
-    }).catch(function(){});
-  }
+      if(ok){
+        if(btn){ var orig=btn.innerHTML; btn.innerHTML='<i class="fa-solid fa-check" style="margin-right:7px;"></i>Lien copié !'; setTimeout(function(){ btn.innerHTML=orig; },2000); }
+      } else if(typeof showToast==='function'){
+        showToast('Erreur', 'Impossible de partager ou copier le lien.', 'error');
+      }
+    });
+  });
 }
 
 function _ptnrProfilEditParams(){
