@@ -18882,8 +18882,10 @@ function _ptnrRenderEngagedMissionCard(r){
   // sans l'étape intermédiaire "marquer livraison en cours"
   var canMarkDelivered = !isCancelled && r.dispatch_id && r.payment_tier === 'small' && !r.delivery_confirmed && !r.partner_completed && !r.has_revision_requested;
   var canMarkDelivering = !isCancelled && r.dispatch_id && statusKey === 'in_progress' && !canMarkDelivered && !r.has_revision_requested;
+  // Bouton (pas un <a href target=_blank>, non fiable dans la WebView Android système) -
+  // réutilise _ptnrDownloadContract(), déjà corrigé pour passer par _blobDownload.
   var contractDlBtn = r.contract_id
-    ? '<a href="'+(window.FA_GENESIS_API||API)+'/api/contracts/'+r.contract_id+'/pdf" target="_blank" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#1a1200;border:1px solid #3d2e00;border-radius:8px;padding:8px 12px;color:#FFD700;font-size:12px;font-weight:700;text-decoration:none;"><i class="fa-solid fa-file-contract"></i> Télécharger le contrat signé</a>'
+    ? '<button onclick="_ptnrDownloadContract(\''+r.contract_id+'\')" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#1a1200;border:1px solid #3d2e00;border-radius:8px;padding:8px 12px;color:#FFD700;font-size:12px;font-weight:700;width:100%;cursor:pointer;"><i class="fa-solid fa-file-contract"></i> Télécharger le contrat signé</button>'
     : '';
   // Mission terminée : le prestataire peut aussi la supprimer de sa liste (masquage propre à
   // sa vue — versements/historique restent intacts côté admin/client).
@@ -20640,8 +20642,11 @@ function _ptnrLivrableCard(opts) {
 }
 
 function _ptnrDownloadContract(contractId) {
-  var url = _ptnrApiUrl() + '/api/contracts/' + contractId + '/pdf';
-  window.open(url, '_blank');
+  // Même correctif que _downloadClientContractPdf (côté client) : window.open() sur une URL de
+  // PDF n'est pas fiable dans la WebView Android système - passe par _blobDownload (fetch +
+  // blob), qui bascule sur le système de fichiers + la feuille de partage natifs sur l'app
+  // Android. Endpoint public, sans authentification requise.
+  _blobDownload(_ptnrApiUrl() + '/api/contracts/' + contractId + '/pdf', 'contrat-' + contractId + '.pdf');
 }
 
 // ── MESSAGERIE COLLÈGUES (P2P même catégorie) ────────────────
@@ -21912,11 +21917,13 @@ async function _clientRefuseContract(contractId) {
 }
 
 function _downloadClientContractPdf(contractId) {
-    var link = document.createElement('a');
-    link.href = (window.FA_GENESIS_API || API) + '/api/contracts/' + contractId + '/pdf';
-    link.download = 'contrat-' + contractId + '.pdf';
-    link.target = '_blank';
-    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    // Passe par _blobDownload (fetch + blob) plutôt qu'un <a download> pointant directement sur
+    // l'URL de l'API : ce dernier n'est pas fiable dans la WebView Android système (même
+    // limitation déjà rencontrée sur le téléchargement des livrables) - le clic pouvait
+    // silencieusement ne rien faire. _blobDownload bascule automatiquement sur le système de
+    // fichiers + la feuille de partage natifs sur l'app Android (voir mobile-bridge.js).
+    // Endpoint public, sans authentification requise (vérifié côté serveur).
+    _blobDownload((window.FA_GENESIS_API || API) + '/api/contracts/' + contractId + '/pdf', 'contrat-' + contractId + '.pdf');
 }
 </script>
 <!-- ── PAIEMENT SOLDE GENESIS SAFE™ ────────────────────────────── -->
