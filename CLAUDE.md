@@ -37,6 +37,17 @@ Le CSS d'AOS met `opacity: 0` sur tout élément `data-aos`. Si `AOS.js`/`AOS.in
 charger, le contenu reste invisible. Ne jamais utiliser AOS sur une page fonctionnelle (dashboard,
 formulaire) — uniquement sur les pages marketing/vitrine.
 
+## Un seul routeur de liens de notification : `_handleNotifHash()`
+
+Toute nouvelle destination de notification (nouveau format de `link` passé à `notifyUser()`) doit
+être ajoutée **uniquement** dans `_handleNotifHash(hash)` (app.html). C'est le seul routeur —
+`openNotifItem()` (clic dans le panneau cloche) et le tap sur une notification système/push
+délèguent tous les deux à cette même fonction. Ne jamais réintroduire de logique de routage
+directement dans `openNotifItem()` : un second routeur qui se désynchronise du premier a déjà
+provoqué un bug réel (2026-09-21, commit 403bdf2) où la plupart des clics sur une notification
+dans la cloche ne redirigeaient nulle part, faute d'écouteur `hashchange` derrière le
+`window.location.href` utilisé en repli.
+
 ## `persistToCloud()` : toute nouvelle collection doit être ajoutée à la liste de sauvegarde
 
 Toute nouvelle donnée persistée via `persistToCloud('nom-collection', data)` doit avoir son nom
