@@ -7255,8 +7255,12 @@ function _partnerInfoHtml(r){
       ? ' <span style="font-size:10px;font-weight:800;color:'+(_BADGE_COLORS[_badge]||'#FFD700')+';"><i class="fa-solid '+(_BADGE_ICONS[_badge]||'fa-medal')+'" style="margin-right:2px;"></i>'+(_BADGE_LABELS[_badge]||_badge)+'</span>'
       : '';
 
+    // Ferme l'overlay "Détail de la commande" (z-index 9999) AVANT d'ouvrir la fiche partenaire
+    // (#detail-sheet, z-index 900) - sinon celle-ci s'affiche bien mais reste cachée dessous,
+    // invisible tant qu'on ne revient pas en arrière. Même précaution déjà en place sur le
+    // bouton "Écrire" juste au-dessus (_startMsgWithPartner).
     var _profileBtn = r.partner_id
-      ? '<button style="font-size:11px;color:var(--yellow);background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap;" onclick="openPartnerDetail(\''+r.partner_id+'\')"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:9px;margin-right:4px;"></i>Profil</button>'
+      ? '<button style="font-size:11px;color:var(--yellow);background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap;" onclick="var _ov=document.getElementById(\'order-detail-overlay\');if(_ov)_ov.remove();openPartnerDetail(\''+r.partner_id+'\')"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:9px;margin-right:4px;"></i>Profil</button>'
       : '';
 
     var _bio = r.partner_bio;
@@ -11010,8 +11014,13 @@ function showOrderDetail(requestId){
     if(!r) return;
     var overlay = document.createElement('div');
     overlay.id = 'order-detail-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9999;overflow-y:auto;padding-bottom:80px;';
-    overlay.innerHTML = '<div class="espace-back-bar" style="position:sticky;top:0;z-index:10;background:#000;">'
+    overlay.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9999;overflow-y:auto;padding-bottom:calc(80px + env(safe-area-inset-bottom,0px));';
+    // padding-top avec env(safe-area-inset-top) : cet overlay est ajouté directement à <body>
+    // (position:fixed;inset:0, donc jusqu'au tout bord de l'écran) sans passer par la structure
+    // habituelle de l'app qui gère déjà l'encoche/barre de statut ailleurs - sans cette marge,
+    // le titre "Détail de la commande" se retrouve sous l'heure/les icônes système sur les
+    // téléphones Android à encoche ou perforation caméra.
+    overlay.innerHTML = '<div class="espace-back-bar" style="position:sticky;top:0;z-index:10;background:#000;padding-top:calc(10px + env(safe-area-inset-top,0px));">'
       +'<button class="espace-back-btn" onclick="document.getElementById(\'order-detail-overlay\').remove()">&#8249;</button>'
       +'<div class="espace-title">Détail de la commande</div>'
       +'</div>'
@@ -18536,7 +18545,12 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       } else if(tabId === 'tab-reservations'){
         if(typeof renderResaTab === 'function') renderResaTab();
       } else if(tabId === 'tab-messages'){
-        if(typeof renderMsgTab === 'function') renderMsgTab();
+        // Si une conversation précise est ouverte (#chat-msgs présent), rafraîchir SES messages
+        // plutôt que d'appeler renderMsgTab() : celle-ci réaffiche systématiquement la liste des
+        // conversations, éjectant le client de la conversation en cours à chaque actualisation.
+        if(document.getElementById('chat-msgs') && typeof loadChatMessages==='function'){
+          loadChatMessages(_chatPartnerEmail);
+        } else if(typeof renderMsgTab === 'function') renderMsgTab();
       } else if(tabId === 'tab-profil'){
         var _ptrSection=sessionStorage.getItem('fa_nav_section');
         if(_ptrSection && typeof window[_ptrSection]==='function') window[_ptrSection]();
