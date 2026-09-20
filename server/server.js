@@ -2082,6 +2082,16 @@ function savePushSubscriptions(subs) {
 
 var ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@fagenesis.com').toLowerCase().split(',');
 
+// ⚠️ sendPushToUser/sendPushToRole = Web Push UNIQUEMENT (navigateur/PWA). Ça n'atteint JAMAIS
+// l'app Android/iOS native (aucun lien avec Firebase/FCM) — voir sendFcmToUser/sendFcmToRole
+// plus bas. Pour notifier un CLIENT ou un PARTENAIRE (qui ont l'app native), utiliser
+// notifyUser(email, role, type, title, body, link) à la place : elle persiste la notification
+// ET déclenche Web Push + FCM en un seul appel. N'appeler ces deux fonctions directement que
+// pour le rôle 'admin' (espace web uniquement, sendFcmToRole l'exclut exprès) ou un cas où le
+// silence côté app native est un choix assumé et documenté (voir /api/coworking/messages).
+// Un client/partenaire notifié seulement ici, sans notifyUser, ne recevra RIEN sur son téléphone
+// même avec un token FCM valide enregistré (bug réel trouvé et corrigé le 2026-09-21 sur
+// /api/admin/support/:id/reply, les statuts de réservation coworking et le chat COM VISA).
 function sendPushToUser(email, payload) {
     if (!email) return;
     var subs = loadPushSubscriptions().filter(function(s) {
