@@ -7650,8 +7650,9 @@ function _livDownload(livId, btn){
   var entry = _livDownloadData[livId];
   if(!entry || !entry.url){ showToast('Erreur','Fichier introuvable, réessayez plus tard.','error'); return; }
   if(btn){ btn.disabled = true; var _orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Téléchargement…'; }
-  _blobDownload(entry.url, entry.filename || 'livrable');
-  if(btn){ setTimeout(function(){ btn.disabled = false; btn.innerHTML = _orig; }, 1200); }
+  Promise.resolve(_blobDownload(entry.url, entry.filename || 'livrable')).then(function(){
+    if(btn){ btn.disabled = false; btn.innerHTML = _orig; }
+  });
 }
 function _livDownloadBtnHtml(livId, filename, url, label){
   _livDownloadData[livId] = { url: url, filename: filename || 'livrable' };
@@ -12657,24 +12658,51 @@ function closeDocViewer(){
   el.classList.remove('open');document.body.style.overflow='';
 }
 function docViewerDownload(){if(_dvoUrl)_blobDownload(_dvoUrl,_dvoFile);}
+// Convertit une URI data: (utilisée pour les livrables uploadés en base64 - image compressée
+// ou fichier générique <5 Mo, voir _ptnrSubmitPtnrLiv/_ptnrUploadLivrablePhoto) directement en
+// Blob, sans passer par fetch(). fetch() sur un schéma data: n'est pas fiable dans certaines
+// versions de la WebView Android système (échec silencieux, symptôme : le bouton de
+// téléchargement ne fait rien) - contrairement aux vraies URLs https:// (PDF de contrat...),
+// qui continuent de passer par fetch() normalement ci-dessous.
+function _dataUriToBlob(dataUri){
+  var comma = dataUri.indexOf(',');
+  var meta = dataUri.slice(5, comma); // après "data:"
+  var isBase64 = meta.indexOf('base64') !== -1;
+  var mimeMatch = meta.match(/^[^;]+/);
+  var mime = (mimeMatch && mimeMatch[0]) || 'application/octet-stream';
+  var payload = dataUri.slice(comma + 1);
+  var raw = isBase64 ? atob(payload) : decodeURIComponent(payload);
+  var bytes = new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++){ bytes[i] = raw.charCodeAt(i); }
+  return new Blob([bytes], {type: mime});
+}
 function _blobDownload(url,filename){
   var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-  fetch(url).then(function(r){return r.blob();}).then(function(blob){
+  var _fail = function(e){
+    console.warn('[DL]',e&&e.message);
+    if(typeof showToast==='function') showToast('Erreur','Téléchargement impossible, réessayez.','error');
+  };
+  var _deliver = function(blob){
     // <a download> pointant vers un blob: n'est pas fiable dans la WebView Android système
     // (contrairement à Chrome, elle ne route pas forcément ce clic vers le gestionnaire de
     // téléchargements - le clic peut silencieusement ne rien faire, symptôme signalé sur le
     // téléchargement des livrables). Sur l'app native, on passe par le système de fichiers +
     // la feuille de partage natifs (voir mobile-bridge.js, FAGMobile.downloadFile) à la place.
     if(isNative && window.FAGMobile && typeof window.FAGMobile.downloadFile==='function'){
-      window.FAGMobile.downloadFile(blob, filename||'document').then(function(ok){
-        if(!ok && typeof showToast==='function') showToast('Erreur','Téléchargement impossible, réessayez.','error');
+      return window.FAGMobile.downloadFile(blob, filename||'document').then(function(ok){
+        if(!ok) _fail();
+        return ok;
       });
-      return;
     }
     var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename||'document';
     document.body.appendChild(a);a.click();
     setTimeout(function(){URL.revokeObjectURL(a.href);if(a.parentNode)a.parentNode.removeChild(a);},1500);
-  }).catch(function(e){console.warn('[DL]',e&&e.message);});
+    return true;
+  };
+  if(url.indexOf('data:')===0){
+    try{ return Promise.resolve(_deliver(_dataUriToBlob(url))); }catch(e){ _fail(e); return Promise.resolve(false); }
+  }
+  return fetch(url).then(function(r){return r.blob();}).then(_deliver).catch(function(e){ _fail(e); return false; });
 }
 function _loadCommonDocs(cb){
   if(typeof COMMON_DOCUMENTS!=='undefined'){cb();return;}
