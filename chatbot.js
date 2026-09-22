@@ -31,31 +31,31 @@
             id: 'what_is_fa_genesis',
             category: 'general',
             keywords: ['c\'est quoi', 'qu\'est-ce que', 'qu est ce', 'financial advice', 'fa genesis', 'genesis c\'est', 'qui etes', 'qui vous', 'c est quoi', 'votre entreprise', 'votre societe', 'presentez', 'a propos'],
-            response: 'Financial Advice Genesis accompagne les \u00e9tudiants et les entrepreneurs d\u00e9butants \u00e0 transformer une id\u00e9e en un projet structur\u00e9, cr\u00e9dible et visible. Nous vous aidons \u00e0 clarifier votre vision, structurer votre projet et gagner en visibilit\u00e9, le tout \u00e0 un co\u00fbt accessible.',
-            quickReplies: ['Voir les offres', 'Comment \u00e7a marche ?', 'Contacter l\u2019\u00e9quipe'],
+            response: 'Financial Advice Genesis est une plateforme qui met en relation des clients avec des prestataires ind\u00e9pendants (photographes, vid\u00e9astes, sp\u00e9cialistes marketing, professionnels m\u00e9dia...) pour donner vie \u00e0 leurs projets. Chaque prestataire propose ses propres prestations \u00e0 son propre tarif, et le paiement est s\u00e9curis\u00e9 gr\u00e2ce \u00e0 GENESIS SAFE\u2122.',
+            quickReplies: ['Voir les prestations', 'Comment \u00e7a marche ?', 'Contacter l\u2019\u00e9quipe'],
             link: null
         },
         {
             id: 'who_is_it_for',
             category: 'general',
             keywords: ['pour qui', 'a qui', 's\'adresse', 'cible', 'public', 'porteur de projet', 'jeune'],
-            response: 'Nos accompagnements s\u2019adressent aux \u00e9tudiants, aux porteurs de projets, aux jeunes entrepreneurs, aux particuliers et aux entreprises. Que vous ayez d\u00e9j\u00e0 un projet ou juste une id\u00e9e, nous pouvons vous aider.',
-            quickReplies: ['Offres \u00c9tudiants', 'Offres Particuliers', 'Offres Entreprises'],
+            response: 'La plateforme s\u2019adresse \u00e0 toute personne ayant besoin d\u2019une prestation (photo, vid\u00e9o, marketing, m\u00e9dia...) : \u00e9tudiants, porteurs de projets, particuliers ou entreprises. Vous explorez l\u2019annuaire de prestataires ind\u00e9pendants et r\u00e9servez directement celui qui correspond \u00e0 votre besoin.',
+            quickReplies: ['Voir les prestations', 'Comment \u00e7a marche ?'],
             link: null
         },
         {
             id: 'no_project_yet',
             category: 'general',
             keywords: ['pas de projet', 'pas encore', 'juste une idee', 'je sais pas', 'commencer', 'debuter', 'je ne sais pas par ou', 'je debute', 'aucune idee', 'pas d\'idee'],
-            response: 'Pas de souci ! Vous n\u2019avez pas besoin d\u2019avoir un projet tout pr\u00eat. Vous pouvez venir avec une id\u00e9e, un d\u00e9but de r\u00e9flexion ou m\u00eame juste une envie. Nous vous aidons \u00e0 clarifier et structurer tout \u00e7a.',
-            quickReplies: ['Voir les offres', 'Comment \u00e7a marche ?'],
+            response: 'Pas de souci ! Vous n\u2019avez pas besoin d\u2019un projet tout pr\u00eat pour explorer nos prestataires. Parcourez l\u2019annuaire par cat\u00e9gorie, ou contactez notre \u00e9quipe si vous voulez qu\u2019on vous aide \u00e0 identifier la prestation la plus adapt\u00e9e \u00e0 votre besoin.',
+            quickReplies: ['Voir les prestations', 'Contacter l\u2019\u00e9quipe'],
             link: null
         },
         {
             id: 'about_partners',
             category: 'general',
             keywords: ['partenaire', 'photographe', 'videast', 'collaboration', 'travaillez avec'],
-            response: 'Oui, nous travaillons avec des photographes, vid\u00e9astes et m\u00e9dias partenaires pour offrir une exp\u00e9rience compl\u00e8te \u00e0 nos clients.',
+            response: 'Oui, notre plateforme r\u00e9unit des photographes, vid\u00e9astes, sp\u00e9cialistes marketing et professionnels m\u00e9dia ind\u00e9pendants. Chaque prestataire est v\u00e9rifi\u00e9 par notre \u00e9quipe avant d\u2019appara\u00eetre dans l\u2019annuaire.',
             quickReplies: [],
             link: null
         },
@@ -63,24 +63,24 @@
             id: 'student_adapted',
             category: 'general',
             keywords: ['adapte etudiant', 'prix etudiant', 'budget etudiant', 'abordable', 'pas cher', 'accessible', 'etudiant'],
-            response: 'Absolument ! Nos offres ont \u00e9t\u00e9 pens\u00e9es en tenant compte de la r\u00e9alit\u00e9 financi\u00e8re des \u00e9tudiants en France. Les prix \u00e9tudiants commencent \u00e0 partir de 50 \u20ac. Vous pouvez consulter tous les d\u00e9tails sur notre page offres.',
-            quickReplies: ['Offres \u00c9tudiants'],
-            link: { url: 'offres.html', label: 'Voir les offres \u00e9tudiants' }
+            response: 'Les tarifs d\u00e9pendent de chaque prestataire et de la prestation choisie \u2014 certaines prestations (marketing, m\u00e9dia) ont un tarif fixe affich\u00e9, d\u2019autres (photo, vid\u00e9o) sont sur devis selon votre projet. Vous pouvez comparer les prestataires et leurs tarifs directement dans l\u2019annuaire.',
+            quickReplies: ['Voir les prestations'],
+            link: { url: 'offres.html', label: 'Voir les prestations' }
         },
         {
             id: 'location',
             category: 'general',
             keywords: ['ou etes vous', 'localisation', 'adresse', 'ville', 'situe', 'ou se trouve', 'en ligne', 'presentiel', 'distance', 'distanciel'],
-            response: 'FA Genesis propose ses accompagnements principalement en ligne, ce qui vous permet d\u2019en b\u00e9n\u00e9ficier o\u00f9 que vous soyez en France. Pour certaines prestations (photo, vid\u00e9o), des sessions en pr\u00e9sentiel peuvent \u00eatre organis\u00e9es. Contactez-nous pour en savoir plus.',
-            quickReplies: ['Contacter l\u2019\u00e9quipe'],
+            response: 'Les prestataires de notre plateforme interviennent partout en France, en ligne comme en pr\u00e9sentiel selon la prestation (les shootings photo/vid\u00e9o se font g\u00e9n\u00e9ralement en pr\u00e9sentiel, les prestations marketing/m\u00e9dia \u00e0 distance). Le profil de chaque prestataire pr\u00e9cise sa zone d\u2019intervention.',
+            quickReplies: ['Voir les prestations'],
             link: null
         },
         {
             id: 'difference_vs_others',
             category: 'general',
             keywords: ['difference', 'pourquoi vous', 'avantage', 'concurrent', 'mieux', 'unique', 'special'],
-            response: 'Ce qui distingue FA Genesis, c\u2019est notre approche accessible, humaine et concr\u00e8te. Nous ne faisons pas de promesses irr\u00e9alistes : nous vous accompagnons pas \u00e0 pas, avec des prix adapt\u00e9s (d\u00e8s 50 \u20ac pour les \u00e9tudiants), une \u00e9quipe r\u00e9active, et des r\u00e9sultats tangibles (photos, vid\u00e9os, plan d\u2019action).',
-            quickReplies: ['Voir les offres', 'Comment \u00e7a marche ?'],
+            response: 'Ce qui distingue FA Genesis, c\u2019est la s\u00e9curit\u00e9 du paiement : gr\u00e2ce \u00e0 GENESIS SAFE\u2122, votre carte est autoris\u00e9e \u00e0 la r\u00e9servation mais l\u2019argent n\u2019est vers\u00e9 au prestataire qu\u2019une fois la prestation valid\u00e9e. Vous ne risquez jamais de payer pour un service jamais livr\u00e9. Tous nos prestataires sont v\u00e9rifi\u00e9s avant d\u2019appara\u00eetre sur la plateforme.',
+            quickReplies: ['Voir les prestations', 'Comment \u00e7a marche ?'],
             link: null
         },
 
@@ -89,39 +89,15 @@
             id: 'offers_overview',
             category: 'offres',
             keywords: ['offre', 'formule', 'forfait', 'pack', 'programme', 'quelles offres', 'vos services', 'proposez', 'tarif', 'prix', 'offres et tarifs', 'combien coute', 'catalogue', 'grille tarifaire', 'liste offres'],
-            response: 'Nous proposons plusieurs cat\u00e9gories d\u2019offres :\n\n\u2022 \u00c9TUDIANTS : de 50 \u20ac (2 jours) \u00e0 290 \u20ac (1 mois)\n\u2022 PARTICULIERS : de 149 \u20ac (2 jours) \u00e0 1 490 \u20ac (1 mois)\n\u2022 ENTREPRISES : de 1 490 \u20ac (7 jours) \u00e0 4 900 \u20ac (30 jours)\n\u2022 Prestations individuelles : Photo, Vid\u00e9o, Marketing, M\u00e9dia\n\nChaque cat\u00e9gorie propose aussi des offres sur mesure. Retrouvez tous les d\u00e9tails sur notre page offres.',
-            quickReplies: ['Offres \u00c9tudiants', 'Offres Particuliers', 'Offres Entreprises', 'Tarifs individuels'],
-            link: { url: 'offres.html', label: 'Voir toutes les offres' }
-        },
-        {
-            id: 'student_offers',
-            category: 'offres',
-            keywords: ['offre etudiant', 'etudiant idea', 'etudiant starter', 'etudiant launch', 'etudiant impact', 'tarif etudiant', 'prix etudiant', 'offres etudiants', 'etudiant offre', 'etudiant prix'],
-            response: 'Voici nos offres pour les \u00e9tudiants :\n\n\u2022 IDEA : 50 \u20ac / 2 jours \u2014 1 mini s\u00e9ance strat\u00e9gique (45 min) + structuration + mini plan d\u2019action\n\u2022 STARTER : 100 \u20ac / 7 jours \u2014 1 s\u00e9ance (1h30) + structuration + conseils visibilit\u00e9 + plan d\u2019action (14 jours)\n\u2022 LAUNCH : 189 \u20ac / 14 jours \u2014 strat\u00e9gie + storytelling + 1 vid\u00e9o courte + acc\u00e8s 1 m\u00e9dia + plan de diffusion (30 jours)\n\u2022 IMPACT : 290 \u20ac / 1 mois \u2014 accompagnement complet : strat\u00e9gie + photo (5 photos) + vid\u00e9o (1h) + m\u00e9dia + plan de communication (30 jours)\n\u2022 CUSTOM : sur mesure\n\nPaiement en plusieurs fois possible (jusqu\u2019\u00e0 8x). Tous les d\u00e9tails sur la page offres.',
-            quickReplies: ['Voir les offres \u00e9tudiants'],
-            link: { url: 'offres.html#offres-etudiants', label: 'Voir les offres \u00e9tudiants' }
-        },
-        {
-            id: 'particulier_offers',
-            category: 'offres',
-            keywords: ['offre particulier', 'particulier idea', 'particulier starter', 'particulier launch', 'particulier impact', 'tarif particulier', 'prix particulier', 'offres particuliers', 'particulier offre', 'particulier prix'],
-            response: 'Voici nos offres pour les particuliers :\n\n\u2022 IDEA : 149 \u20ac / 2 jours \u2014 s\u00e9ance strat\u00e9gique + structuration + plan d\u2019action\n\u2022 STARTER : 490 \u20ac / 7 jours \u2014 s\u00e9ance compl\u00e8te + structuration + conseils visibilit\u00e9 (paiement en 2x)\n\u2022 LAUNCH : 790 \u20ac / 14 jours \u2014 strat\u00e9gie + vid\u00e9o + m\u00e9dia + plan de diffusion (paiement en 2x)\n\u2022 IMPACT : 1 490 \u20ac / 1 mois \u2014 accompagnement complet avec photo, vid\u00e9o, m\u00e9dia (paiement en 2x)\n\u2022 CUSTOM : sur mesure\n\nConsultez la page offres pour le d\u00e9tail complet.',
-            quickReplies: ['Voir les offres particuliers'],
-            link: { url: 'offres.html#offres-particuliers', label: 'Voir les offres particuliers' }
-        },
-        {
-            id: 'enterprise_offers',
-            category: 'offres',
-            keywords: ['offre entreprise', 'entreprise start', 'entreprise visibility', 'entreprise impact', 'tarif entreprise', 'prix entreprise', 'b2b', 'offres entreprises', 'entreprise offre', 'professionnel', 'societe'],
-            response: 'Voici nos offres pour les entreprises :\n\n\u2022 START : 1 490 \u20ac / 7 jours \u2014 positionnement strat\u00e9gique + message central + conseils visibilit\u00e9 + mini plan d\u2019action (30 jours)\n\u2022 VISIBILITY : 2 990 \u20ac / 14 jours \u2014 storytelling + shooting photo (24 photos) + vid\u00e9o + m\u00e9dias (6 posts/stories) + plan de diffusion\n\u2022 IMPACT : 4 900 \u20ac / 30 jours \u2014 positionnement + photo (40 photos) + 2 vid\u00e9os + m\u00e9dias (9 posts/stories) + plan de communication (60 jours)\n\u2022 CUSTOM : sur mesure\n\nPour un devis personnalis\u00e9, n\u2019h\u00e9sitez pas \u00e0 contacter l\u2019\u00e9quipe.',
-            quickReplies: ['Voir les offres entreprises', 'Contacter l\u2019\u00e9quipe'],
-            link: { url: 'offres.html#offres-entreprises', label: 'Voir les offres entreprises' }
+            response: 'Notre plateforme r\u00e9unit des prestataires ind\u00e9pendants dans plusieurs cat\u00e9gories :\n\n\u2022 PHOTO \u2014 sur devis, selon le photographe et le projet\n\u2022 VID\u00c9O \u2014 sur devis, selon le vid\u00e9aste et le projet\n\u2022 MARKETING \u2014 \u00e0 partir de 120 \u20ac (tarif fixe)\n\u2022 M\u00c9DIA \u2014 \u00e0 partir de 223 \u20ac (tarif fixe)\n\nChaque prestataire fixe son propre tarif. Retrouvez tous les prestataires et leurs prix sur la page prestations.',
+            quickReplies: ['Voir les prestations', 'Tarifs individuels'],
+            link: { url: 'offres.html', label: 'Voir toutes les prestations' }
         },
         {
             id: 'individual_services',
             category: 'offres',
             keywords: ['prestation individuelle', 'service individuel', 'tarif individuel', 'tarifs individuels', 'a la carte', 'prestation seule', 'juste photo', 'juste video', 'juste marketing', 'tarif prestation', 'prix prestation'],
-            response: 'Voici nos tarifs individuels :\n\n\u2022 PHOTO : sur devis (photographes professionnels ind\u00e9pendants)\n\u2022 VID\u00c9O : sur devis (vid\u00e9astes professionnels partenaires)\n\u2022 MARKETING : \u00e0 partir de 120 \u20ac (analyse + recommandations)\n\u2022 M\u00c9DIA : \u00e0 partir de 223 \u20ac (publication sur m\u00e9dia cr\u00e9dible)\n\nPour la photo et la vid\u00e9o, le tarif d\u00e9pend du projet. Demandez un devis personnalis\u00e9 via le formulaire de contact.',
+            response: 'Voici nos cat\u00e9gories de prestations :\n\n\u2022 PHOTO : sur devis (photographes professionnels ind\u00e9pendants)\n\u2022 VID\u00c9O : sur devis (vid\u00e9astes professionnels ind\u00e9pendants)\n\u2022 MARKETING : \u00e0 partir de 120 \u20ac (analyse + recommandations)\n\u2022 M\u00c9DIA : \u00e0 partir de 223 \u20ac (publication sur m\u00e9dia cr\u00e9dible)\n\nPour la photo et la vid\u00e9o, le tarif d\u00e9pend du prestataire et du projet. Demandez un devis personnalis\u00e9 via le formulaire de contact ou directement aupr\u00e8s du prestataire.',
             quickReplies: ['Voir les tarifs individuels', 'Demander un devis'],
             link: { url: 'offres.html#tarifs', label: 'Voir les tarifs individuels' }
         },
@@ -129,25 +105,17 @@
             id: 'custom_offer',
             category: 'offres',
             keywords: ['sur mesure', 'custom', 'personnalise', 'specifique', 'adapte', 'podcast', 'besoin particulier', 'devis'],
-            response: 'Oui, nous proposons des offres sur mesure (CUSTOM) dans chaque cat\u00e9gorie. Si votre besoin est sp\u00e9cifique (podcast, projet particulier, entreprise, etc.), l\u2019\u00e9quipe peut cr\u00e9er une offre adapt\u00e9e \u00e0 vos besoins. Le mieux est de nous contacter pour en discuter.',
-            quickReplies: ['Contacter l\u2019\u00e9quipe'],
+            response: 'Oui, de nombreux prestataires proposent des devis sur mesure pour des besoins sp\u00e9cifiques (podcast, projet particulier, entreprise, etc.). Vous pouvez le demander directement au prestataire, ou nous contacter pour qu\u2019on vous oriente vers le bon profil.',
+            quickReplies: ['Contacter l\u2019\u00e9quipe', 'Voir les prestations'],
             link: { url: 'contact.html', label: 'Demander un devis' }
         },
         {
             id: 'choose_offer',
             category: 'offres',
-            keywords: ['quelle offre choisir', 'laquelle', 'choisir', 'conseiller', 'recommander', 'hesiter', 'meilleure offre', 'je ne sais pas quelle', 'idea ou starter', 'starter ou launch', 'launch ou impact', 'quelle formule'],
-            response: 'Le choix d\u00e9pend de votre profil et de vos besoins :\n\n\u2022 Vous avez une id\u00e9e \u00e0 clarifier ? \u2192 IDEA (2 jours)\n\u2022 Vous voulez structurer un projet ? \u2192 STARTER (7 jours)\n\u2022 Vous souhaitez aussi de la visibilit\u00e9 ? \u2192 LAUNCH (14 jours)\n\u2022 Vous voulez un accompagnement complet ? \u2192 IMPACT (1 mois)\n\nSi vous h\u00e9sitez, contactez notre \u00e9quipe : elle vous orientera vers l\u2019offre la plus adapt\u00e9e.',
-            quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
+            keywords: ['quelle offre choisir', 'laquelle', 'choisir', 'conseiller', 'recommander', 'hesiter', 'meilleure offre', 'je ne sais pas quelle', 'quelle formule', 'quel prestataire'],
+            response: 'Le choix d\u00e9pend de votre besoin : photo, vid\u00e9o, marketing ou m\u00e9dia. Une fois la cat\u00e9gorie identifi\u00e9e, comparez les profils de prestataires (portfolio, avis, tarifs) directement dans l\u2019annuaire. Si vous h\u00e9sitez, contactez notre \u00e9quipe : elle vous orientera vers le prestataire le plus adapt\u00e9.',
+            quickReplies: ['Voir les prestations', 'Contacter l\u2019\u00e9quipe'],
             link: null
-        },
-        {
-            id: 'whats_included',
-            category: 'offres',
-            keywords: ['inclus', 'comprend', 'contenu', 'quoi dans', 'qu\'est-ce qui est inclus', 'detail offre', 'compose'],
-            response: 'Chaque offre comprend des \u00e9l\u00e9ments diff\u00e9rents selon le niveau choisi. En g\u00e9n\u00e9ral :\n\n\u2022 IDEA : 1 s\u00e9ance strat\u00e9gique + structuration + plan d\u2019action\n\u2022 STARTER : s\u00e9ance compl\u00e8te + structuration + conseils visibilit\u00e9\n\u2022 LAUNCH : strat\u00e9gie + tournage vid\u00e9o + acc\u00e8s m\u00e9dia + plan de diffusion\n\u2022 IMPACT : tout ce qui pr\u00e9c\u00e8de + shooting photo + accompagnement complet\n\nPour le d\u00e9tail pr\u00e9cis de chaque offre, consultez la page offres.',
-            quickReplies: ['Voir les offres'],
-            link: { url: 'offres.html', label: 'Voir le d\u00e9tail des offres' }
         },
 
         // ===================== PAIEMENT =====================
@@ -155,24 +123,24 @@
             id: 'payment_how',
             category: 'paiement',
             keywords: ['payer', 'paiement', 'prix', 'combien', 'cout', 'tarif', 'comment payer', 'moyen de paiement', 'combien ca coute', 'carte bancaire', 'virement'],
-            response: 'Les prix sont affich\u00e9s directement sur notre site et sur notre page Instagram. Le paiement fonctionne en deux \u00e9tapes :\n\n\u2022 Un acompte de 30 % pour d\u00e9marrer\n\u2022 Le solde de 70 % \u00e0 la fin de l\u2019accompagnement\n\nLe paiement s\u2019effectue par carte bancaire de mani\u00e8re s\u00e9curis\u00e9e. Nous proposons aussi des facilit\u00e9s de paiement.',
-            quickReplies: ['Payer en plusieurs fois ?', 'Voir les offres'],
-            link: { url: 'offres.html', label: 'Voir les prix' }
+            response: 'Chaque prestataire fixe son tarif et son mode de paiement : paiement int\u00e9gral, ou acompte + solde. Le paiement s\u2019effectue par carte bancaire (ou PayPal) de mani\u00e8re s\u00e9curis\u00e9e : gr\u00e2ce \u00e0 GENESIS SAFE\u2122, votre carte est autoris\u00e9e \u00e0 la r\u00e9servation mais l\u2019argent n\u2019est d\u00e9bit\u00e9 qu\u2019une fois la prestation valid\u00e9e.',
+            quickReplies: ['Payer en plusieurs fois ?', 'Voir les prestations'],
+            link: { url: 'offres.html', label: 'Voir les prestations' }
         },
         {
             id: 'payment_installments',
             category: 'paiement',
             keywords: ['plusieurs fois', 'echelon', 'facilite', 'mensualite', 'etaler', 'en 2 fois', 'en 3 fois', 'en 4 fois', 'echelonne'],
-            response: 'Oui, le paiement en plusieurs fois est possible sur la plupart de nos offres :\n\n\u2022 \u00c9tudiants : jusqu\u2019\u00e0 2x (IDEA), 4x (STARTER), 6x (LAUNCH) ou 8x (IMPACT)\n\u2022 Particuliers : jusqu\u2019\u00e0 2x (STARTER, LAUNCH, IMPACT)\n\u2022 Entreprises et Custom : facilit\u00e9s de paiement n\u00e9gociables\n\nContactez notre \u00e9quipe pour conna\u00eetre les modalit\u00e9s exactes selon votre offre.',
-            quickReplies: ['Contacter l\u2019\u00e9quipe', 'Voir les offres'],
+            response: 'Oui, certains prestataires proposent le paiement en plusieurs fois (jusqu\u2019\u00e0 8 versements selon la prestation) \u2014 c\u2019est indiqu\u00e9 directement sur la fiche du prestataire au moment de la r\u00e9servation. Contactez notre \u00e9quipe si vous avez une question sur les modalit\u00e9s d\u2019une prestation en particulier.',
+            quickReplies: ['Contacter l\u2019\u00e9quipe', 'Voir les prestations'],
             link: null
         },
         {
             id: 'deposit_balance',
             category: 'paiement',
             keywords: ['acompte', 'solde', '30%', '70%', 'reste a payer', 'premier paiement', 'depot'],
-            response: 'Le paiement se fait en deux temps :\n\n\u2022 30 % d\u2019acompte au d\u00e9marrage de l\u2019accompagnement\n\u2022 70 % de solde \u00e0 la fin\n\nCe syst\u00e8me vous permet de commencer sans tout payer d\u2019un coup. L\u2019acompte active votre acc\u00e8s \u00e0 l\u2019espace client.',
-            quickReplies: ['Voir les offres'],
+            response: 'Selon la prestation, le paiement peut se faire int\u00e9gralement \u00e0 la r\u00e9servation, ou en acompte + solde (le solde \u00e9tant d\u00fb \u00e0 la livraison). Dans tous les cas, gr\u00e2ce \u00e0 GENESIS SAFE\u2122, l\u2019argent reste s\u00e9curis\u00e9 et n\u2019est vers\u00e9 au prestataire qu\u2019apr\u00e8s validation de la prestation par vos soins.',
+            quickReplies: ['Voir les prestations'],
             link: null
         },
         {
@@ -187,42 +155,8 @@
             id: 'payment_security',
             category: 'paiement',
             keywords: ['securise', 'securite', 'fiable', 'confiance', 'arnaque', 'serieux', 'sur'],
-            response: 'Votre s\u00e9curit\u00e9 est notre priorit\u00e9. Les paiements sont trait\u00e9s via Stripe, une plateforme de paiement s\u00e9curis\u00e9e et certifi\u00e9e. Vos donn\u00e9es bancaires ne sont jamais stock\u00e9es sur nos serveurs. FA Genesis est une entreprise enregistr\u00e9e et l\u00e9gitime.',
-            quickReplies: ['Voir les offres'],
-            link: null
-        },
-
-        // ===================== ACCOMPAGNEMENT =====================
-        {
-            id: 'how_it_works',
-            category: 'accompagnement',
-            keywords: ['comment ca marche', 'comment fonctionne', 'deroulement', 'etape', 'processus', 'fonctionnement', 'comment se passe', 'comment ca se passe'],
-            response: 'L\u2019accompagnement se d\u00e9roule en plusieurs \u00e9tapes :\n\n1. Clarification de votre id\u00e9e\n2. Structuration du projet\n3. Visibilit\u00e9 (photo, vid\u00e9o, m\u00e9dia selon l\u2019offre)\n4. Plan d\u2019action concret\n\nChaque accompagnement est simple, progressif et sans pression. Vous avancez \u00e0 votre rythme avec un suivi adapt\u00e9.',
-            quickReplies: ['Voir les offres', 'Combien de temps ?'],
-            link: null
-        },
-        {
-            id: 'duration',
-            category: 'accompagnement',
-            keywords: ['duree', 'combien de temps', 'jours', 'semaines', 'mois', 'long', 'rapide', 'dure'],
-            response: 'La dur\u00e9e d\u00e9pend de l\u2019offre choisie :\n\n\u2022 IDEA : 2 jours\n\u2022 STARTER : 7 jours\n\u2022 LAUNCH : 14 jours\n\u2022 IMPACT : 1 mois\n\u2022 CUSTOM : variable selon vos besoins\n\nChaque offre est con\u00e7ue pour aller \u00e0 l\u2019essentiel dans le temps imparti.',
-            quickReplies: ['Voir les offres'],
-            link: null
-        },
-        {
-            id: 'guarantee',
-            category: 'accompagnement',
-            keywords: ['garantie', 'resultat', 'reussite', 'succes', 'ca marche', 'efficace', 'certitude', 'assure'],
-            response: 'Nous ne garantissons pas le succ\u00e8s d\u2019un projet, car cela d\u00e9pend \u00e9norm\u00e9ment de votre volont\u00e9 et de votre engagement. En revanche, nous garantissons un accompagnement s\u00e9rieux, structur\u00e9 et adapt\u00e9 \u00e0 votre situation. Nous mettons tout en \u0153uvre pour vous donner les meilleures chances de r\u00e9ussir.',
-            quickReplies: [],
-            link: null
-        },
-        {
-            id: 'after_accompaniment',
-            category: 'accompagnement',
-            keywords: ['apres', 'ensuite', 'termine', 'fini', 'suite', 'suivi apres', 'apres l\'accompagnement'],
-            response: 'Une fois votre accompagnement termin\u00e9, vous conservez tous vos livrables (photos, vid\u00e9os, documents, plan d\u2019action). Vous pouvez \u00e9galement souscrire \u00e0 une nouvelle offre si vous souhaitez continuer \u00e0 \u00eatre accompagn\u00e9. Notre \u00e9quipe reste disponible pour r\u00e9pondre \u00e0 vos questions.',
-            quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
+            response: 'Votre s\u00e9curit\u00e9 est notre priorit\u00e9. Les paiements sont trait\u00e9s via Stripe, une plateforme certifi\u00e9e, et prot\u00e9g\u00e9s par GENESIS SAFE\u2122 : l\u2019argent n\u2019est vers\u00e9 au prestataire qu\u2019apr\u00e8s validation de la prestation par le client. Vos donn\u00e9es bancaires ne sont jamais stock\u00e9es sur nos serveurs.',
+            quickReplies: ['Voir les prestations'],
             link: null
         },
 
@@ -231,7 +165,7 @@
             id: 'client_area',
             category: 'espace_client',
             keywords: ['espace client', 'mon compte', 'mon espace', 'tableau de bord', 'dashboard', 'connexion', 'se connecter', 'connecter', 'login'],
-            response: 'Votre espace client vous permet de suivre votre accompagnement, acc\u00e9der \u00e0 vos documents et consulter vos s\u00e9ances. Pour vous connecter, rendez-vous sur la page de connexion.',
+            response: 'Votre espace client vous permet de suivre vos commandes, \u00e9changer avec vos prestataires et acc\u00e9der \u00e0 vos livrables. Pour vous connecter, rendez-vous sur la page de connexion.',
             quickReplies: [],
             link: { url: 'login.html', label: 'Se connecter' }
         },
@@ -239,7 +173,7 @@
             id: 'create_account',
             category: 'espace_client',
             keywords: ['creer compte', 'inscription', 's\'inscrire', 'nouveau compte', 'register', 'enregistrer', 'ouvrir compte'],
-            response: 'Pour cr\u00e9er votre compte, rendez-vous sur la page d\u2019inscription. Vous aurez besoin de vos informations personnelles et de choisir une offre.',
+            response: 'Pour cr\u00e9er votre compte, rendez-vous sur la page d\u2019inscription. Vous aurez besoin de vos informations personnelles, puis vous pourrez directement r\u00e9server une prestation aupr\u00e8s du prestataire de votre choix.',
             quickReplies: [],
             link: { url: 'register.html', label: 'Cr\u00e9er un compte' }
         },
@@ -247,7 +181,7 @@
             id: 'documents',
             category: 'espace_client',
             keywords: ['document', 'livrable', 'fichier', 'telecharger', 'pdf', 'livraison', 'telechargement'],
-            response: 'Vos documents et livrables sont accessibles depuis votre espace client. Les documents d\u2019accueil sont disponibles d\u00e8s le paiement de l\u2019acompte. Les livrables finaux (photos, vid\u00e9os, etc.) sont disponibles au t\u00e9l\u00e9chargement une fois le solde r\u00e9gl\u00e9.',
+            response: 'Vos documents et livrables sont accessibles depuis votre espace client, dans le d\u00e9tail de chaque commande. Les livrables (photos, vid\u00e9os, fichiers...) sont disponibles au t\u00e9l\u00e9chargement une fois la prestation valid\u00e9e.',
             quickReplies: [],
             link: { url: 'login.html', label: 'Acc\u00e9der \u00e0 mes documents' }
         },
@@ -263,9 +197,9 @@
             id: 'sessions_booking',
             category: 'espace_client',
             keywords: ['seance', 'rendez-vous', 'rdv', 'planifier', 'calendrier', 'booking', 'reservation', 'planning', 'prochain rendez-vous'],
-            response: 'Vos s\u00e9ances sont planifi\u00e9es par notre \u00e9quipe et visibles dans votre espace client, dans la section \u00ab S\u00e9ances \u00bb. Si vous souhaitez modifier ou planifier un rendez-vous, contactez-nous directement.',
+            response: 'La date de votre prestation se convient directement avec le prestataire, via la messagerie de votre espace client. Vous retrouvez vos rendez-vous et r\u00e9servations dans la section correspondante.',
             quickReplies: ['Contacter l\u2019\u00e9quipe'],
-            link: { url: 'login.html', label: 'Voir mes s\u00e9ances' }
+            link: { url: 'login.html', label: 'Voir mes r\u00e9servations' }
         },
         {
             id: 'technical_issue',
@@ -347,7 +281,7 @@
             id: 'help',
             category: 'meta',
             keywords: ['aide', 'help', 'je comprends pas', 'comment ca marche le bot', 'que peux-tu faire', 'quoi faire'],
-            response: 'Je peux vous aider sur les sujets suivants :\n\n\u2022 Nos offres et tarifs\n\u2022 Le fonctionnement de l\u2019accompagnement\n\u2022 Le paiement et les facilit\u00e9s\n\u2022 L\u2019espace client et les documents\n\u2022 Comment nous contacter\n\nPosez-moi votre question ou cliquez sur un bouton ci-dessous.',
+            response: 'Je peux vous aider sur les sujets suivants :\n\n\u2022 Nos prestations et tarifs\n\u2022 Comment fonctionne le paiement s\u00e9curis\u00e9\n\u2022 L\u2019espace client et les livrables\n\u2022 Comment nous contacter\n\nPosez-moi votre question ou cliquez sur un bouton ci-dessous.',
             quickReplies: ['Offres et tarifs', 'Comment \u00e7a marche ?', 'Paiement', 'Espace client', 'Contact'],
             link: null
         },
@@ -355,7 +289,7 @@
             id: 'who_are_you',
             category: 'meta',
             keywords: ['qui es tu', 'tu es qui', 'robot', 'bot', 'humain', 'intelligence artificielle', 'ia'],
-            response: 'Je suis l\u2019assistant virtuel de FA Genesis. Je suis l\u00e0 pour r\u00e9pondre \u00e0 vos questions sur nos offres, le fonctionnement de l\u2019accompagnement, le paiement et l\u2019espace client. Pour une demande sp\u00e9cifique, je peux transmettre votre question \u00e0 notre \u00e9quipe.',
+            response: 'Je suis l\u2019assistant virtuel de FA Genesis. Je suis l\u00e0 pour r\u00e9pondre \u00e0 vos questions sur nos prestations, le paiement s\u00e9curis\u00e9 et l\u2019espace client. Pour une demande sp\u00e9cifique, je peux transmettre votre question \u00e0 notre \u00e9quipe.',
             quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
             link: null
         },
@@ -363,7 +297,7 @@
             id: 'joke_or_chitchat',
             category: 'meta',
             keywords: ['blague', 'drole', 'rigole', 'amour', 'meteo', 'temps', 'sport', 'musique', 'film'],
-            response: 'Je suis sp\u00e9cialis\u00e9 dans les questions li\u00e9es \u00e0 FA Genesis (offres, paiement, accompagnement, espace client). Pour d\u2019autres sujets, je vous invite \u00e0 contacter directement notre \u00e9quipe qui se fera un plaisir de discuter avec vous !',
+            response: 'Je suis sp\u00e9cialis\u00e9 dans les questions li\u00e9es \u00e0 FA Genesis (prestations, paiement, espace client). Pour d\u2019autres sujets, je vous invite \u00e0 contacter directement notre \u00e9quipe qui se fera un plaisir de discuter avec vous !',
             quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
             link: null
         },
@@ -402,95 +336,21 @@
             link: { url: 'offres.html', label: 'Voir les prestations m\u00e9dia' }
         },
 
-        // ===================== PROCESSUS D\u00c9TAILL\u00c9 =====================
-        {
-            id: 'first_steps',
-            category: 'accompagnement',
-            keywords: ['premiere etape', 'comment commencer', 'apres inscription', 'apres paiement', 'demarrage', 'comment ca demarre', 'suite inscription', 'que se passe'],
-            response: 'Apr\u00e8s votre inscription et le paiement de l\u2019acompte (30 %), voici ce qui se passe :\n\n1. Acc\u00e8s \u00e0 votre espace client\n2. R\u00e9ception des documents d\u2019accueil\n3. Planification de votre premi\u00e8re s\u00e9ance strat\u00e9gique\n4. D\u00e9but de l\u2019accompagnement selon votre offre\n\nNotre \u00e9quipe vous contacte rapidement pour organiser le d\u00e9marrage.',
-            quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
-            link: null
-        },
-        {
-            id: 'strategic_session',
-            category: 'accompagnement',
-            keywords: ['seance strategique', 'seance strategie', 'session strategique', 'c\'est quoi la seance', 'comment se passe la seance', 'premiere seance', 'consultation', 'rdv strategique'],
-            response: 'La s\u00e9ance strat\u00e9gique est le c\u0153ur de chaque accompagnement. C\u2019est un rendez-vous en visioconf\u00e9rence o\u00f9 nous :\n\n\u2022 Clarifions votre id\u00e9e et vos objectifs\n\u2022 Analysons votre positionnement\n\u2022 D\u00e9finissons une strat\u00e9gie adapt\u00e9e\n\u2022 \u00c9laborons un plan d\u2019action concret\n\nDur\u00e9e : 45 min (IDEA) \u00e0 1h30 (autres offres). C\u2019est un moment d\u2019\u00e9change personnalis\u00e9.',
-            quickReplies: ['Comment \u00e7a marche ?', 'Voir les offres'],
-            link: null
-        },
-        {
-            id: 'what_to_prepare',
-            category: 'accompagnement',
-            keywords: ['preparer', 'preparation', 'avant seance', 'besoin de quoi', 'apporter', 'fournir', 'prevoir', 'quoi amener'],
-            response: 'Pour profiter au maximum de votre accompagnement, voici ce que vous pouvez pr\u00e9parer :\n\n\u2022 Une description de votre id\u00e9e ou projet (m\u00eame br\u00e8ve)\n\u2022 Vos objectifs principaux\n\u2022 Votre cible / public vis\u00e9 (si vous le savez)\n\u2022 Vos questions et attentes\n\nPas de panique si vous n\u2019avez pas tout ! La s\u00e9ance strat\u00e9gique sert justement \u00e0 clarifier tout cela ensemble.',
-            quickReplies: ['Comment \u00e7a marche ?', 'Voir les offres'],
-            link: null
-        },
-        {
-            id: 'deliverables_format',
-            category: 'accompagnement',
-            keywords: ['format livrable', 'format photo', 'format video', 'qualite livrable', 'resolution', 'haute definition', 'hd', 'raw', 'brut', 'retouch'],
-            response: 'Tous vos livrables sont fournis en qualit\u00e9 professionnelle :\n\n\u2022 Photos : haute r\u00e9solution, retouch\u00e9es, pr\u00eates pour les r\u00e9seaux sociaux et l\u2019impression\n\u2022 Vid\u00e9os : mont\u00e9es, optimis\u00e9es pour les r\u00e9seaux sociaux (formats adapt\u00e9s)\n\u2022 Documents : PDF accessibles depuis votre espace client\n\nVous conservez tous vos livrables \u00e0 vie, m\u00eame apr\u00e8s la fin de l\u2019accompagnement.',
-            quickReplies: ['Voir les offres'],
-            link: null
-        },
-        {
-            id: 'video_call',
-            category: 'accompagnement',
-            keywords: ['visio', 'visioconference', 'zoom', 'meet', 'google meet', 'teams', 'appel video', 'en ligne seance'],
-            response: 'Oui, toutes nos s\u00e9ances strat\u00e9giques et consultations se font en visioconf\u00e9rence. Cela vous permet d\u2019en b\u00e9n\u00e9ficier o\u00f9 que vous soyez en France (ou m\u00eame \u00e0 l\u2019\u00e9tranger). Le lien de connexion vous est envoy\u00e9 avant chaque s\u00e9ance.',
-            quickReplies: ['Comment \u00e7a marche ?', 'Voir les offres'],
-            link: null
-        },
-        {
-            id: 'urgency',
-            category: 'accompagnement',
-            keywords: ['urgent', 'rapidement', 'vite', 'presse', 'deadline', 'delai court', 'quand commencer', 'disponibilite', 'place disponible', 'tout de suite'],
-            response: 'Nous faisons notre possible pour d\u00e9marrer rapidement. Apr\u00e8s le paiement de l\u2019acompte, l\u2019accompagnement peut commencer sous quelques jours selon les disponibilit\u00e9s. Pour un besoin urgent, contactez-nous directement par t\u00e9l\u00e9phone au +33 7 64 16 36 09.',
-            quickReplies: ['Contacter l\u2019\u00e9quipe'],
-            link: null
-        },
-        {
-            id: 'what_media_means',
-            category: 'accompagnement',
-            keywords: ['media credible', 'c\'est quoi media', 'quel media', 'acces media', 'parution', 'quoi media', 'media inclus'],
-            response: 'L\u2019acc\u00e8s m\u00e9dia inclus dans certaines offres vous permet d\u2019\u00eatre publi\u00e9(e) sur un ou plusieurs m\u00e9dias en ligne reconnus et cr\u00e9dibles. Cela renforce votre visibilit\u00e9 et votre cr\u00e9dibilit\u00e9 aupr\u00e8s de votre audience. Le nombre de publications (posts/stories) d\u00e9pend de l\u2019offre choisie.',
-            quickReplies: ['Voir les offres', 'Tarifs individuels'],
-            link: null
-        },
-
         // ===================== OFFRES COMPL\u00c9MENT =====================
-        {
-            id: 'upgrade_offer',
-            category: 'offres',
-            keywords: ['changer offre', 'upgrade', 'passer a', 'modifier offre', 'evoluer', 'monter en gamme', 'changer de formule', 'augmenter offre'],
-            response: 'Oui, il est possible d\u2019ajuster votre accompagnement en cours de route. Si vous souhaitez passer \u00e0 une offre sup\u00e9rieure ou ajouter des services (photo, vid\u00e9o, m\u00e9dia), contactez notre \u00e9quipe. Nous trouverons la meilleure solution adapt\u00e9e \u00e0 vos besoins.',
-            quickReplies: ['Contacter l\u2019\u00e9quipe', 'Voir les offres'],
-            link: null
-        },
         {
             id: 'free_consultation',
             category: 'offres',
             keywords: ['gratuit', 'essai', 'consultation gratuite', 'sans engagement', 'decouvrir', 'tester', 'essayer'],
             response: 'Nous ne proposons pas de consultation gratuite \u00e0 proprement parler, mais notre \u00e9quipe est disponible pour r\u00e9pondre \u00e0 toutes vos questions avant de vous engager. Vous pouvez nous contacter par e-mail, t\u00e9l\u00e9phone ou via le formulaire de contact pour discuter de votre projet sans obligation.',
-            quickReplies: ['Contacter l\u2019\u00e9quipe', 'Voir les offres'],
+            quickReplies: ['Contacter l\u2019\u00e9quipe', 'Voir les prestations'],
             link: { url: 'contact.html', label: 'Nous contacter' }
-        },
-        {
-            id: 'student_proof',
-            category: 'offres',
-            keywords: ['justificatif etudiant', 'carte etudiant', 'prouver etudiant', 'certificat scolarite', 'statut etudiant', 'preuve etudiant'],
-            response: 'Pour b\u00e9n\u00e9ficier des tarifs \u00e9tudiants, un justificatif peut vous \u00eatre demand\u00e9 (carte \u00e9tudiante, certificat de scolarit\u00e9, etc.). Contactez notre \u00e9quipe pour plus de d\u00e9tails sur les conditions d\u2019\u00e9ligibilit\u00e9.',
-            quickReplies: ['Offres \u00c9tudiants', 'Contacter l\u2019\u00e9quipe'],
-            link: null
         },
         {
             id: 'group_offer',
             category: 'offres',
             keywords: ['groupe', 'equipe', 'ami', 'ensemble', 'collectif', 'association', 'duo', 'binome', 'plusieurs personnes'],
-            response: 'Si vous souhaitez vous inscrire \u00e0 plusieurs (amis, associ\u00e9s, \u00e9quipe), contactez notre \u00e9quipe pour une offre adapt\u00e9e. Nous pouvons proposer des accompagnements de groupe ou des tarifs sp\u00e9ciaux selon votre situation.',
-            quickReplies: ['Contacter l\u2019\u00e9quipe', 'Voir les offres'],
+            response: 'Si vous souhaitez r\u00e9server pour plusieurs personnes (amis, associ\u00e9s, \u00e9quipe), contactez notre \u00e9quipe ou directement le prestataire concern\u00e9 pour discuter d\u2019un tarif adapt\u00e9.',
+            quickReplies: ['Contacter l\u2019\u00e9quipe', 'Voir les prestations'],
             link: { url: 'contact.html', label: 'Demander un devis groupe' }
         },
 
@@ -499,39 +359,31 @@
             id: 'company_values',
             category: 'general',
             keywords: ['valeur', 'mission', 'vision', 'philosophie', 'approche', 'methode', 'innovation', 'authenticite', 'ambition'],
-            response: 'FA Genesis repose sur trois valeurs fondamentales :\n\n\u2022 INNOVATION \u2014 Nous croyons en l\u2019innovation comme moteur de transformation\n\u2022 AUTHENTICIT\u00c9 \u2014 Votre identit\u00e9 unique est au c\u0153ur de notre approche\n\u2022 AMBITION \u2014 Nous accompagnons ceux qui osent voir grand\n\nNotre mission : transformer une id\u00e9e en un projet structur\u00e9, cr\u00e9dible et visible. Build. Launch. Impact.',
-            quickReplies: ['C\u2019est quoi FA Genesis ?', 'Voir les offres'],
+            response: 'FA Genesis repose sur trois valeurs fondamentales :\n\n\u2022 INNOVATION \u2014 Nous croyons en l\u2019innovation comme moteur de transformation\n\u2022 AUTHENTICIT\u00c9 \u2014 Votre identit\u00e9 unique est au c\u0153ur de notre approche\n\u2022 AMBITION \u2014 Nous mettons en relation ceux qui osent voir grand avec des prestataires de confiance\n\nNotre mission : connecter des clients \u00e0 des prestataires ind\u00e9pendants v\u00e9rifi\u00e9s, avec un paiement s\u00e9curis\u00e9 de bout en bout.',
+            quickReplies: ['C\u2019est quoi FA Genesis ?', 'Voir les prestations'],
             link: { url: 'a-propos.html', label: 'En savoir plus' }
         },
         {
             id: 'fa_industries',
             category: 'general',
             keywords: ['fa industries', 'ecosysteme', 'groupe', 'maison mere', 'structure', 'holding'],
-            response: 'FA Genesis fait partie de l\u2019\u00e9cosyst\u00e8me FA Industries. FA Genesis est le p\u00f4le d\u00e9di\u00e9 \u00e0 l\u2019incubation strat\u00e9gique : nous aidons les porteurs de projets \u00e0 structurer, lancer et rendre visible leur id\u00e9e. C\u2019est le hub qui fournit cadre, m\u00e9thode et r\u00e9seau \u00e0 ceux qui osent construire leur avenir.',
+            response: 'FA Genesis fait partie de l\u2019\u00e9cosyst\u00e8me FA Industries. FA Genesis est le p\u00f4le d\u00e9di\u00e9 \u00e0 la mise en relation entre clients et prestataires ind\u00e9pendants (photo, vid\u00e9o, marketing, m\u00e9dia). C\u2019est la plateforme qui s\u00e9curise la transaction et la relation entre les deux parties.',
             quickReplies: ['C\u2019est quoi FA Genesis ?'],
             link: { url: 'a-propos.html', label: 'Page \u00c0 propos' }
-        },
-        {
-            id: 'build_launch_impact',
-            category: 'general',
-            keywords: ['build', 'launch', 'impact', 'trois piliers', 'pilier', 'methodologie', 'etapes cles'],
-            response: 'Notre m\u00e9thodologie repose sur trois piliers :\n\n\u2022 BUILD \u2014 Structurer votre id\u00e9e, votre vision et votre positionnement\n\u2022 LAUNCH \u2014 Cr\u00e9er votre image professionnelle et une visibilit\u00e9 coh\u00e9rente (photo, vid\u00e9o, m\u00e9dia)\n\u2022 IMPACT \u2014 G\u00e9n\u00e9rer des r\u00e9sultats concrets et durables gr\u00e2ce \u00e0 un plan d\u2019action clair\n\nChaque accompagnement suit cette progression pour maximiser vos chances de r\u00e9ussite.',
-            quickReplies: ['Comment \u00e7a marche ?', 'Voir les offres'],
-            link: null
         },
         {
             id: 'testimonials',
             category: 'general',
             keywords: ['temoignage', 'avis', 'retour', 'experience client', 'client satisfait', 'exemple', 'portfolio', 'reference', 'cas client', 'resultat client', 'preuve'],
-            response: 'Nous avons accompagn\u00e9 plus de 100 projets avec un taux de satisfaction de 95 %. Nos clients appr\u00e9cient particuli\u00e8rement l\u2019approche personnalis\u00e9e et les r\u00e9sultats concrets (photos, vid\u00e9os, plan d\u2019action). N\u2019h\u00e9sitez pas \u00e0 consulter notre page d\u2019accueil ou nos r\u00e9seaux sociaux pour d\u00e9couvrir nos r\u00e9alisations.',
-            quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
+            response: 'Nos clients laissent des avis sur chaque prestataire apr\u00e8s leur prestation \u2014 vous pouvez les consulter directement sur le profil du prestataire avant de r\u00e9server. N\u2019h\u00e9sitez pas \u00e0 consulter notre page d\u2019accueil ou nos r\u00e9seaux sociaux pour d\u00e9couvrir des r\u00e9alisations.',
+            quickReplies: ['Voir les prestations', 'Contacter l\u2019\u00e9quipe'],
             link: null
         },
         {
             id: 'language',
             category: 'general',
             keywords: ['langue', 'francais', 'anglais', 'english', 'language', 'parlez'],
-            response: 'Nos accompagnements sont principalement dispens\u00e9s en fran\u00e7ais. Si vous avez des besoins sp\u00e9cifiques concernant la langue, n\u2019h\u00e9sitez pas \u00e0 nous contacter pour en discuter.',
+            response: 'Nos prestations sont principalement propos\u00e9es en fran\u00e7ais. Si vous avez des besoins sp\u00e9cifiques concernant la langue, n\u2019h\u00e9sitez pas \u00e0 nous contacter pour en discuter.',
             quickReplies: ['Contacter l\u2019\u00e9quipe'],
             link: null
         },
@@ -539,7 +391,7 @@
             id: 'data_privacy',
             category: 'general',
             keywords: ['donnees', 'rgpd', 'confidentialite', 'vie privee', 'protection', 'donnees personnelles', 'securite donnees'],
-            response: 'La protection de vos donn\u00e9es personnelles est une priorit\u00e9. Vos informations sont utilis\u00e9es uniquement dans le cadre de votre accompagnement et ne sont jamais partag\u00e9es avec des tiers sans votre consentement. Les paiements sont s\u00e9curis\u00e9s via Stripe GENESIS SAFE\u2122.',
+            response: 'La protection de vos donn\u00e9es personnelles est une priorit\u00e9. Vos informations sont utilis\u00e9es uniquement dans le cadre de vos commandes et ne sont jamais partag\u00e9es avec des tiers sans votre consentement. Les paiements sont s\u00e9curis\u00e9s via Stripe et GENESIS SAFE\u2122.',
             quickReplies: [],
             link: null
         },
@@ -549,15 +401,15 @@
             id: 'cart_how',
             category: 'panier',
             keywords: ['panier', 'ajouter panier', 'mettre dans panier', 'comment commander', 'mon panier', 'voir panier', 'vider panier', 'modifier panier', 'comment ajouter'],
-            response: 'Ajouter une offre au panier est simple :\n\n1\ufe0f\u20e3 Allez sur la page Prestations\n2\ufe0f\u20e3 Choisissez une ou plusieurs offres\n3\ufe0f\u20e3 Cliquez sur \u00ab Ajouter au panier \u00bb\n4\ufe0f\u20e3 Consultez votre panier via l\u2019ic\u00f4ne \ud83d\uded2 en haut de page\n5\ufe0f\u20e3 Validez et payez l\u2019acompte\n\nVous pouvez combiner plusieurs offres dans un seul panier !',
-            quickReplies: ['Passer une commande', 'Voir les offres'],
+            response: 'Ajouter une prestation au panier est simple :\n\n1\ufe0f\u20e3 Allez sur la page Prestations\n2\ufe0f\u20e3 Choisissez une ou plusieurs prestations\n3\ufe0f\u20e3 Cliquez sur \u00ab Ajouter au panier \u00bb\n4\ufe0f\u20e3 Consultez votre panier via l\u2019ic\u00f4ne \ud83d\uded2 en haut de page\n5\ufe0f\u20e3 Validez et payez (int\u00e9gral ou acompte selon la prestation)\n\nVous pouvez combiner plusieurs prestations dans un seul panier !',
+            quickReplies: ['Passer une commande', 'Voir les prestations'],
             link: { url: 'offres.html', label: 'Voir les prestations' }
         },
         {
             id: 'checkout_process',
             category: 'panier',
             keywords: ['passer commande', 'valider commande', 'finaliser', 'checkout', 'commander', 'inscription avant paiement', 'faut creer compte', 'compte avant payer', 'comment valider'],
-            response: 'Pour passer commande :\n\n1\ufe0f\u20e3 Ajoutez vos offres au panier\n2\ufe0f\u20e3 Cliquez sur \u00ab Valider mon panier \u00bb\n3\ufe0f\u20e3 Remplissez le formulaire (pr\u00e9nom, nom, email)\n4\ufe0f\u20e3 Payez l\u2019acompte de 30% par carte bancaire\n5\ufe0f\u20e3 Votre espace client est cr\u00e9\u00e9 automatiquement \u2014 vous recevez vos identifiants par email\n\n\u2728 Pas besoin de cr\u00e9er un compte avant : il est cr\u00e9\u00e9 lors de la validation !',
+            response: 'Pour passer commande :\n\n1\ufe0f\u20e3 Ajoutez vos prestations au panier\n2\ufe0f\u20e3 Cliquez sur \u00ab Valider mon panier \u00bb\n3\ufe0f\u20e3 Remplissez le formulaire (pr\u00e9nom, nom, email)\n4\ufe0f\u20e3 Payez par carte bancaire, de mani\u00e8re s\u00e9curis\u00e9e\n5\ufe0f\u20e3 Votre espace client est cr\u00e9\u00e9 automatiquement \u2014 vous recevez vos identifiants par email\n\n\u2728 Pas besoin de cr\u00e9er un compte avant : il est cr\u00e9\u00e9 lors de la validation !',
             quickReplies: ['Comment fonctionne le paiement ?', 'Espace client'],
             link: { url: 'panier.html', label: 'Mon panier' }
         },
@@ -565,43 +417,25 @@
             id: 'combine_offers',
             category: 'panier',
             keywords: ['combiner offres', 'plusieurs offres', 'deux offres', 'cumuler', 'ajouter plusieurs', 'pack personnalise', 'plusieurs prestations', 'mixer', 'associer'],
-            response: 'Oui, vous pouvez tout \u00e0 fait combiner plusieurs offres dans votre panier ! Par exemple : une offre accompagnement + une prestation Marketing ou M\u00e9dia. Le total est calcul\u00e9 automatiquement et vous b\u00e9n\u00e9ficiez d\u2019un seul acompte de 30% sur l\u2019ensemble. \ud83d\udc4c',
-            quickReplies: ['Voir les offres', 'Ajouter au panier'],
+            response: 'Oui, vous pouvez tout \u00e0 fait combiner plusieurs prestations dans votre panier ! Par exemple : une prestation Marketing et une prestation M\u00e9dia. Le total est calcul\u00e9 automatiquement. \ud83d\udc4c',
+            quickReplies: ['Voir les prestations', 'Ajouter au panier'],
             link: { url: 'offres.html', label: 'Voir les prestations' }
-        },
-
-        // ===================== COMPARAISONS OFFRES =====================
-        {
-            id: 'offer_comparison',
-            category: 'offres',
-            keywords: ['difference entre', 'comparer offres', 'launch vs impact', 'idea vs starter', 'laquelle choisir', 'meilleur rapport', 'quelle difference', 'quel avantage', 'plus complete', 'quelle est la meilleure', 'comparer'],
-            response: 'Voici comment choisir selon vos besoins :\n\n\u2022 IDEA \u2014 Clarifier votre id\u00e9e rapidement (2 jours)\n\u2022 STARTER \u2014 Structurer et planifier (7 jours)\n\u2022 LAUNCH \u2014 D\u00e9crocher la visibilit\u00e9 : vid\u00e9o + m\u00e9dia (14 jours)\n\u2022 IMPACT \u2014 Le tout-en-un : photo + vid\u00e9o + m\u00e9dia + plan (1 mois)\n\nEn r\u00e9sum\u00e9 : IDEA pour d\u00e9buter, LAUNCH pour \u00eatre visible, IMPACT pour tout avoir. Notre \u00e9quipe peut aussi vous conseiller !',
-            quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
-            link: { url: 'offres.html', label: 'Comparer les offres' }
-        },
-        {
-            id: 'hours_per_offer',
-            category: 'offres',
-            keywords: ['combien heures', 'heure consulting', 'heures incluses', 'duree seance', 'temps seance', 'combien de seances', 'nombre seances', 'seances incluses'],
-            response: 'Voici les s\u00e9ances incluses selon l\u2019offre :\n\n\u2022 IDEA : 1 mini-s\u00e9ance (45 min)\n\u2022 STARTER : 1 s\u00e9ance compl\u00e8te (1h30)\n\u2022 LAUNCH : 2 s\u00e9ances strat\u00e9giques (1h30 chacune)\n\u2022 IMPACT : 3 s\u00e9ances + suivi continu\n\nPour les entreprises, les s\u00e9ances sont adapt\u00e9es \u00e0 votre organisation. Les offres CUSTOM sont enti\u00e8rement n\u00e9gociables.',
-            quickReplies: ['Voir les offres', 'Offres \u00c9tudiants'],
-            link: { url: 'offres.html', label: 'Voir les offres' }
         },
 
         // ===================== SUIVI DE COMMANDE =====================
         {
             id: 'order_status',
             category: 'espace_client',
-            keywords: ['statut commande', 'ou est ma commande', 'quand commence', 'etat commande', 'suivi commande', 'ma commande', 'mon accompagnement statut', 'avancement', 'progression accompagnement'],
-            response: 'Suivez votre accompagnement depuis votre espace client :\n\n\u2022 \ud83d\udcca Dashboard \u2014 vue d\u2019ensemble et statut de paiement\n\u2022 \ud83d\udcc5 S\u00e9ances \u2014 dates et planning de vos rendez-vous\n\u2022 \ud83d\udcc1 Livrables \u2014 vos fichiers disponibles au t\u00e9l\u00e9chargement\n\nConnectez-vous avec l\u2019email utilis\u00e9 lors de la commande.',
-            quickReplies: ['Espace client', 'S\u00e9ances et planning'],
+            keywords: ['statut commande', 'ou est ma commande', 'quand commence', 'etat commande', 'suivi commande', 'ma commande', 'avancement', 'progression commande'],
+            response: 'Suivez vos commandes depuis votre espace client :\n\n\u2022 \ud83d\udcca Mes commandes \u2014 vue d\u2019ensemble et statut de paiement\n\u2022 \ud83d\udcac Messages \u2014 \u00e9changez directement avec votre prestataire\n\u2022 \ud83d\udcc1 Livrables \u2014 vos fichiers disponibles au t\u00e9l\u00e9chargement\n\nConnectez-vous avec l\u2019email utilis\u00e9 lors de la commande.',
+            quickReplies: ['Espace client', 'Mes livrables'],
             link: { url: 'app.html', label: 'Mon espace client' }
         },
         {
             id: 'when_get_deliverables',
-            category: 'accompagnement',
+            category: 'espace_client',
             keywords: ['quand recevoir livrable', 'quand photos', 'quand video', 'delai livraison', 'combien de temps livrable', 'livraison livrables', 'attente livrables', 'quand fichiers disponibles'],
-            response: 'Les livrables sont mis \u00e0 disposition dans votre espace client \u00e0 la fin de l\u2019accompagnement :\n\n\ud83d\udcf8 Photos : retouches sous 3-5 jours ouvrables apr\u00e8s la s\u00e9ance\n\ud83c\udfac Vid\u00e9os : montage sous 5-7 jours ouvrables apr\u00e8s le tournage\n\ud83d\udcdd Documents strat\u00e9giques : fournis au fil de l\u2019accompagnement\n\nVous recevez une notification par email d\u00e8s que vos fichiers sont disponibles.',
+            response: 'Le d\u00e9lai de livraison d\u00e9pend du prestataire et de la prestation \u2014 il est g\u00e9n\u00e9ralement indiqu\u00e9 sur sa fiche ou convenu directement avec lui via la messagerie. Vous recevez une notification d\u00e8s que vos livrables sont disponibles dans votre espace client.',
             quickReplies: ['Mes livrables', 'Espace client'],
             link: { url: 'livrables.html', label: 'Mes livrables' }
         },
@@ -611,7 +445,7 @@
             id: 'when_balance_due',
             category: 'paiement',
             keywords: ['quand payer solde', 'solde du', 'echeance solde', 'deuxieme paiement quand', 'delai solde', 'quand payer reste', 'solde quand'],
-            response: 'Le solde (70% restant) est d\u00fb \u00e0 la fin de votre accompagnement, au moment de la livraison de vos livrables.\n\nPour les offres \u00e9tudiants \u00e0 plusieurs versements, les \u00e9ch\u00e9ances sont espac\u00e9es tous les 30 jours apr\u00e8s le paiement de l\u2019acompte.\n\n\ud83d\udca1 Vous pouvez aussi r\u00e9gler le solde en avance depuis votre espace client.',
+            response: 'Pour les prestations avec acompte + solde, le solde est d\u00fb au moment de la validation de la prestation par vos soins. Gr\u00e2ce \u00e0 GENESIS SAFE\u2122, l\u2019argent reste s\u00e9curis\u00e9 jusque-l\u00e0 et n\u2019est vers\u00e9 au prestataire qu\u2019une fois la prestation confirm\u00e9e.',
             quickReplies: ['Payer en plusieurs fois ?', 'Espace client'],
             link: null
         },
@@ -635,19 +469,19 @@
         // ===================== S\u00c9ANCES & LIVRABLES =====================
         {
             id: 'session_reschedule',
-            category: 'accompagnement',
+            category: 'espace_client',
             keywords: ['reprogrammer', 'reporter seance', 'changer date', 'annuler seance', 'modifier rdv', 'deplacement seance', 'seance reportee', 'changer rendez vous', 'pas disponible ce jour', 'decaler seance'],
-            response: 'Pour reprogrammer une s\u00e9ance :\n\n1\ufe0f\u20e3 Connectez-vous \u00e0 votre espace client\n2\ufe0f\u20e3 Allez dans la section \u00ab S\u00e9ances \u00bb\n3\ufe0f\u20e3 Soumettez une demande de modification de date\n\nL\u2019\u00e9quipe vous proposera de nouveaux cr\u00e9neaux dans les plus brefs d\u00e9lais. En cas d\u2019urgence, contactez-nous directement.',
-            quickReplies: ['S\u00e9ances et planning', 'Contacter l\u2019\u00e9quipe'],
-            link: { url: 'seances.html', label: 'Mes s\u00e9ances' }
+            response: 'Pour changer la date d\u2019une prestation, le plus simple est d\u2019en discuter directement avec le prestataire via la messagerie de votre espace client. En cas de difficult\u00e9, notre \u00e9quipe peut aussi intervenir.',
+            quickReplies: ['Contacter l\u2019\u00e9quipe'],
+            link: null
         },
         {
             id: 'choose_partner',
-            category: 'accompagnement',
+            category: 'espace_client',
             keywords: ['choisir photographe', 'choisir videaste', 'quel photographe', 'qui fait les photos', 'qui fait la video', 'photographe partenaire', 'videaste partenaire', 'qui prend photos'],
-            response: 'Le photographe ou vid\u00e9aste est s\u00e9lectionn\u00e9 par FA Genesis selon votre profil, vos objectifs et votre localisation. Nous choisissons des professionnels de confiance adapt\u00e9s \u00e0 votre univers visuel.\n\nSi vous avez des pr\u00e9f\u00e9rences particulières (style, ambiance), n\u2019h\u00e9sitez pas \u00e0 nous en faire part lors de votre premi\u00e8re s\u00e9ance \u2014 nous ferons de notre mieux pour y r\u00e9pondre.',
-            quickReplies: ['Contacter l\u2019\u00e9quipe'],
-            link: null
+            response: 'C\u2019est vous qui choisissez votre prestataire ! Parcourez l\u2019annuaire, consultez les profils (portfolio, avis, tarifs) et r\u00e9servez directement celui qui correspond \u00e0 votre univers et \u00e0 vos besoins.\n\nSi vous h\u00e9sitez entre plusieurs profils, notre \u00e9quipe peut vous conseiller.',
+            quickReplies: ['Voir les prestations', 'Contacter l\u2019\u00e9quipe'],
+            link: { url: 'offres.html', label: 'Voir les prestataires' }
         },
 
         // ===================== ESPACE CLIENT (COMPL\u00c9MENTS) =====================
@@ -673,18 +507,13 @@
     var QUICK_REPLY_MAP = {
         'C\u2019est quoi FA Genesis ?': 'C\u2019est quoi Financial Advice Genesis ?',
         'Voir les offres': 'Quelles sont vos offres ?',
+        'Voir les prestations': 'Quelles sont vos offres ?',
+        'Voir les prestataires': 'Quelles sont vos offres ?',
         'Contacter l\u2019\u00e9quipe': 'Comment vous contacter ?',
-        'Comment \u00e7a marche ?': 'Comment fonctionne l\u2019accompagnement ?',
-        'Offres \u00c9tudiants': 'Quelles sont les offres \u00e9tudiants ?',
-        'Offres Particuliers': 'Quelles sont les offres particuliers ?',
-        'Offres Entreprises': 'Quelles sont les offres entreprises ?',
-        'Voir les offres \u00e9tudiants': 'Quelles sont les offres \u00e9tudiants ?',
-        'Voir les offres particuliers': 'Quelles sont les offres particuliers ?',
-        'Voir les offres entreprises': 'Quelles sont les offres entreprises ?',
+        'Comment \u00e7a marche ?': 'Comment fonctionne le paiement ?',
         'Tarifs individuels': 'Quels sont vos tarifs individuels ?',
         'Voir les tarifs individuels': 'Quels sont vos tarifs individuels ?',
         'Payer en plusieurs fois ?': 'Est-ce que je peux payer en plusieurs fois ?',
-        'Combien de temps ?': 'Combien de temps dure un accompagnement ?',
         'Offres et tarifs': 'Quelles sont vos offres et tarifs ?',
         'Paiement': 'Comment fonctionne le paiement ?',
         'Espace client': 'Comment acc\u00e9der \u00e0 mon espace client ?',
@@ -693,7 +522,6 @@
         'Oui, transmettre ma question': '__ESCALATION__',
         'Passer une commande': 'Comment passer une commande ?',
         'Ajouter au panier': 'Comment ajouter une offre au panier ?',
-        'Séances et planning': 'Comment fonctionnent les séances ?',
         'Mes livrables': 'Quand est-ce que je reçois mes livrables ?',
         'Comment fonctionne le paiement ?': 'Comment fonctionne le paiement ?'
     };
