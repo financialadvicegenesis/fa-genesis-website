@@ -364,5 +364,10 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeInsc
   <button id="insc-ov-close" onclick="closeInscriptionOverlay()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
   <iframe id="insc-frame" src="" title="Inscription FA GENESIS"></iframe>
 </div>
+<script>
+    var chatbotLoaded=false;function loadChatbot(){if(chatbotLoaded)return;chatbotLoaded=true;var s=document.createElement('script');s.src='chatbot.js';document.body.appendChild(s);}
+    if('requestIdleCallback' in window){requestIdleCallback(loadChatbot,{timeout:4000});}else{setTimeout(loadChatbot,3000);}
+    window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
+</script>
 </body>
 </html>

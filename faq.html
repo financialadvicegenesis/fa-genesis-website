@@ -522,5 +522,10 @@ function closeInscriptionOverlay(){
 }
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeInscriptionOverlay(); });
 </script>
+<script>
+    var chatbotLoaded=false;function loadChatbot(){if(chatbotLoaded)return;chatbotLoaded=true;var s=document.createElement('script');s.src='chatbot.js';document.body.appendChild(s);}
+    if('requestIdleCallback' in window){requestIdleCallback(loadChatbot,{timeout:4000});}else{setTimeout(loadChatbot,3000);}
+    window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
+</script>
 </body>
 </html>

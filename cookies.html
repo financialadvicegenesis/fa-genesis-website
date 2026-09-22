@@ -187,5 +187,10 @@ a{text-decoration:none;color:inherit;}
   <p>FA GENESIS se réserve le droit de modifier la présente Politique de Cookies à tout moment afin de tenir compte des évolutions réglementaires, technologiques, ou de l'amélioration de ses services. Toute modification sera publiée sur le site internet et l'application mobile FA GENESIS.</p>
 </div>
 
+<script>
+    var chatbotLoaded=false;function loadChatbot(){if(chatbotLoaded)return;chatbotLoaded=true;var s=document.createElement('script');s.src='chatbot.js';document.body.appendChild(s);}
+    if('requestIdleCallback' in window){requestIdleCallback(loadChatbot,{timeout:4000});}else{setTimeout(loadChatbot,3000);}
+    window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
+</script>
 </body>
 </html>

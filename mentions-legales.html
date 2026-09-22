@@ -135,6 +135,11 @@ a{text-decoration:none;color:inherit;}
     <p><i class="fa-solid fa-phone"></i>+33 7 64 16 36 09</p>
   </div>
 </div>
+<script>
+    var chatbotLoaded=false;function loadChatbot(){if(chatbotLoaded)return;chatbotLoaded=true;var s=document.createElement('script');s.src='chatbot.js';document.body.appendChild(s);}
+    if('requestIdleCallback' in window){requestIdleCallback(loadChatbot,{timeout:4000});}else{setTimeout(loadChatbot,3000);}
+    window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
+</script>
 
 </body>
 </html>

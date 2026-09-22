@@ -515,5 +515,10 @@ document.getElementById('contactForm').addEventListener('submit', async function
   submitBtn.innerHTML = 'Envoyer le message <i class="fa-solid fa-arrow-right" style="margin-left:6px;font-size:11px;"></i>';
 });
 </script>
+<script>
+    var chatbotLoaded=false;function loadChatbot(){if(chatbotLoaded)return;chatbotLoaded=true;var s=document.createElement('script');s.src='chatbot.js';document.body.appendChild(s);}
+    if('requestIdleCallback' in window){requestIdleCallback(loadChatbot,{timeout:4000});}else{setTimeout(loadChatbot,3000);}
+    window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
+</script>
 </body>
 </html>
