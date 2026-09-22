@@ -181,7 +181,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
   <div class="content-wrap">
     <span class="sec-label" style="display:block;margin-bottom:16px;">Centre d'aide</span>
     <h1>FAQ<br><span class="grad-text">Questions fréquentes</span></h1>
-    <p class="faq-hero-sub">Trouvez rapidement les réponses à vos questions sur nos offres, le paiement et l'accompagnement.</p>
+    <p class="faq-hero-sub">Trouvez rapidement les réponses à vos questions sur nos prestations, le paiement et l'espace client.</p>
     <div class="faq-search-wrap">
       <input type="text" class="faq-search" id="faqSearch" placeholder="Rechercher une question..." oninput="filterFaq(this.value)">
       <i class="fa-solid fa-magnifying-glass faq-search-icon"></i>
@@ -199,7 +199,6 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
       <button class="faq-cat" onclick="showCat('general',this)"><i class="fa-solid fa-circle-info" style="margin-right:5px;"></i>Général</button>
       <button class="faq-cat" onclick="showCat('offres',this)"><i class="fa-solid fa-tags" style="margin-right:5px;"></i>Offres & Tarifs</button>
       <button class="faq-cat" onclick="showCat('paiement',this)"><i class="fa-solid fa-credit-card" style="margin-right:5px;"></i>Paiement</button>
-      <button class="faq-cat" onclick="showCat('accompagnement',this)"><i class="fa-solid fa-rocket" style="margin-right:5px;"></i>Accompagnement</button>
       <button class="faq-cat" onclick="showCat('client',this)"><i class="fa-solid fa-laptop" style="margin-right:5px;"></i>Espace client</button>
       <button class="faq-cat" onclick="showCat('contact-cat',this)"><i class="fa-solid fa-envelope" style="margin-right:5px;"></i>Contact</button>
     </div>
@@ -221,10 +220,10 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
 
       <div class="faq-item">
         <div class="faq-q" onclick="toggleItem(this.parentElement)">
-          <span class="faq-q-text">À qui s'adressent les accompagnements ?</span>
+          <span class="faq-q-text">À qui s'adressent vos prestations ?</span>
           <i class="fa-solid fa-chevron-down faq-chevron"></i>
         </div>
-        <div class="faq-a"><div class="faq-a-inner">Nos accompagnements s'adressent aux étudiants, aux porteurs de projets, aux jeunes entrepreneurs, aux particuliers et aux entreprises. Que vous ayez déjà un projet ou juste une idée, nous pouvons vous aider.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">Notre plateforme s'adresse à toute personne ayant besoin d'une prestation (photo, vidéo, marketing, média...) : étudiants, porteurs de projets, particuliers ou entreprises. Vous explorez l'annuaire de prestataires indépendants et réservez directement celui qui correspond à votre besoin.</div></div>
       </div>
 
       <div class="faq-item">
@@ -237,10 +236,10 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
 
       <div class="faq-item">
         <div class="faq-q" onclick="toggleItem(this.parentElement)">
-          <span class="faq-q-text">Les accompagnements se font en ligne ou en présentiel ?</span>
+          <span class="faq-q-text">Les prestations se font en ligne ou en présentiel ?</span>
           <i class="fa-solid fa-chevron-down faq-chevron"></i>
         </div>
-        <div class="faq-a"><div class="faq-a-inner">FA Genesis propose ses accompagnements principalement en ligne (visioconférence), ce qui vous permet d'en bénéficier où que vous soyez en France. Pour certaines prestations (photo, vidéo), des sessions en présentiel peuvent être organisées.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">Les prestataires de notre plateforme interviennent partout en France, en ligne comme en présentiel selon la prestation (les shootings photo/vidéo se font généralement en présentiel, les prestations marketing/média à distance). Le profil de chaque prestataire précise sa zone d'intervention.</div></div>
       </div>
     </div>
 
@@ -257,12 +256,12 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <i class="fa-solid fa-chevron-down faq-chevron"></i>
         </div>
         <div class="faq-a"><div class="faq-a-inner">
-          Nous proposons plusieurs catégories d'offres :<br><br>
-          <strong>Étudiants :</strong> de 50 € (2 jours) à 290 € (1 mois)<br>
-          <strong>Particuliers :</strong> de 149 € (2 jours) à 1 490 € (1 mois)<br>
-          <strong>Entreprises :</strong> de 1 490 € (7 jours) à 4 900 € (30 jours)<br>
-          <strong>Prestations individuelles :</strong> Photo, Vidéo, Marketing, Média<br><br>
-          Chaque catégorie propose aussi des offres sur mesure (CUSTOM).
+          Notre plateforme réunit des prestataires indépendants dans plusieurs catégories :<br><br>
+          <strong>Photo :</strong> sur devis, selon le photographe et le projet<br>
+          <strong>Vidéo :</strong> sur devis, selon le vidéaste et le projet<br>
+          <strong>Marketing :</strong> à partir de 120 € (tarif fixe)<br>
+          <strong>Média :</strong> à partir de 223 € (tarif fixe)<br><br>
+          Chaque prestataire fixe son propre tarif.
         </div></div>
       </div>
 
@@ -272,26 +271,19 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <i class="fa-solid fa-chevron-down faq-chevron"></i>
         </div>
         <div class="faq-a"><div class="faq-a-inner">
-          Le choix dépend de votre profil et de vos besoins :<br><br>
-          Vous avez une idée à clarifier ? <strong>IDEA</strong> (2 jours)<br>
-          Vous voulez structurer un projet ? <strong>STARTER</strong> (7 jours)<br>
-          Vous souhaitez aussi de la visibilité ? <strong>LAUNCH</strong> (14 jours)<br>
-          Vous voulez un accompagnement complet ? <strong>IMPACT</strong> (1 mois)<br><br>
-          Si vous hésitez, contactez notre équipe : elle vous orientera vers l'offre la plus adaptée.
+          Le choix dépend de votre besoin : photo, vidéo, marketing ou média.<br><br>
+          Une fois la catégorie identifiée, comparez les profils de prestataires (portfolio, avis, tarifs) directement dans l'annuaire.<br><br>
+          Si vous hésitez, contactez notre équipe : elle vous orientera vers le prestataire le plus adapté.
         </div></div>
       </div>
 
       <div class="faq-item">
         <div class="faq-q" onclick="toggleItem(this.parentElement)">
-          <span class="faq-q-text">Qu'est-ce qui est inclus dans chaque offre ?</span>
+          <span class="faq-q-text">Qu'est-ce qui est inclus dans chaque prestation ?</span>
           <i class="fa-solid fa-chevron-down faq-chevron"></i>
         </div>
         <div class="faq-a"><div class="faq-a-inner">
-          En général :<br><br>
-          <strong>IDEA :</strong> 1 séance stratégique + structuration + plan d'action<br>
-          <strong>STARTER :</strong> séance complète + structuration + conseils visibilité<br>
-          <strong>LAUNCH :</strong> stratégie + tournage vidéo + accès média + plan de diffusion<br>
-          <strong>IMPACT :</strong> tout ce qui précède + shooting photo + accompagnement complet
+          Cela dépend entièrement du prestataire et de la prestation choisie : chaque profil détaille précisément ce qui est inclus (séances, livrables, nombre de photos/vidéos, délais...) avant réservation. Comparez les fiches prestataires dans l'annuaire pour trouver celle qui correspond à votre besoin.
         </div></div>
       </div>
     </div>
@@ -309,10 +301,8 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <i class="fa-solid fa-chevron-down faq-chevron"></i>
         </div>
         <div class="faq-a"><div class="faq-a-inner">
-          Le paiement se fait en deux étapes :<br><br>
-          1. <strong>30 % d'acompte</strong> au démarrage de l'accompagnement<br>
-          2. <strong>70 % de solde</strong> à la fin<br><br>
-          Le paiement s'effectue par carte bancaire de manière sécurisée via Stripe.
+          Chaque prestataire fixe son tarif et son mode de paiement : paiement intégral, ou acompte + solde.<br><br>
+          Le paiement s'effectue par carte bancaire (ou PayPal) de manière sécurisée : grâce à <strong>GENESIS SAFE™</strong>, votre carte est autorisée à la réservation mais l'argent n'est débité qu'une fois la prestation validée.
         </div></div>
       </div>
 
@@ -322,10 +312,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <i class="fa-solid fa-chevron-down faq-chevron"></i>
         </div>
         <div class="faq-a"><div class="faq-a-inner">
-          Oui ! Le paiement en plusieurs fois est possible :<br><br>
-          <strong>Étudiants :</strong> jusqu'à 2x (IDEA), 4x (STARTER), 6x (LAUNCH) ou 8x (IMPACT)<br>
-          <strong>Particuliers :</strong> jusqu'à 2x (STARTER, LAUNCH, IMPACT)<br>
-          <strong>Entreprises et Custom :</strong> facilités de paiement négociables
+          Oui, certains prestataires proposent le paiement en plusieurs fois (jusqu'à 8 versements selon la prestation) — c'est indiqué directement sur la fiche du prestataire au moment de la réservation. Contactez notre équipe si vous avez une question sur les modalités d'une prestation en particulier.
         </div></div>
       </div>
 
@@ -335,53 +322,6 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <i class="fa-solid fa-chevron-down faq-chevron"></i>
         </div>
         <div class="faq-a"><div class="faq-a-inner">Oui, les paiements sont traités via Stripe, une plateforme de paiement certifiée et sécurisée. Vos données bancaires ne sont jamais stockées sur nos serveurs. FA Genesis est une entreprise enregistrée et légitime.</div></div>
-      </div>
-    </div>
-
-    <!-- ── Accompagnement ── -->
-    <div class="faq-group visible" id="grp-accompagnement">
-      <div class="faq-group-header">
-        <div class="faq-group-icon"><i class="fa-solid fa-rocket"></i></div>
-        <h2 class="faq-group-title">Accompagnement</h2>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleItem(this.parentElement)">
-          <span class="faq-q-text">Comment fonctionne l'accompagnement ?</span>
-          <i class="fa-solid fa-chevron-down faq-chevron"></i>
-        </div>
-        <div class="faq-a"><div class="faq-a-inner">
-          L'accompagnement se déroule en plusieurs étapes :<br><br>
-          1. Clarification de votre idée<br>
-          2. Structuration du projet<br>
-          3. Visibilité (photo, vidéo, média selon l'offre)<br>
-          4. Plan d'action concret<br><br>
-          Chaque accompagnement est simple, progressif et sans pression.
-        </div></div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleItem(this.parentElement)">
-          <span class="faq-q-text">Combien de temps dure l'accompagnement ?</span>
-          <i class="fa-solid fa-chevron-down faq-chevron"></i>
-        </div>
-        <div class="faq-a"><div class="faq-a-inner"><strong>IDEA :</strong> 2 jours &nbsp;|&nbsp; <strong>STARTER :</strong> 7 jours &nbsp;|&nbsp; <strong>LAUNCH :</strong> 14 jours &nbsp;|&nbsp; <strong>IMPACT :</strong> 1 mois &nbsp;|&nbsp; <strong>CUSTOM :</strong> variable selon vos besoins.</div></div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleItem(this.parentElement)">
-          <span class="faq-q-text">Que dois-je préparer avant la séance ?</span>
-          <i class="fa-solid fa-chevron-down faq-chevron"></i>
-        </div>
-        <div class="faq-a"><div class="faq-a-inner">Préparez une description de votre idée ou projet (même brève), vos objectifs principaux, votre cible / public visé (si vous le savez), et vos questions. Pas de panique si vous n'avez pas tout : la séance stratégique sert justement à clarifier tout cela ensemble.</div></div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleItem(this.parentElement)">
-          <span class="faq-q-text">Que se passe-t-il après l'accompagnement ?</span>
-          <i class="fa-solid fa-chevron-down faq-chevron"></i>
-        </div>
-        <div class="faq-a"><div class="faq-a-inner">Vous conservez tous vos livrables (photos, vidéos, documents, plan d'action). Vous pouvez également souscrire à une nouvelle offre si vous souhaitez continuer à être accompagné. Notre équipe reste disponible pour répondre à vos questions.</div></div>
       </div>
     </div>
 
@@ -531,7 +471,7 @@ function toggleItem(item){
 /* ── Category filter ── */
 var catMap = {
   'general':'grp-general','offres':'grp-offres','paiement':'grp-paiement',
-  'accompagnement':'grp-accompagnement','client':'grp-client','contact-cat':'grp-contact-cat'
+  'client':'grp-client','contact-cat':'grp-contact-cat'
 };
 function showCat(cat, btn){
   document.querySelectorAll('.faq-cat').forEach(function(b){ b.classList.remove('active'); });
