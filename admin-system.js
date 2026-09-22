@@ -324,15 +324,6 @@ function uploadFile(file) {
 }
 
 /**
- * Marquer l'accompagnement d'un client comme terminé
- * @param {string} clientEmail
- * @returns {boolean}
- */
-function markClientAccompanimentComplete(clientEmail) {
-    return markAccompanimentCompleted(clientEmail);
-}
-
-/**
  * Rechercher des clients
  * @param {string} query
  * @returns {Array}
