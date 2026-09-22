@@ -450,7 +450,7 @@
         'Notre équipe est disponible pour répondre à vos questions et vous accompagner dans votre paiement.': 'Our team is available to answer your questions and assist you with your payment.',
 
         // === FOOTER ===
-        'Avertissement : FA Genesis propose un accompagnement stratégique et pédagogique. Aucun résultat n\u2019est garanti. Les livrables et recommandations dépendent de l\u2019implication du client.': 'Disclaimer: FA Genesis provides strategic and educational support. No results are guaranteed. Deliverables and recommendations depend on client involvement.',
+        'Avertissement : FA Genesis est une plateforme mettant en relation des clients avec des prestataires indépendants. Aucun résultat n\u2019est garanti. Les livrables dépendent du prestataire choisi et de l\u2019implication du client.': 'Disclaimer: FA Genesis is a platform connecting clients with independent service providers. No results are guaranteed. Deliverables depend on the chosen provider and client involvement.',
         'Groupe FA Industries': 'FA Industries Group',
         'Conditions générales': 'Terms & Conditions',
         'Confidentialité': 'Privacy',

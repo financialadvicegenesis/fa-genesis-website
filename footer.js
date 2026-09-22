@@ -207,7 +207,7 @@
         // A) Branding
         html += '<div class="fg-footer__brand">';
         html += '<p class="fg-footer__brand-name">FA GENESIS</p>';
-        html += ‘<p class="fg-footer__brand-slogan">La plateforme qui connecte clients et prestataires de services en France et à l’international.</p>’;
+        html += '<p class="fg-footer__brand-slogan">La plateforme qui connecte clients et prestataires de services en France et à l’international.</p>';
         html += '<p class="fg-footer__brand-group">Groupe FA Industries</p>';
         html += '<div class="fg-footer__socials">';
         html += '<a href="https://www.linkedin.com/in/financial-advice-genesis-772b653aa/" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>';
@@ -221,7 +221,7 @@
 
         // B) Disclaimer
         html += '<div class="fg-footer__disclaimer">';
-        html += '<p>Avertissement : FA Genesis propose un accompagnement strat\u00e9gique et p\u00e9dagogique. Aucun r\u00e9sultat n\u2019est garanti. Les livrables et recommandations d\u00e9pendent de l\u2019implication du client.</p>';
+        html += '<p>Avertissement : FA Genesis est une plateforme mettant en relation des clients avec des prestataires ind\u00e9pendants. Aucun r\u00e9sultat n\u2019est garanti. Les livrables d\u00e9pendent du prestataire choisi et de l\u2019implication du client.</p>';
         html += '</div>';
 
         // Separator
