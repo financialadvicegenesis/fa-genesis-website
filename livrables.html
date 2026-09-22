@@ -291,12 +291,12 @@
                 <div id="commonDocsList"></div>
             </div>
 
-            <!-- Documents d'accompagnement (ajoutés par admin/partenaires) -->
+            <!-- Documents (ajoutés par le prestataire) -->
             <div id="livrablesContent" style="display: none;">
 
                 <div class="mb-6" style="border-left:8px solid var(--genesis-yellow); padding-left:1.5rem;">
-                    <h2 class="text-2xl font-black italic uppercase text-white">Documents d'accompagnement</h2>
-                    <p class="font-bold mt-1" style="color:#aaa;">Documents ajoutés par votre consultant ou partenaire au fil de votre projet</p>
+                    <h2 class="text-2xl font-black italic uppercase text-white">Vos documents</h2>
+                    <p class="font-bold mt-1" style="color:#aaa;">Documents ajoutés par votre prestataire au fil de votre commande</p>
                 </div>
 
                 <!-- Onglets -->
@@ -472,16 +472,16 @@
                     if (noticeEl) {
                         noticeEl.innerHTML = '<div class="p-4 border-4 border-black" style="background:#ff922b;color:black;">' +
                             '<div style="font-weight:900;font-size:1.1rem;margin-bottom:8px;">' +
-                                '<i class="fas fa-flag-checkered mr-2"></i>Votre accompagnement est termin\u00e9 !' +
+                                '<i class="fas fa-flag-checkered mr-2"></i>Votre prestation est termin\u00e9e !' +
                             '</div>' +
-                            '<p style="margin-bottom:12px;">Payez le solde restant (70%) pour d\u00e9bloquer vos livrables finaux.</p>' +
+                            '<p style="margin-bottom:12px;">Payez le solde restant pour d\u00e9bloquer vos livrables finaux.</p>' +
                             '<a href="payment.html" style="background:black;color:#ffd43b;padding:10px 20px;font-weight:900;text-transform:uppercase;text-decoration:none;display:inline-block;border:2px solid black;">' +
                                 '<i class="fas fa-credit-card mr-2"></i>Payer le solde maintenant</a>' +
                         '</div>';
                         noticeEl.style.display = '';
                     }
                 } else {
-                    // Accompagnement en cours — option d'anticiper le paiement
+                    // Prestation en cours — option d'anticiper le paiement
                     if (noticeEl) {
                         noticeEl.innerHTML = '<div class="p-4 border-4 border-black" style="background:#ffd43b;color:black;">' +
                             '<div style="font-weight:900;margin-bottom:6px;"><i class="fas fa-lock mr-2"></i><strong>Livrables finaux verrouill\u00e9s</strong></div>' +
