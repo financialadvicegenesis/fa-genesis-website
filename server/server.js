@@ -10771,13 +10771,11 @@ app.get('/api/partner/badge-progress-full', function(req, res) {
             bronze: [
                 { id: 'presence_annuaire', label: 'Présence dans l\'annuaire' },
                 { id: 'dashboard', label: 'Tableau de bord professionnel' },
-                { id: 'commission', label: 'Commission standard (25%)' },
                 { id: 'formations', label: 'Accès aux formations FA GENESIS' },
                 { id: 'boost_bienvenue', label: 'Boost de visibilité de bienvenue (30 jours)' },
                 { id: 'jeremie_essentiel', label: 'Jérémie IA Essentiel — Optimisation profil & annonces' }
             ],
             argent: [
-                { id: 'commission_22', label: 'Commission réduite (22%)' },
                 { id: 'stats_avancees', label: 'Statistiques avancées de performance' },
                 { id: 'meilleur_classement', label: 'Meilleur classement dans l\'annuaire' },
                 { id: 'boosts_2', label: '2 boosts mensuels de visibilité' },
@@ -10785,7 +10783,6 @@ app.get('/api/partner/badge-progress-full', function(req, res) {
                 { id: 'jeremie_plus', label: 'Jérémie IA Plus — Analyse des avis & taux de conversion' }
             ],
             or: [
-                { id: 'commission_19', label: 'Commission réduite (19%)' },
                 { id: 'classement_renforce', label: 'Classement renforcé dans l\'annuaire' },
                 { id: 'boosts_4', label: '4 boosts mensuels de visibilité' },
                 { id: 'outils_anticipes', label: 'Accès anticipé aux nouveaux outils' },
@@ -10793,7 +10790,6 @@ app.get('/api/partner/badge-progress-full', function(req, res) {
                 { id: 'jeremie_pro', label: 'Jérémie IA Pro — Conseils marketing & optimisation revenus' }
             ],
             elite: [
-                { id: 'commission_15', label: 'Commission réduite (15%)' },
                 { id: 'badge_premium', label: 'Badge premium affiché dans l\'annuaire' },
                 { id: 'priorite_classement', label: 'Priorité de classement (à profil équivalent)' },
                 { id: 'boosts_8', label: '8 boosts mensuels de visibilité' },
@@ -14965,13 +14961,14 @@ const WELCOME_DISCOUNT_PCT_WITH_REFERRAL = 10;
 const WELCOME_DISCOUNT_PCT = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias backwards-compat
 const REFERRAL_FILLEUL_DISCOUNT_PCT     = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias legacy
 
-// Avantages par badge prestataire — commissions explicites (Bronze 25%, Argent 22%, Or 19%, Élite 15%)
+// Avantages par badge prestataire — commission unique de 5% pour tous les prestataires, quel que soit leur badge (2026-09-24) —
+// les badges ne donnent plus de réduction de commission, seulement visibilité/versement/événements.
 const GENESIS_TIER_BENEFITS = {
-    null:      { commissionPct: 25, commissionReduction: 0,  payout: 'standard',    events: false, monthlyBoosts: 0 },
-    bronze:    { commissionPct: 25, commissionReduction: 0,  payout: 'standard',    events: false, monthlyBoosts: 0 },
-    argent:    { commissionPct: 22, commissionReduction: 3,  payout: 'prioritaire', events: false, monthlyBoosts: 2 },
-    or:        { commissionPct: 19, commissionReduction: 6,  payout: 'prioritaire', events: true,  monthlyBoosts: 4 },
-    elite:     { commissionPct: 15, commissionReduction: 10, payout: 'express',     events: true,  monthlyBoosts: 8 }
+    null:      { commissionPct: 5, commissionReduction: 0, payout: 'standard',    events: false, monthlyBoosts: 0 },
+    bronze:    { commissionPct: 5, commissionReduction: 0, payout: 'standard',    events: false, monthlyBoosts: 0 },
+    argent:    { commissionPct: 5, commissionReduction: 0, payout: 'prioritaire', events: false, monthlyBoosts: 2 },
+    or:        { commissionPct: 5, commissionReduction: 0, payout: 'prioritaire', events: true,  monthlyBoosts: 4 },
+    elite:     { commissionPct: 5, commissionReduction: 0, payout: 'express',     events: true,  monthlyBoosts: 8 }
 };
 
 function getBenefitsForBadge(badge) {

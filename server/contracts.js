@@ -112,7 +112,7 @@ var PARTNERSHIP_CLAUSES = [
     {
         id: 'commission',
         title: 'Article 3 — Commission FA GENESIS',
-        body: 'En contrepartie de l\'accès à la plateforme, de la gestion sécurisée des paiements, de la mise en relation avec les clients et des outils professionnels mis à disposition, GENESIS prélève une commission sur chaque paiement reçu. Le taux applicable est déterminé par le badge détenu par le Prestataire au moment de la création de chaque mission, conformément au barème ci-dessus. Les badges sont attribués automatiquement selon le nombre de missions réalisées et la note moyenne obtenue. La commission est déduite automatiquement avant tout versement.'
+        body: 'En contrepartie de l\'accès à la plateforme, de la gestion sécurisée des paiements, de la mise en relation avec les clients et des outils professionnels mis à disposition, GENESIS prélève une commission fixe de 5 % sur chaque paiement reçu, quel que soit le badge détenu par le Prestataire. Les badges sont attribués automatiquement selon le nombre de missions réalisées et la note moyenne obtenue, et donnent accès à des avantages de visibilité et de versement, sans effet sur le taux de commission. La commission est déduite automatiquement avant tout versement.'
     },
     {
         id: 'obligations_prestataire',
@@ -211,15 +211,7 @@ function generatePartnershipContractHtml(partner, badgeTable) {
     var partnerType = _localizePartnerType(partner.partner_type || 'prestataire');
     var partnerCompany = partner.company ? (' — ' + partner.company) : '';
     var partnerCountry = partner.country || 'France';
-    var standardRate = badgeTable[0] ? badgeTable[0].commissionPct : 25;
-
-    var badgeRows = badgeTable.map(function(b) {
-        return '<tr>' +
-            '<td style="padding:8px 14px;font-weight:700;color:#000;">' + b.badge + '</td>' +
-            '<td style="padding:8px 12px;text-align:center;color:#c0392b;font-weight:700;">' + b.commissionPct + ' %</td>' +
-            '<td style="padding:8px 12px;text-align:center;color:#27ae60;font-weight:700;">' + (100 - b.commissionPct) + ' %</td>' +
-            '</tr>';
-    }).join('');
+    var standardRate = badgeTable[0] ? badgeTable[0].commissionPct : 5;
 
     var clausesHtml = PARTNERSHIP_CLAUSES.map(function(c) {
         return '<div class="clause">' +
@@ -235,14 +227,8 @@ function generatePartnershipContractHtml(partner, badgeTable) {
             '<div class="party"><span class="party-label">' + _esc(partnerName) + '</span><br><span class="party-sub">' + _esc(partnerType) + _esc(partnerCompany) + ' — ' + _esc(partnerCountry) + '</span><br><span class="party-role">ci-après désigné(e) <strong>« le Prestataire »</strong></span></div>',
         '</div>',
         '<div class="commission-block">',
-            '<h3 class="section-title"><i class="fas fa-percentage" style="color:#e74c3c;margin-right:8px;"></i>Barème des commissions</h3>',
-            '<p style="color:#000;font-size:13px;margin-bottom:12px;font-weight:600;">Taux appliqués automatiquement selon le badge du Prestataire au moment de chaque mission.</p>',
-            '<div class="rate-table-wrap">',
-            '<table class="rate-table">',
-                '<thead><tr><th style="padding:8px 14px;min-width:70px;">Badge</th><th style="padding:8px 14px;text-align:center;min-width:130px;">Commission GENESIS</th><th style="padding:8px 14px;text-align:center;min-width:120px;">Part Prestataire</th></tr></thead>',
-                '<tbody>' + badgeRows + '</tbody>',
-            '</table>',
-            '</div>',
+            '<h3 class="section-title"><i class="fas fa-percentage" style="color:#e74c3c;margin-right:8px;"></i>Commission GENESIS</h3>',
+            '<p style="color:#000;font-size:13px;margin:0;font-weight:600;">Taux fixe de <strong>' + standardRate + ' %</strong> prélevé sur chaque paiement reçu, identique pour tous les Prestataires quel que soit leur badge. Le Prestataire perçoit le solde, soit <strong>' + (100 - standardRate) + ' %</strong> du montant de la prestation.</p>',
         '</div>',
         clausesHtml
     ].join('\n'));
@@ -496,26 +482,13 @@ function generatePdfBuffer(contract, callback) {
         }
         doc.moveDown(1);
 
-        // Barème commissions ou détails prestation
+        // Commission ou détails prestation
         if (isPartnership && contract.badge_table) {
-            doc.fontSize(11).font('Helvetica-Bold').text('BARÈME DES COMMISSIONS');
+            var _pdfRate = contract.badge_table[0] ? contract.badge_table[0].commissionPct : 5;
+            doc.fontSize(11).font('Helvetica-Bold').text('COMMISSION GENESIS');
             doc.strokeColor('#eee').lineWidth(1).moveTo(50, doc.y + 2).lineTo(545, doc.y + 2).stroke();
             doc.moveDown(0.5);
-            var tableY = doc.y;
-            var cols = [50, 220, 360, 490];
-            doc.fontSize(9).font('Helvetica-Bold');
-            doc.text('Badge', cols[0], tableY);
-            doc.text('Commission GENESIS', cols[1], tableY);
-            doc.text('Part Prestataire', cols[2], tableY);
-            doc.moveDown(0.4);
-            contract.badge_table.forEach(function(b) {
-                doc.font('Helvetica');
-                var rowY = doc.y;
-                doc.text(b.badge, cols[0], rowY);
-                doc.text(b.commissionPct + ' %', cols[1], rowY);
-                doc.text((100 - b.commissionPct) + ' %', cols[2], rowY);
-                doc.moveDown(0.3);
-            });
+            doc.fontSize(10).font('Helvetica').text('Taux fixe de ' + _pdfRate + ' % prélevé sur chaque paiement reçu, identique pour tous les Prestataires quel que soit leur badge. Le Prestataire perçoit le solde, soit ' + (100 - _pdfRate) + ' % du montant de la prestation.', { align: 'justify' });
             doc.moveDown(0.8);
         } else if (!isPartnership) {
             doc.fontSize(11).font('Helvetica-Bold').text('DÉTAILS DE LA PRESTATION');

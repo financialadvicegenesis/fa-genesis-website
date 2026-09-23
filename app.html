@@ -9470,7 +9470,7 @@ function _renderPartnerHomeQGWidget(data) {
     var badgeColors = {bronze:'#cd7f32',argent:'#c0c0c0',or:'#FFD700',elite:'#a78bfa',fondateur:'#22c55e'};
     var badgeName   = badge ? (badgeLabels[badge] || badge) : 'Nouveau prestataire';
     var badgeColor  = badge ? (badgeColors[badge] || '#FFD700') : '#555';
-    var commLbl = b.commissionPct ? b.commissionPct + '%' : '15%';
+    var commLbl = b.commissionPct ? b.commissionPct + '%' : '5%';
     var _bsSoon = '<span style="font-size:9px;color:#555;background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:500">Bientôt</span>';
     var payLbl  = b.payout === 'express'     ? '<span style="color:#4caf50;font-weight:800">Express</span>' + _bsSoon
                 : b.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>' + _bsSoon
@@ -19370,11 +19370,11 @@ function _ptnrLoadReputation(){
       { id: 'bronze', label: 'Bronze', icon: 'fa-fire',     missions: 5,   rating: 4.0,
         advs: ['Priorité d\'affichage dans les résultats de recherche','Badge Bronze visible sur le profil public','Jérémie IA — Posez vos questions à votre conseiller IA GENESIS.'] },
       { id: 'argent', label: 'Argent', icon: 'fa-bolt',     missions: 20,  rating: 4.3,
-        advs: ['Commission réduite (14%)','Priorité d\'affichage renforcée dans les résultats de recherche','Badge Argent visible sur le profil public','Jérémie IA Plus — Analyses de vos retours clients et conseils pour améliorer vos prestations.'] },
+        advs: ['Priorité d\'affichage renforcée dans les résultats de recherche','Badge Argent visible sur le profil public','Jérémie IA Plus — Analyses de vos retours clients et conseils pour améliorer vos prestations.'] },
       { id: 'or',     label: 'Or',     icon: 'fa-crown',    missions: 50,  rating: 4.5,
-        advs: ['Commission réduite (13%)','Visibilité maximale dans les résultats de recherche','Inscription prioritaire aux événements FA GENESIS','Badge Or visible sur le profil public','Jérémie IA Pro — Recommandations personnalisées et stratégies pour développer votre activité.'] },
+        advs: ['Visibilité maximale dans les résultats de recherche','Inscription prioritaire aux événements FA GENESIS','Badge Or visible sur le profil public','Jérémie IA Pro — Recommandations personnalisées et stratégies pour développer votre activité.'] },
       { id: 'elite',  label: 'Élite',  icon: 'fa-infinity', missions: 100, rating: 5.0,
-        advs: ['Commission réduite (11%)','Priorité d\'affichage maximale à profil équivalent','Badge Élite Premium visible sur le profil public','Jérémie IA Expert — Accompagnement IA complet, conseils prioritaires, suivi de carrière et analyses avancées.'] }
+        advs: ['Priorité d\'affichage maximale à profil équivalent','Badge Élite Premium visible sur le profil public','Jérémie IA Expert — Accompagnement IA complet, conseils prioritaires, suivi de carrière et analyses avancées.'] }
     ];
     html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-trophy" style="margin-right:4px;"></i>Badges professionnels</div>';
     _ptnrBadgeDefs.forEach(function(bDef) {
@@ -21186,9 +21186,9 @@ var _TUTO_P = [
    html:'<div style="font-size:12px;color:#888;text-align:center;margin-bottom:10px;">Complétez des missions et obtenez de bonnes notes pour débloquer des badges et des avantages.</div>'
      +'<div style="display:flex;flex-direction:column;gap:5px;">'
      +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-fire" style="color:#cd7f32;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Bronze</span><div style="font-size:10px;color:#555;">5 missions · ≥ 4.0★ — Affichage prioritaire</div></div></div>'
-     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-bolt" style="color:#b0b0b0;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Argent</span><div style="font-size:10px;color:#555;">20 missions · ≥ 4.3★ — Commission réduite 14%</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-bolt" style="color:#b0b0b0;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Argent</span><div style="font-size:10px;color:#555;">20 missions · ≥ 4.3★ — Affichage renforcé</div></div></div>'
      +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-crown" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Or</span><div style="font-size:10px;color:#555;">50 missions · ≥ 4.5★ — Visibilité max + événements prioritaires</div></div></div>'
-     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-infinity" style="color:#a78bfa;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Élite</span><div style="font-size:10px;color:#555;">100 missions · ≥ 5.0★ — Commission 11% + Jérémie IA Expert</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-infinity" style="color:#a78bfa;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Élite</span><div style="font-size:10px;color:#555;">100 missions · ≥ 5.0★ — Jérémie IA Expert</div></div></div>'
      +'</div>'
      +'<div style="font-size:10px;color:#555;text-align:center;margin-top:8px;padding:7px;background:rgba(255,215,0,.04);border-radius:8px;border:1px solid rgba(255,215,0,.1);">Suivez votre progression dans <strong style="color:#FFD700;">Mes badges</strong> (onglet Profil).</div>'},
   {ico:'<i class="fa-solid fa-rocket"></i>', title:'C\'est parti !',
