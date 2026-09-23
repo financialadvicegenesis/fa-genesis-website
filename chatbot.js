@@ -641,7 +641,7 @@
                 + '#fa-chatbot-trigger { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #FFD700, #e6c200); border: none; box-shadow: 0 10px 26px rgba(255,215,0,.35), 0 0 0 1px rgba(255,215,0,.15); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform .2s ease, box-shadow .2s ease; position: relative; }'
                 + '#fa-chatbot-trigger:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 16px 36px rgba(255,215,0,.45), 0 0 0 1px rgba(255,215,0,.2); }'
                 + '#fa-chatbot-trigger:active { transform: translateY(0) scale(.96); }'
-                + '#fa-chatbot-trigger svg { width: 26px; height: 26px; fill: #0a0800; position: relative; z-index: 2; }'
+                + '#fa-chatbot-trigger svg { width: 26px; height: 26px; fill: #0a0800; stroke: #0a0800; position: relative; z-index: 2; }'
                 + '#fa-chatbot-trigger::before { content: ""; position: absolute; inset: -7px; border-radius: 50%; border: 1.5px solid rgba(255,215,0,.35); animation: faChatbotRing 2.6s ease-out infinite; pointer-events: none; }'
                 + '@keyframes faChatbotRing { 0% { transform: scale(.82); opacity: .9; } 100% { transform: scale(1.4); opacity: 0; } }'
                 + '#fa-chatbot-trigger-dot { position: absolute; top: 1px; right: 1px; width: 13px; height: 13px; border-radius: 50%; background: #22c55e; border: 2.5px solid #050505; z-index: 3; animation: faChatbotBlink 2.2s ease-in-out infinite; }'
@@ -650,7 +650,7 @@
                 + '#fa-chatbot-header { background: linear-gradient(180deg, rgba(255,215,0,.07), rgba(255,215,0,0) 70%); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #fff; padding: 18px 18px 16px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,215,0,.12); }'
                 + '#fa-chatbot-header-left { display: flex; align-items: center; gap: 12px; }'
                 + '#fa-chatbot-header-icon { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, #FFD700, #e6c200); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 14px rgba(255,215,0,.3); }'
-                + '#fa-chatbot-header-icon svg { width: 19px; height: 19px; fill: #0a0800; }'
+                + '#fa-chatbot-header-icon svg { width: 19px; height: 19px; fill: #0a0800; stroke: #0a0800; }'
                 + '#fa-chatbot-header-text { display: flex; flex-direction: column; gap: 4px; }'
                 + '#fa-chatbot-header-title { font-family: "Unbounded", sans-serif; font-weight: 700; font-size: 13px; letter-spacing: .2px; background: linear-gradient(135deg,#FFD700,#FF8C00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }'
                 + '#fa-chatbot-header-status { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; color: #a0a0a0; text-transform: uppercase; letter-spacing: .6px; }'
@@ -740,15 +740,25 @@
     // F) CREATION DU WIDGET HTML
     // ============================================================
 
-    // SVG \u00e9tincelle (identit\u00e9 "assistant IA" moderne, remplace l\u2019ancienne t\u00eate de robot)
-    var ROBOT_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/><path fill="currentColor" d="M18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/><path fill="currentColor" d="M16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/></svg>';
+    // SVG robot moderne : silhouette arrondie pleine + yeux "lumineux" (contraste fixe, ind\u00e9pendant
+    // de la couleur h\u00e9rit\u00e9e) + antenne \u00e0 pointe allum\u00e9e \u2014 lisible m\u00eame en tr\u00e8s petit format.
+    var ROBOT_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">'
+        + '<line x1="12" y1="2.2" x2="12" y2="5.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'
+        + '<circle cx="12" cy="2.2" r="1.3" fill="currentColor"/>'
+        + '<rect x="1.4" y="11.3" width="2.2" height="4.6" rx="1.1" fill="currentColor"/>'
+        + '<rect x="20.4" y="11.3" width="2.2" height="4.6" rx="1.1" fill="currentColor"/>'
+        + '<rect x="3.5" y="5.4" width="17" height="14.6" rx="6" fill="currentColor"/>'
+        + '<ellipse cx="8.7" cy="12.6" rx="1.5" ry="2" fill="#fff"/>'
+        + '<ellipse cx="15.3" cy="12.6" rx="1.5" ry="2" fill="#fff"/>'
+        + '<rect x="9" y="16.2" width="6" height="1.6" rx="0.8" fill="#fff" opacity=".85"/>'
+        + '</svg>';
 
     function createWidget() {
         try {
             var container = document.createElement('div');
             container.id = 'fa-chatbot-container';
 
-            // Bouton trigger avec ic\u00f4ne \u00e9tincelle + pastille "en ligne"
+            // Bouton trigger avec ic\u00f4ne robot + pastille "en ligne"
             var trigger = document.createElement('button');
             trigger.id = 'fa-chatbot-trigger';
             trigger.setAttribute('aria-label', 'Ouvrir l\u2019assistant FA Genesis');
