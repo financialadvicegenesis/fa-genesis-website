@@ -65,7 +65,7 @@
             keywords: ['adapte etudiant', 'prix etudiant', 'budget etudiant', 'abordable', 'pas cher', 'accessible', 'etudiant'],
             response: 'Chaque prestataire fixe librement son tarif selon votre projet \u2014 il n\u2019y a pas de grille tarifaire impos\u00e9e. Demandez un devis pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre budget, ou comparez les profils de prestataires dans l\u2019annuaire.',
             quickReplies: ['Voir les prestations'],
-            link: { url: 'offres.html', label: 'Voir les prestations' }
+            link: { url: 'app.html#prestataires', label: 'Voir les prestations' }
         },
         {
             id: 'location',
@@ -91,7 +91,7 @@
             keywords: ['offre', 'offres', 'formule', 'forfait', 'pack', 'programme', 'quelles offres', 'vos offres', 'quelles sont vos offres', 'vos services', 'vos prestations', 'proposez', 'tarif', 'tarifs', 'prix', 'offres et tarifs', 'combien coute', 'catalogue', 'grille tarifaire', 'liste offres'],
             response: 'Notre plateforme r\u00e9unit des prestataires ind\u00e9pendants dans plusieurs cat\u00e9gories : PHOTO, VID\u00c9O, MARKETING et M\u00c9DIA. Chaque prestataire fixe librement son propre tarif selon votre projet \u2014 il n\u2019y a pas de prix impos\u00e9 par FA Genesis. Demandez un devis personnalis\u00e9 ou parcourez l\u2019annuaire pour comparer les profils et leurs tarifs.',
             quickReplies: ['Comment ça marche ?', 'Contacter l’équipe'],
-            link: { url: 'offres.html', label: 'Voir toutes les prestations' }
+            link: { url: 'app.html#prestataires', label: 'Voir toutes les prestations' }
         },
         {
             id: 'individual_services',
@@ -99,7 +99,7 @@
             keywords: ['prestation individuelle', 'service individuel', 'tarif individuel', 'tarifs individuels', 'a la carte', 'prestation seule', 'juste photo', 'juste video', 'juste marketing', 'tarif prestation', 'prix prestation'],
             response: 'Voici nos cat\u00e9gories de prestations : PHOTO, VID\u00c9O, MARKETING et M\u00c9DIA. Pour toutes, le tarif d\u00e9pend du prestataire et du projet \u2014 chaque prestataire fixe librement son propre tarif. Demandez un devis personnalis\u00e9 via le formulaire de contact, ou choisissez directement un prestataire dans l\u2019annuaire au tarif qu\u2019il affiche.',
             quickReplies: ['Voir les prestations', 'Demander un devis'],
-            link: { url: 'offres.html#offres', label: 'Voir les prestations' }
+            link: { url: 'app.html#prestataires', label: 'Voir les prestations' }
         },
         {
             id: 'custom_offer',
@@ -125,7 +125,7 @@
             keywords: ['payer', 'paiement', 'prix', 'combien', 'cout', 'tarif', 'comment payer', 'moyen de paiement', 'combien ca coute', 'carte bancaire', 'virement'],
             response: 'Selon la prestation, le paiement est int\u00e9gral \u00e0 la r\u00e9servation ou en acompte + solde. Le paiement s\u2019effectue par carte bancaire (ou PayPal) de mani\u00e8re s\u00e9curis\u00e9e : gr\u00e2ce \u00e0 GENESIS SAFE\u2122, votre carte est autoris\u00e9e \u00e0 la r\u00e9servation mais l\u2019argent n\u2019est d\u00e9bit\u00e9 qu\u2019une fois la prestation valid\u00e9e.',
             quickReplies: ['Payer en plusieurs fois ?', 'Voir les prestations'],
-            link: { url: 'offres.html', label: 'Voir les prestations' }
+            link: { url: 'app.html#prestataires', label: 'Voir les prestations' }
         },
         {
             id: 'payment_installments',
@@ -241,7 +241,7 @@
             keywords: ['lancer', 'demarrer', 'commencer projet', 'je veux', 'interesse', 'ca m\'interesse', 'comment demarrer', 'je suis interesse'],
             response: 'Super ! Pour lancer votre projet avec FA Genesis, vous avez deux options :\n\n1. Consulter nos offres pour choisir celle qui vous convient\n2. Nous contacter directement pour en discuter\n\nL\u2019\u00e9quipe sera ravie de vous accompagner !',
             quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
-            link: { url: 'offres.html', label: 'D\u00e9couvrir les offres' }
+            link: { url: 'app.html#prestataires', label: 'D\u00e9couvrir les offres' }
         },
         {
             id: 'response_time',
@@ -325,7 +325,7 @@
             keywords: ['marketing', 'marketing express', 'marketing strategy', 'marketing impact', 'strategie marketing', 'analyse marketing', 'positionnement marketing', 'branding', 'audience', 'digital', 'conseil marketing', 'communication digitale'],
             response: 'FA Genesis collabore avec plusieurs sp\u00e9cialistes marketing ind\u00e9pendants.\n\nLe tarif d\u00e9pend du besoin (analyse, positionnement, strat\u00e9gie, plan de publication...) et du prestataire s\u00e9lectionn\u00e9 \u2014 chacun fixe librement son tarif.\n\nPrestations possibles :\n\u2022 Analyse de votre projet et de votre audience cible\n\u2022 Positionnement, message, branding\n\u2022 Diagnostic approfondi + plan de publication\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
             quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
-            link: { url: 'offres.html', label: 'Voir les prestations marketing' }
+            link: { url: 'app.html#prestataires', label: 'Voir les prestations marketing' }
         },
         {
             id: 'media_detail',
@@ -333,7 +333,7 @@
             keywords: ['media', 'media visibility', 'media impact', 'media premium', 'media promotion', 'publication media', 'presse', 'article', 'credibilite media', 'post media', 'story media', 'stories', 'publication'],
             response: 'FA Genesis collabore avec plusieurs professionnels m\u00e9dia ind\u00e9pendants (publication sur m\u00e9dias cr\u00e9dibles).\n\nLe tarif d\u00e9pend du nombre de publications, de la dur\u00e9e de la campagne et du prestataire s\u00e9lectionn\u00e9 \u2014 chacun fixe librement son tarif.\n\nPrestations possibles :\n\u2022 Publication (posts / stories) sur un m\u00e9dia cr\u00e9dible\n\u2022 Brief en amont pour cadrer le message\n\u2022 Strat\u00e9gie de visibilit\u00e9 sur le long terme\n\nGagnez en cr\u00e9dibilit\u00e9 gr\u00e2ce \u00e0 des publications sur des m\u00e9dias reconnus.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
             quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
-            link: { url: 'offres.html', label: 'Voir les prestations m\u00e9dia' }
+            link: { url: 'app.html#prestataires', label: 'Voir les prestations m\u00e9dia' }
         },
 
         // ===================== OFFRES COMPL\u00c9MENT =====================
@@ -403,7 +403,7 @@
             keywords: ['panier', 'ajouter panier', 'mettre dans panier', 'comment commander', 'mon panier', 'voir panier', 'vider panier', 'modifier panier', 'comment ajouter'],
             response: 'Ajouter une prestation au panier est simple :\n\n1\ufe0f\u20e3 Connectez-vous \u00e0 votre espace client (ou cr\u00e9ez un compte)\n2\ufe0f\u20e3 Parcourez l\u2019annuaire de prestataires et choisissez un profil\n3\ufe0f\u20e3 Cliquez sur \u00ab Ajouter au panier \u00bb sur la prestation qui vous int\u00e9resse\n4\ufe0f\u20e3 Consultez votre panier via l\u2019ic\u00f4ne \ud83d\uded2\n5\ufe0f\u20e3 Validez et payez (int\u00e9gral ou acompte selon la prestation)\n\nVous pouvez combiner plusieurs prestations de diff\u00e9rents prestataires dans un seul panier !',
             quickReplies: ['Passer une commande', 'Voir les prestations'],
-            link: { url: 'offres.html', label: 'Voir les prestations' }
+            link: { url: 'app.html#prestataires', label: 'Voir les prestations' }
         },
         {
             id: 'checkout_process',
@@ -411,7 +411,7 @@
             keywords: ['passer commande', 'valider commande', 'finaliser', 'checkout', 'commander', 'inscription avant paiement', 'faut creer compte', 'compte avant payer', 'comment valider'],
             response: 'Pour passer commande :\n\n1\ufe0f\u20e3 Cr\u00e9ez votre compte (ou connectez-vous)\n2\ufe0f\u20e3 Ajoutez vos prestations au panier depuis l\u2019annuaire de prestataires\n3\ufe0f\u20e3 Cliquez sur \u00ab Valider mon panier \u00bb\n4\ufe0f\u20e3 Payez par carte bancaire, de mani\u00e8re s\u00e9curis\u00e9e\n\nGr\u00e2ce \u00e0 GENESIS SAFE\u2122, l\u2019argent est autoris\u00e9 \u00e0 la r\u00e9servation mais n\u2019est vers\u00e9 au prestataire qu\u2019apr\u00e8s validation de la prestation.',
             quickReplies: ['Comment fonctionne le paiement ?', 'Espace client'],
-            link: { url: 'panier.html', label: 'Mon panier' }
+            link: { url: 'app.html', label: 'Mon panier' }
         },
         {
             id: 'combine_offers',
@@ -419,7 +419,7 @@
             keywords: ['combiner offres', 'plusieurs offres', 'deux offres', 'cumuler', 'ajouter plusieurs', 'pack personnalise', 'plusieurs prestations', 'mixer', 'associer'],
             response: 'Oui, vous pouvez tout \u00e0 fait combiner plusieurs prestations de prestataires diff\u00e9rents dans votre panier ! Par exemple : une prestation d\u2019un photographe et une prestation d\u2019un sp\u00e9cialiste marketing. Le total est calcul\u00e9 automatiquement. \ud83d\udc4c',
             quickReplies: ['Voir les prestations', 'Ajouter au panier'],
-            link: { url: 'offres.html', label: 'Voir les prestations' }
+            link: { url: 'app.html#prestataires', label: 'Voir les prestations' }
         },
 
         // ===================== SUIVI DE COMMANDE =====================
@@ -481,7 +481,7 @@
             keywords: ['choisir photographe', 'choisir videaste', 'quel photographe', 'qui fait les photos', 'qui fait la video', 'photographe partenaire', 'videaste partenaire', 'qui prend photos'],
             response: 'C\u2019est vous qui choisissez votre prestataire ! Parcourez l\u2019annuaire, consultez les profils (portfolio, avis, tarifs) et r\u00e9servez directement celui qui correspond \u00e0 votre univers et \u00e0 vos besoins.\n\nSi vous h\u00e9sitez entre plusieurs profils, notre \u00e9quipe peut vous conseiller.',
             quickReplies: ['Voir les prestations', 'Contacter l\u2019\u00e9quipe'],
-            link: { url: 'offres.html', label: 'Voir les prestataires' }
+            link: { url: 'app.html#prestataires', label: 'Voir les prestataires' }
         },
 
         // ===================== ESPACE CLIENT (COMPL\u00c9MENTS) =====================

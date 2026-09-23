@@ -6569,7 +6569,7 @@ function cwCard(o, sub, idx){
         +'<button class="p-cw-cta" style="flex:1;background:#FFD700;color:#000;" onclick="'+bookAction+'">Réserver</button>'
         +(detailAction?'<button class="p-cw-cta" style="flex:0 0 60px;background:#1a1a1a;color:#888;border:1px solid #2a2a2a;font-size:10px;" onclick="'+detailAction+'">Détail</button>':'')
         +'</div>'
-      :'<button class="p-cw-cta" onclick="window.location.href=\'offres.html\'">'+o.cta+'</button>'
+      :'<button class="p-cw-cta" onclick="nav(\'prestataires\')">'+o.cta+'</button>'
     )
     +'</div></div>';
 }
@@ -7012,8 +7012,7 @@ function openDetail(o, type){ _detailOffer=o; _detailType=type;
     ctaHtml = '<button class="detail-cta" onclick="closeDetail();openCwBooking(\''+_cwDetailSub+'\','+_cwDetailIdx+')">Réserver</button>'
       +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px" onclick="addToCart({id:\'cw-'+_cwDetailSub+'-'+_cwDetailIdx+'\',name:\''+o.name+'\',price:\''+o.price+'\',priceNum:null,type:\'coworking\'});closeDetail()"><i class="fa-solid fa-cart-shopping"></i> Ajouter au panier</button>';
   } else {
-    ctaHtml = '<button class="detail-cta" onclick="_addDetailToCart()">&#128722; Ajouter au panier</button>'
-      +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px;" onclick="window.location.href=\'offres.html\'">Voir sur le site</button>';
+    ctaHtml = '<button class="detail-cta" onclick="_addDetailToCart()">&#128722; Ajouter au panier</button>';
   }
   document.getElementById('detail-content').innerHTML = ''
     +(badge?'<div class="detail-badge">'+badge+'</div>':'')
@@ -17275,12 +17274,12 @@ function sendAppMessage(){
       closeMsgCompose(); showCartToast('Message envoyé !');
     } else {
       closeMsgCompose();
-      openInBrowser('https://fagenesis.com/messagerie.html');
+      openInBrowser('https://fagenesis.com/app.html#messages');
     }
   }).catch(function(){
     if(btn){btn.disabled=false;btn.textContent='ENVOYER';}
     closeMsgCompose();
-    openInBrowser('https://fagenesis.com/messagerie.html');
+    openInBrowser('https://fagenesis.com/app.html#messages');
   });
 }
 

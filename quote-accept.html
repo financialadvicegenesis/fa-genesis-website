@@ -109,11 +109,11 @@
             <a href="index.html" class="flex items-center gap-2 md:gap-3 text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;"><img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="height:48px;width:48px;flex-shrink:0;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"> FA GENESIS</a>
         </div>
         <div class="hidden md:flex gap-12 text-white font-black">
-            <a href="dashboard.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Espace Client</a>
+            <a href="app.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Espace Client</a>
             <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
             <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
         </div>
-        <a href="dashboard.html" class="hidden md:block neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Mon Espace</a>
+        <a href="app.html" class="hidden md:block neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Mon Espace</a>
     </nav>
 
     <!-- CONTENU PRINCIPAL -->
@@ -133,7 +133,7 @@
                 <h2 id="errorTitle" class="text-3xl font-black italic uppercase mb-4">ERREUR</h2>
                 <p id="errorMsg" class="font-bold text-lg opacity-70 mb-8"></p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                    <a href="dashboard.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest inline-block">
+                    <a href="app.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest inline-block">
                         <i class="fas fa-home mr-2"></i>ESPACE CLIENT
                     </a>
                     <a href="contact.html" class="neo-btn-white px-8 py-4 text-sm tracking-widest inline-block">
@@ -406,7 +406,7 @@
                     '<p class="font-black text-lg uppercase" style="color:#333;">DEVIS ANNULÉ</p>' +
                     '<p class="font-bold text-sm opacity-70 mt-2">Ce devis a été annulé. Contactez-nous pour toute question.</p>' +
                     '</div>' +
-                    '<div class="mt-6"><a href="dashboard.html" class="neo-btn-yellow px-8 py-4 text-lg uppercase inline-block">' +
+                    '<div class="mt-6"><a href="app.html" class="neo-btn-yellow px-8 py-4 text-lg uppercase inline-block">' +
                     '<i class="fas fa-home mr-2"></i>MON ESPACE CLIENT</a></div>';
             } else if (quote.deposit_paid) {
                 // Acompte deja paye
@@ -416,7 +416,7 @@
                     '<p class="font-bold text-sm opacity-70 mt-2">Votre prestation est en cours de préparation.</p>' +
                     '</div>' +
                     '<div class="mt-6">' +
-                    '<a href="dashboard.html" class="neo-btn-yellow px-8 py-4 text-lg uppercase inline-block">' +
+                    '<a href="app.html" class="neo-btn-yellow px-8 py-4 text-lg uppercase inline-block">' +
                     '<i class="fas fa-home mr-2"></i>MON ESPACE CLIENT</a></div>' +
                     cancelBtn;
             } else if (quote.status === 'ACCEPTED') {

@@ -247,7 +247,7 @@ async function sendContactConfirmation(clientEmail, clientName, subject) {
         </div>
 
         <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            En attendant, nous vous invitons à consulter notre <a href="${frontUrl}/offres.html" style="color: #B8860B; font-weight: 700; text-decoration: underline;">page Offres</a> ou notre espace d'information, où vous trouverez des éléments utiles concernant nos accompagnements.
+            En attendant, nous vous invitons à consulter notre <a href="${frontUrl}/app.html#prestataires" style="color: #B8860B; font-weight: 700; text-decoration: underline;">page Prestations</a>, où vous trouverez nos prestataires vérifiés.
         </p>
 
         <p style="margin: 0 0 30px 0; font-size: 14px; color: #999999; font-style: italic;">
@@ -1028,7 +1028,7 @@ async function sendSessionRescheduledEmail(clientEmail, clientName, sessionData)
         + '<p style="margin:5px 0 0 0;color:#666;">Durée : ' + (sessionData.duration_minutes || 45) + ' min</p>'
         + '</div>'
         + '<div style="text-align:center;margin:25px 0;">'
-        + '<a href="' + (process.env.FRONT_URL || 'https://fagenesis.com') + '/seances.html" target="_blank" '
+        + '<a href="' + (process.env.FRONT_URL || 'https://fagenesis.com') + '/app.html#open-resa" target="_blank" '
         + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
         + 'Voir mes séances</a></div>'
@@ -1151,7 +1151,7 @@ async function sendSessionProposedEmail(clientEmail, clientName, sessionData) {
         + (sessionData.partner_name ? '<p style="margin:5px 0 0 0;color:#666;">Avec : ' + escapeHtml(sessionData.partner_name) + '</p>' : '')
         + '</div>'
         + '<div style="text-align:center;margin:25px 0;">'
-        + '<a href="' + frontUrl + '/seances.html" target="_blank" '
+        + '<a href="' + frontUrl + '/app.html#open-resa" target="_blank" '
         + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
         + 'Voir mes séances</a></div>'

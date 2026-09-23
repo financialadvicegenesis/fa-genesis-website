@@ -99,16 +99,16 @@
         <div class="hidden md:flex gap-12 text-white font-black">
             <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
             <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">À Propos</a>
-            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Prestations</a>
+            <a href="app.html#prestataires" class="nav-link hover:text-[var(--genesis-yellow)] transition">Prestations</a>
             <a href="faq.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">FAQ</a>
             <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
         </div>
         <div class="hidden md:flex gap-4 items-center">
-            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition px-2 py-2" title="Panier">
+            <a href="app.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition px-2 py-2" title="Panier">
                 <i class="fas fa-shopping-cart text-lg"></i>
                 <span class="panier-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
             </a>
-            <a href="espace-client.html" class="border-4 border-[var(--genesis-yellow)] text-[var(--genesis-yellow)] px-6 py-3 text-[12px] tracking-widest font-black">Espace client</a>
+            <a href="app.html" class="border-4 border-[var(--genesis-yellow)] text-[var(--genesis-yellow)] px-6 py-3 text-[12px] tracking-widest font-black">Espace client</a>
             <a href="contact.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
         </div>
         <!-- Bouton Menu Mobile -->
@@ -123,10 +123,10 @@
     <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
         <a href="index.html#accueil" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Accueil</a>
         <a href="a-propos.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">À Propos</a>
-        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Prestations</a>
+        <a href="app.html#prestataires" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Prestations</a>
         <a href="faq.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">FAQ</a>
         <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Contact</a>
-        <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart mr-2"></i>Panier <span class="panier-badge" style="display:none;background:#f44336;color:#fff;font-size:12px;padding:2px 6px;border-radius:50%;margin-left:4px;"></span></a>
+        <a href="app.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart mr-2"></i>Panier <span class="panier-badge" style="display:none;background:#f44336;color:#fff;font-size:12px;padding:2px 6px;border-radius:50%;margin-left:4px;"></span></a>
         <div class="flex flex-col gap-4 mt-8">
             <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center" onclick="closeMobileMenu()">Lancer un projet</a>
         </div>
@@ -232,7 +232,7 @@
 
             <div class="mt-8 text-center">
                 <p class="text-white font-bold">Pas encore de compte ? <a href="register.html" id="registerLink" class="text-[var(--genesis-yellow)] underline font-black">Créer un compte</a></p>
-                <p class="text-white font-bold mt-4">Découvrir nos offres ? <a href="offres.html" class="text-[var(--genesis-yellow)] underline font-black">Voir les offres</a></p>
+                <p class="text-white font-bold mt-4">Découvrir nos offres ? <a href="app.html#prestataires" class="text-[var(--genesis-yellow)] underline font-black">Voir les offres</a></p>
             </div>
 
             <!-- Message pour l'offre sélectionnée -->
@@ -374,7 +374,7 @@
                     return;
                 }
                 // Sinon redirection vers le dashboard
-                window.location.href = 'dashboard.html';
+                window.location.href = 'app.html';
             } else if (result.requiresOtp) {
                 // Nouvel appareil – passer à l'étape OTP
                 _otpPendingToken = result.pendingToken;
@@ -452,7 +452,7 @@
                     await handleQuoteAcceptAfterAuth(quoteTokenParam);
                     return;
                 }
-                window.location.href = 'dashboard.html';
+                window.location.href = 'app.html';
             } else {
                 errorMessage.textContent = result.message || 'Code incorrect. Veuillez réessayer.';
                 errorMessage.classList.add('show');
@@ -551,7 +551,7 @@
                     setTimeout(async function() {
                         var loginResult = await login(email, password);
                         if (loginResult.success) {
-                            window.location.href = 'dashboard.html';
+                            window.location.href = 'app.html';
                         } else {
                             msgDiv.textContent = 'Compte réactivé. Veuillez vous reconnecter.';
                             btn.disabled = false;
@@ -652,7 +652,7 @@
                 console.error('[LOGIN] CW devis after auth:', err);
                 var errorMsg = document.getElementById('errorMessage');
                 if (errorMsg) { errorMsg.textContent = 'Erreur chargement du devis. Redirection vers votre espace...'; errorMsg.classList.add('show'); }
-                setTimeout(function() { window.location.href = 'espace-client.html'; }, 2500);
+                setTimeout(function() { window.location.href = 'app.html'; }, 2500);
             }
         }
 
@@ -662,9 +662,9 @@
                 handleQuoteAcceptAfterAuth(quoteTokenParam);
             } else if (cwDevisId) {
                 // Déjà connecté : aller directement à l'espace client
-                window.location.href = 'espace-client.html';
+                window.location.href = 'app.html';
             } else {
-                window.location.href = 'dashboard.html';
+                window.location.href = 'app.html';
             }
         }
 

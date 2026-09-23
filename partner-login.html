@@ -251,7 +251,7 @@ a{text-decoration:none;color:inherit;}
 <script src="partner-auth.js"></script>
 <script>
     if (typeof isPartnerAuthenticated === 'function' && isPartnerAuthenticated()) {
-        window.location.href = 'partner-dashboard.html';
+        window.location.href = 'app.html';
     }
 
     function toggleForgot() {
@@ -307,7 +307,7 @@ a{text-decoration:none;color:inherit;}
             submitBtn.innerHTML = 'Se connecter <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>';
 
             if (result.success) {
-                window.location.href = 'partner-dashboard.html';
+                window.location.href = 'app.html';
             } else {
                 errorMessage.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>' + result.message;
                 errorMessage.classList.add('show');

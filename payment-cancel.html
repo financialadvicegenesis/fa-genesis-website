@@ -132,7 +132,7 @@
                         <i class="fas fa-redo"></i>
                         Réessayer le paiement
                     </a>
-                    <a href="offres.html" class="bg-black text-white border-4 border-black px-8 py-4 text-lg font-black uppercase inline-flex items-center justify-center gap-3 hover:bg-gray-900 transition">
+                    <a href="app.html#prestataires" class="bg-black text-white border-4 border-black px-8 py-4 text-lg font-black uppercase inline-flex items-center justify-center gap-3 hover:bg-gray-900 transition">
                         <i class="fas fa-list"></i>
                         Voir les offres
                     </a>
@@ -181,14 +181,14 @@
                 if (order && order.offerId) {
                     retryButton.href = 'checkout.html?offer=' + order.offerId;
                 } else {
-                    retryButton.href = 'offres.html';
+                    retryButton.href = 'app.html#prestataires';
                 }
 
                 // Marquer la commande comme annulée
                 OrdersManager.cancel(orderId, 'Paiement annulé par le client');
             } else {
                 // Pas de commande, rediriger vers les offres
-                retryButton.href = 'offres.html';
+                retryButton.href = 'app.html#prestataires';
             }
 
             // Nettoyer la session
