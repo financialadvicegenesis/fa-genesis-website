@@ -1888,7 +1888,7 @@ async function sendCwReservationToPartner(reservation, order) {
         + '</td>'
         + '</tr>'
         + '</table>'
-        + '<p style="color:#666;font-size:12px;font-weight:700;margin:0;">Vous pouvez également gérer cette réservation depuis votre <a href="https://fagenesis.com/coworking-partner.html" style="color:#b81a6e;">espace partenaire</a>.</p>';
+        + '<p style="color:#666;font-size:12px;font-weight:700;margin:0;">Vous pouvez également gérer cette réservation depuis votre <a href="https://fagenesis.com/app.html" style="color:#b81a6e;">espace partenaire</a>.</p>';
 
     var html = getEmailTemplate(content, 'Nouvelle Réservation — COM VISA');
 

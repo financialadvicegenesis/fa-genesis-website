@@ -2027,10 +2027,6 @@ a{text-decoration:none;color:inherit}
 .pay-plan-note{padding:0 20px 20px;font-size:11px;color:#555;text-align:center;}
 
 /* ── COWORKING BOOKING ── */
-#cw-booking-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
-#cw-booking-overlay.open{display:flex;animation:regFadeIn .2s ease;}
-#cw-booking-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
-#cw-booking-sheet.up{transform:translateY(0);}
 
 /* ── PARTNER SERVICE BOOKING (marketplace) ── */
 #pb-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
@@ -3656,16 +3652,6 @@ function showToast(title,sub,type){
 var USER = null, GUEST = false;
 var API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
-var OFFERS = [
-  {id:'os-e',profil:'etudiant',cat:'coworking',name:'OpenSpace',tag:'Étudiant',price:'10 €',unit:'/ poste / journée',img:'assets/images/Openspace-1.png'},
-  {id:'ev-e',profil:'etudiant',cat:'evenement',name:'Événement / Soirée',tag:'Étudiant',price:'dès 200 €',unit:'format 4h',img:'assets/images/Soiree-1.png'},
-  {id:'os-p',profil:'particulier',cat:'coworking',name:'OpenSpace',tag:'Particulier',price:'15 €',unit:'/ poste / journée',img:'assets/images/Openspace-2.png'},
-  {id:'bu-p',profil:'particulier',cat:'coworking',name:'Bureau Privé',tag:'Particulier',price:'45 €',unit:'/ journée',img:'assets/images/Bureau-Duo-2.png'},
-  {id:'ev-p',profil:'particulier',cat:'evenement',name:'Événement / Soirée',tag:'Particulier',price:'dès 300 €',unit:'format 4h',img:'assets/images/Soiree-2.png'},
-  {id:'os-b',profil:'entreprise',cat:'coworking',name:'OpenSpace',tag:'Entreprise',price:'25 €',unit:'/ poste / journée',img:'assets/images/Openspace-3.png'},
-  {id:'bu-e',profil:'entreprise',cat:'coworking',name:'Bureau Privé',tag:'Entreprise',price:'85 €',unit:'/ journée',img:'assets/images/Bureau-Duo-3.png'},
-  {id:'ev-b',profil:'entreprise',cat:'evenement',name:'Événement / Soirée',tag:'Entreprise',price:'dès 500 €',unit:'format 4h',img:'assets/images/Soiree-3.png'},
-];
 
 // ── SPLASH → APP ─────────────────────────────────────────────
 setTimeout(function(){
@@ -3790,7 +3776,7 @@ function _showRoleChoiceAfterDelete(){
     var _ids = ['ptnr-contract-overlay','ptnr-drawer-overlay','notif-overlay','jeremie-overlay',
                 'tuto-overlay','reg-overlay','login-overlay','cart-overlay','pay-overlay',
                 'dispatch-claim-overlay','avail-overlay','msg-compose-overlay','dispute-overlay',
-                'doc-viewer-overlay','cw-booking-overlay','pb-overlay'];
+                'doc-viewer-overlay','pb-overlay'];
     _ids.forEach(function(id){
       var el = document.getElementById(id);
       if(el){ el.style.display='none'; el.className=el.className.replace(/\b(on|open)\b/g,'').trim(); }
@@ -3924,8 +3910,7 @@ function _loadTab(tab){
   if(_tabLoaded[tab] && !always[tab] && !stale) return;
   _tabLoaded[tab] = true;
   _tabLoadedAt[tab] = Date.now();
-  if(tab === 'prestations') renderPrestations('all');
-  else if(tab === 'prestataires') renderPrestataires();
+  if(tab === 'prestataires') renderPrestataires();
   else if(tab === 'explorer') renderExplorer();
   else if(tab === 'reservations') renderResaTab();
   else if(tab === 'messages') renderMsgTab();
@@ -4239,134 +4224,6 @@ function _navToSeances(){
   showSeances();
 }
 
-// ── CATÉGORIES ────────────────────────────────────────────────
-function setCat(cat,el){
-  document.querySelectorAll('.cat-chip').forEach(function(c){c.classList.remove('on');});
-  el.classList.add('on');
-  renderHomeOffers(cat);
-}
-
-// ── RENDU OFFRES HOME ─────────────────────────────────────────
-function renderHomeOffers(filter){
-  var items = [];
-  var title = 'Prestations populaires';
-
-  if(!filter || filter==='all'){
-    items = OFFERS.slice(0,5).map(function(o){
-      return {name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img, navCat:'coworking', navSub:''};
-    });
-
-  } else if(filter==='etudiant'||filter==='particulier'||filter==='entreprise'){
-    var profil = filter;
-    var profilLabel = profil==='etudiant'?'Étudiant':profil==='particulier'?'Particulier':'Entreprise';
-    title = 'Offres '+profilLabel;
-    if(PDATA && PDATA.coworking && PDATA.coworking[profil]){
-      PDATA.coworking[profil].forEach(function(o){
-        items.push({name:o.name, tag:profilLabel, price:o.price, unit:o.unit, img:o.img, navCat:'coworking', navSub:profil});
-      });
-    }
-
-  } else if(filter==='evenement'){
-    title = 'Événements & Soirées';
-    ['etudiant','particulier','entreprise'].forEach(function(profil){
-      if(PDATA && PDATA.coworking && PDATA.coworking[profil]){
-        PDATA.coworking[profil].forEach(function(o){
-          if(o.name.indexOf('ÉVÉNEMENT')>=0||o.name.indexOf('SOIR')>=0){
-            var lbl = profil==='etudiant'?'Étudiant':profil==='particulier'?'Particulier':'Entreprise';
-            items.push({name:o.name, tag:lbl, price:o.price, unit:o.unit, img:o.img, navCat:'coworking', navSub:profil});
-          }
-        });
-      }
-    });
-
-  } else if(filter==='coworking'){
-    title = 'Espaces Coworking';
-    OFFERS.filter(function(o){return o.cat==='coworking';}).forEach(function(o){
-      items.push({name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img, navCat:'coworking', navSub:''});
-    });
-
-  } else {
-    items = OFFERS.filter(function(o){return o.cat===filter;}).map(function(o){
-      return {name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img, navCat:filter, navSub:''};
-    });
-  }
-
-  var titleEl = document.getElementById('homeOffersTitle');
-  if(titleEl) titleEl.textContent = title;
-
-  var html = items.map(function(o){ return homeCard(o); }).join('');
-  document.getElementById('homeOffers').innerHTML = html || '<div style="padding:20px;color:#555;text-align:center;font-size:13px">Aucune offre</div>';
-}
-
-function homeCard(o){
-  var nc = o.navCat || 'coworking';
-  var ns = o.navSub || '';
-  var navAct = '_navToPrestation(\'' + nc + '\'' + (ns ? ',\'' + ns + '\'' : '') + ')';
-  if(o.gradient){
-    return '<div class="offer-card" style="cursor:pointer;border:2px solid #000;box-shadow:4px 4px 0 #000" onclick="'+navAct+'">'
-      +'<div style="width:100%;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;'
-      +'background:linear-gradient('+o.gradient+');padding:10px;">'
-      +'<div style="font-size:18px;font-weight:900;font-style:italic;text-transform:uppercase;'
-      +'text-align:center;color:#fff;font-family:\'Unbounded\',sans-serif;line-height:1">'+o.name+'</div>'
-      +(o.tag?'<div style="font-size:8px;font-weight:900;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:1px;margin-top:5px">'+o.tag+'</div>':'')
-      +'</div>'
-      +'<div class="offer-body">'
-      +(o.unit?'<div style="font-size:9px;color:#888;margin-bottom:3px;text-transform:uppercase;font-weight:700;letter-spacing:.3px">'+o.unit+'</div>':'')
-      +'<div class="offer-foot">'
-      +'<div class="offer-price">'+o.price+'</div>'
-      +'<button class="offer-btn" onclick="event.stopPropagation();'+navAct+'">Voir</button>'
-      +'</div></div></div>';
-  }
-  return '<div class="offer-card" style="cursor:pointer" onclick="'+navAct+'">'
-    +'<img src="'+(o.img||'')+'" alt="'+o.name+'" onerror="this.style.background=\'#222\';this.removeAttribute(\'src\')">'
-    +'<div class="offer-body">'
-    +(o.tag?'<div class="offer-cat">'+o.tag+'</div>':'')
-    +'<div class="offer-name">'+o.name+'</div>'
-    +'<div class="offer-foot">'
-    +'<div class="offer-price">'+o.price+'</div>'
-    +'<button class="offer-btn" onclick="event.stopPropagation();'+navAct+'">Voir</button>'
-    +'</div></div></div>';
-}
-
-function _navToPrestation(cat, sub){
-  if(sub) _prestSub = sub;
-  nav('explorer');
-  setTimeout(function(){
-    var pills = document.querySelectorAll('.fpill');
-    var targetPill = null;
-    pills.forEach(function(p){
-      p.className = 'fpill';
-      var oc = p.getAttribute('onclick') || '';
-      if(oc.indexOf("'"+cat+"'") >= 0) targetPill = p;
-    });
-    if(targetPill) targetPill.className = 'fpill on';
-    else if(pills.length) pills[0].className = 'fpill on';
-    renderPrestations(cat === 'all' || !cat ? null : cat);
-  }, 50);
-}
-
-// ── DATA COMPLÈTE PRESTATIONS (fidèle au site) ────────────────
-var PDATA = {
-  coworking: {
-    etudiant: [
-      {name:'OPENSPACE',price:'10 €',unit:'/ poste / journée',img:'assets/images/Openspace-1.png',feats:['Espace de travail partagé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
-      {name:'ÉVÉNEMENT / SOIRÉE',price:'dès 200 €',unit:'Format 4h',img:'assets/images/Soiree-1.png',feats:['Salle événementielle','Équipement inclus','Paiement 3x (dès 67€/mois)'],cta:'Réserver'},
-    ],
-    particulier: [
-      {name:'OPENSPACE',price:'15 €',unit:'/ poste / journée',img:'assets/images/Openspace-2.png',feats:['Espace de travail partagé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
-      {name:'BUREAU PRIVÉ',price:'45 €',unit:'/ journée',img:'assets/images/Bureau-Duo-2.png',feats:['Bureau fermé & privatisé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
-      {name:'ÉVÉNEMENT / SOIRÉE',price:'dès 300 €',unit:'Format 4h',img:'assets/images/Soiree-2.png',feats:['Salle événementielle','Équipement inclus','Paiement 3x (dès 100€/mois)'],cta:'Réserver'},
-    ],
-    entreprise: [
-      {name:'OPENSPACE',price:'25 €',unit:'/ poste / journée',img:'assets/images/Openspace-3.png',feats:['Espace de travail partagé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
-      {name:'BUREAU PRIVÉ',price:'85 €',unit:'/ journée',img:'assets/images/Bureau-Duo-3.png',feats:['Bureau fermé & privatisé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
-      {name:'ÉVÉNEMENT / SOIRÉE',price:'dès 375 €',unit:'Format 4h',img:'assets/images/Soiree-3.png',feats:['Salle événementielle','Équipement inclus','Paiement 3x (dès 125€/mois)'],cta:'Réserver'},
-    ]
-  }
-};
-
-var _prestFilter = 'all';
-var _prestSub = 'etudiant';
 var _expSearchQuery = '', _expSearchTimer = null;
 
 // ══════════════════════════════════════════════════════
@@ -4778,71 +4635,6 @@ function _expMatch(name){
   return !_expSearchQuery || (name||'').toLowerCase().indexOf(_expSearchQuery) >= 0;
 }
 
-function renderPrestations(filter){
-  _prestFilter = filter||'all';
-  var html = '';
-  var totalCount = 0;
-
-  if(!html && _expSearchQuery){
-    html = '<div class="p-dir-empty">Aucun résultat pour "'+_expSearchQuery+'".</div>';
-  }
-  document.getElementById('prestList').innerHTML = html;
-
-  var statEl = document.getElementById('p-exp-stat');
-  if(statEl){
-    statEl.textContent = _expSearchQuery
-      ? (totalCount + ' résultat' + (totalCount===1?'':'s') + ' pour "'+_expSearchQuery+'"')
-      : (totalCount + ' offre' + (totalCount===1?'':'s') + ' disponible' + (totalCount===1?'':'s'));
-  }
-  renderExplorerReco();
-}
-
-// ── RECOMMANDATIONS INTELLIGENTES (Explorer) ────────────────────
-// Met en avant les offres "populaires" du profil courant (étudiant/particulier/
-// entreprise) puis enrichit avec les meilleurs partenaires notés de l'annuaire.
-function renderExplorerReco(){
-  var wrap = document.getElementById('p-exp-reco-wrap');
-  if(!wrap) return;
-  _renderRecoRow(wrap, []);
-  fetch(API+'/api/partners/directory').then(function(r){return r.json();}).then(function(data){
-    var partners = _sortByRating((data && data.partners) || []).slice(0,2);
-    if(!partners.length) return;
-    var row = document.getElementById('p-exp-reco-row');
-    if(row){
-      row.insertAdjacentHTML('beforeend', partners.map(function(p){return recoPartnerCard(p,1);}).join(''));
-    } else {
-      _renderRecoRow(wrap, partners.map(function(p){return recoPartnerCard(p,0);}));
-    }
-  }).catch(function(){});
-}
-function _renderRecoRow(wrap, cardsHtml){
-  wrap.innerHTML = cardsHtml.length
-    ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-star" style="color:var(--yellow)"></i> RECOMMANDÉ POUR VOUS</div>'
-      +'<div class="p-reco-row" id="p-exp-reco-row">'+cardsHtml.join('')+'</div>'
-    : '';
-}
-function _sortByRating(partners){
-  return partners.slice().sort(function(a,b){
-    var sa = (a.rating && a.rating.count) ? a.rating.average*Math.log(a.rating.count+1) : -1;
-    var sb = (b.rating && b.rating.count) ? b.rating.average*Math.log(b.rating.count+1) : -1;
-    return sb - sa;
-  });
-}
-function expRecoCard(it, idx){
-  var o = it.o;
-  var clickAction = 'openDetailCW(\''+(_prestSub||'particulier')+'\','+it.idx+')';
-  var photoStyle = o.gradient ? ' style="background:linear-gradient('+o.gradient+')"' : (o.bg ? ' style="background:'+o.bg+'"' : '');
-  var photoInner = o.img ? '<img src="'+o.img+'" alt="">' : '<div class="p-reco-initials">'+(o.name ? o.name[0] : '<i class="fa-solid fa-star"></i>')+'</div>';
-  var tag = idx===0 ? '<div class="p-reco-tag">Populaire</div>' : '';
-  return '<div class="p-reco-card" onclick="'+clickAction+'">'
-    +tag
-    +'<div class="p-reco-photo"'+photoStyle+'>'+photoInner+'</div>'
-    +'<div class="p-reco-body">'
-    +'<div class="p-reco-name">'+o.name+'</div>'
-    +'<div class="p-reco-cat">'+(o.sub||o.badge||'')+'</div>'
-    +'<div class="p-reco-stars">'+(o.price||'')+'</div>'
-    +'</div></div>';
-}
 // Badge de certification (façon Instagram/LinkedIn, en jaune GENESIS) : tout partenaire
 // approuvé par l'admin l'affiche, dès la carte de l'annuaire (pas seulement après clic).
 function verifiedBadgeHtml(p){
@@ -4934,6 +4726,7 @@ var DIR_CATEGORY_ICONS_ORDER = [
   {id:'media', icon:'fa-newspaper', label:'Médias'},
   {id:'developpeur_web', icon:'fa-laptop-code', label:'Développeurs Web'},
   {id:'pilote_drone', icon:'fa-helicopter', label:'Pilotes Drone'},
+  {id:'coworking', icon:'fa-building', label:'Espaces Coworking'},
   {id:'animateur_evenementiel', icon:'fa-microphone', label:'Animateurs / Événementiel'},
   {id:'consultant', icon:'fa-lightbulb', label:'Consultants'},
   {id:'influencer', icon:'fa-hashtag', label:'Influenceurs / Influenceuses'},
@@ -5779,7 +5572,7 @@ var _PARTNER_ICONS = {
   media:'fa-newspaper', graphiste:'fa-palette', developpeur_web:'fa-laptop-code',
   community_manager:'fa-mobile-screen', pilote_drone:'fa-helicopter',
   animateur_evenementiel:'fa-microphone', consultant:'fa-briefcase',
-  influencer:'fa-star', other:'fa-user'
+  influencer:'fa-star', coworking:'fa-building', other:'fa-user'
 };
 
 function _makePartnerIcon(p){
@@ -6552,44 +6345,6 @@ function loadPromoServices(){
   }).catch(function(){ wrap.innerHTML=''; });
 }
 
-// Card builders
-function cwCard(o, sub, idx){
-  var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
-  var bookAction = (sub!==undefined&&idx!==undefined) ? 'openCwBooking(\''+(sub||'etudiant')+'\','+(idx||0)+')' : '';
-  var detailAction = (sub!==undefined&&idx!==undefined) ? 'openDetailCW(\''+(sub||'etudiant')+'\','+(idx||0)+')' : '';
-  return '<div class="p-cw-card">'
-    +'<img class="p-cw-card-bg" src="'+o.img+'" alt="'+o.name+'" onerror="this.style.display=\'none\'">'
-    +'<div class="p-cw-card-body">'
-    +'<div class="p-cw-card-name">'+o.name+'</div>'
-    +'<div class="p-cw-card-price">'+o.price+'</div>'
-    +'<div class="p-cw-card-unit">'+o.unit+'</div>'
-    +'<ul class="p-cw-card-feats">'+featsHtml+'</ul>'
-    +(bookAction
-      ?'<div style="display:flex;gap:8px;margin-top:4px;">'
-        +'<button class="p-cw-cta" style="flex:1;background:#FFD700;color:#000;" onclick="'+bookAction+'">Réserver</button>'
-        +(detailAction?'<button class="p-cw-cta" style="flex:0 0 60px;background:#1a1a1a;color:#888;border:1px solid #2a2a2a;font-size:10px;" onclick="'+detailAction+'">Détail</button>':'')
-        +'</div>'
-      :'<button class="p-cw-cta" onclick="nav(\'prestataires\')">'+o.cta+'</button>'
-    )
-    +'</div></div>';
-}
-
-function setPrestSubCW(sub,el){
-  document.querySelectorAll('#p-cw-filter .p-sub-btn').forEach(function(b){b.className='p-sub-btn';});
-  el.className='p-sub-btn on';
-  var cards = document.getElementById('p-cw-cards');
-  if(cards){
-    var html = '';
-    PDATA.coworking[sub].forEach(function(o,i){ if(_expMatch(o.name)) html+=cwCard(o,sub,i); });
-    cards.innerHTML=html;
-  }
-}
-
-function filterPrestations(cat,el){
-  document.querySelectorAll('.fpill').forEach(function(p){p.className='fpill';});
-  el.className='fpill on';
-  renderPrestations(cat==='all'?null:cat);
-}
 // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
 var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking', animateur_evenementiel:'Animateur / Événementiel', influencer:'Influenceur / Influenceuse', other:'Autre'};
 function partnerTypeLabel(p){
@@ -6992,44 +6747,6 @@ function _cartPayPartnerService(idx){
   }, 400);
 }
 
-var _cwDetailSub = null, _cwDetailIdx = null;
-var _detailOffer = null, _detailType = null;
-function openDetailCW(sub, idx){
-  _cwDetailSub = sub; _cwDetailIdx = idx;
-  openDetail(PDATA.coworking[sub][idx], 'coworking');
-}
-function openDetail(o, type){ _detailOffer=o; _detailType=type;
-  var badge = o.badge
-    || (type==='photo'?'Photo'
-      :type==='video'?'Vidéo'
-      :type==='marketing'?'Marketing'
-      :type==='media'?'Médias'
-      :type||'');
-  var ctaHtml;
-  if(o.link){
-    ctaHtml = '<button class="detail-cta" onclick="window.location.href=\''+o.link+'\'">Demander un devis</button>';
-  } else if(type==='coworking' && _cwDetailSub!==null){
-    ctaHtml = '<button class="detail-cta" onclick="closeDetail();openCwBooking(\''+_cwDetailSub+'\','+_cwDetailIdx+')">Réserver</button>'
-      +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px" onclick="addToCart({id:\'cw-'+_cwDetailSub+'-'+_cwDetailIdx+'\',name:\''+o.name+'\',price:\''+o.price+'\',priceNum:null,type:\'coworking\'});closeDetail()"><i class="fa-solid fa-cart-shopping"></i> Ajouter au panier</button>';
-  } else {
-    ctaHtml = '<button class="detail-cta" onclick="_addDetailToCart()">&#128722; Ajouter au panier</button>';
-  }
-  document.getElementById('detail-content').innerHTML = ''
-    +(badge?'<div class="detail-badge">'+badge+'</div>':'')
-    +'<div class="detail-name">'+o.name+'</div>'
-    +(o.sub?'<div class="detail-sub">'+o.sub+'</div>':'')
-    +'<div class="detail-price">'+o.price+'</div>'
-    +(o.payment?'<div class="detail-payment">'+o.payment+'</div>':'')
-    +(o.unit?'<div class="detail-payment">'+o.unit+'</div>':'')
-    +'<div class="detail-divider"></div>'
-    +'<div class="detail-feats-title">Ce qui est inclus</div>'
-    +'<ul class="detail-feats">'
-    +o.feats.map(function(f){return '<li>'+f+'</li>';}).join('')
-    +'</ul>'
-    +ctaHtml
-    +'<button class="detail-close-btn" onclick="closeDetail()">Fermer</button>';
-  document.getElementById('detail-sheet').className='on';
-}
 function closeDetail(){
   document.getElementById('detail-sheet').className='';
 }
@@ -9985,21 +9702,6 @@ function _rvSubmit(){
     document.getElementById('review-overlay').className = '';
     _rvShowNext();
   });
-}
-
-// ── HELPERS PANIER ───────────────────────────────────────────
-function _parsePrice(s){
-  if(!s||s.indexOf('Devis')>=0||s.indexOf('devis')>=0) return null;
-  var m=(s||'').replace(/\s/g,'').match(/(\d+)/); return m?parseInt(m[1]):null;
-}
-function _parseEchelons(paymentStr){
-  var m=(paymentStr||'').match(/en\s*(\d+)x/i);
-  return m?parseInt(m[1]):2;
-}
-function _addDetailToCart(){
-  if(!_detailOffer) return;
-  addToCart({id:'detail-'+Date.now(),name:_detailOffer.name,price:_detailOffer.price,priceNum:_parsePrice(_detailOffer.price),type:_detailType||'',sub:_detailOffer.unit||_detailOffer.badge||'',echelonsPaiement:_detailOffer.echelonsPaiement||_parseEchelons(_detailOffer.payment)||2});
-  closeDetail();
 }
 
 // ── CHAT IN-APP ───────────────────────────────────────────────
@@ -16290,84 +15992,6 @@ function _closeAdminPanel(){
   document.body.style.overflow = '';
 }
 
-// ── COWORKING BOOKING ─────────────────────────────────────────
-var _cwBookOffer=null, _cwBookSub=null, _cwBookIdx=null;
-
-function openCwBooking(sub, idx){
-  _cwBookSub=sub; _cwBookIdx=idx; _cwBookOffer=PDATA.coworking[sub][idx];
-  var overlay=document.getElementById('cw-booking-overlay'); var sheet=document.getElementById('cw-booking-sheet');
-  if(!overlay||!sheet) return;
-  var o=_cwBookOffer;
-  var nm=document.getElementById('cwb-offer-name'); if(nm) nm.textContent=o.name;
-  var pr=document.getElementById('cwb-offer-price'); if(pr) pr.textContent=o.price+(o.unit?' – '+o.unit:'');
-  var dt=document.getElementById('cwb-date'); if(dt){dt.value='';dt.min=new Date().toISOString().split('T')[0];}
-  var qty=document.getElementById('cwb-qty'); if(qty) qty.value='1';
-  var nt=document.getElementById('cwb-notes'); if(nt) nt.value='';
-  var er=document.getElementById('cwb-err'); if(er) er.classList.remove('on');
-  var fm=document.getElementById('cwb-form'); if(fm) fm.style.display='';
-  var sc=document.getElementById('cwb-success'); if(sc) sc.style.display='none';
-  var sb=document.getElementById('cwb-send-btn'); if(sb){sb.disabled=false;sb.textContent='ENVOYER DEMANDE';}
-  var cb2=document.getElementById('cwb-cart-btn'); if(cb2){cb2.disabled=false;cb2.innerHTML='<i class="fa-solid fa-cart-shopping"></i> Panier';}
-  var qr=document.getElementById('cwb-qty-row'); if(qr) qr.style.display=o.name.indexOf('OPENSPACE')>=0?'':'none';
-  overlay.classList.add('open');
-  setTimeout(function(){ sheet.classList.add('up'); }, 20);
-}
-function closeCwBooking(){
-  var sheet=document.getElementById('cw-booking-sheet'); var overlay=document.getElementById('cw-booking-overlay');
-  if(!sheet||!overlay) return;
-  sheet.classList.remove('up');
-  setTimeout(function(){ overlay.classList.remove('open'); }, 460);
-}
-function cwBookingAddToCart(){
-  if(!_cwBookOffer) return;
-  var dt=(document.getElementById('cwb-date')||{}).value||'';
-  var qty=parseInt((document.getElementById('cwb-qty')||{}).value||'1')||1;
-  var nt=((document.getElementById('cwb-notes')||{}).value||'').trim();
-  var er=document.getElementById('cwb-err');
-  if(!dt){ if(er){er.textContent='Veuillez choisir une date.';er.classList.add('on');} return; }
-  if(er) er.classList.remove('on');
-  var o=_cwBookOffer;
-  var sub='<i class="fa-solid fa-calendar-days"></i> '+new Date(dt).toLocaleDateString('fr-FR')+(qty>1?' × '+qty+' postes':'');
-  addToCart({id:'cw-'+_cwBookSub+'-'+_cwBookIdx,name:o.name,sub:sub,price:o.price,priceNum:null,quantity:qty,date:dt,notes:nt,type:'coworking'});
-  closeCwBooking();
-}
-function cwBookingSendRequest(){
-  if(!_cwBookOffer) return;
-  var dt=(document.getElementById('cwb-date')||{}).value||'';
-  var qty=parseInt((document.getElementById('cwb-qty')||{}).value||'1')||1;
-  var nt=((document.getElementById('cwb-notes')||{}).value||'').trim();
-  var er=document.getElementById('cwb-err');
-  if(!dt){ if(er){er.textContent='Veuillez choisir une date.';er.classList.add('on');} return; }
-  if(!USER||GUEST){ if(er){er.textContent='Connectez-vous pour envoyer une demande.';er.classList.add('on');} return; }
-  if(er) er.classList.remove('on');
-  var sb=document.getElementById('cwb-send-btn'); if(sb){sb.disabled=true;sb.textContent='Envoi...';}
-  var cb2=document.getElementById('cwb-cart-btn'); if(cb2) cb2.disabled=true;
-  var o=_cwBookOffer;
-  fetch((window.FA_GENESIS_API||API)+'/api/reservations',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({
-      product_id:'coworking-'+o.name.toLowerCase().replace(/[^a-z]/g,'-'),
-      product_name:o.name,dates:[dt],quantity:qty,notes:nt,prix:o.price
-    })
-  }).then(function(r){return r.json();}).then(function(res){
-    if(sb){sb.disabled=false;sb.textContent='ENVOYER DEMANDE';}
-    if(cb2) cb2.disabled=false;
-    if(res&&(res.success||res._id||res.id)){
-      var fm=document.getElementById('cwb-form'); if(fm) fm.style.display='none';
-      var sc=document.getElementById('cwb-success'); if(sc) sc.style.display='block';
-      renderResaTab();
-    } else {
-      var msg=(res&&res.error)||'Erreur. Réessayez.';
-      if(er){er.textContent=msg;er.classList.add('on');}
-    }
-  }).catch(function(){
-    if(sb){sb.disabled=false;sb.textContent='ENVOYER DEMANDE';}
-    if(cb2) cb2.disabled=false;
-    if(er){er.textContent='Erreur réseau. Réessayez.';er.classList.add('on');}
-  });
-}
-
 // ── PARTNER SERVICE BOOKING (marketplace : commande directe sur un partenaire choisi) ──
 var _pbPartner=null, _pbService=null, _pbServices=null, _pbMode='request', _pbDepositAmount=0;
 
@@ -18076,50 +17700,6 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 </div>
 
 <!-- COWORKING BOOKING OVERLAY -->
-<div id="cw-booking-overlay" onclick="if(event.target===this)closeCwBooking()">
-  <div id="cw-booking-sheet">
-    <div class="cwb-hdr">
-      <button class="reg-nav-btn" onclick="closeCwBooking()">&#8249;</button>
-      <div style="font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">RÉSERVATION</div>
-      <button class="reg-nav-btn" onclick="closeCwBooking()">&#x2715;</button>
-    </div>
-    <div class="cwb-body">
-      <div class="cwb-name" id="cwb-offer-name">OPENSPACE</div>
-      <div class="cwb-price-info" id="cwb-offer-price"></div>
-      <div id="cwb-form">
-        <div class="cwb-field">
-          <label class="cwb-label" for="cwb-date">Date souhaitée *</label>
-          <input id="cwb-date" class="cwb-input" type="date">
-        </div>
-        <div class="cwb-field" id="cwb-qty-row">
-          <label class="cwb-label" for="cwb-qty">Nombre de postes</label>
-          <select id="cwb-qty" class="cwb-input">
-            <option value="1">1 poste</option>
-            <option value="2">2 postes</option>
-            <option value="3">3 postes</option>
-            <option value="4">4 postes</option>
-            <option value="5">5 postes ou plus</option>
-          </select>
-        </div>
-        <div class="cwb-field">
-          <label class="cwb-label" for="cwb-notes">Message (facultatif)</label>
-          <input id="cwb-notes" class="cwb-input" type="text" placeholder="Informations complémentaires...">
-        </div>
-        <div class="cwb-err" id="cwb-err"></div>
-        <div class="cwb-actions">
-          <button class="cwb-btn cwb-btn-yellow" id="cwb-cart-btn" onclick="cwBookingAddToCart()">&#128722; Panier</button>
-          <button class="cwb-btn cwb-btn-ghost" id="cwb-send-btn" onclick="cwBookingSendRequest()">ENVOYER DEMANDE</button>
-        </div>
-      </div>
-      <div class="cwb-success" id="cwb-success" style="display:none;">
-        <div class="cwb-success-ico">&#9989;</div>
-        <p>Demande envoyée ! Nous vous contacterons rapidement pour confirmer votre réservation.</p>
-        <button class="cwb-btn cwb-btn-yellow" style="width:100%;margin-top:16px;" onclick="closeCwBooking()">Fermer</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- GENESIS PROJECT DETAIL MODAL -->
 <div id="genesisDetailModal" onclick="if(event.target===this)closeGenesisDetail()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9990;overflow-y:auto;padding:16px 12px 40px;">
   <div style="max-width:520px;margin:0 auto;background:var(--card);border:2px solid var(--yellow);border-radius:14px;padding:20px 18px;">
@@ -18626,11 +18206,9 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
     var tabId = active ? active.id : '';
     try {
       if(tabId === 'tab-home'){
-        if(typeof renderHomeOffers === 'function') renderHomeOffers();
         if(typeof loadStatusCard === 'function') loadStatusCard();
         if(typeof updateCartBadge === 'function') updateCartBadge();
       } else if(tabId === 'tab-explorer'){
-        if(typeof renderPrestations === 'function') renderPrestations('all');
         if(typeof renderExplorer === 'function') renderExplorer();
       } else if(tabId === 'tab-prestataires'){
         if(typeof renderPrestataires === 'function') renderPrestataires();

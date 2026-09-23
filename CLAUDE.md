@@ -23,8 +23,7 @@ Elle persiste la notification (historique/cloche) ET déclenche Web Push + FCM e
 - pour le rôle `'admin'` (espace web uniquement — `sendFcmToRole` exclut ce rôle exprès, l'équipe
   n'utilise pas l'app native) ;
 - pour un cas où l'absence de notification native est un choix assumé et documenté en commentaire
-  (ex : diffusion `/api/coworking/messages` côté partenaire, volontairement non basculée sur FCM
-  faute de ciblage précis — voir le commentaire sur place).
+  sur place.
 
 **Historique** : trouvé et corrigé le 2026-09-21 sur `/api/admin/support/:id/reply` (réponse du
 support jamais notifiée sur Android), le statut des réservations coworking, et le chat "COM VISA".
