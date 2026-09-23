@@ -63,7 +63,7 @@
             id: 'student_adapted',
             category: 'general',
             keywords: ['adapte etudiant', 'prix etudiant', 'budget etudiant', 'abordable', 'pas cher', 'accessible', 'etudiant'],
-            response: 'Les tarifs d\u00e9pendent de la prestation choisie \u2014 certaines (marketing, m\u00e9dia) ont un tarif fixe affich\u00e9, d\u2019autres (photo, vid\u00e9o) sont sur devis selon votre projet. Retrouvez le d\u00e9tail sur la page prestations.',
+            response: 'Chaque prestataire fixe librement son tarif selon votre projet \u2014 il n\u2019y a pas de grille tarifaire impos\u00e9e. Demandez un devis pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre budget, ou comparez les profils de prestataires dans l\u2019annuaire.',
             quickReplies: ['Voir les prestations'],
             link: { url: 'offres.html', label: 'Voir les prestations' }
         },
@@ -89,7 +89,7 @@
             id: 'offers_overview',
             category: 'offres',
             keywords: ['offre', 'formule', 'forfait', 'pack', 'programme', 'quelles offres', 'vos services', 'proposez', 'tarif', 'prix', 'offres et tarifs', 'combien coute', 'catalogue', 'grille tarifaire', 'liste offres'],
-            response: 'Notre plateforme r\u00e9unit des prestataires ind\u00e9pendants dans plusieurs cat\u00e9gories :\n\n\u2022 PHOTO \u2014 sur devis, selon le photographe et le projet\n\u2022 VID\u00c9O \u2014 sur devis, selon le vid\u00e9aste et le projet\n\u2022 MARKETING \u2014 \u00e0 partir de 120 \u20ac (tarif fixe)\n\u2022 M\u00c9DIA \u2014 \u00e0 partir de 223 \u20ac (tarif fixe)\n\nCes prestations sont r\u00e9alis\u00e9es par nos prestataires v\u00e9rifi\u00e9s. Retrouvez tous les d\u00e9tails sur la page prestations.',
+            response: 'Notre plateforme r\u00e9unit des prestataires ind\u00e9pendants dans plusieurs cat\u00e9gories : PHOTO, VID\u00c9O, MARKETING et M\u00c9DIA. Chaque prestataire fixe librement son propre tarif selon votre projet \u2014 il n\u2019y a pas de prix impos\u00e9 par FA Genesis. Demandez un devis personnalis\u00e9 ou parcourez l\u2019annuaire pour comparer les profils et leurs tarifs.',
             quickReplies: ['Voir les prestations', 'Tarifs individuels'],
             link: { url: 'offres.html', label: 'Voir toutes les prestations' }
         },
@@ -97,7 +97,7 @@
             id: 'individual_services',
             category: 'offres',
             keywords: ['prestation individuelle', 'service individuel', 'tarif individuel', 'tarifs individuels', 'a la carte', 'prestation seule', 'juste photo', 'juste video', 'juste marketing', 'tarif prestation', 'prix prestation'],
-            response: 'Voici nos cat\u00e9gories de prestations :\n\n\u2022 PHOTO : sur devis (photographes professionnels ind\u00e9pendants)\n\u2022 VID\u00c9O : sur devis (vid\u00e9astes professionnels ind\u00e9pendants)\n\u2022 MARKETING : \u00e0 partir de 120 \u20ac (analyse + recommandations)\n\u2022 M\u00c9DIA : \u00e0 partir de 223 \u20ac (publication sur m\u00e9dia cr\u00e9dible)\n\nPour la photo et la vid\u00e9o, le tarif d\u00e9pend du prestataire et du projet. Demandez un devis personnalis\u00e9 via le formulaire de contact ou directement aupr\u00e8s du prestataire.',
+            response: 'Voici nos cat\u00e9gories de prestations : PHOTO, VID\u00c9O, MARKETING et M\u00c9DIA. Pour toutes, le tarif d\u00e9pend du prestataire et du projet \u2014 chaque prestataire fixe librement son propre tarif. Demandez un devis personnalis\u00e9 via le formulaire de contact, ou choisissez directement un prestataire dans l\u2019annuaire au tarif qu\u2019il affiche.',
             quickReplies: ['Voir les tarifs individuels', 'Demander un devis'],
             link: { url: 'offres.html#tarifs', label: 'Voir les tarifs individuels' }
         },
@@ -323,7 +323,7 @@
             id: 'marketing_detail',
             category: 'services',
             keywords: ['marketing', 'marketing express', 'marketing strategy', 'marketing impact', 'strategie marketing', 'analyse marketing', 'positionnement marketing', 'branding', 'audience', 'digital', 'conseil marketing', 'communication digitale'],
-            response: 'Nos prestations marketing :\n\n\u2022 EXPRESS : 120 \u20ac \u2014 analyse de votre projet + clarification de votre audience cible\n\u2022 STRATEGY : 150 \u20ac \u2014 positionnement, message, branding (option Digital +70 \u20ac)\n\u2022 IMPACT : 350 \u20ac \u2014 diagnostic approfondi + plan de publication sur 30 jours\n\u2022 CUSTOM : sur devis\n\nChaque prestation vous donne des recommandations concr\u00e8tes et actionnables.',
+            response: 'FA Genesis collabore avec plusieurs sp\u00e9cialistes marketing ind\u00e9pendants.\n\nLe tarif d\u00e9pend du besoin (analyse, positionnement, strat\u00e9gie, plan de publication...) et du prestataire s\u00e9lectionn\u00e9 \u2014 chacun fixe librement son tarif.\n\nPrestations possibles :\n\u2022 Analyse de votre projet et de votre audience cible\n\u2022 Positionnement, message, branding\n\u2022 Diagnostic approfondi + plan de publication\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
             quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
             link: { url: 'offres.html', label: 'Voir les prestations marketing' }
         },
@@ -331,7 +331,7 @@
             id: 'media_detail',
             category: 'services',
             keywords: ['media', 'media visibility', 'media impact', 'media premium', 'media promotion', 'publication media', 'presse', 'article', 'credibilite media', 'post media', 'story media', 'stories', 'publication'],
-            response: 'Nos prestations m\u00e9dia (publication sur m\u00e9dias cr\u00e9dibles) :\n\n\u2022 VISIBILITY : 223 \u20ac \u2014 4 posts/stories sur 1 m\u00e9dia cr\u00e9dible\n\u2022 IMPACT : 420 \u20ac \u2014 6 posts/stories\n\u2022 PREMIUM : 590 \u20ac \u2014 8 posts/stories + cr\u00e9dibilit\u00e9 long terme\n\u2022 PROMOTION : 679 \u20ac \u2014 12 posts/stories + audience cibl\u00e9e\n\u2022 CUSTOM : sur devis\n\nGagnez en cr\u00e9dibilit\u00e9 gr\u00e2ce \u00e0 des publications sur des m\u00e9dias reconnus.',
+            response: 'FA Genesis collabore avec plusieurs professionnels m\u00e9dia ind\u00e9pendants (publication sur m\u00e9dias cr\u00e9dibles).\n\nLe tarif d\u00e9pend du nombre de publications, de la dur\u00e9e de la campagne et du prestataire s\u00e9lectionn\u00e9 \u2014 chacun fixe librement son tarif.\n\nPrestations possibles :\n\u2022 Publication (posts / stories) sur un m\u00e9dia cr\u00e9dible\n\u2022 Brief en amont pour cadrer le message\n\u2022 Strat\u00e9gie de visibilit\u00e9 sur le long terme\n\nGagnez en cr\u00e9dibilit\u00e9 gr\u00e2ce \u00e0 des publications sur des m\u00e9dias reconnus.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
             quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
             link: { url: 'offres.html', label: 'Voir les prestations m\u00e9dia' }
         },

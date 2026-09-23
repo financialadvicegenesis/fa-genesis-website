@@ -819,56 +819,6 @@ function saveCertificates(data) {
     catch(e) { console.error('[CERT] Erreur sauvegarde:', e); }
 }
 
-// IDs de tarifs partenaires (taux variable selon badge : standard 25% FA, réduit pour Argent/Or/Élite)
-var PARTNER_TARIF_IDS = ['photo-devis', 'video-devis'];
-
-function calculateRevenueShares(order, paidAmount) {
-    var productIds = [];
-    if (order.items && order.items.length > 0) {
-        order.items.forEach(function(item) { if (item.product_id) productIds.push(item.product_id); });
-    } else if (order.product_id) {
-        productIds.push(order.product_id);
-    }
-    var isPartnerTarif = productIds.length > 0 && productIds.every(function(pid) { return PARTNER_TARIF_IDS.indexOf(pid) !== -1; });
-    var assignments = loadPartnerAssignments().filter(function(a) {
-        return a.order_id === order.id && a.status === 'active' && a.partner_type !== 'admin';
-    });
-    if (assignments.length === 0) return [];
-    var partners = loadPartners();
-    var shares = [];
-    if (isPartnerTarif) {
-        // Tarif partenaire : taux selon badge du partenaire (Bronze 25%, Argent 22%, Or 19%, Élite 15%)
-        assignments.forEach(function(a) {
-            var partner = partners.find(function(p) { return p.id === a.partner_id; }) || {};
-            var _badge = getPartnerBadge(partner);
-            var _faPct = getBenefitsForBadge(_badge).commissionPct;
-            var _partnerPct = 100 - _faPct;
-            var partnerAmount = parseFloat((paidAmount * _partnerPct / 100).toFixed(2));
-            var faAmount      = parseFloat((paidAmount - partnerAmount).toFixed(2));
-            shares.push({ partner_id: a.partner_id, partner_email: a.partner_email, partner_paypal: partner.payout_paypal_email || null, partner_iban: partner.payout_iban || null, partner_bic: partner.payout_bic || null, partner_titulaire: partner.payout_titulaire || null, partner_amount: partnerAmount, fa_amount: faAmount, partner_pct: _partnerPct, fa_pct: _faPct, type: 'tarif_partenaire' });
-        });
-    } else {
-        // Offre multi-service : taux selon badge de chaque partenaire, FA prend le reste
-        var _multiShares = [];
-        var _totalPartnerAmount = 0;
-        var n = assignments.length;
-        assignments.forEach(function(a) {
-            var partner = partners.find(function(p) { return p.id === a.partner_id; }) || {};
-            var _badge = getPartnerBadge(partner);
-            var _faPct = getBenefitsForBadge(_badge).commissionPct;
-            var _partnerPct = 100 - _faPct;
-            var _perPartner = parseFloat((paidAmount / n * _partnerPct / 100).toFixed(2));
-            _totalPartnerAmount += _perPartner;
-            _multiShares.push({ a: a, partner: partner, amount: _perPartner, partnerPct: _partnerPct, faPct: _faPct });
-        });
-        var _faTotal = parseFloat((paidAmount - _totalPartnerAmount).toFixed(2));
-        _multiShares.forEach(function(ms, i) {
-            shares.push({ partner_id: ms.a.partner_id, partner_email: ms.a.partner_email, partner_paypal: ms.partner.payout_paypal_email || null, partner_iban: ms.partner.payout_iban || null, partner_bic: ms.partner.payout_bic || null, partner_titulaire: ms.partner.payout_titulaire || null, partner_amount: ms.amount, fa_amount: i === 0 ? _faTotal : 0, partner_pct: ms.partnerPct, fa_pct: ms.faPct, type: 'offre_multi_service' });
-        });
-    }
-    return shares;
-}
-
 async function triggerPayPalPayouts(items) {
     if (!items || !items.length) return { success: false, error: 'Aucun élément' };
     try {
@@ -886,134 +836,6 @@ async function triggerPayPalPayouts(items) {
         return { success: resp.ok, payout_batch_id: (data.batch_header && data.batch_header.payout_batch_id) || null, raw: data };
     } catch(e) {
         return { success: false, error: e.message };
-    }
-}
-
-async function processPaymentSplit(orderId, paidAmount, stage) {
-    try {
-        var orders = loadOrders();
-        var order = orders.find(function(o) { return o.id === orderId; });
-        if (!order || !paidAmount || paidAmount <= 0) return;
-        var shares = calculateRevenueShares(order, paidAmount);
-        if (!shares.length) { console.log('[SPLIT] Pas de partenaires externes pour commande ' + orderId); return; }
-        var payouts = loadPayouts();
-        var newPayouts = [];
-        shares.forEach(function(share) {
-            if (share.partner_amount <= 0) return;
-            // Déterminer la méthode préférée : PayPal si email dispo, virement si IBAN dispo, sinon en attente
-            var method = share.partner_paypal ? 'paypal' : (share.partner_iban ? 'bank_transfer' : 'pending');
-            newPayouts.push({
-                id: 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
-                order_id: orderId, stage: stage || 'deposit',
-                partner_id: share.partner_id, partner_email: share.partner_email,
-                partner_paypal: share.partner_paypal,
-                partner_iban: share.partner_iban, partner_bic: share.partner_bic, partner_titulaire: share.partner_titulaire,
-                payout_method: method,
-                amount: share.partner_amount, currency: 'EUR',
-                fa_amount: share.fa_amount, fa_pct: share.fa_pct, partner_pct: share.partner_pct,
-                type: share.type, status: 'pending',
-                created_at: new Date().toISOString(), sent_at: null, payout_batch_id: null, error: null
-            });
-        });
-        savePayouts(payouts.concat(newPayouts));
-
-        // Envoyer via PayPal les partenaires ayant un email PayPal
-        var itemsToSend = newPayouts.filter(function(p) { return p.payout_method === 'paypal'; }).map(function(p) {
-            return { recipient_email: p.partner_paypal, amount: p.amount, currency: 'EUR', note: 'Versement FA GENESIS — Commande ' + orderId.substring(0, 8).toUpperCase() };
-        });
-        if (itemsToSend.length > 0) {
-            var result = await triggerPayPalPayouts(itemsToSend);
-            var latestPayouts = loadPayouts();
-            newPayouts.forEach(function(np) {
-                if (np.payout_method !== 'paypal') return;
-                var idx = latestPayouts.findIndex(function(p) { return p.id === np.id; });
-                if (idx !== -1) {
-                    if (result.success) { latestPayouts[idx].status = 'sent'; latestPayouts[idx].sent_at = new Date().toISOString(); latestPayouts[idx].payout_batch_id = result.payout_batch_id || null; }
-                    else { latestPayouts[idx].status = 'failed'; latestPayouts[idx].error = result.error || 'Erreur PayPal Payouts'; }
-                }
-            });
-            savePayouts(latestPayouts);
-            console.log('[SPLIT] Versements PayPal ' + (result.success ? 'envoyés' : 'ÉCHOUÉS') + ' pour commande ' + orderId);
-        }
-        // Partenaires avec IBAN : wallet crédité via processDispatchPayout → retrait SEPA déclenché
-        // automatiquement par POST /api/partner/wallet/withdraw (modèle Fiverr : wallet en tampon).
-        var bankCount = newPayouts.filter(function(p) { return p.payout_method === 'bank_transfer'; }).length;
-        if (bankCount > 0) console.log('[SPLIT] ' + bankCount + ' partenaire(s) IBAN — versements via wallet GENESIS pour commande ' + orderId);
-        var noneCount = newPayouts.filter(function(p) { return p.payout_method === 'pending'; }).length;
-        if (noneCount > 0) console.log('[SPLIT] ' + noneCount + ' partenaire(s) sans coordonnées bancaires — versements en attente pour commande ' + orderId);
-    } catch(e) { console.error('[SPLIT] Erreur processPaymentSplit:', e); }
-}
-
-// ============================================================
-// ASSIGNATION AUTOMATIQUE DES INTERVENANTS (après acompte)
-// ============================================================
-var ASSIGNMENT_RULES = {
-    // Photo & vidéo - devis = assignation manuelle uniquement
-    'photo-devis': [],
-    'video-devis': [],
-    // Marketing - marketer
-    'marketing-express':          ['marketer'],
-    'marketing-strategy':         ['marketer'],
-    'marketing-impact':           ['marketer'],
-    'marketing-option-digitales': ['marketer'],
-    // Médias - media
-    'media-visibility': ['media'],
-    'media-impact':     ['media'],
-    'media-premium':    ['media'],
-    'media-promotion':  ['media']
-};
-
-function assignIntervenantsFromOrder(orderId) {
-    try {
-        var orders = loadOrders();
-        var order = orders.find(function(o) { return o.id === orderId; });
-        if (!order) { console.log('[ASSIGN] Commande introuvable: ' + orderId); return; }
-
-        // Récupérer tous les product IDs (panier multi ou produit unique)
-        var productIds = [];
-        if (order.items && Array.isArray(order.items) && order.items.length > 0) {
-            order.items.forEach(function(item) { if (item.product_id) productIds.push(item.product_id); });
-        } else if (order.product_id) {
-            productIds.push(order.product_id);
-        }
-        if (productIds.length === 0) { console.log('[ASSIGN] Aucun product_id pour commande: ' + orderId); return; }
-
-        var allPartners = loadPartners();
-        var assignments = loadPartnerAssignments();
-        var newAssignments = [];
-        var assignedRoles = [];
-
-        productIds.forEach(function(productId) {
-            var roles = ASSIGNMENT_RULES[productId] || [];
-            roles.forEach(function(role) {
-                if (role === 'admin') {
-                    // Consultant FA GENESIS - assignation interne immédiate
-                    if (assignedRoles.indexOf('admin') === -1) assignedRoles.push('admin');
-                    return;
-                }
-                // Partenaires externes (marketer, media, photographer, videographer)
-                // → système de dispatch (course) : ils se manifestent eux-mêmes
-                if (assignedRoles.indexOf(role) === -1) assignedRoles.push(role);
-                console.log('[ASSIGN] Role ' + role + ' mis en mode dispatch pour ' + orderId);
-            });
-        });
-
-        if (newAssignments.length > 0) {
-            savePartnerAssignments(assignments.concat(newAssignments));
-        }
-
-        // Mettre à jour la commande avec les rôles assignés
-        var orderIdx = orders.findIndex(function(o) { return o.id === orderId; });
-        if (orderIdx !== -1) {
-            orders[orderIdx].assigned_roles = assignedRoles;
-            orders[orderIdx].assigned_at = new Date().toISOString();
-            if (!orders[orderIdx].project_status) orders[orderIdx].project_status = 'active';
-            saveOrders(orders);
-        }
-
-        console.log('[ASSIGN] Assignation terminee pour ' + orderId + '. Roles: ' + assignedRoles.join(', '));
-    } catch (e) {
-        console.error('[ASSIGN] Erreur assignIntervenantsFromOrder:', e);
     }
 }
 
@@ -6090,7 +5912,6 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                     console.log('[PAY_CONFIRM] Mission partenaire créée — en attente d\'acceptation du prestataire');
                 }
             } else {
-                assignIntervenantsFromOrder(orderId);
                 emailService.sendPaymentConfirmation(ce, cn, updatedOrder).catch(e => console.error('[PAY_CONFIRM] Email acompte:', e));
             }
         } else {
@@ -7726,7 +7547,6 @@ app.post('/api/payments/verify', async (req, res) => {
                         }
                     }
                 } else {
-                    assignIntervenantsFromOrder(orderId);
                     emailService.sendPaymentConfirmation(clientEmail, clientName, updatedOrder)
                         .catch(function(err){ console.error('[VERIFY] Email acompte:', err); });
                 }
@@ -18023,7 +17843,6 @@ app.post('/api/partner/profile/set-rib', authenticatePartner, async function(req
     }
 });
 
-// Taux de commission FA GENESIS sur les prestations partenaires (cf. PARTNER_TARIF_IDS / calculateRevenueShares)
 var PARTNER_CONTRACT_VERSION = contractService.CONTRACT_VERSION;
 // Taux standard lu dynamiquement depuis GENESIS_TIER_BENEFITS (bronze = taux de base)
 var PARTNER_COMMISSION_RATE = (GENESIS_TIER_BENEFITS['bronze'] || GENESIS_TIER_BENEFITS['null'] || { commissionPct: 25 }).commissionPct;
