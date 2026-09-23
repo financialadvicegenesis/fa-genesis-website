@@ -7008,10 +7008,7 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
         function calcOrderAmounts(order) {
             var held = 0;
             var released = 0;
-            // Taux réel selon le badge du partenaire (Bronze 75%, Argent 78%, Or 81%, Élite 85%)
-            // — un taux fixe à 75% ici afficherait un montant sous-estimé à tout partenaire
-            // ayant un badge supérieur à Bronze, alors que le versement réel (processDispatchPayout,
-            // qui lit dispatch.partner_pct calculé au même endroit) applique bien la réduction.
+            // Part du partenaire = 100% - commission GENESIS (5% fixe, identique pour tous les badges).
             var partnerPct = 100 - getBenefitsForBadge(getPartnerBadge(req.partner)).commissionPct;
 
             var hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
@@ -10642,7 +10639,7 @@ app.get('/api/tier-benefits', function(req, res) {
             var b = GENESIS_TIER_BENEFITS[badge];
             var _cr = b.commissionReduction || 0;
             var _cl = _cr <= 0 ? 'Standard' : (_cr <= 2 ? 'Avantageuse' : 'Privilégiée');
-            return { badge: badge, commissionLabel: _cl, commissionReduction: _cr, commissionPct: b.commissionPct || 15, payout: b.payout, events: b.events, monthlyBoosts: b.monthlyBoosts || 0 };
+            return { badge: badge, commissionLabel: _cl, commissionReduction: _cr, commissionPct: b.commissionPct || 5, events: b.events, monthlyBoosts: b.monthlyBoosts || 0 };
         });
         res.json({ ok: true, tiers: tiers });
     } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
@@ -14962,13 +14959,13 @@ const WELCOME_DISCOUNT_PCT = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias backwa
 const REFERRAL_FILLEUL_DISCOUNT_PCT     = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias legacy
 
 // Avantages par badge prestataire — commission unique de 5% pour tous les prestataires, quel que soit leur badge (2026-09-24) —
-// les badges ne donnent plus de réduction de commission, seulement visibilité/versement/événements.
+// les badges ne donnent plus de réduction de commission ni de vitesse de versement, seulement visibilité/événements.
 const GENESIS_TIER_BENEFITS = {
-    null:      { commissionPct: 5, commissionReduction: 0, payout: 'standard',    events: false, monthlyBoosts: 0 },
-    bronze:    { commissionPct: 5, commissionReduction: 0, payout: 'standard',    events: false, monthlyBoosts: 0 },
-    argent:    { commissionPct: 5, commissionReduction: 0, payout: 'prioritaire', events: false, monthlyBoosts: 2 },
-    or:        { commissionPct: 5, commissionReduction: 0, payout: 'prioritaire', events: true,  monthlyBoosts: 4 },
-    elite:     { commissionPct: 5, commissionReduction: 0, payout: 'express',     events: true,  monthlyBoosts: 8 }
+    null:      { commissionPct: 5, commissionReduction: 0, events: false, monthlyBoosts: 0 },
+    bronze:    { commissionPct: 5, commissionReduction: 0, events: false, monthlyBoosts: 0 },
+    argent:    { commissionPct: 5, commissionReduction: 0, events: false, monthlyBoosts: 2 },
+    or:        { commissionPct: 5, commissionReduction: 0, events: true,  monthlyBoosts: 4 },
+    elite:     { commissionPct: 5, commissionReduction: 0, events: true,  monthlyBoosts: 8 }
 };
 
 function getBenefitsForBadge(badge) {

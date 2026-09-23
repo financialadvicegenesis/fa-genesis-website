@@ -9407,9 +9407,6 @@ function _qgWidgetHtml(pts, level, badge, badgeProgress, constellation, benefits
       var _bsCr = benefits.commissionReduction || 0;
       var _bsCommLabel = _bsCr <= 0 ? 'Standard' : (_bsCr <= 2 ? 'Avantageuse' : 'Privilégiée');
       var _bsSoon = '<span style="font-size:9px;color:#555;background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:500">Bientôt</span>';
-      var payoutLabel = benefits.payout === 'express' ? '<span style="color:#4caf50;font-weight:800">Express</span>'+_bsSoon
-        : benefits.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>'+_bsSoon
-        : '<span style="color:#888">Standard</span>';
       var eventsLabel = benefits.events
         ? '<span style="color:#4caf50;font-weight:800">Prioritaire</span>'+_bsSoon
         : '<span style="color:#888">Standard</span>';
@@ -9417,7 +9414,6 @@ function _qgWidgetHtml(pts, level, badge, badgeProgress, constellation, benefits
         + '<div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Avantages palier</div>'
         + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
         + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-percent" style="color:var(--yellow);margin-right:3px;font-size:10px"></i>Commission : <b style="color:#ddd">'+_bsCommLabel+(_bsCr>0?_bsSoon:'')+'</b></div>'
-        + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-clock" style="color:var(--yellow);margin-right:3px;font-size:10px"></i>Versement : ' + payoutLabel + '</div>'
         + '</div>'
         + '<div style="font-size:11px;color:#aaa;margin-top:4px"><i class="fa-solid fa-calendar-check" style="color:var(--yellow);margin-right:3px;font-size:10px"></i>Événements Genesis : ' + eventsLabel + '</div>'
         + '</div>';
@@ -9472,9 +9468,6 @@ function _renderPartnerHomeQGWidget(data) {
     var badgeColor  = badge ? (badgeColors[badge] || '#FFD700') : '#555';
     var commLbl = b.commissionPct ? b.commissionPct + '%' : '5%';
     var _bsSoon = '<span style="font-size:9px;color:#555;background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:500">Bientôt</span>';
-    var payLbl  = b.payout === 'express'     ? '<span style="color:#4caf50;font-weight:800">Express</span>' + _bsSoon
-                : b.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>' + _bsSoon
-                : '<span style="color:#888">Standard</span>';
     var evLbl   = b.events ? '<span style="color:#4caf50;font-weight:800">Prioritaire</span>' + _bsSoon
                            : '<span style="color:#888">Standard</span>';
     // BUG CORRIGÉ : le serveur (getPartnerBadgeProgress) renvoie le champ "percent", pas
