@@ -248,9 +248,7 @@ header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify
 var API = 'https://fa-genesis-website.onrender.com';
 var _params = new URLSearchParams(window.location.search);
 var _offre = _params.get('offre') || '';
-var _redirect = _params.get('redirect') || '';
 var _quoteToken = _params.get('quote_token') || '';
-var _cwDevisId = _params.get('cw_devis_id') || '';
 var _refCode = _params.get('ref') || '';
 var _accountType = '';
 var _certBase64 = '';
@@ -467,10 +465,6 @@ async function doRegister(){
 function goApp(){
   if(_quoteToken){
     window.location.href = 'quote-accept.html?token='+encodeURIComponent(_quoteToken);
-    return;
-  }
-  if(_redirect === 'checkout' || _cwDevisId){
-    window.location.href = 'checkout.html?source=panier';
     return;
   }
   window.location.href = 'app.html';
