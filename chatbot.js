@@ -88,7 +88,7 @@
         {
             id: 'offers_overview',
             category: 'offres',
-            keywords: ['offre', 'formule', 'forfait', 'pack', 'programme', 'quelles offres', 'vos services', 'proposez', 'tarif', 'prix', 'offres et tarifs', 'combien coute', 'catalogue', 'grille tarifaire', 'liste offres'],
+            keywords: ['offre', 'offres', 'formule', 'forfait', 'pack', 'programme', 'quelles offres', 'vos offres', 'quelles sont vos offres', 'vos services', 'vos prestations', 'proposez', 'tarif', 'tarifs', 'prix', 'offres et tarifs', 'combien coute', 'catalogue', 'grille tarifaire', 'liste offres'],
             response: 'Notre plateforme r\u00e9unit des prestataires ind\u00e9pendants dans plusieurs cat\u00e9gories : PHOTO, VID\u00c9O, MARKETING et M\u00c9DIA. Chaque prestataire fixe librement son propre tarif selon votre projet \u2014 il n\u2019y a pas de prix impos\u00e9 par FA Genesis. Demandez un devis personnalis\u00e9 ou parcourez l\u2019annuaire pour comparer les profils et leurs tarifs.',
             quickReplies: ['Voir les prestations', 'Tarifs individuels'],
             link: { url: 'offres.html', label: 'Voir toutes les prestations' }
@@ -98,8 +98,8 @@
             category: 'offres',
             keywords: ['prestation individuelle', 'service individuel', 'tarif individuel', 'tarifs individuels', 'a la carte', 'prestation seule', 'juste photo', 'juste video', 'juste marketing', 'tarif prestation', 'prix prestation'],
             response: 'Voici nos cat\u00e9gories de prestations : PHOTO, VID\u00c9O, MARKETING et M\u00c9DIA. Pour toutes, le tarif d\u00e9pend du prestataire et du projet \u2014 chaque prestataire fixe librement son propre tarif. Demandez un devis personnalis\u00e9 via le formulaire de contact, ou choisissez directement un prestataire dans l\u2019annuaire au tarif qu\u2019il affiche.',
-            quickReplies: ['Voir les tarifs individuels', 'Demander un devis'],
-            link: { url: 'offres.html#tarifs', label: 'Voir les tarifs individuels' }
+            quickReplies: ['Voir les prestations', 'Demander un devis'],
+            link: { url: 'offres.html#offres', label: 'Voir les prestations' }
         },
         {
             id: 'custom_offer',
@@ -309,7 +309,7 @@
             keywords: ['photo', 'photo essentiel', 'photo pro', 'photo event', 'shooting photo', 'seance photo', 'combien photo', 'retouchee', 'portrait', 'nombre photo', 'tarif photo', 'shooting', 'photographe'],
             response: 'FA Genesis collabore avec plusieurs photographes professionnels ind\u00e9pendants.\n\nLe tarif d\u00e9pend du projet, du format, de la dur\u00e9e et du prestataire s\u00e9lectionn\u00e9.\n\nPrestations incluses :\n\u2022 S\u00e9ance photo personnalis\u00e9e\n\u2022 Orientation posture & image professionnelle\n\u2022 Format r\u00e9seaux sociaux\n\u2022 Nombre de photos retouch\u00e9es adapt\u00e9\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
             quickReplies: ['Demander un devis', 'Voir les offres'],
-            link: { url: 'contact.html?formule=devis', label: 'Demander un devis photo' }
+            link: { url: 'contact.html?objet=devis&service=photo', label: 'Demander un devis photo' }
         },
         {
             id: 'video_detail',
@@ -317,7 +317,7 @@
             keywords: ['video', 'video pro', 'video storytelling', 'video visibility', 'tournage video', 'montage video', 'format video', 'duree video', 'reels', 'clip', 'tarif video', 'tournage', 'videaste', 'filmer'],
             response: 'Les tarifs vid\u00e9o sont d\u00e9finis en fonction du format, des objectifs du projet et du vid\u00e9aste partenaire.\n\nPrestations incluses :\n\u2022 Tournage vid\u00e9o personnalis\u00e9\n\u2022 Nombre de vid\u00e9os adapt\u00e9\n\u2022 Direction narrative & storytelling\n\u2022 Conseils de diffusion\n\u2022 Son & cadrage professionnels\n\u2022 Orientation posture & discours\n\u2022 Format r\u00e9seaux sociaux\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
             quickReplies: ['Demander un devis', 'Voir les offres'],
-            link: { url: 'contact.html?formule=devis', label: 'Demander un devis vid\u00e9o' }
+            link: { url: 'contact.html?objet=devis&service=video', label: 'Demander un devis vid\u00e9o' }
         },
         {
             id: 'marketing_detail',
@@ -401,7 +401,7 @@
             id: 'cart_how',
             category: 'panier',
             keywords: ['panier', 'ajouter panier', 'mettre dans panier', 'comment commander', 'mon panier', 'voir panier', 'vider panier', 'modifier panier', 'comment ajouter'],
-            response: 'Ajouter une prestation au panier est simple :\n\n1\ufe0f\u20e3 Allez sur la page Prestations\n2\ufe0f\u20e3 Choisissez une ou plusieurs prestations\n3\ufe0f\u20e3 Cliquez sur \u00ab Ajouter au panier \u00bb\n4\ufe0f\u20e3 Consultez votre panier via l\u2019ic\u00f4ne \ud83d\uded2 en haut de page\n5\ufe0f\u20e3 Validez et payez (int\u00e9gral ou acompte selon la prestation)\n\nVous pouvez combiner plusieurs prestations dans un seul panier !',
+            response: 'Ajouter une prestation au panier est simple :\n\n1\ufe0f\u20e3 Connectez-vous \u00e0 votre espace client (ou cr\u00e9ez un compte)\n2\ufe0f\u20e3 Parcourez l\u2019annuaire de prestataires et choisissez un profil\n3\ufe0f\u20e3 Cliquez sur \u00ab Ajouter au panier \u00bb sur la prestation qui vous int\u00e9resse\n4\ufe0f\u20e3 Consultez votre panier via l\u2019ic\u00f4ne \ud83d\uded2\n5\ufe0f\u20e3 Validez et payez (int\u00e9gral ou acompte selon la prestation)\n\nVous pouvez combiner plusieurs prestations de diff\u00e9rents prestataires dans un seul panier !',
             quickReplies: ['Passer une commande', 'Voir les prestations'],
             link: { url: 'offres.html', label: 'Voir les prestations' }
         },
@@ -409,7 +409,7 @@
             id: 'checkout_process',
             category: 'panier',
             keywords: ['passer commande', 'valider commande', 'finaliser', 'checkout', 'commander', 'inscription avant paiement', 'faut creer compte', 'compte avant payer', 'comment valider'],
-            response: 'Pour passer commande :\n\n1\ufe0f\u20e3 Ajoutez vos prestations au panier\n2\ufe0f\u20e3 Cliquez sur \u00ab Valider mon panier \u00bb\n3\ufe0f\u20e3 Remplissez le formulaire (pr\u00e9nom, nom, email)\n4\ufe0f\u20e3 Payez par carte bancaire, de mani\u00e8re s\u00e9curis\u00e9e\n5\ufe0f\u20e3 Votre espace client est cr\u00e9\u00e9 automatiquement \u2014 vous recevez vos identifiants par email\n\n\u2728 Pas besoin de cr\u00e9er un compte avant : il est cr\u00e9\u00e9 lors de la validation !',
+            response: 'Pour passer commande :\n\n1\ufe0f\u20e3 Cr\u00e9ez votre compte (ou connectez-vous)\n2\ufe0f\u20e3 Ajoutez vos prestations au panier depuis l\u2019annuaire de prestataires\n3\ufe0f\u20e3 Cliquez sur \u00ab Valider mon panier \u00bb\n4\ufe0f\u20e3 Payez par carte bancaire, de mani\u00e8re s\u00e9curis\u00e9e\n\nGr\u00e2ce \u00e0 GENESIS SAFE\u2122, l\u2019argent est autoris\u00e9 \u00e0 la r\u00e9servation mais n\u2019est vers\u00e9 au prestataire qu\u2019apr\u00e8s validation de la prestation.',
             quickReplies: ['Comment fonctionne le paiement ?', 'Espace client'],
             link: { url: 'panier.html', label: 'Mon panier' }
         },
@@ -417,7 +417,7 @@
             id: 'combine_offers',
             category: 'panier',
             keywords: ['combiner offres', 'plusieurs offres', 'deux offres', 'cumuler', 'ajouter plusieurs', 'pack personnalise', 'plusieurs prestations', 'mixer', 'associer'],
-            response: 'Oui, vous pouvez tout \u00e0 fait combiner plusieurs prestations dans votre panier ! Par exemple : une prestation Marketing et une prestation M\u00e9dia. Le total est calcul\u00e9 automatiquement. \ud83d\udc4c',
+            response: 'Oui, vous pouvez tout \u00e0 fait combiner plusieurs prestations de prestataires diff\u00e9rents dans votre panier ! Par exemple : une prestation d\u2019un photographe et une prestation d\u2019un sp\u00e9cialiste marketing. Le total est calcul\u00e9 automatiquement. \ud83d\udc4c',
             quickReplies: ['Voir les prestations', 'Ajouter au panier'],
             link: { url: 'offres.html', label: 'Voir les prestations' }
         },
