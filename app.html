@@ -15801,6 +15801,12 @@ function _handleNotifHash(hash, _retryCount){
     nav('partner');
     return;
   }
+  // Boost de visibilité activé → ouvre directement l'écran "Mes badges" (quota/décompte du boost).
+  if(hash === 'partner:reputation'){
+    _ptnrSetPendingNotifTarget({ screen: 'reputation', threadEmail: null });
+    nav('partner');
+    return;
+  }
   // Événement précis (place limitée annoncée) → ouvre directement sa fiche détail, façon
   // Instagram/Facebook, au lieu de laisser le client le chercher dans Explorer. openEventDetail()
   // s'affiche en overlay indépendamment de l'onglet actif — il suffit que _eventsCache le
@@ -19411,6 +19417,36 @@ function _ptnrLoadReputation(){
       html += '</div></div>';
     });
 
+    // ── Boost de visibilité mensuel ──
+    var _bst = data.boostStatus || { quota: 0, used: 0, remaining: 0, active: false, active_until: null };
+    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px;"><i class="fa-solid fa-rocket" style="margin-right:4px;"></i>Boost de visibilité</div>';
+    if (_bst.quota <= 0) {
+      html += '<div style="background:#0e0e0e;border:1.5px solid #1a1a1a;border-radius:13px;padding:14px 16px;font-size:12px;color:#555;text-align:center;">'
+        + '<i class="fa-solid fa-lock" style="margin-right:6px;color:#333;"></i>Débloquez le badge <strong style="color:#666;">Argent</strong> pour obtenir des boosts de visibilité mensuels.'
+        + '</div>';
+    } else {
+      var _bstActiveHtml = '';
+      if (_bst.active && _bst.active_until) {
+        var _bstUntil = new Date(_bst.active_until);
+        var _bstUntilLabel = _bstUntil.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) + ' à ' + _bstUntil.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        _bstActiveHtml = '<div style="margin-bottom:10px;background:rgba(76,175,80,.08);border:1px solid #1a3a1a;border-radius:9px;padding:8px 12px;font-size:11px;color:#4caf50;text-align:center;">'
+          + '<i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Boost actif jusqu\'au ' + _bstUntilLabel
+          + '</div>';
+      }
+      var _bstCanActivate = _bst.remaining > 0;
+      html += '<div style="background:#0e0e0e;border:1.5px solid #1a1a1a;border-radius:13px;padding:14px 16px;">'
+        + _bstActiveHtml
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+        + '<div style="font-size:12px;color:#ccc;">Boosts restants ce mois-ci</div>'
+        + '<div style="font-size:16px;font-weight:900;color:'+(_bstCanActivate?'#FFD700':'#555')+';">'+_bst.remaining+' / '+_bst.quota+'</div>'
+        + '</div>'
+        + '<button id="ptnr-boost-btn" onclick="_ptnrActivateBoost(this)" '+(_bstCanActivate?'':'disabled')+' style="width:100%;padding:12px;border-radius:10px;border:none;font-weight:800;font-size:12px;letter-spacing:.3px;cursor:'+(_bstCanActivate?'pointer':'not-allowed')+';background:'+(_bstCanActivate?'#FFD700':'#1a1a1a')+';color:'+(_bstCanActivate?'#000':'#444')+';">'
+        + (_bstCanActivate ? '<i class="fa-solid fa-rocket" style="margin-right:6px;"></i>Booster mon profil (48h)' : 'Quota épuisé — réinitialisation le mois prochain')
+        + '</button>'
+        + '<div style="font-size:10px;color:#555;margin-top:8px;text-align:center;line-height:1.5;">Votre profil passe temporairement en tête des résultats de recherche de l\'annuaire.</div>'
+        + '</div>';
+    }
+
     // ── Distinctions ──
     var _dists = data.distinctions || [];
     html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px;"><i class="fa-solid fa-handshake" style="margin-right:4px;"></i>Distinctions</div>';
@@ -19446,6 +19482,24 @@ function _ptnrLoadReputation(){
     el.innerHTML = html;
   }).catch(function(){
     if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
+  });
+}
+
+// Active un boost de visibilité (consomme le quota mensuel du badge) puis recharge l'écran
+// pour refléter le nouveau décompte et la nouvelle date d'expiration.
+function _ptnrActivateBoost(btn){
+  if(btn) btn.disabled = true;
+  _ptnrFetch('/api/partner/boost/activate', 'POST').then(function(res){
+    if(res && res.success){
+      showToast('Boost activé !', 'Votre profil est mis en avant dans l\'annuaire pendant 48h.', 'success');
+      _ptnrLoadReputation();
+    } else {
+      showToast('Impossible d\'activer le boost', (res && res.error) || 'Erreur inconnue', 'error');
+      if(btn) btn.disabled = false;
+    }
+  }).catch(function(){
+    showToast('Erreur réseau', 'Réessayez plus tard.', 'error');
+    if(btn) btn.disabled = false;
   });
 }
 

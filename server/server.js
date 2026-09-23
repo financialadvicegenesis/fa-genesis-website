@@ -14972,6 +14972,36 @@ function getBenefitsForBadge(badge) {
     return GENESIS_TIER_BENEFITS[badge] || GENESIS_TIER_BENEFITS[null];
 }
 
+// ── Boosts mensuels auto-activables (quota selon badge, voir GENESIS_TIER_BENEFITS.monthlyBoosts) ──
+// Le prestataire active un boost depuis son espace ; il prolonge partner.profile_boost_until
+// (même champ que le boost parrainage/nouveau talent — getPartnerCategoryScore() les traite
+// de façon identique, un seul champ actif à la fois, on prolonge donc plutôt que d'écraser).
+const PARTNER_BOOST_DURATION_HOURS = 48;
+
+function _currentMonthKey() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+// Statut en lecture seule (pas de persistance de reset ici — voir activatePartnerBoost) :
+// { quota, used, remaining, month, active, active_until }
+function getPartnerBoostStatus(partner) {
+    var badge = getPartnerBadge(partner);
+    var quota = getBenefitsForBadge(badge).monthlyBoosts || 0;
+    var monthKey = _currentMonthKey();
+    var used = (partner.boost_month === monthKey) ? (partner.boost_used || 0) : 0;
+    var activeUntil = partner.profile_boost_until || null;
+    var active = !!(activeUntil && new Date(activeUntil) > new Date());
+    return {
+        quota: quota,
+        used: used,
+        remaining: Math.max(0, quota - used),
+        month: monthKey,
+        active: active,
+        active_until: activeUntil
+    };
+}
+
 // Boost de visibilité annuaire pour les nouveaux partenaires (< 30 j, < 3 missions)
 const NOUVEAU_VENU_BOOST = 15;
 
@@ -18058,6 +18088,7 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             distinctions: _serializeDistinctions(getPartnerActiveDistinctions(partner, badge)),
             profile_boost_active: !!(partner.profile_boost_until && new Date(partner.profile_boost_until) > new Date()),
             profile_boost_until: partner.profile_boost_until || null,
+            boostStatus: getPartnerBoostStatus(partner),
             cerclesGenesis: getPartnerCercleClientsList(partner.id, 5),
             opportunites: findSharedClientPartners(partner.id, 5),
             patrimoineGenesis: {
@@ -18069,6 +18100,66 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
         });
     } catch (e) {
         console.error('[REPUTATION] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/partner/boost/status — quota/consommation du mois en cours, sans rien modifier
+app.get('/api/partner/boost/status', authenticatePartner, function(req, res) {
+    try {
+        res.json({ success: true, status: getPartnerBoostStatus(req.partner) });
+    } catch (e) {
+        console.error('[BOOST] Erreur status:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/boost/activate — consomme un boost du quota mensuel du badge, prolonge
+// (ou démarre) profile_boost_until de PARTNER_BOOST_DURATION_HOURS.
+app.post('/api/partner/boost/activate', authenticatePartner, function(req, res) {
+    try {
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        var partner = partners[idx];
+        var status = getPartnerBoostStatus(partner);
+
+        if (status.quota <= 0) {
+            return res.status(403).json({ error: 'Votre badge actuel ne donne droit à aucun boost mensuel.' });
+        }
+        if (status.remaining <= 0) {
+            return res.status(400).json({ error: 'Vous avez déjà utilisé vos ' + status.quota + ' boost(s) ce mois-ci. Le quota se réinitialise le mois prochain.' });
+        }
+
+        // Applique le reset mensuel si on vient de changer de mois
+        if (partner.boost_month !== status.month) {
+            partner.boost_month = status.month;
+            partner.boost_used = 0;
+        }
+        partner.boost_used = (partner.boost_used || 0) + 1;
+
+        // Prolonge un boost déjà actif plutôt que de l'écraser (même logique que le parrainage, voir plus haut)
+        var now = new Date();
+        var currentExpiry = partner.profile_boost_until ? new Date(partner.profile_boost_until) : null;
+        var base = (currentExpiry && currentExpiry > now) ? currentExpiry : now;
+        var newExpiry = new Date(base.getTime() + PARTNER_BOOST_DURATION_HOURS * 3600 * 1000);
+        partner.profile_boost_until = newExpiry.toISOString();
+
+        savePartners(partners);
+
+        notifyUser(partner.email, 'partner', 'boost_activated', '🚀 Boost de visibilité activé',
+            'Votre profil est mis en avant dans l\'annuaire jusqu\'au ' + newExpiry.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' }) + '.',
+            '/app.html#partner:reputation');
+
+        res.json({
+            success: true,
+            quota: status.quota,
+            used: partner.boost_used,
+            remaining: Math.max(0, status.quota - partner.boost_used),
+            active_until: partner.profile_boost_until
+        });
+    } catch (e) {
+        console.error('[BOOST] Erreur activation:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
