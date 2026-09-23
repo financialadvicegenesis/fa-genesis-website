@@ -90,7 +90,7 @@
             category: 'offres',
             keywords: ['offre', 'offres', 'formule', 'forfait', 'pack', 'programme', 'quelles offres', 'vos offres', 'quelles sont vos offres', 'vos services', 'vos prestations', 'proposez', 'tarif', 'tarifs', 'prix', 'offres et tarifs', 'combien coute', 'catalogue', 'grille tarifaire', 'liste offres'],
             response: 'Notre plateforme r\u00e9unit des prestataires ind\u00e9pendants dans plusieurs cat\u00e9gories : PHOTO, VID\u00c9O, MARKETING et M\u00c9DIA. Chaque prestataire fixe librement son propre tarif selon votre projet \u2014 il n\u2019y a pas de prix impos\u00e9 par FA Genesis. Demandez un devis personnalis\u00e9 ou parcourez l\u2019annuaire pour comparer les profils et leurs tarifs.',
-            quickReplies: ['Voir les prestations', 'Tarifs individuels'],
+            quickReplies: ['Comment ça marche ?', 'Contacter l’équipe'],
             link: { url: 'offres.html', label: 'Voir toutes les prestations' }
         },
         {
