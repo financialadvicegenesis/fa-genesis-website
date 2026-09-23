@@ -31,7 +31,7 @@
             id: 'what_is_fa_genesis',
             category: 'general',
             keywords: ['c\'est quoi', 'qu\'est-ce que', 'qu est ce', 'financial advice', 'fa genesis', 'genesis c\'est', 'qui etes', 'qui vous', 'c est quoi', 'votre entreprise', 'votre societe', 'presentez', 'a propos'],
-            response: 'Financial Advice Genesis est une plateforme qui met en relation des clients avec des prestataires ind\u00e9pendants (photographes, vid\u00e9astes, sp\u00e9cialistes marketing, professionnels m\u00e9dia...) pour donner vie \u00e0 leurs projets. Chaque prestataire propose ses propres prestations \u00e0 son propre tarif, et le paiement est s\u00e9curis\u00e9 gr\u00e2ce \u00e0 GENESIS SAFE\u2122.',
+            response: 'Financial Advice Genesis est une plateforme qui met en relation des clients avec des prestataires ind\u00e9pendants (photographes, vid\u00e9astes, sp\u00e9cialistes marketing, professionnels m\u00e9dia...) pour donner vie \u00e0 leurs projets. Le paiement est s\u00e9curis\u00e9 gr\u00e2ce \u00e0 GENESIS SAFE\u2122.',
             quickReplies: ['Voir les prestations', 'Comment \u00e7a marche ?', 'Contacter l\u2019\u00e9quipe'],
             link: null
         },
@@ -63,7 +63,7 @@
             id: 'student_adapted',
             category: 'general',
             keywords: ['adapte etudiant', 'prix etudiant', 'budget etudiant', 'abordable', 'pas cher', 'accessible', 'etudiant'],
-            response: 'Les tarifs d\u00e9pendent de chaque prestataire et de la prestation choisie \u2014 certaines prestations (marketing, m\u00e9dia) ont un tarif fixe affich\u00e9, d\u2019autres (photo, vid\u00e9o) sont sur devis selon votre projet. Vous pouvez comparer les prestataires et leurs tarifs directement dans l\u2019annuaire.',
+            response: 'Les tarifs d\u00e9pendent de la prestation choisie \u2014 certaines (marketing, m\u00e9dia) ont un tarif fixe affich\u00e9, d\u2019autres (photo, vid\u00e9o) sont sur devis selon votre projet. Retrouvez le d\u00e9tail sur la page prestations.',
             quickReplies: ['Voir les prestations'],
             link: { url: 'offres.html', label: 'Voir les prestations' }
         },
@@ -89,7 +89,7 @@
             id: 'offers_overview',
             category: 'offres',
             keywords: ['offre', 'formule', 'forfait', 'pack', 'programme', 'quelles offres', 'vos services', 'proposez', 'tarif', 'prix', 'offres et tarifs', 'combien coute', 'catalogue', 'grille tarifaire', 'liste offres'],
-            response: 'Notre plateforme r\u00e9unit des prestataires ind\u00e9pendants dans plusieurs cat\u00e9gories :\n\n\u2022 PHOTO \u2014 sur devis, selon le photographe et le projet\n\u2022 VID\u00c9O \u2014 sur devis, selon le vid\u00e9aste et le projet\n\u2022 MARKETING \u2014 \u00e0 partir de 120 \u20ac (tarif fixe)\n\u2022 M\u00c9DIA \u2014 \u00e0 partir de 223 \u20ac (tarif fixe)\n\nChaque prestataire fixe son propre tarif. Retrouvez tous les prestataires et leurs prix sur la page prestations.',
+            response: 'Notre plateforme r\u00e9unit des prestataires ind\u00e9pendants dans plusieurs cat\u00e9gories :\n\n\u2022 PHOTO \u2014 sur devis, selon le photographe et le projet\n\u2022 VID\u00c9O \u2014 sur devis, selon le vid\u00e9aste et le projet\n\u2022 MARKETING \u2014 \u00e0 partir de 120 \u20ac (tarif fixe)\n\u2022 M\u00c9DIA \u2014 \u00e0 partir de 223 \u20ac (tarif fixe)\n\nCes prestations sont r\u00e9alis\u00e9es par nos prestataires v\u00e9rifi\u00e9s. Retrouvez tous les d\u00e9tails sur la page prestations.',
             quickReplies: ['Voir les prestations', 'Tarifs individuels'],
             link: { url: 'offres.html', label: 'Voir toutes les prestations' }
         },
@@ -113,7 +113,7 @@
             id: 'choose_offer',
             category: 'offres',
             keywords: ['quelle offre choisir', 'laquelle', 'choisir', 'conseiller', 'recommander', 'hesiter', 'meilleure offre', 'je ne sais pas quelle', 'quelle formule', 'quel prestataire'],
-            response: 'Le choix d\u00e9pend de votre besoin : photo, vid\u00e9o, marketing ou m\u00e9dia. Une fois la cat\u00e9gorie identifi\u00e9e, comparez les profils de prestataires (portfolio, avis, tarifs) directement dans l\u2019annuaire. Si vous h\u00e9sitez, contactez notre \u00e9quipe : elle vous orientera vers le prestataire le plus adapt\u00e9.',
+            response: 'Le choix d\u00e9pend de votre besoin : photo, vid\u00e9o, marketing ou m\u00e9dia. Retrouvez le d\u00e9tail de chaque cat\u00e9gorie sur la page prestations. Si vous h\u00e9sitez, contactez notre \u00e9quipe : elle vous orientera vers la prestation la plus adapt\u00e9e.',
             quickReplies: ['Voir les prestations', 'Contacter l\u2019\u00e9quipe'],
             link: null
         },
@@ -123,7 +123,7 @@
             id: 'payment_how',
             category: 'paiement',
             keywords: ['payer', 'paiement', 'prix', 'combien', 'cout', 'tarif', 'comment payer', 'moyen de paiement', 'combien ca coute', 'carte bancaire', 'virement'],
-            response: 'Chaque prestataire fixe son tarif et son mode de paiement : paiement int\u00e9gral, ou acompte + solde. Le paiement s\u2019effectue par carte bancaire (ou PayPal) de mani\u00e8re s\u00e9curis\u00e9e : gr\u00e2ce \u00e0 GENESIS SAFE\u2122, votre carte est autoris\u00e9e \u00e0 la r\u00e9servation mais l\u2019argent n\u2019est d\u00e9bit\u00e9 qu\u2019une fois la prestation valid\u00e9e.',
+            response: 'Selon la prestation, le paiement est int\u00e9gral \u00e0 la r\u00e9servation ou en acompte + solde. Le paiement s\u2019effectue par carte bancaire (ou PayPal) de mani\u00e8re s\u00e9curis\u00e9e : gr\u00e2ce \u00e0 GENESIS SAFE\u2122, votre carte est autoris\u00e9e \u00e0 la r\u00e9servation mais l\u2019argent n\u2019est d\u00e9bit\u00e9 qu\u2019une fois la prestation valid\u00e9e.',
             quickReplies: ['Payer en plusieurs fois ?', 'Voir les prestations'],
             link: { url: 'offres.html', label: 'Voir les prestations' }
         },
@@ -131,7 +131,7 @@
             id: 'payment_installments',
             category: 'paiement',
             keywords: ['plusieurs fois', 'echelon', 'facilite', 'mensualite', 'etaler', 'en 2 fois', 'en 3 fois', 'en 4 fois', 'echelonne'],
-            response: 'Oui, certains prestataires proposent le paiement en plusieurs fois (jusqu\u2019\u00e0 8 versements selon la prestation) \u2014 c\u2019est indiqu\u00e9 directement sur la fiche du prestataire au moment de la r\u00e9servation. Contactez notre \u00e9quipe si vous avez une question sur les modalit\u00e9s d\u2019une prestation en particulier.',
+            response: 'Oui, le paiement en plusieurs fois est possible sur certaines prestations (jusqu\u2019\u00e0 8 versements selon le cas) \u2014 c\u2019est indiqu\u00e9 directement au moment de la r\u00e9servation. Contactez notre \u00e9quipe si vous avez une question sur les modalit\u00e9s d\u2019une prestation en particulier.',
             quickReplies: ['Contacter l\u2019\u00e9quipe', 'Voir les prestations'],
             link: null
         },
