@@ -2562,14 +2562,20 @@ setTimeout(_genesisSignalNativeReady, 8000);
 // l'aveugle. Voir project_push_notifications_full_audit.md / project_android_splash_*.md dans
 // la mémoire projet pour l'historique de ce type de bug sur cet appareil précis. Purement
 // diagnostique, best-effort, ne doit jamais lui-même faire planter quoi que ce soit.
+// Version réelle de l'app native (versionName Android, ex. "2.5.7"), lue une fois ici via
+// Capacitor plutôt que codée en dur dans la page — voir _ptnrLoadProfil()/renderProfil() qui
+// l'affichent toutes les deux en bas de l'onglet "Profil" ("Version X.X"). Avant ce correctif,
+// ces deux endroits affichaient la chaîne fixe "Version 1.1", jamais mise à jour depuis les
+// tout premiers builds alors que android/app/build.gradle est aujourd'hui à versionCode 47/
+// versionName 2.5.7 — un numéro totalement faux affiché à chaque utilisateur.
+window._genesisAppVersion = null;
 (function(){
   var _reportedCount = 0;
-  var _appVersionCache = null;
   try{
     if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() &&
        window.Capacitor.Plugins && window.Capacitor.Plugins.App && window.Capacitor.Plugins.App.getInfo){
       window.Capacitor.Plugins.App.getInfo().then(function(info){
-        _appVersionCache = (info && info.version) ? (info.version + (info.build ? ('+' + info.build) : '')) : null;
+        window._genesisAppVersion = (info && info.version) ? (info.version + (info.build ? (' (' + info.build + ')') : '')) : null;
       }).catch(function(){});
     }
   }catch(e){}
@@ -2590,7 +2596,7 @@ setTimeout(_genesisSignalNativeReady, 8000);
         hash: String(window.location.hash || '').substring(0, 300),
         userAgent: String(navigator.userAgent || '').substring(0, 400),
         platform: isNative ? ('native-' + (window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : '?')) : 'web',
-        appVersion: _appVersionCache || ''
+        appVersion: window._genesisAppVersion || ''
       };
       // Jeton best-effort : une erreur peut survenir avant toute session — l'endpoint ne
       // l'exige pas, il l'utilise juste s'il est présent pour identifier le compte concerné.
@@ -2612,6 +2618,17 @@ setTimeout(_genesisSignalNativeReady, 8000);
     _reportClientError('Unhandled rejection: ' + msg, stack);
   });
 })();
+
+// Pied de page "Version X.X" affiché en bas de l'onglet Profil (client) et Profil (prestataire) —
+// utilise le vrai versionName natif (window._genesisAppVersion, résolu de façon asynchrone
+// ci-dessus) au lieu d'une chaîne codée en dur qui n'était plus mise à jour depuis les tout
+// premiers builds ("Version 1.1" affiché à chaque utilisateur alors que l'app était déjà en
+// 2.5.7+). Hors app native (web/PWA) ou tant que la version n'est pas encore résolue, n'affiche
+// rien plutôt qu'un numéro inventé.
+function _genesisVersionFooter(){
+  if(!window._genesisAppVersion) return '';
+  return '<div class="plus-version">Version ' + String(window._genesisAppVersion).replace(/[<>]/g,'') + '</div>';
+}
 </script>
 <div id="bgOverlay"></div>
 <div id="goldFlash"></div>
@@ -8785,7 +8802,7 @@ function renderProfil(){
     }
   }
   c.innerHTML = header + monEspace + espacePartenaire + params + infos + _referralSection + accountMgmtClient + logout
-    +'<div class="plus-version">Version 1.1</div>';
+    + _genesisVersionFooter();
 }
 
 function openInBrowser(url){
@@ -20257,7 +20274,7 @@ function _ptnrLoadProfil(){
     + '<div class="p-ref-count">Invitez vos collègues prestataires à rejoindre GENESIS</div>'
     + '<button onclick="_ptnrShareRef(\''+_pr.id+'\')" style="margin-top:12px;width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:12px;padding:11px 0;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:.3px;"><i class="fa-solid fa-share-nodes" style="margin-right:7px;"></i>Inviter un ami</button>'
     + '</div>' : '';
-  c.innerHTML = headerHtml + activite + monProfil + reseau + deleteBtn + logoutBtn + _ptnrRefBlockHtml + '<div class="plus-version">Version 1.1</div>';
+  c.innerHTML = headerHtml + activite + monProfil + reseau + deleteBtn + logoutBtn + _ptnrRefBlockHtml + _genesisVersionFooter();
 }
 
 // ── SOUS-FORMULAIRES PROFIL ──────────────────────────────────
