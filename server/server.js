@@ -2721,21 +2721,29 @@ app.post('/api/push/subscribe', function(req, res) {
 
         var email = null;
         var token = (req.headers.authorization || '').replace('Bearer ', '');
-        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
 
-        if (token === partnerToken) {
-            role = 'partner';
-            email = 'partner';
-        } else if (isValidAdminKey(req)) {
+        // BUG corrigé : cette résolution ne vérifiait jamais un token PRESTATAIRE (seulement
+        // findUserByToken sur users.json, jamais findPartnerByToken sur partners.json — l'ancienne
+        // branche "token === PARTNER_TOKEN" datait de l'architecture pré-migration à jeton partagé
+        // unique, voir project_coworking_marketplace_migration.md, et ne correspond plus à aucun
+        // jeton réel émis aujourd'hui). Conséquence concrète : TOUT prestataire s'abonnant au Web
+        // Push depuis un navigateur (PWA, hors app Android native) — y compris via
+        // _ptnrSubscribePush() qui envoie pourtant un vrai jeton + role:'partner' + son email —
+        // se retrouvait enregistré avec email:null, role:'client' (les valeurs par défaut), donc
+        // ne recevait jamais aucune notification Web Push ciblée (sendPushToUser) ni de diffusion
+        // de rôle correcte (sendPushToRole('partner',...) ne l'atteignait jamais).
+        if (isValidAdminKey(req)) {
             role = 'admin';
             email = 'admin';
         } else if (token) {
-            var users = loadUsers();
             var u = findUserByToken(token);
             if (u) {
                 email = u.email;
                 // Élever le rôle en 'admin' si l'email est un compte admin
                 role = ADMIN_EMAILS.indexOf(u.email.toLowerCase()) !== -1 ? 'admin' : 'client';
+            } else {
+                var p = findPartnerByToken(token);
+                if (p) { email = p.email; role = 'partner'; }
             }
         }
 
@@ -2943,23 +2951,32 @@ app.post('/api/admin/push/test-fcm', async function(req, res) {
 // POST /api/push/register — Enregistre un token FCM depuis l'app native Capacitor
 app.post('/api/push/register', function(req, res) {
     try {
+        // SÉCURITÉ : le userId doit venir de l'identité authentifiée par le token Bearer,
+        // jamais du corps de la requête tel quel — sans ce contrôle, n'importe qui pouvait
+        // enregistrer SON appareil pour recevoir les notifications push (dont le contenu des
+        // messages, voir fcmPayload.data.replyTo dans notifyUser()) d'un userId arbitraire
+        // deviné/connu, sans jamais s'authentifier comme ce compte.
+        var identity = resolveCurrentIdentity(req);
+        if (!identity || identity.role === 'admin') return res.status(401).json({ error: 'Non autorise' });
+        var realUserId = identity.role === 'partner' ? (identity.partner && identity.partner.id) : (identity.user && identity.user.id);
+        if (!realUserId) return res.status(401).json({ error: 'Non autorise' });
+
         var token = req.body.token;
-        var userId = req.body.userId;
         var platform = req.body.platform || 'android';
-        if (!token || !userId) return res.status(400).json({ error: 'token et userId requis' });
+        if (!token) return res.status(400).json({ error: 'token requis' });
 
         var tokens = loadFcmTokens();
         // Supprimer les anciennes entrées pour ce même token
         tokens = tokens.filter(function(t) { return t.token !== token; });
         tokens.push({
             id: uuidv4(),
-            userId: String(userId),
+            userId: String(realUserId),
             token: token,
             platform: platform,
             registered_at: new Date().toISOString()
         });
         saveFcmTokens(tokens);
-        console.log('[FCM] Token enregistré — userId:', userId, 'platform:', platform);
+        console.log('[FCM] Token enregistré — userId:', realUserId, 'platform:', platform);
         res.json({ success: true });
     } catch(e) {
         console.error('[FCM] Erreur register:', e);

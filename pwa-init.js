@@ -257,15 +257,28 @@
 
   function getAuthInfo() {
     try {
+      // 2 bugs corrigés ici :
+      // 1) Le jeton prestataire était cherché sous 'cw_partner_access', une clé de l'ancien
+      //    système coworking à jeton partagé unique (voir
+      //    project_coworking_marketplace_migration.md) — plus jamais posée par l'app actuelle, qui
+      //    stocke le jeton prestataire sous 'fa_genesis_partner_token' (voir app.html, _ptnrLogin/
+      //    _ptnrInit). Un prestataire utilisant le site depuis un navigateur (hors app Android
+      //    native, où ce fichier ne s'exécute de toute façon jamais — voir le retour anticipé tout
+      //    en haut si _isNative) ne s'abonnait donc jamais correctement au Web Push avec son
+      //    propre jeton, et retombait sur role:'client' par défaut côté serveur.
+      // 2) Le jeton admin relisait 'fa_genesis_token' (la clé du jeton CLIENT) au lieu de
+      //    'fa_genesis_admin_token' (voir admin-system.js) — sans effet observable aujourd'hui
+      //    puisque les notifications admin sont toujours diffusées par rôle (sendPushToRole),
+      //    jamais ciblées par email, mais corrigé par cohérence/robustesse future.
       var clientToken = localStorage.getItem('fa_genesis_token');
       if (clientToken) return { token: clientToken, role: 'client' };
       var adminSess = localStorage.getItem('adminSession');
       if (adminSess) {
-        var adminToken = localStorage.getItem('fa_genesis_token');
+        var adminToken = localStorage.getItem('fa_genesis_admin_token');
         return { token: adminToken, role: 'admin' };
       }
-      var cwToken = sessionStorage.getItem('cw_partner_access') || localStorage.getItem('cw_partner_access');
-      if (cwToken) return { token: cwToken, role: 'partner' };
+      var partnerToken = localStorage.getItem('fa_genesis_partner_token');
+      if (partnerToken) return { token: partnerToken, role: 'partner' };
     } catch(e) {}
     return null;
   }
