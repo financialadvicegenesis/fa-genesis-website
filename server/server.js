@@ -11945,6 +11945,7 @@ var CHAT_FILE = path.join(DATA_DIR,'chat.json');
 // écart ici a déjà cassé silencieusement une restauration par le passé, voir partner_requests).
 var CHAT_ARCHIVES_FILE = path.join(DATA_DIR,'chat-archives.json');
 var SUPPORT_TICKETS_FILE = path.join(DATA_DIR,'support-tickets.json');
+var CONTOURNEMENT_LOG_FILE = path.join(DATA_DIR,'contournement-log.json');
 
 function loadChat() {
     try {
@@ -12053,6 +12054,48 @@ function registerContournementViolation(account) {
     account.messagingWarnings = (account.messagingWarnings || 0) + 1;
     if (account.messagingWarnings >= 3) account.messagingBlocked = true;
     return account.messagingWarnings;
+}
+
+function loadContournementLog() {
+    try {
+        if (fs.existsSync(CONTOURNEMENT_LOG_FILE)) {
+            return JSON.parse(fs.readFileSync(CONTOURNEMENT_LOG_FILE, 'utf8'));
+        }
+    } catch (e) { console.error('[CONTOURNEMENT-LOG] Erreur lecture:', e.message); }
+    return [];
+}
+function saveContournementLog(rows) {
+    try { fs.writeFileSync(CONTOURNEMENT_LOG_FILE, JSON.stringify(rows, null, 2), 'utf8'); }
+    catch (e) { console.error('[CONTOURNEMENT-LOG] Erreur ecriture:', e.message); }
+    persistentStore.persistToCloud('contournement-log', rows).catch(function(e) {});
+}
+
+/**
+ * Trace une tentative de contournement bloquée + alerte admin en temps réel.
+ * accountType: 'client' | 'partner'. accountLabel: nom/email affichable.
+ * toLabel: destinataire visé (nom/email/id), warnings: valeur retournée par registerContournementViolation.
+ */
+function logContournementAttempt(accountType, accountId, accountLabel, content, toLabel, warnings) {
+    try {
+        var rows = loadContournementLog();
+        rows.push({
+            id: 'CTR-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase(),
+            accountType: accountType,
+            accountId: accountId || null,
+            accountLabel: accountLabel || '',
+            content: String(content || '').substring(0, 1000),
+            toLabel: toLabel || '',
+            warnings: warnings || 0,
+            created_at: new Date().toISOString()
+        });
+        saveContournementLog(rows);
+    } catch (e) { console.error('[CONTOURNEMENT-LOG] Erreur trace:', e.message); }
+
+    var blockedNow = warnings >= 3;
+    notifyUser(null, 'admin', 'contournement_attempt',
+        (blockedNow ? '🚫 Messagerie suspendue — ' : '⚠️ Tentative de contournement — ') + (accountLabel || accountType),
+        (accountType === 'partner' ? 'Prestataire' : 'Client') + ' ' + (accountLabel || '') + ' a tenté de partager des coordonnées personnelles vers ' + (toLabel || 'un destinataire') + ' (avertissement ' + warnings + '/3).',
+        '/admin.html#open-contournement');
 }
 
 /**
@@ -12371,6 +12414,7 @@ app.post('/api/messages', function(req, res) {
         if (detectContournement(content)) {
             var warnings = registerContournementViolation(user);
             saveUsers(users);
+            logContournementAttempt('client', user.id || user.email, ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email, content, req.body.to_type === 'partner' ? ('prestataire ' + (req.body.to_id || '')) : 'admin FA GENESIS', warnings);
             if (user.messagingBlocked) {
                 return res.status(403).json({ error: 'messaging_suspended', message: MESSAGING_SUSPENDED_MESSAGE });
             }
@@ -12723,6 +12767,7 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
             if (pIndex !== -1) {
                 var warnings = registerContournementViolation(allPartners[pIndex]);
                 savePartners(allPartners);
+                logContournementAttempt('partner', partner.id || partner.email, ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email, content, 'client ' + toEmail, warnings);
                 if (allPartners[pIndex].messagingBlocked) {
                     return res.status(403).json({ error: 'messaging_suspended', message: MESSAGING_SUSPENDED_MESSAGE });
                 }
@@ -12872,10 +12917,23 @@ app.post('/api/partner/peer-message', authenticatePartner, function(req, res) {
         if (!toPartnerId || !content) {
             return res.status(400).json({ error: 'to_partner_id et content requis' });
         }
+        var allPartners = loadPartners();
+        var pIndex = allPartners.findIndex(function(p) { return p.id === partner.id; });
+        if (pIndex !== -1 && allPartners[pIndex].messagingBlocked) {
+            return res.status(403).json({ error: 'messaging_suspended', message: MESSAGING_SUSPENDED_MESSAGE });
+        }
         if (detectContournement(content)) {
+            if (pIndex !== -1) {
+                var warnings = registerContournementViolation(allPartners[pIndex]);
+                savePartners(allPartners);
+                logContournementAttempt('partner', partner.id || partner.email, ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email, content, 'confrère ' + toPartnerId, warnings);
+                if (allPartners[pIndex].messagingBlocked) {
+                    return res.status(403).json({ error: 'messaging_suspended', message: MESSAGING_SUSPENDED_MESSAGE });
+                }
+                return res.status(400).json({ error: 'contournement', message: CONTOURNEMENT_MESSAGE, warnings: warnings });
+            }
             return res.status(400).json({ error: 'contournement', message: CONTOURNEMENT_MESSAGE });
         }
-        var allPartners = loadPartners();
         var toPeer = allPartners.find(function(p) { return p.id === toPartnerId; });
         if (!toPeer) return res.status(404).json({ error: 'Collègue introuvable' });
         if (toPeer.partner_type !== partner.partner_type) {
@@ -23425,6 +23483,93 @@ app.post('/api/admin/withdrawals/:id/mark-sent', function(req, res) {
         }
 
         res.json({ ok: true, withdrawal: wdrs[idx] });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * GET /api/admin/contournement-log
+ * Liste des tentatives de partage de coordonnées personnelles bloquées (messagerie),
+ * les plus récentes en premier — voir logContournementAttempt().
+ */
+app.get('/api/admin/contournement-log', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var rows = loadContournementLog();
+        rows.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        var limit = parseInt(req.query.limit, 10) || 200;
+        res.json({ ok: true, count: rows.length, attempts: rows.slice(0, limit) });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * GET /api/admin/contournement-accounts
+ * Comptes (clients + prestataires) ayant au moins un avertissement de contournement,
+ * ou dont la messagerie est suspendue — pour la vue de modération admin.
+ */
+app.get('/api/admin/contournement-accounts', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var users = loadUsers().filter(function(u) { return (u.messagingWarnings || 0) > 0 || u.messagingBlocked; });
+        var partners = loadPartners().filter(function(p) { return (p.messagingWarnings || 0) > 0 || p.messagingBlocked; });
+        var accounts = users.map(function(u) {
+            return {
+                accountType: 'client',
+                id: u.id || u.email,
+                email: u.email,
+                name: ((u.prenom || '') + ' ' + (u.nom || '')).trim(),
+                messagingWarnings: u.messagingWarnings || 0,
+                messagingBlocked: !!u.messagingBlocked
+            };
+        }).concat(partners.map(function(p) {
+            return {
+                accountType: 'partner',
+                id: p.id || p.email,
+                email: p.email,
+                name: ((p.prenom || '') + ' ' + (p.nom || '')).trim(),
+                messagingWarnings: p.messagingWarnings || 0,
+                messagingBlocked: !!p.messagingBlocked
+            };
+        }));
+        accounts.sort(function(a, b) { return (b.messagingWarnings || 0) - (a.messagingWarnings || 0); });
+        res.json({ ok: true, count: accounts.length, accounts: accounts });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * POST /api/admin/contournement-reset
+ * L'admin remet à zéro les avertissements / lève la suspension de messagerie d'un compte,
+ * après vérification manuelle (ex. faux positif, ou situation résolue avec le prestataire/client).
+ */
+app.post('/api/admin/contournement-reset', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var accountType = req.body.accountType;
+        var id = req.body.id;
+        if (!id || (accountType !== 'client' && accountType !== 'partner')) {
+            return res.status(400).json({ error: 'accountType (client|partner) et id requis' });
+        }
+        if (accountType === 'client') {
+            var users = loadUsers();
+            var idx = users.findIndex(function(u) { return u.id === id || u.email === id; });
+            if (idx === -1) return res.status(404).json({ error: 'Compte introuvable' });
+            users[idx].messagingWarnings = 0;
+            users[idx].messagingBlocked = false;
+            saveUsers(users);
+        } else {
+            var partners = loadPartners();
+            var pIdx = partners.findIndex(function(p) { return p.id === id || p.email === id; });
+            if (pIdx === -1) return res.status(404).json({ error: 'Compte introuvable' });
+            partners[pIdx].messagingWarnings = 0;
+            partners[pIdx].messagingBlocked = false;
+            savePartners(partners);
+        }
+        res.json({ ok: true });
     } catch(e) {
         res.status(500).json({ error: e.message });
     }

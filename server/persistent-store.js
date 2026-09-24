@@ -56,7 +56,8 @@ var COLLECTIONS = [
     'notifications',
     'partner-subprofiles',
     'contracts',
-    'campagnes'
+    'campagnes',
+    'contournement-log'
 ];
 
 /**
