@@ -13774,6 +13774,7 @@ function _ptnrInit(){
     if(data && data.partner){
       _ptnrSession = data.partner;
       _ptnrSaveToCache(data.partner);
+      _ptnrCheckContournementReminder();
       // CRITIQUE : si l'écran "Accueil" a déjà été peint avec le cache local (potentiellement
       // périmé, ex: prestations ajoutées depuis une autre session) avant que cette réponse
       // n'arrive, rien ne le rafraîchissait — le prestataire voyait alors "aucune prestation"
@@ -13790,6 +13791,29 @@ function _ptnrInit(){
       if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 120000); }
     } else { _ptnrClearSession(); }
   }).catch(function(){ _ptnrClearSession(); });
+}
+
+// Rappel des règles anti-contournement (partage de coordonnées personnelles en messagerie) —
+// affiché à chaque connexion (cold start via _ptnrInit ET login mot de passe via _ptnrLogin)
+// tant que le compte a des avertissements actifs, à la manière des rappels de non-conformité
+// des autres marketplaces (Vinted, Leboncoin...). Pas de mémorisation "ne plus afficher" :
+// le rappel disparaît de lui-même une fois les avertissements réinitialisés par l'admin
+// (voir le panneau Modération d'admin.html, POST /api/admin/contournement-reset).
+function _ptnrCheckContournementReminder(){
+  if(!_ptnrSession) return;
+  if(_ptnrSession.messagingBlocked){
+    showConfirmModal(
+      'Votre messagerie a été suspendue suite à plusieurs tentatives de partage de coordonnées personnelles (téléphone, email, réseaux sociaux) avant signature du contrat. Contactez le support FA GENESIS à contact@fagenesis.com pour la réactiver.',
+      { title: '🚫 Messagerie suspendue', cancelLabel: 'Fermer', confirmLabel: 'Contacter le support', danger: true }
+    ).then(function(ok){
+      if(ok){ try{ window.open('mailto:contact@fagenesis.com?subject=Réactivation%20messagerie', '_system'); }catch(e){} }
+    });
+  } else if(_ptnrSession.messagingWarnings > 0){
+    showConfirmModal(
+      'Vous avez reçu ' + _ptnrSession.messagingWarnings + '/3 avertissement(s) pour avoir partagé des coordonnées personnelles en messagerie avant signature du contrat. Au 3ᵉ avertissement, votre messagerie sera automatiquement suspendue. Merci de rester sur la messagerie FA GENESIS jusqu\'à la signature.',
+      { title: '⚠️ Rappel — Règles de messagerie', cancelLabel: 'Fermer', confirmLabel: 'J\'ai compris', danger: false }
+    );
+  }
 }
 
 function _ptnrClearSession(){
@@ -14017,6 +14041,7 @@ function _ptnrLogin(){
       }
       // Partner → go to profile selector
       _ptnrBioUnlocked = true; // vient de prouver son identité par mot de passe
+      _ptnrCheckContournementReminder();
       _ptnrOfferBiometricOptIn();
       _ptnrShowScreen('profiles');
       _ptnrLoadProfileSelector();
