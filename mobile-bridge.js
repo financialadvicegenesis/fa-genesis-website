@@ -39,6 +39,18 @@
         } catch(e) { console.warn('[FAG Mobile] setAuthToken:', e.message); }
     };
 
+    // Efface le jeton natif à la déconnexion — sans cet appel, ReplyReceiver.java pouvait
+    // continuer à authentifier des réponses envoyées depuis une notification de message déjà
+    // présente dans le volet au moment de la déconnexion, avec l'ancien jeton (toujours valide
+    // côté serveur), donc au nom d'un utilisateur qui vient pourtant de se déconnecter dans
+    // l'app. Appelé depuis _showRoleChoiceAfterDelete() (déconnexion générale, client+partenaire).
+    window.FAGMobile.clearAuthToken = async function(role) {
+        try {
+            if (!Plugins.TokenStore || !role) return;
+            await Plugins.TokenStore.clearToken({ role: role });
+        } catch(e) { console.warn('[FAG Mobile] clearAuthToken:', e.message); }
+    };
+
     // Rafraîchit le badge numérique de l'icône (comme WhatsApp/Messenger) en interrogeant le
     // serveur pour l'état RÉEL et actuel des non-lus (voir GET /api/notifications/badge-count) —
     // nécessaire chaque fois qu'un message est lu/répondu DANS l'app (donc sans jamais passer

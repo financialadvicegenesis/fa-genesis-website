@@ -3725,6 +3725,14 @@ function _showRoleChoiceAfterDelete(){
   try{ localStorage.removeItem('fa_genesis_token'); }catch(e){}
   try{ localStorage.removeItem('fa_genesis_device_token'); }catch(e){}
   try{ localStorage.removeItem('fa_app_cart'); }catch(e){}
+  // Efface aussi le jeton natif (Android/iOS) côté client — sans ça, ReplyReceiver.java pouvait
+  // continuer à répondre aux messages au nom de l'utilisateur déconnecté depuis une notification
+  // déjà présente dans le volet (voir mobile-bridge.js, clearAuthToken). Côté partenaire, c'est
+  // fait par _ptnrClearSession() ci-dessous (appelée aussi indépendamment lors d'une détection
+  // de session périmée en arrière-plan, d'où le fait de le centraliser là plutôt qu'ici).
+  try{
+    if(window.FAGMobile && window.FAGMobile.clearAuthToken) window.FAGMobile.clearAuthToken('client').catch(function(){});
+  }catch(e){}
 
   // ── Nettoyer session partenaire ──────────────────────────────
   try{
@@ -9107,6 +9115,9 @@ function _handleStaleSession(){
   showToast('Session expirée','Reconnexion en cours...','info');
   setTimeout(function(){
     try{localStorage.removeItem('fa_genesis_session');localStorage.removeItem('fa_genesis_token');localStorage.removeItem('fa_push_subscribed');}catch(e){}
+    try{
+      if(window.FAGMobile && window.FAGMobile.clearAuthToken) window.FAGMobile.clearAuthToken('client').catch(function(){});
+    }catch(e){}
     window.location.reload();
   },2000);
 }
@@ -13781,6 +13792,13 @@ function _ptnrClearSession(){
   localStorage.removeItem('fa_genesis_partner_data');
   localStorage.removeItem('fa_genesis_partner_profile');
   localStorage.removeItem('fa_genesis_partner_profile_data');
+  // Centralisé ici (pas seulement dans _showRoleChoiceAfterDelete) pour couvrir aussi le cas
+  // d'une session détectée périmée en arrière-plan (voir les appels ci-dessus) — même raison
+  // que dans _showRoleChoiceAfterDelete : un jeton natif oublié permettrait à ReplyReceiver.java
+  // de continuer à authentifier des réponses avec un jeton que le JS ne considère plus valide.
+  try{
+    if(window.FAGMobile && window.FAGMobile.clearAuthToken) window.FAGMobile.clearAuthToken('partner').catch(function(){});
+  }catch(e){}
 }
 
 // ── Verrouillage biométrique (Face ID / empreinte) de l'espace prestataire ────
