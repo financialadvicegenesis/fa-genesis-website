@@ -2204,7 +2204,10 @@ app.get('/api/notifications', function(req, res) {
         // _ptnrRefreshBadges()/_clientRefreshMsgBadge() côté app.html) — comme sur Instagram/
         // Facebook, elles n'apparaissent JAMAIS dans la cloche "Notifications" générale, pour
         // éviter qu'un même message ne soit compté/affiché à deux endroits différents.
-        if (n.type === 'message-client' || n.type === 'message-partner') return false;
+        // 'support-reply' (réponse admin dans un ticket Assistance, voir POST /api/admin/support/:id/reply)
+        // est de la même nature — un message dans une conversation dédiée (showSupport()/
+        // _ptnrShowSupport()) — donc exclu ici pour la même raison, plutôt qu'affiché en double.
+        if (n.type === 'message-client' || n.type === 'message-partner' || n.type === 'support-reply') return false;
         if (identity.role === 'admin') return n.role === 'admin';
         return n.role === identity.role && n.email && n.email.toLowerCase() === identity.email.toLowerCase();
     }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
