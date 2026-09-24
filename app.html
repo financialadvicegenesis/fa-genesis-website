@@ -13803,10 +13803,10 @@ function _ptnrCheckContournementReminder(){
   if(!_ptnrSession) return;
   if(_ptnrSession.messagingBlocked){
     showConfirmModal(
-      'Votre messagerie a été suspendue suite à plusieurs tentatives de partage de coordonnées personnelles (téléphone, email, réseaux sociaux) avant signature du contrat. Contactez le support FA GENESIS à contact@fagenesis.com pour la réactiver.',
+      'Votre messagerie a été suspendue suite à plusieurs tentatives de partage de coordonnées personnelles (téléphone, email, réseaux sociaux) avant signature du contrat. Contactez le support FA GENESIS pour la réactiver.',
       { title: '🚫 Messagerie suspendue', cancelLabel: 'Fermer', confirmLabel: 'Contacter le support', danger: true }
     ).then(function(ok){
-      if(ok){ try{ window.open('mailto:contact@fagenesis.com?subject=Réactivation%20messagerie', '_system'); }catch(e){} }
+      if(ok){ _ptnrNav('profil'); _ptnrShowSupport(); }
     });
   } else if(_ptnrSession.messagingWarnings > 0){
     showConfirmModal(
@@ -15767,6 +15767,15 @@ function _handleNotifHash(hash, _retryCount){
     } else {
       window._pendingNotifTicket = _tid;
     }
+    return;
+  }
+  // Réponse admin à un ticket Assistance PRESTATAIRE → même principe, écran prestataire.
+  // Le préfixe partner: garantit que le retry "session pas encore prête" tout en haut de cette
+  // fonction s'applique déjà (il retente tant que _ptnrToken n'est pas posé), donc _ptnrToken
+  // est garanti présent à ce point.
+  var ptnrSupportReplyMatch = hash.match(/^partner:support-reply-(SUP-\d+)$/);
+  if(ptnrSupportReplyMatch){
+    _ptnrShowSupportThreadDirect(ptnrSupportReplyMatch[1]);
     return;
   }
   // Message d'un client → ouvrir directement la conversation avec ce client précis
@@ -20132,6 +20141,7 @@ function _ptnrLoadProfil(){
     +'<div class="plus-group">'
     +pli('<i class="fa-solid fa-circle-user"></i>',       '#1a1a00','Paramètres du profil', null,'_ptnrProfilEditParams()')
     +pli('<i class="fa-solid fa-clock"></i>',             '#14000a','Temps de réponse',     null,'_ptnrProfilEditResponseTime()')
+    +pli('<i class="fa-solid fa-headset"></i>',           '#1a0a00','Assistance',           null,'_ptnrShowSupport()')
     +bioRowHtml
     +'</div></div>';
 
@@ -20176,6 +20186,151 @@ function _ptnrLoadProfil(){
 
 // ── SOUS-FORMULAIRES PROFIL ──────────────────────────────────
 function _ptnrProfilBack(){ _ptnrLoadProfil(); }
+
+// ── ASSISTANCE PRESTATAIRE (miroir de showSupport() côté client, mais authentifié
+// via _ptnrFetch()/_ptnrToken et rendu dans #ptnr-profil-content). Existe notamment pour que
+// _ptnrCheckContournementReminder() puisse y renvoyer un prestataire dont la messagerie est
+// suspendue : messagingBlocked coupe aussi ses messages vers l'admin (POST /api/messages,
+// /api/partner/inbox/reply), donc ce canal /api/partner/support/* — indépendant du chat —
+// est son seul moyen de contacter FA GENESIS depuis l'app une fois bloqué.
+var _ptnrSupportTicketCache = {};
+
+function _ptnrShowSupport(){
+  var c = document.getElementById('ptnr-profil-content');
+  if(!c) return;
+  if(window._ptnrSupportPoll){ clearInterval(window._ptnrSupportPoll); window._ptnrSupportPoll=null; }
+  c.innerHTML =
+    '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="_ptnrProfilBack()">&#8249;</button><div class="espace-title">Assistance</div></div>'
+    +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+    +'<button onclick="_ptnrShowNewTicketForm()" style="width:100%;background:#FFD700;color:#000;border:2px solid #000;font-family:Unbounded,cursive;font-size:13px;font-weight:900;padding:14px;cursor:pointer;margin-bottom:16px;"><i class="fa-solid fa-plus" style="margin-right:8px;"></i>Nouveau message</button>'
+    +'<div id="ptnr-support-list">'+_skeletonRows(2)+'</div>'
+    +'</div></div>';
+  _ptnrLoadSupportList();
+}
+
+function _ptnrLoadSupportList(){
+  _ptnrFetch('/api/partner/support/mine').then(function(data){
+    var el = document.getElementById('ptnr-support-list'); if(!el) return;
+    var list = (data && data.tickets) || [];
+    if(!list.length){
+      el.innerHTML = '<div class="espace-empty">Aucun message. Cliquez sur "Nouveau message" pour contacter le support.</div>';
+      return;
+    }
+    list.forEach(function(t){ _ptnrSupportTicketCache[t.id] = t; });
+    el.innerHTML = list.map(function(t){
+      var sc = t.status==='replied' ? '#22c55e' : t.status==='closed' ? '#555' : '#FFD700';
+      var sl = t.status==='replied' ? 'Répondu' : t.status==='closed' ? 'Fermé' : 'En attente';
+      var last = t.messages && t.messages.length ? t.messages[t.messages.length-1].content : '';
+      var safeId = t.id.replace(/"/g,'');
+      return '<div class="espace-card" onclick="_ptnrShowSupportThread(\''+safeId+'\')" style="cursor:pointer;">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
+        +'<div class="espace-card-name">'+t.subject+'</div>'
+        +'<span style="font-size:11px;font-weight:900;white-space:nowrap;color:'+sc+'">'+sl+'</span></div>'
+        +'<div class="espace-card-sub">'+last.substring(0,80)+'</div></div>';
+    }).join('');
+  }).catch(function(){
+    var el = document.getElementById('ptnr-support-list');
+    if(el) el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
+  });
+}
+
+// Ouvrir directement un ticket depuis une notification push (sans passer par la liste)
+function _ptnrShowSupportThreadDirect(ticketId){
+  if(!ticketId) return;
+  if(!_ptnrToken){ setTimeout(function(){ _ptnrShowSupportThreadDirect(ticketId); }, 800); return; }
+  _ptnrNav('profil');
+  var c = document.getElementById('ptnr-profil-content');
+  if(c) c.innerHTML = '<div class="espace-view"><div class="espace-loading">Chargement...</div></div>';
+  _ptnrFetch('/api/partner/support/mine').then(function(data){
+    var list = (data && data.tickets) || [];
+    list.forEach(function(t){ _ptnrSupportTicketCache[t.id] = t; });
+    _ptnrShowSupportThread(ticketId);
+  }).catch(function(){ _ptnrShowSupport(); });
+}
+
+function _ptnrShowNewTicketForm(){
+  var c = document.getElementById('ptnr-profil-content'); if(!c) return;
+  c.innerHTML =
+    '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="_ptnrShowSupport()">&#8249;</button><div class="espace-title">Nouveau message</div></div>'
+    +'<div style="padding:16px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+    +'<div style="margin-bottom:12px;"><label style="font-size:11px;font-weight:900;text-transform:uppercase;color:#aaa;display:block;margin-bottom:6px;">Objet</label>'
+    +'<input id="ptnr-sup-subject" type="text" placeholder="Ex : Question sur un versement..." style="width:100%;background:#111;border:1.5px solid #333;color:#fff;padding:12px;font-family:inherit;font-size:13px;box-sizing:border-box;"></div>'
+    +'<div style="margin-bottom:16px;"><label style="font-size:11px;font-weight:900;text-transform:uppercase;color:#aaa;display:block;margin-bottom:6px;">Message</label>'
+    +'<textarea id="ptnr-sup-message" rows="6" placeholder="Décrivez votre demande en détail..." style="width:100%;background:#111;border:1.5px solid #333;color:#fff;padding:12px;font-family:inherit;font-size:13px;box-sizing:border-box;resize:vertical;"></textarea></div>'
+    +'<button onclick="_ptnrSubmitSupportTicket()" style="width:100%;background:#FFD700;color:#000;border:2px solid #000;font-family:Unbounded,cursive;font-size:13px;font-weight:900;padding:14px;cursor:pointer;">Envoyer</button>'
+    +'<div id="ptnr-sup-error" style="color:#f87171;font-size:12px;font-weight:700;margin-top:10px;"></div>'
+    +'</div></div>';
+}
+
+function _ptnrSubmitSupportTicket(){
+  var subj = (document.getElementById('ptnr-sup-subject')||{}).value || '';
+  var msg = (document.getElementById('ptnr-sup-message')||{}).value || '';
+  var errEl = document.getElementById('ptnr-sup-error');
+  if(!subj.trim() || !msg.trim()){ if(errEl) errEl.textContent='Veuillez remplir tous les champs.'; return; }
+  _ptnrFetch('/api/partner/support/new', 'POST', {subject:subj.trim(), message:msg.trim()}).then(function(d){
+    if(d.ok){ _ptnrShowSupport(); } else { if(errEl) errEl.textContent = d.error || 'Erreur.'; }
+  }).catch(function(){ if(errEl) errEl.textContent='Erreur de connexion.'; });
+}
+
+function _ptnrShowSupportThread(ticketId){
+  var ticket = _ptnrSupportTicketCache[ticketId];
+  if(!ticket){ _ptnrShowSupport(); return; }
+  _ptnrRenderSupportThread(ticket);
+  if(window._ptnrSupportPoll){ clearInterval(window._ptnrSupportPoll); }
+  window._ptnrSupportPoll = setInterval(function(){
+    if(!document.getElementById('ptnr-support-thread')){ clearInterval(window._ptnrSupportPoll); return; }
+    _ptnrFetch('/api/partner/support/mine').then(function(data){
+      var t = (data.tickets||[]).find(function(x){ return x.id===ticketId; });
+      if(t && t.messages.length !== (ticket.messages||[]).length){
+        ticket = t; _ptnrSupportTicketCache[ticketId] = t; _ptnrRenderSupportThread(t);
+      }
+    }).catch(function(){});
+  }, 6000);
+}
+
+function _ptnrRenderSupportThread(ticket){
+  var c = document.getElementById('ptnr-profil-content'); if(!c) return;
+  var closed = ticket.status==='closed';
+  var msgsHtml = (ticket.messages||[]).map(function(m){
+    var isAdmin = m.from==='admin';
+    var align = isAdmin?'flex-start':'flex-end';
+    var bg = isAdmin?'#1a1a1a':'#0a1a00';
+    var nameColor = isAdmin?'#FFD700':'#aaa';
+    var dt = new Date(m.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    return '<div style="display:flex;justify-content:'+align+';margin-bottom:12px;">'
+      +'<div style="max-width:80%;background:'+bg+';border:1px solid rgba(255,255,255,.1);padding:10px 14px;">'
+      +'<div style="font-size:10px;font-weight:900;color:'+nameColor+';margin-bottom:4px;">'+m.from_name+'</div>'
+      +'<div style="font-size:13px;color:#fff;white-space:pre-wrap;">'+m.content+'</div>'
+      +'<div style="font-size:9px;color:#555;margin-top:4px;text-align:right;">'+dt+'</div>'
+      +'</div></div>';
+  }).join('');
+  var replyHtml = closed
+    ? '<div style="text-align:center;color:#555;font-size:12px;font-weight:700;padding:12px;">Ticket fermé</div>'
+    : '<div style="padding:14px;border-top:1px solid rgba(255,255,255,.1);">'
+      +'<textarea id="ptnr-sup-reply-text" rows="3" placeholder="Votre réponse..." style="width:100%;background:#111;border:1.5px solid #333;color:#fff;padding:10px;font-family:inherit;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>'
+      +'<button onclick="_ptnrSendSupportReply(\''+ticket.id+'\')" style="width:100%;background:#FFD700;color:#000;border:2px solid #000;font-family:Unbounded,cursive;font-size:12px;font-weight:900;padding:12px;cursor:pointer;">Envoyer</button>'
+      +'</div>';
+  c.innerHTML =
+    '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="if(window._ptnrSupportPoll)clearInterval(window._ptnrSupportPoll);_ptnrShowSupport();">&#8249;</button><div class="espace-title">'+ticket.subject+'</div></div>'
+    +'<div id="ptnr-support-thread" style="flex:1;overflow-y:auto;padding:14px;">'+msgsHtml+'</div>'
+    +replyHtml
+    +'</div>';
+  var th = document.getElementById('ptnr-support-thread'); if(th) th.scrollTop = th.scrollHeight;
+}
+
+function _ptnrSendSupportReply(ticketId){
+  var msg = (document.getElementById('ptnr-sup-reply-text')||{}).value || '';
+  if(!msg.trim()) return;
+  _ptnrFetch('/api/partner/support/'+ticketId+'/reply', 'POST', {message:msg.trim()}).then(function(d){
+    if(d.ok){
+      if(window._ptnrSupportPoll){ clearInterval(window._ptnrSupportPoll); window._ptnrSupportPoll=null; }
+      _ptnrShowSupport();
+    }
+  }).catch(function(){});
+}
 
 function _ptnrCopyRefCode(code, btn){
   _copyTextRobust(code).then(function(ok){

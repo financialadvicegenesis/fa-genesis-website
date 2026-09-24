@@ -21703,6 +21703,7 @@ app.post('/api/support/new', function(req, res) {
     var now = new Date().toISOString();
     var ticket = {
         id: 'SUP-' + Date.now(),
+        role: 'client',
         client_email: user.email,
         client_name: ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email,
         subject: subject,
@@ -21722,7 +21723,7 @@ app.get('/api/support/mine', function(req, res) {
     var user = authenticateClient(req, res);
     if (!user) return;
     var tickets = loadSupportTickets().filter(function(t) {
-        return t.client_email && t.client_email.toLowerCase() === user.email.toLowerCase();
+        return t.client_email && t.client_email.toLowerCase() === user.email.toLowerCase() && (t.role || 'client') === 'client';
     });
     tickets.sort(function(a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
     res.json({ ok: true, tickets: tickets });
@@ -21744,6 +21745,65 @@ app.post('/api/support/:id/reply', function(req, res) {
     saveSupportTickets(tickets);
     try { sendPushToRole('admin', { title: 'Réponse client support', body: (user.prenom || user.email) + ' a répondu', icon: '/assets/images/logo.png', url: '/admin.html' }); } catch(e){}
     emailService.sendSupportTicketAdminEmail(tickets[idx], message).catch(function(e){ console.error('[SUPPORT] Email admin reply:', e.message); });
+    res.json({ ok: true });
+});
+
+// ===== SUPPORT PRESTATAIRE (même stockage support-tickets.json que le support client,
+// distingué par le champ role:'partner' — voir project_contournement_admin_alert_panel.md
+// pour le contexte : donnait aux prestataires bloqués en messagerie un canal indépendant
+// pour contacter l'admin, puisque messagingBlocked coupe aussi la messagerie vers l'admin) =====
+
+app.post('/api/partner/support/new', authenticatePartner, function(req, res) {
+    var partner = req.partner;
+    var subject = (req.body.subject || '').trim();
+    var message = (req.body.message || '').trim();
+    if (!subject || !message) return res.status(400).json({ error: 'Sujet et message requis' });
+    var tickets = loadSupportTickets();
+    var now = new Date().toISOString();
+    var partnerName = ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email;
+    var ticket = {
+        id: 'SUP-' + Date.now(),
+        role: 'partner',
+        client_email: partner.email,
+        client_name: partnerName,
+        subject: subject,
+        status: 'open',
+        created_at: now,
+        updated_at: now,
+        messages: [{ from: 'client', from_name: partnerName, content: message, created_at: now }]
+    };
+    tickets.push(ticket);
+    saveSupportTickets(tickets);
+    try { sendPushToRole('admin', { title: 'Nouveau ticket support (prestataire)', body: subject + ' — ' + partnerName, icon: '/assets/images/logo.png', url: '/admin.html' }); } catch(e){}
+    emailService.sendSupportTicketAdminEmail(ticket, message).catch(function(e){ console.error('[SUPPORT] Email admin (partenaire):', e.message); });
+    res.json({ ok: true, ticket: ticket });
+});
+
+app.get('/api/partner/support/mine', authenticatePartner, function(req, res) {
+    var partner = req.partner;
+    var tickets = loadSupportTickets().filter(function(t) {
+        return t.client_email && t.client_email.toLowerCase() === partner.email.toLowerCase() && t.role === 'partner';
+    });
+    tickets.sort(function(a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
+    res.json({ ok: true, tickets: tickets });
+});
+
+app.post('/api/partner/support/:id/reply', authenticatePartner, function(req, res) {
+    var partner = req.partner;
+    var message = (req.body.message || '').trim();
+    if (!message) return res.status(400).json({ error: 'Message requis' });
+    var tickets = loadSupportTickets();
+    var idx = tickets.findIndex(function(t) { return t.id === req.params.id; });
+    if (idx === -1) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (tickets[idx].role !== 'partner' || tickets[idx].client_email.toLowerCase() !== partner.email.toLowerCase()) return res.status(403).json({ error: 'Acces refuse' });
+    var now = new Date().toISOString();
+    var partnerName = ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email;
+    tickets[idx].messages.push({ from: 'client', from_name: partnerName, content: message, created_at: now });
+    tickets[idx].status = 'open';
+    tickets[idx].updated_at = now;
+    saveSupportTickets(tickets);
+    try { sendPushToRole('admin', { title: 'Réponse prestataire support', body: partnerName + ' a répondu', icon: '/assets/images/logo.png', url: '/admin.html' }); } catch(e){}
+    emailService.sendSupportTicketAdminEmail(tickets[idx], message).catch(function(e){ console.error('[SUPPORT] Email admin reply (partenaire):', e.message); });
     res.json({ ok: true });
 });
 
@@ -21772,7 +21832,12 @@ app.post('/api/admin/support/:id/reply', authenticateAdmin, function(req, res) {
     // sendPushToUser() seul (Web Push) ne joint jamais l'app Android native — seul notifyUser()
     // est câblé sur FCM (voir _resolveUserIdForFcm/sendFcmToUser). Sans ça, un client qui répond
     // au support depuis l'app mobile ne recevait AUCUNE notification quand le support répondait.
-    try { notifyUser(tickets[idx].client_email, 'client', 'support-reply', 'Réponse FA Genesis', message.substring(0, 80), '/app.html#support-reply-' + tickets[idx].id); } catch(e){}
+    // Le hash diffère selon role (partner: vs support-reply-) car _handleNotifHash() (app.html)
+    // route les deux vers des écrans distincts (espace client vs espace prestataire) — voir
+    // project_contournement_admin_alert_panel.md.
+    var _isPartnerTicket = tickets[idx].role === 'partner';
+    var _supLink = _isPartnerTicket ? '/app.html#partner:support-reply-' + tickets[idx].id : '/app.html#support-reply-' + tickets[idx].id;
+    try { notifyUser(tickets[idx].client_email, _isPartnerTicket ? 'partner' : 'client', 'support-reply', 'Réponse FA Genesis', message.substring(0, 80), _supLink); } catch(e){}
     res.json({ ok: true });
 });
 
