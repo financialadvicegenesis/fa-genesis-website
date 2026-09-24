@@ -13793,12 +13793,20 @@ function _ptnrInit(){
   }).catch(function(){ _ptnrClearSession(); });
 }
 
-// Rappel des règles anti-contournement (partage de coordonnées personnelles en messagerie) —
-// affiché à chaque connexion (cold start via _ptnrInit ET login mot de passe via _ptnrLogin)
-// tant que le compte a des avertissements actifs, à la manière des rappels de non-conformité
-// des autres marketplaces (Vinted, Leboncoin...). Pas de mémorisation "ne plus afficher" :
-// le rappel disparaît de lui-même une fois les avertissements réinitialisés par l'admin
-// (voir le panneau Modération d'admin.html, POST /api/admin/contournement-reset).
+// Rappel des règles anti-contournement (partage de coordonnées personnelles en messagerie),
+// appelé à chaque connexion (cold start via _ptnrInit ET login mot de passe via _ptnrLogin).
+// Deux comportements distincts par design :
+// - Messagerie SUSPENDUE (messagingBlocked) : contrainte active qui limite réellement l'usage
+//   de l'app tant qu'elle n'est pas levée par l'admin — affichée à CHAQUE connexion, comme un
+//   verrou qu'il faut résoudre, pas juste une piqûre de rappel.
+// - Simple AVERTISSEMENT (1 ou 2/3, pas encore bloqué) : une modale bloquante montrée à chaque
+//   ouverture d'app (potentiellement plusieurs fois par jour sur mobile, l'app étant souvent
+//   tuée en arrière-plan) tournerait vite à l'agacement pur sans renforcer le message — on ne
+//   la réaffiche donc qu'une fois par PALIER d'avertissement, mémorisé dans localStorage (clé
+//   par identifiant prestataire, pour rester correct si l'appareil change de compte). Si le
+//   compte repasse à 0 avertissement (réinitialisation admin, voir panneau Modération
+//   d'admin.html), le repère est remis à zéro pour qu'un futur nouvel avertissement réaffiche
+//   bien la modale.
 function _ptnrCheckContournementReminder(){
   if(!_ptnrSession) return;
   if(_ptnrSession.messagingBlocked){
@@ -13808,11 +13816,20 @@ function _ptnrCheckContournementReminder(){
     ).then(function(ok){
       if(ok){ _ptnrNav('profil'); _ptnrShowSupport(); }
     });
-  } else if(_ptnrSession.messagingWarnings > 0){
+    return;
+  }
+  var warnings = _ptnrSession.messagingWarnings || 0;
+  var seenKey = 'fa_genesis_ptnr_contournement_seen_' + (_ptnrSession.id || _ptnrSession.email || '');
+  var lastSeen = 0;
+  try{ lastSeen = parseInt(localStorage.getItem(seenKey) || '0', 10) || 0; }catch(e){}
+  if(warnings > 0 && warnings > lastSeen){
     showConfirmModal(
-      'Vous avez reçu ' + _ptnrSession.messagingWarnings + '/3 avertissement(s) pour avoir partagé des coordonnées personnelles en messagerie avant signature du contrat. Au 3ᵉ avertissement, votre messagerie sera automatiquement suspendue. Merci de rester sur la messagerie FA GENESIS jusqu\'à la signature.',
+      'Vous avez reçu ' + warnings + '/3 avertissement(s) pour avoir partagé des coordonnées personnelles en messagerie avant signature du contrat. Au 3ᵉ avertissement, votre messagerie sera automatiquement suspendue. Merci de rester sur la messagerie FA GENESIS jusqu\'à la signature.',
       { title: '⚠️ Rappel — Règles de messagerie', cancelLabel: 'Fermer', confirmLabel: 'J\'ai compris', danger: false }
     );
+    try{ localStorage.setItem(seenKey, String(warnings)); }catch(e){}
+  } else if(warnings === 0 && lastSeen !== 0){
+    try{ localStorage.setItem(seenKey, '0'); }catch(e){}
   }
 }
 
