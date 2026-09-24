@@ -57,7 +57,8 @@ var COLLECTIONS = [
     'partner-subprofiles',
     'contracts',
     'campagnes',
-    'contournement-log'
+    'contournement-log',
+    'client-errors'
 ];
 
 /**

@@ -2553,6 +2553,65 @@ setTimeout(_genesisSignalNativeReady, 8000);
     }
   }catch(e){ _genesisSignalNativeReady(); }
 })();
+
+// ── Remontée d'erreurs JS (crash reporter) ──────────────────────────────────
+// Enregistré ici, tout en haut du document, pour attraper une erreur survenant N'IMPORTE OÙ
+// plus loin dans la page (y compris pendant le parsing/exécution du gros script principal plus
+// bas) — un écran noir persistant et systématique sur un appareil précis (ex. Galaxy A06,
+// 2026-09-24) est autrement invisible depuis le serveur, obligeant à deviner la cause à
+// l'aveugle. Voir project_push_notifications_full_audit.md / project_android_splash_*.md dans
+// la mémoire projet pour l'historique de ce type de bug sur cet appareil précis. Purement
+// diagnostique, best-effort, ne doit jamais lui-même faire planter quoi que ce soit.
+(function(){
+  var _reportedCount = 0;
+  var _appVersionCache = null;
+  try{
+    if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() &&
+       window.Capacitor.Plugins && window.Capacitor.Plugins.App && window.Capacitor.Plugins.App.getInfo){
+      window.Capacitor.Plugins.App.getInfo().then(function(info){
+        _appVersionCache = (info && info.version) ? (info.version + (info.build ? ('+' + info.build) : '')) : null;
+      }).catch(function(){});
+    }
+  }catch(e){}
+
+  function _reportClientError(message, stack){
+    try{
+      // Plafond par session (pas juste côté serveur) : évite qu'une erreur qui se répète en
+      // boucle (ex. dans un gestionnaire d'événement appelé à répétition) ne sature le réseau
+      // de l'appareil en pleine panne.
+      if(_reportedCount >= 10) return;
+      _reportedCount++;
+      var api = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+      var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+      var body = {
+        message: String(message || '').substring(0, 1000),
+        stack: String(stack || '').substring(0, 4000),
+        url: String(window.location.href || '').substring(0, 300),
+        hash: String(window.location.hash || '').substring(0, 300),
+        userAgent: String(navigator.userAgent || '').substring(0, 400),
+        platform: isNative ? ('native-' + (window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : '?')) : 'web',
+        appVersion: _appVersionCache || ''
+      };
+      // Jeton best-effort : une erreur peut survenir avant toute session — l'endpoint ne
+      // l'exige pas, il l'utilise juste s'il est présent pour identifier le compte concerné.
+      var tok = '';
+      try{ tok = localStorage.getItem('fa_genesis_partner_token') || localStorage.getItem('fa_genesis_token') || ''; }catch(e){}
+      var headers = {'Content-Type':'application/json'};
+      if(tok) headers['Authorization'] = 'Bearer ' + tok;
+      fetch(api + '/api/client-error', { method:'POST', headers:headers, body: JSON.stringify(body) }).catch(function(){});
+    }catch(e){}
+  }
+
+  window.addEventListener('error', function(ev){
+    _reportClientError(ev && ev.message, ev && ev.error && ev.error.stack);
+  });
+  window.addEventListener('unhandledrejection', function(ev){
+    var reason = ev && ev.reason;
+    var msg = (reason && reason.message) ? reason.message : String(reason);
+    var stack = (reason && reason.stack) ? reason.stack : '';
+    _reportClientError('Unhandled rejection: ' + msg, stack);
+  });
+})();
 </script>
 <div id="bgOverlay"></div>
 <div id="goldFlash"></div>

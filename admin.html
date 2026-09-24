@@ -862,6 +862,9 @@
                     <i class="fas fa-user-shield"></i><span>Modération</span>
                     <span id="moderationBadge" class="sidebar-badge" style="display:none;"></span>
                 </button>
+                <button class="sidebar-btn" data-section="clienterrors" onclick="showSection('clienterrors')">
+                    <i class="fas fa-bug"></i><span>Erreurs app</span>
+                </button>
                 <button class="sidebar-btn" data-section="support" onclick="showSection('support')">
                     <i class="fas fa-headset"></i><span>Support</span>
                     <span id="supportBadge" class="sidebar-badge" style="display:none;"></span>
@@ -1609,6 +1612,17 @@
                 </div>
             </div>
 
+            <!-- ===== SECTION ERREURS APP (crash reporter JS côté client) ===== -->
+            <div id="clienterrorsSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
+                    <i class="fas fa-bug mr-3" style="color:var(--genesis-yellow);"></i>ERREURS APP (client + prestataire)
+                </h2>
+                <div style="font-size:12px;color:#888;margin-bottom:20px;line-height:1.6;">Erreurs JS non gérées remontées automatiquement depuis app.html (window.onerror / promesses rejetées), sur navigateur comme dans l'app Android native. Utile pour diagnostiquer un plantage/écran noir signalé sur un appareil précis sans avoir besoin de le reproduire soi-même.</div>
+                <div id="clientErrorsList" style="color:#e0e0e0;">
+                    <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
+                </div>
+            </div>
+
             <!-- ===== SECTION SUPPORT ===== (doit être HORS de litigesSection) -->
             <div id="supportSection" class="container mx-auto max-w-7xl" style="display: none;">
                 <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
@@ -2074,6 +2088,7 @@
             if (marketplaceEl) marketplaceEl.style.display = 'none';
             var litigesEl = document.getElementById('litigesSection');
             var moderationEl = document.getElementById('moderationSection');
+            var clienterrorsEl = document.getElementById('clienterrorsSection');
             var supportEl = document.getElementById('supportSection');
             var prospectsEl = document.getElementById('prospectsSection');
             var actualitesEl = document.getElementById('actualitesSection');
@@ -2084,6 +2099,7 @@
             var etudiantsEl = document.getElementById('etudiantsSection');
             if (litigesEl) litigesEl.style.display = 'none';
             if (moderationEl) moderationEl.style.display = 'none';
+            if (clienterrorsEl) clienterrorsEl.style.display = 'none';
             if (supportEl) supportEl.style.display = 'none';
             if (prospectsEl) prospectsEl.style.display = 'none';
             if (campagnesEl) campagnesEl.style.display = 'none';
@@ -2127,6 +2143,9 @@
             } else if (section === 'moderation') {
                 if (moderationEl) moderationEl.style.display = 'block';
                 loadModerationPanel();
+            } else if (section === 'clienterrors') {
+                if (clienterrorsEl) clienterrorsEl.style.display = 'block';
+                loadClientErrors();
             } else if (section === 'support') {
                 if (supportEl) supportEl.style.display = 'block';
                 loadAdminSupport();
@@ -7473,6 +7492,40 @@
                     el.innerHTML = html;
                 }).catch(function() {
                     el.innerHTML = '<div style="color:#f03e3e;padding:12px;">Impossible de charger l\'historique.</div>';
+                });
+        }
+
+        // ── ERREURS APP (crash reporter JS) ─────────────────────────────
+        function loadClientErrors() {
+            var el = document.getElementById('clientErrorsList');
+            if (!el) return;
+            el.innerHTML = '<p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>';
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/client-errors?limit=200', { headers: { 'Authorization': 'Bearer ' + tok } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var errors = data.errors || [];
+                    if (!errors.length) {
+                        el.innerHTML = '<div style="padding:24px;text-align:center;color:#555;font-size:14px;border:1px solid rgba(255,215,0,.15);border-radius:10px;"><i class="fas fa-check-circle" style="color:#22c55e;font-size:24px;display:block;margin-bottom:8px;"></i>Aucune erreur remontée</div>';
+                        return;
+                    }
+                    var html = '';
+                    errors.forEach(function(e) {
+                        var dateStr = e.created_at ? new Date(e.created_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                        var who = e.identityEmail ? (e.identityEmail + ' (' + (e.identityRole || '?') + ')') : 'Non identifié';
+                        html += '<div style="background:#0d0d0d;border:1px solid rgba(255,215,0,.15);border-radius:10px;padding:14px 18px;margin-bottom:10px;">';
+                        html += '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">';
+                        html += '<div style="font-weight:800;font-size:13px;color:#ef4444;">' + String(e.message || '').replace(/</g,'&lt;') + '</div>';
+                        html += '<div style="font-size:11px;color:#666;white-space:nowrap;">' + dateStr + '</div>';
+                        html += '</div>';
+                        html += '<div style="font-size:11px;color:#aaa;margin-bottom:6px;">' + who + ' — <span style="color:#00B9FF;">' + (e.platform || '?') + '</span>' + (e.appVersion ? (' v' + e.appVersion) : '') + (e.hash ? (' — <span style="color:#888;">#' + String(e.hash).replace(/</g,'&lt;') + '</span>') : '') + '</div>';
+                        if (e.stack) html += '<pre style="font-size:10px;color:#888;background:#111;border-radius:6px;padding:8px 10px;overflow-x:auto;white-space:pre-wrap;margin:6px 0;">' + String(e.stack).replace(/</g,'&lt;') + '</pre>';
+                        html += '<div style="font-size:10px;color:#555;">' + String(e.userAgent || '').replace(/</g,'&lt;') + '</div>';
+                        html += '</div>';
+                    });
+                    el.innerHTML = html;
+                }).catch(function() {
+                    el.innerHTML = '<div style="color:#f03e3e;padding:12px;">Impossible de charger les erreurs.</div>';
                 });
         }
 

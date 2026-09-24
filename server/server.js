@@ -11963,6 +11963,7 @@ var CHAT_FILE = path.join(DATA_DIR,'chat.json');
 var CHAT_ARCHIVES_FILE = path.join(DATA_DIR,'chat-archives.json');
 var SUPPORT_TICKETS_FILE = path.join(DATA_DIR,'support-tickets.json');
 var CONTOURNEMENT_LOG_FILE = path.join(DATA_DIR,'contournement-log.json');
+var CLIENT_ERRORS_FILE = path.join(DATA_DIR,'client-errors.json');
 
 function loadChat() {
     try {
@@ -12114,6 +12115,80 @@ function logContournementAttempt(accountType, accountId, accountLabel, content, 
         (accountType === 'partner' ? 'Prestataire' : 'Client') + ' ' + (accountLabel || '') + ' a tenté de partager des coordonnées personnelles vers ' + (toLabel || 'un destinataire') + ' (avertissement ' + warnings + '/3).',
         '/admin.html#open-contournement');
 }
+
+// ===== REMONTÉE D'ERREURS JS CÔTÉ CLIENT (window.onerror / unhandledrejection, app.html) =====
+// Sans ça, un plantage JS reproductible sur un appareil précis (ex. écran noir persistant au
+// lancement de l'app) était invisible depuis le serveur — obligeait à deviner la cause à
+// l'aveugle, ce qui a déjà fait perdre plusieurs cycles de correction sur ce même type de bug
+// (voir project_android_splash_ram_bypass_removed / project_android_splash_readiness_domcontentloaded
+// dans la mémoire projet). Capé à MAX_CLIENT_ERRORS entrées (FIFO) pour ne jamais grossir
+// indéfiniment si un appareil boucle sur la même erreur.
+var MAX_CLIENT_ERRORS = 500;
+function loadClientErrors() {
+    try {
+        if (fs.existsSync(CLIENT_ERRORS_FILE)) return JSON.parse(fs.readFileSync(CLIENT_ERRORS_FILE, 'utf8'));
+    } catch (e) { console.error('[CLIENT-ERROR] Erreur lecture:', e.message); }
+    return [];
+}
+function saveClientErrors(rows) {
+    try { fs.writeFileSync(CLIENT_ERRORS_FILE, JSON.stringify(rows, null, 2), 'utf8'); }
+    catch (e) { console.error('[CLIENT-ERROR] Erreur ecriture:', e.message); }
+    persistentStore.persistToCloud('client-errors', rows).catch(function(e) {});
+}
+
+/**
+ * POST /api/client-error — best-effort, volontairement non authentifié (une erreur peut
+ * survenir avant même qu'une session ne soit établie, ex. juste après le splash screen natif).
+ * L'identité n'est résolue que si un Authorization Bearer est présent, jamais requise.
+ */
+app.post('/api/client-error', function(req, res) {
+    try {
+        var ip = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        // Anti-flood : un appareil bloqué dans une boucle d'erreurs ne doit pas spammer le
+        // serveur indéfiniment — 30 rapports / 10 min par IP suffisent largement à diagnostiquer
+        // un plantage réel sans laisser un cas dégénéré grossir client-errors.json sans limite.
+        if (!checkRateLimit(ip, 'client_error', 30, 600000)) {
+            return res.status(429).json({ ok: false });
+        }
+        var identity = null;
+        try { identity = resolveCurrentIdentity(req); } catch (e) {}
+        var rows = loadClientErrors();
+        rows.push({
+            id: 'ERR-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase(),
+            message: String(req.body.message || '').substring(0, 1000),
+            stack: String(req.body.stack || '').substring(0, 4000),
+            url: String(req.body.url || '').substring(0, 300),
+            hash: String(req.body.hash || '').substring(0, 300),
+            userAgent: String(req.body.userAgent || '').substring(0, 400),
+            platform: String(req.body.platform || '').substring(0, 40),
+            appVersion: String(req.body.appVersion || '').substring(0, 40),
+            identityRole: identity ? identity.role : null,
+            identityEmail: identity ? identity.email : null,
+            ip: ip,
+            created_at: new Date().toISOString()
+        });
+        while (rows.length > MAX_CLIENT_ERRORS) rows.shift();
+        saveClientErrors(rows);
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ ok: false });
+    }
+});
+
+/**
+ * GET /api/admin/client-errors — liste des plantages JS remontés, les plus récents en premier.
+ */
+app.get('/api/admin/client-errors', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var rows = loadClientErrors();
+        rows.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        var limit = parseInt(req.query.limit, 10) || 200;
+        res.json({ ok: true, count: rows.length, errors: rows.slice(0, limit) });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 /**
  * GET /api/my-partners — Client recupere les partenaires assignes a sa commande
