@@ -3733,6 +3733,12 @@ function _showRoleChoiceAfterDelete(){
   try{
     if(window.FAGMobile && window.FAGMobile.clearAuthToken) window.FAGMobile.clearAuthToken('client').catch(function(){});
   }catch(e){}
+  // Désenregistre aussi le token FCM de cet appareil — sans ça, l'appareil pouvait continuer à
+  // recevoir des notifications push pour le compte qu'il vient de quitter jusqu'à la prochaine
+  // connexion (voir mobile-bridge.js, unregisterPushToken).
+  try{
+    if(window.FAGMobile && window.FAGMobile.unregisterPushToken) window.FAGMobile.unregisterPushToken().catch(function(){});
+  }catch(e){}
 
   // ── Nettoyer session partenaire ──────────────────────────────
   try{

@@ -222,6 +222,24 @@
         }
     };
 
+    // Désenregistre le token FCM de cet appareil auprès du serveur — appelé à la déconnexion
+    // explicite (voir app.html, _showRoleChoiceAfterDelete) pour qu'un appareil déconnecté
+    // arrête de recevoir des notifications push destinées au compte qu'il vient de quitter.
+    // Best-effort : le token reste stocké localement (fag_fcm_token) pour permettre un futur
+    // ré-enregistrement immédiat à la prochaine connexion (initPushNotifications le réutilise).
+    window.FAGMobile.unregisterPushToken = async function() {
+        try {
+            var token = localStorage.getItem('fag_fcm_token');
+            if (!token) return;
+            var api = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+            await fetch(api + '/api/push/unregister', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token })
+            });
+        } catch(e) { console.warn('[FAG Mobile] unregisterPushToken:', e.message); }
+    };
+
     // ── Authentification biométrique (Face ID / empreinte / iris) ────────────────
     // Plugin natif @aparajita/capacitor-biometric-auth, appelé directement via son nom
     // d'enregistrement natif (BiometricAuthNative) — comme pour tous les autres plugins de

@@ -2967,6 +2967,25 @@ app.post('/api/push/register', function(req, res) {
     }
 });
 
+// POST /api/push/unregister — appelé à la déconnexion explicite (voir mobile-bridge.js,
+// unregisterPushToken) pour qu'un appareil déconnecté arrête de recevoir des notifications push
+// natives destinées au compte qu'il vient de quitter, jusqu'à la prochaine connexion.
+app.post('/api/push/unregister', function(req, res) {
+    try {
+        var token = req.body.token;
+        if (!token) return res.status(400).json({ error: 'token requis' });
+        var tokens = loadFcmTokens();
+        var before = tokens.length;
+        tokens = tokens.filter(function(t) { return t.token !== token; });
+        saveFcmTokens(tokens);
+        console.log('[FCM] Token désenregistré (' + (before - tokens.length) + ' entrée(s) supprimée(s))');
+        res.json({ success: true });
+    } catch(e) {
+        console.error('[FCM] Erreur unregister:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 function getOrderById(orderId) {
     const orders = loadOrders();
     return orders.find(o => o.id === orderId) || null;
