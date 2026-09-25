@@ -4049,6 +4049,23 @@ function initApp(){
   } else {
     var greetInvEl = document.getElementById('greetName');
     if(greetInvEl) greetInvEl.textContent = 'Invité';
+    // Purger tout affichage résiduel d'un compte précédemment connecté sur CET appareil, dans
+    // la MÊME session de page (déconnexion sans rechargement complet) — sans ça, ces widgets
+    // gardaient les dernières données réelles affichées avant la déconnexion (QG, avatar,
+    // badge de notifications non lues, badge de messages, carte de statut de mission en cours
+    // — celle-ci pouvant même exposer le nom du partenaire et le numéro d'une vraie commande à
+    // quiconque utilise ensuite l'appareil en mode Invité). Chacune de ces fonctions se protège
+    // déjà correctement contre un NOUVEL appel réseau tant que USER est nul (guard clause), mais
+    // aucune n'était jamais rappelée pour EFFACER ce qu'elle avait rendu lors de la session
+    // précédente, puisque initApp() ne les invoque que dans la branche if(USER) ci-dessus.
+    var hdrAvatarEl = document.getElementById('hdrAvatar');
+    if(hdrAvatarEl) hdrAvatarEl.textContent = '';
+    var hdrBadgeEl = document.getElementById('hdrBadge');
+    if(hdrBadgeEl){ hdrBadgeEl.textContent = ''; hdrBadgeEl.style.display = 'none'; }
+    if(typeof _renderHomeQGWidget==='function') _renderHomeQGWidget();
+    var scCardEl = document.getElementById('statusCard');
+    if(scCardEl) scCardEl.style.display = 'none';
+    document.querySelectorAll('.client-msg-badge').forEach(function(el){ el.className = 'client-msg-badge'; });
   }
   updateCartBadge();
   // _updateGreeting est définie dans un <script> séparé plus bas dans le fichier — la hoisting
