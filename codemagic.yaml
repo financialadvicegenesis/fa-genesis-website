@@ -10,7 +10,7 @@ workflows:
         APP_STORE_APP_ID: Env:APP_STORE_APP_ID
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.fagenesis.app
+        bundle_identifier: com.fagenesis.genesis
     cache:
       cache_paths:
         - $HOME/Library/Caches/CocoaPods
