@@ -78,6 +78,72 @@
     };
 
     window.FAGMobile.initPushNotifications = async function(userId) {
+        // iOS : Plugins.PushNotifications (le plugin core Capacitor) ne fait que s'enregistrer
+        // auprès d'APNs et renvoie le jeton APNs brut — inutilisable par notre backend, qui
+        // envoie via Firebase Admin SDK et attend un jeton FCM. @capacitor-firebase/messaging
+        // fait le pont APNs→FCM nativement (SDK Firebase iOS embarqué). On l'utilise donc
+        // UNIQUEMENT sur iOS ; Android garde son flux Plugins.PushNotifications existant,
+        // inchangé (déjà fonctionnel, un jeton FCM direct sans ce pont).
+        if (IS_IOS) {
+            try {
+                if (!Plugins.FirebaseMessaging) {
+                    console.warn('[FAG Mobile] FirebaseMessaging plugin non disponible (iOS)');
+                    return;
+                }
+                var permIos = await Plugins.FirebaseMessaging.checkPermissions();
+                if (permIos.receive === 'prompt' || permIos.receive === 'prompt-with-rationale') {
+                    permIos = await Plugins.FirebaseMessaging.requestPermissions();
+                }
+                if (permIos.receive !== 'granted') {
+                    console.warn('[FAG Mobile] Permission notifications iOS refusée:', permIos.receive);
+                    return;
+                }
+
+                if (!_pushListenersAdded) {
+                    _pushListenersAdded = true;
+
+                    Plugins.FirebaseMessaging.addListener('tokenReceived', function(event) {
+                        var t = event && event.token;
+                        if (!t) return;
+                        console.log('[FAG Mobile] Token FCM (iOS) reçu:', t.substring(0, 20) + '...');
+                        localStorage.setItem('fag_fcm_token', t);
+                        window.FAGMobile._sendTokenToServer(t, userId);
+                    });
+
+                    Plugins.FirebaseMessaging.addListener('notificationReceived', function(event) {
+                        var notif = (event && event.notification) || {};
+                        var title = notif.title || 'FA Genesis';
+                        if (window._showFAGToast) window._showFAGToast(title, 4000);
+                    });
+
+                    Plugins.FirebaseMessaging.addListener('notificationActionPerformed', function(event) {
+                        var data = (event && event.notification && event.notification.data) || {};
+                        var hash = null;
+                        if (data.url) {
+                            var idx = data.url.indexOf('#');
+                            hash = idx !== -1 ? data.url.slice(idx + 1) : null;
+                        }
+                        if (hash && typeof window._handleNotifHash === 'function') {
+                            window._handleNotifHash(hash);
+                        } else if (data.url) {
+                            window.location.href = data.url;
+                        } else if (data.tab) {
+                            try { if (typeof nav === 'function') nav(data.tab); } catch(e) {}
+                        }
+                    });
+                }
+
+                var tokenResult = await Plugins.FirebaseMessaging.getToken();
+                if (tokenResult && tokenResult.token) {
+                    localStorage.setItem('fag_fcm_token', tokenResult.token);
+                    window.FAGMobile._sendTokenToServer(tokenResult.token, userId);
+                }
+            } catch(e) {
+                console.warn('[FAG Mobile] Push init iOS failed:', e.message);
+            }
+            return;
+        }
+
         try {
             if (!Plugins.PushNotifications) {
                 console.warn('[FAG Mobile] PushNotifications plugin non disponible');

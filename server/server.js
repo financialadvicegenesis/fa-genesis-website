@@ -2879,11 +2879,16 @@ function sendFcmToUser(userId, payload) {
     // jamais réellement supprimé (ils s'accumulaient indéfiniment, ex: à chaque réinstallation
     // de l'app). On attend maintenant que tous les envois soient terminés avant de purger.
     var sends = tokens.map(function(t) {
-        return firebaseAdmin.messaging().send({
-            token: t.token,
-            android: { priority: 'high' },
-            data: dataPayload
-        }).then(function() {
+        var msg = { token: t.token, data: dataPayload };
+        if (t.platform === 'ios') {
+            // iOS n'a pas d'équivalent de GenesisMessagingService.java (pas d'extension de
+            // service de notification native) pour construire l'alerte à partir d'un message
+            // data-only — sans bloc apns.payload.aps.alert, l'OS ne montre jamais rien.
+            msg.apns = { payload: { aps: { alert: { title: dataPayload.title, body: dataPayload.body }, sound: 'default', 'content-available': 1 } } };
+        } else {
+            msg.android = { priority: 'high' };
+        }
+        return firebaseAdmin.messaging().send(msg).then(function() {
             console.log('[FCM] Notification envoyée à userId=' + userId);
         }).catch(function(err) {
             if (err.code === 'messaging/registration-token-not-registered' ||
@@ -2934,11 +2939,14 @@ app.post('/api/admin/push/test-fcm', async function(req, res) {
         for (var i = 0; i < tokens.length; i++) {
             var t = tokens[i];
             try {
-                var msgId = await firebaseAdmin.messaging().send({
-                    token: t.token,
-                    android: { priority: 'high' },
-                    data: { url: '/app.html', type: 'test', title: '🔔 Test GENESIS', body: 'Si vous voyez cette notification, tout fonctionne !', channelId: 'genesis_general' }
-                });
+                var testData = { url: '/app.html', type: 'test', title: '🔔 Test GENESIS', body: 'Si vous voyez cette notification, tout fonctionne !', channelId: 'genesis_general' };
+                var testMsg = { token: t.token, data: testData };
+                if (t.platform === 'ios') {
+                    testMsg.apns = { payload: { aps: { alert: { title: testData.title, body: testData.body }, sound: 'default', 'content-available': 1 } } };
+                } else {
+                    testMsg.android = { priority: 'high' };
+                }
+                var msgId = await firebaseAdmin.messaging().send(testMsg);
                 results.push({ platform: t.platform, registered_at: t.registered_at, success: true, messageId: msgId });
             } catch(sendErr) {
                 results.push({ platform: t.platform, registered_at: t.registered_at, success: false, error: sendErr.message, code: sendErr.code || null });

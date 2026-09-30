@@ -35,10 +35,38 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync ios
+      - name: Add Firebase push notification bridging (AppDelegate)
+        # AppDelegate.swift est régénéré à neuf (template Capacitor vanilla, ios/ gitignored) à
+        # chaque build — @capacitor-firebase/messaging exige ces 3 méthodes pour transmettre les
+        # événements d'enregistrement APNs au SDK Firebase (pont APNs→FCM). Sans ça, le plugin ne
+        # reçoit jamais le jeton APNs natif et ne peut donc jamais produire de jeton FCM iOS.
+        script: |
+          sed -i '' '$d' ios/App/App/AppDelegate.swift
+          cat >> ios/App/App/AppDelegate.swift << 'EOF'
+              func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+                  NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+              }
+
+              func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+                  NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+              }
+
+              func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+                  NotificationCenter.default.post(name: Notification.Name.init("didReceiveRemoteNotification"), object: completionHandler, userInfo: userInfo)
+              }
+          }
+          EOF
       - name: Set bundle version from build number
         script: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
+      - name: Copy Firebase iOS config
+        # ios/ est régénéré à neuf à chaque build (gitignored) — ce fichier de config Firebase
+        # (non sensible : identifiants publics liés au bundle ID, pas un secret) est donc commité
+        # ailleurs dans le repo et recopié ici avant pod install/build, sinon le SDK Firebase
+        # iOS (@capacitor-firebase/messaging) n'a aucune configuration à charger au démarrage.
+        script: |
+          cp ios-config/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install
