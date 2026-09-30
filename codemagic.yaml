@@ -5,6 +5,8 @@ workflows:
     integrations:
       app_store_connect: genesis_app_store_connect
     environment:
+      groups:
+        - CERTIFICATE_PRIVATE_KEY
       node: 20.0.0
       xcode: latest
       cocoapods: default
