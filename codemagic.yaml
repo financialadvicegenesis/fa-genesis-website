@@ -2,6 +2,8 @@ workflows:
   ios-app-store:
     name: GENESIS iOS App Store
     max_build_duration: 60
+    integrations:
+      app_store_connect: genesis_app_store_connect
     environment:
       node: 20.0.0
       xcode: 15.4
