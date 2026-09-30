@@ -6,7 +6,7 @@ workflows:
       app_store_connect: genesis_app_store_connect
     environment:
       node: 20.0.0
-      xcode: 15.4
+      xcode: latest
       cocoapods: default
       vars:
         APP_STORE_APP_ID: Env:APP_STORE_APP_ID
