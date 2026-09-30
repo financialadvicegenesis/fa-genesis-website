@@ -40,6 +40,13 @@ workflows:
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install
+      - name: Set up keychain
+        # fetch-signing-files --create génère une clé privée localement et a besoin
+        # d'un keychain initialisé pour la sauvegarder — sans cette étape, la commande
+        # échoue avec "Cannot save Signing Certificates without certificate private key"
+        # même quand CERTIFICATE_PRIVATE_KEY est bien défini.
+        script: |
+          keychain initialize
       - name: Fetch signing files
         # Manquait dans la configuration initiale : xcode-project use-profiles se contente
         # d'UTILISER des certificats/profils déjà présents localement sur l'agent de build, il
@@ -51,6 +58,9 @@ workflows:
           app-store-connect fetch-signing-files "com.fagenesis.genesis" \
             --type IOS_APP_STORE \
             --create
+      - name: Set up signing certificate
+        script: |
+          keychain add-certificates
       - name: Build iOS
         script: |
           xcode-project use-profiles
