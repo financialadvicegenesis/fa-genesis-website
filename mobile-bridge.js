@@ -17,27 +17,6 @@
     var Plugins = window.Capacitor.Plugins;
     var _pushListenersAdded = false;
 
-    // Diagnostic temporaire (à retirer une fois le bug "aucune notification push iOS" résolu) :
-    // aucune console de débogage distante disponible (pas de Mac) pour voir les logs réels de
-    // l'app sur l'iPhone de test — on relaie donc les étapes clés de l'initialisation push iOS
-    // vers /api/client-error (déjà utilisé par le rapporteur de crash), visible dans
-    // admin.html → panneau "Erreurs app".
-    function _iosPushDebug(msg) {
-        try {
-            console.log('[FAG Mobile][iOS Push Debug]', msg);
-            var api = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-            var tok = '';
-            try { tok = localStorage.getItem('fa_genesis_partner_token') || localStorage.getItem('fa_genesis_token') || ''; } catch(e) {}
-            var headers = { 'Content-Type': 'application/json' };
-            if (tok) headers['Authorization'] = 'Bearer ' + tok;
-            fetch(api + '/api/client-error', {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ message: '[iOS Push Debug] ' + msg, stack: '', platform: 'native-ios' })
-            }).catch(function() {});
-        } catch(e) {}
-    }
-
     // ── Barre de statut ─────────────────────────────────────────────────────────
     try {
         if (Plugins.StatusBar) {
@@ -106,21 +85,17 @@
         // UNIQUEMENT sur iOS ; Android garde son flux Plugins.PushNotifications existant,
         // inchangé (déjà fonctionnel, un jeton FCM direct sans ce pont).
         if (IS_IOS) {
-            _iosPushDebug('initPushNotifications démarré, userId=' + userId);
             try {
                 if (!Plugins.FirebaseMessaging) {
-                    _iosPushDebug('ARRÊT : Plugins.FirebaseMessaging est undefined (plugin natif non enregistré)');
+                    console.warn('[FAG Mobile] FirebaseMessaging plugin non disponible (iOS)');
                     return;
                 }
-                _iosPushDebug('Plugins.FirebaseMessaging présent, vérification permission...');
                 var permIos = await Plugins.FirebaseMessaging.checkPermissions();
-                _iosPushDebug('checkPermissions -> ' + JSON.stringify(permIos));
                 if (permIos.receive === 'prompt' || permIos.receive === 'prompt-with-rationale') {
                     permIos = await Plugins.FirebaseMessaging.requestPermissions();
-                    _iosPushDebug('requestPermissions -> ' + JSON.stringify(permIos));
                 }
                 if (permIos.receive !== 'granted') {
-                    _iosPushDebug('ARRÊT : permission non accordée (' + permIos.receive + ')');
+                    console.warn('[FAG Mobile] Permission notifications iOS refusée:', permIos.receive);
                     return;
                 }
 
@@ -171,20 +146,18 @@
                     try {
                         if (attempt > 0) await new Promise(function(r) { setTimeout(r, attempt * 1500); });
                         tokenResult = await Plugins.FirebaseMessaging.getToken();
-                        _iosPushDebug('getToken tentative ' + (attempt + 1) + ' -> ' + (tokenResult && tokenResult.token ? 'OK (' + tokenResult.token.substring(0, 15) + '...)' : 'résultat vide'));
                     } catch(tokenErr) {
-                        _iosPushDebug('getToken tentative ' + (attempt + 1) + ' ÉCHEC: ' + (tokenErr && tokenErr.message));
+                        console.warn('[FAG Mobile] getToken iOS tentative ' + (attempt + 1) + ' échouée:', tokenErr.message);
                     }
                 }
                 if (tokenResult && tokenResult.token) {
                     localStorage.setItem('fag_fcm_token', tokenResult.token);
                     window.FAGMobile._sendTokenToServer(tokenResult.token, userId);
-                    _iosPushDebug('Token envoyé au serveur via _sendTokenToServer');
                 } else {
-                    _iosPushDebug('ÉCHEC FINAL : getToken a échoué après 5 tentatives — en attente du listener tokenReceived');
+                    console.warn('[FAG Mobile] getToken iOS : échec après 5 tentatives — le listener tokenReceived pourra encore rattraper le jeton plus tard');
                 }
             } catch(e) {
-                _iosPushDebug('EXCEPTION globale dans le bloc iOS: ' + (e && e.message));
+                console.warn('[FAG Mobile] Push init iOS failed:', e.message);
             }
             return;
         }
@@ -307,11 +280,9 @@
                 || (function() { try { return JSON.parse(localStorage.getItem('fa_genesis_partner_data') || '{}').id; } catch(e) { return null; } })();
 
             if (!uid) {
-                if (IS_IOS) _iosPushDebug('_sendTokenToServer ARRÊT : uid introuvable (userId=' + userId + ', session=' + !!localStorage.getItem('fa_genesis_session') + ', partner_data=' + !!localStorage.getItem('fa_genesis_partner_data') + ')');
                 console.warn('[FAG Mobile] Token FCM non envoyé : userId inconnu');
                 return;
             }
-            if (IS_IOS) _iosPushDebug('_sendTokenToServer appel /api/push/register, uid=' + uid + ', authToken présent=' + !!authToken);
 
             fetch(api + '/api/push/register', {
                 method: 'POST',
@@ -325,11 +296,10 @@
                     platform: window.Capacitor.getPlatform()
                 })
             }).then(function(r) {
-                if (r.ok) { console.log('[FAG Mobile] Token FCM enregistré sur le serveur'); if (IS_IOS) _iosPushDebug('/api/push/register OK (status ' + r.status + ')'); }
-                else r.text().then(function(t) { console.warn('[FAG Mobile] Serveur refus token:', t); if (IS_IOS) _iosPushDebug('/api/push/register REFUSÉ (status ' + r.status + '): ' + t); });
+                if (r.ok) console.log('[FAG Mobile] Token FCM enregistré sur le serveur');
+                else r.text().then(function(t) { console.warn('[FAG Mobile] Serveur refus token:', t); });
             }).catch(function(e) {
                 console.warn('[FAG Mobile] Push register réseau:', e.message);
-                if (IS_IOS) _iosPushDebug('/api/push/register ERREUR RÉSEAU: ' + e.message);
             });
         } catch(e) {
             console.warn('[FAG Mobile] _sendTokenToServer error:', e.message);
