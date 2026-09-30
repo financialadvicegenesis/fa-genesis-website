@@ -2512,9 +2512,20 @@ function _genesisSignalNativeReady(){
   if(_genesisNativeReadySignaled) return;
   _genesisNativeReadySignaled = true;
   try{
-    if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() &&
-       window.Capacitor.Plugins && window.Capacitor.Plugins.TokenStore && window.Capacitor.Plugins.TokenStore.notifyAppReady){
-      window.Capacitor.Plugins.TokenStore.notifyAppReady().catch(function(){});
+    if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins){
+      // Android : TokenStore.notifyAppReady() (plugin natif custom, voir MainActivity.markAppReady).
+      if(window.Capacitor.Plugins.TokenStore && window.Capacitor.Plugins.TokenStore.notifyAppReady){
+        window.Capacitor.Plugins.TokenStore.notifyAppReady().catch(function(){});
+      }
+      // iOS : pas d'équivalent de TokenStore/MainActivity — @capacitor/splash-screen
+      // (launchAutoHide:false, voir capacitor.config.json) garde l'écran de démarrage natif
+      // affiché jusqu'à cet appel exact, reproduisant le même principe que côté Android (jamais
+      // retiré avant qu'app.html n'ait un contenu réel à montrer). Appel sans risque sur Android
+      // aussi si ce plugin devait un jour y être présent (défensif, comme partout ailleurs ici) :
+      // TokenStore pilote déjà l'écran natif Android indépendamment de cet appel.
+      if(window.Capacitor.Plugins.SplashScreen && window.Capacitor.Plugins.SplashScreen.hide){
+        window.Capacitor.Plugins.SplashScreen.hide().catch(function(){});
+      }
     }
   }catch(e){}
 }

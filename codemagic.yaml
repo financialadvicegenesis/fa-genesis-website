@@ -88,6 +88,21 @@ workflows:
         script: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
+      - name: Apply GENESIS branding (icon + splash screen)
+        # Parité avec Android : sans ceci, l'app iOS affiche l'icône et l'écran de démarrage
+        # génériques par défaut de Capacitor (jamais remplacés jusqu'ici) au lieu du logo GENESIS.
+        # Assets.xcassets est une seule référence de dossier dans le projet Xcode (contrairement à
+        # GoogleService-Info.plist plus haut) : remplacer les PNG qu'il contient suffit, pas besoin
+        # du gem xcodeproj ici. LaunchScreen.storyboard est patché pour un fond noir (au lieu du
+        # blanc par défaut), cohérent avec capacitor.config.json (ios.backgroundColor #000000) et
+        # avec l'image elle-même (logo sur fond noir) — évite un liseré blanc visible sur les
+        # ratios d'écran où scaleAspectFill ne couvre pas exactement le bord.
+        script: |
+          cp ios-config/AppIcon-1024.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+          cp ios-config/Splash-2732.png ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png
+          cp ios-config/Splash-2732.png ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-1.png
+          cp ios-config/Splash-2732.png ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-2.png
+          sed -i '' 's/white="1" alpha="1"/white="0" alpha="1"/' ios/App/App/Base.lproj/LaunchScreen.storyboard
       - name: Copy Firebase iOS config
         # ios/ est régénéré à neuf à chaque build (gitignored) — ce fichier de config Firebase
         # (non sensible : identifiants publics liés au bundle ID, pas un secret) est donc commité
