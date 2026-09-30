@@ -66,7 +66,7 @@ workflows:
             --create
       - name: Set up signing certificate
         script: |
-          keychain add-certificates --certificate-key "$CERTIFICATE_PRIVATE_KEY"
+          keychain add-certificates
       - name: Build iOS
         script: |
           xcode-project use-profiles
