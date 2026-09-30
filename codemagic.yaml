@@ -56,6 +56,34 @@ workflows:
               }
           }
           EOF
+      - name: Add push notification entitlements (aps-environment)
+        # Cause du "No APNS token specified before fetching FCM Token" en boucle (confirmé par
+        # instrumentation diagnostique) : ni Capacitor ni @capacitor-firebase/messaging ne créent
+        # de fichier d'entitlements iOS — sans déclarer aps-environment, l'app ne demande jamais
+        # réellement la capacité push à la signature, même si "Push Notifications" est activé sur
+        # l'App ID Apple et que le profil récupéré l'autorise. "production" (et non "development")
+        # car notre profil est de type distribution (IOS_APP_STORE) — TestFlight utilise
+        # l'environnement APNs production, pas sandbox, contrairement à l'intuition courante.
+        script: |
+          cat > ios/App/App/App.entitlements << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+          	<key>aps-environment</key>
+          	<string>production</string>
+          </dict>
+          </plist>
+          EOF
+          ruby -e "
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('ios/App/App.xcodeproj')
+          target = project.targets.find { |t| t.name == 'App' }
+          target.build_configurations.each do |config|
+            config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'App/App.entitlements'
+          end
+          project.save
+          "
       - name: Set bundle version from build number
         script: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" ios/App/App/Info.plist
