@@ -43,6 +43,17 @@ workflows:
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install
+      - name: Fetch signing files
+        # Manquait dans la configuration initiale : xcode-project use-profiles se contente
+        # d'UTILISER des certificats/profils déjà présents localement sur l'agent de build, il
+        # n'en crée jamais. Sans cette étape, "No matching profiles found" était inévitable dès
+        # lors qu'aucun certificat de distribution n'existait encore sur le compte développeur
+        # (confirmé vide avant ce correctif) — cette commande les génère via l'API App Store
+        # Connect (clé Admin requise) directement sur la machine Mac de Codemagic.
+        script: |
+          app-store-connect fetch-signing-files "com.fagenesis.genesis" \
+            --type IOS_APP_STORE \
+            --create
       - name: Build iOS
         script: |
           xcode-project use-profiles
