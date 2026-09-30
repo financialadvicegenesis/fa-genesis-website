@@ -54,3 +54,31 @@ exact ajouté à `COLLECTIONS` dans `server/persistent-store.js`, **dans le mêm
 collection oubliée ici est invisible à la restauration MongoDB après un déploiement — bug déjà
 rencontré plusieurs fois (wallets, partner_requests, chat, etc.), avec une perte de données réelle
 à chaque fois.
+
+## Modifier `mobile-bridge.js` sans changer `?v=` dans `app.html` = correctif invisible
+
+`app.html` charge `mobile-bridge.js` via `<script src="mobile-bridge.js?v=DATE" defer>`. Comme
+`ios/`/`android/` sont régénérés à chaque build mais que `mobile-bridge.js` est servi en direct
+depuis le serveur (comme `app.html`), toute édition de ce fichier doit s'accompagner d'un bump du
+paramètre `?v=` dans `app.html` **dans le même commit** — sinon le cache HTTP (téléphone/CDN
+GitHub Pages) continue de servir l'ancienne version indéfiniment, malgré des pushs répétés. Bug
+réel le 2026-09-30 : 3 commits successifs sur `mobile-bridge.js` (pont Firebase iOS, retry
+getToken, instrumentation diagnostique) n'ont eu strictement aucun effet observable pendant des
+heures, jusqu'à ce que ce bump manquant soit identifié comme cause racine.
+
+## iOS : signature du pont push notifications Firebase
+
+Contrairement à Android (jeton FCM direct via `@capacitor/push-notifications`), iOS nécessite
+`@capacitor-firebase/messaging` (jeton APNs → FCM). Trois pièces natives sont obligatoires et
+**aucune n'est générée automatiquement** par Capacitor ni par ce plugin — toutes régénérées à
+chaque build (`ios/` gitignored), donc injectées via des étapes `codemagic.yaml` :
+1. `GoogleService-Info.plist` enregistré dans `project.pbxproj` (pas juste copié sur le disque —
+   Xcode ne l'inclut pas dans le bundle sinon, et `FirebaseApp.configure()` plante au lancement).
+2. 3 méthodes ajoutées à `AppDelegate.swift` (`didRegisterForRemoteNotificationsWithDeviceToken`
+   etc.) pour transmettre l'enregistrement APNs au SDK Firebase.
+3. `App.entitlements` avec `aps-environment: production` (TestFlight utilise l'environnement
+   APNs **production**, pas sandbox) référencé via `CODE_SIGN_ENTITLEMENTS`. Sans lui,
+   `getToken()` échoue en boucle avec "No APNS token specified" — aucune erreur ailleurs, symptôme
+   identique à un simple problème de timing, à ne pas confondre avec lui.
+
+Voir `project_ios_push_notifications_firebase_bridge.md` pour l'historique complet du diagnostic.
