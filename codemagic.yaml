@@ -54,13 +54,17 @@ workflows:
         # lors qu'aucun certificat de distribution n'existait encore sur le compte développeur
         # (confirmé vide avant ce correctif) — cette commande les génère via l'API App Store
         # Connect (clé Admin requise) directement sur la machine Mac de Codemagic.
+        # Le CLI ne lit PAS CERTIFICATE_PRIVATE_KEY automatiquement malgré ce que suggère
+        # son nom — il faut le passer explicitement via --certificate-key, sinon
+        # "Cannot save Signing Certificates without certificate private key".
         script: |
           app-store-connect fetch-signing-files "com.fagenesis.genesis" \
             --type IOS_APP_STORE \
+            --certificate-key "$CERTIFICATE_PRIVATE_KEY" \
             --create
       - name: Set up signing certificate
         script: |
-          keychain add-certificates
+          keychain add-certificates --certificate-key "$CERTIFICATE_PRIVATE_KEY"
       - name: Build iOS
         script: |
           xcode-project use-profiles
