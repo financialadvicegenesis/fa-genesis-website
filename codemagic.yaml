@@ -35,6 +35,39 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync ios
+      - name: Register reply-from-notification category (AppDelegate)
+        # Équivalent iOS du bouton "Répondre" Android (GenesisMessagingService + ReplyReceiver) :
+        # une UNNotificationCategory avec une UNTextInputNotificationAction, enregistrée une fois
+        # au lancement. Le serveur attache cette catégorie (aps.category = "GENESIS_REPLY", voir
+        # server.js sendFcmToUser) uniquement aux notifications de message. La réponse tapée est
+        # ensuite récupérée en JS via l'événement notificationActionPerformed du plugin
+        # (event.actionId / event.inputValue, déjà exposés nativement par @capacitor-firebase/
+        # messaging — pas besoin d'implémenter notre propre UNUserNotificationCenterDelegate, qui
+        # entrerait en conflit avec celui du plugin). Limite connue et acceptée : si l'app a été
+        # fermée de force (swipe) par l'utilisateur plutôt que simplement mise en arrière-plan,
+        # ce chemin JS peut ne pas s'exécuter — seul un vrai delegate natif (hors de portée ici
+        # sans casser le delegate du plugin) couvrirait aussi ce cas précis.
+        # Script Ruby passé via heredoc à délimiteur entre quotes ('RUBYEOF') : bash n'y interprète
+        # RIEN (ni guillemets, ni backslashes, ni $) — évite tout risque d'échappement imbriqué
+        # bash-dans-Ruby-dans-Swift, bien plus fragile avec `ruby -e "..."` pour un script de
+        # cette taille.
+        script: |
+          ruby << 'RUBYEOF'
+          content = File.read('ios/App/App/AppDelegate.swift')
+          content = content.sub('import Capacitor', "import Capacitor\nimport UserNotifications")
+          swift_snippet = <<~SWIFT.chomp
+            // Override point for customization after application launch.
+                let replyAction = UNTextInputNotificationAction(identifier: "REPLY_ACTION", title: "Répondre", options: [], textInputButtonTitle: "Envoyer", textInputPlaceholder: "Message...")
+                let messageCategory = UNNotificationCategory(identifier: "GENESIS_REPLY", actions: [replyAction], intentIdentifiers: [], options: [])
+                UNUserNotificationCenter.current().setNotificationCategories([messageCategory])
+                return true
+          SWIFT
+          content = content.sub(
+            "// Override point for customization after application launch.\n        return true",
+            swift_snippet
+          )
+          File.write('ios/App/App/AppDelegate.swift', content)
+          RUBYEOF
       - name: Add Firebase push notification bridging (AppDelegate)
         # AppDelegate.swift est régénéré à neuf (template Capacitor vanilla, ios/ gitignored) à
         # chaque build — @capacitor-firebase/messaging exige ces 3 méthodes pour transmettre les

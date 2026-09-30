@@ -116,19 +116,44 @@
                         if (window._showFAGToast) window._showFAGToast(title, 4000);
                     });
 
+                    // Tap sur une notification — couvre aussi bien le démarrage à froid (app pas
+                    // encore lancée) que l'app déjà ouverte ("warm"). Miroir du mécanisme Android
+                    // (MainActivity.handleDeepLinkIntent), mais entièrement en JS : contrairement à
+                    // Android, pas de risque de mort de processus pendant la biométrie sur iOS
+                    // (LAContext ne fait pas passer l'app en arrière-plan comme le faisait l'ancienne
+                    // AuthActivity Android), donc pas besoin de persistance disque côté natif — une
+                    // simple variable JS suffit, à condition de bien distinguer les deux cas :
+                    // - "warm" (_navSessionRestored déjà vrai, voir _restoreNavSession) : app.html a
+                    //   déjà fini de restaurer la session, on peut naviguer directement sans risquer
+                    //   d'écraser un état pas encore prêt.
+                    // - "à froid" (_navSessionRestored pas encore vrai) : on dépose dans
+                    //   window._pendingDeepLinkHash, déjà consommé de façon fiable et longuement
+                    //   éprouvée par _restoreNavSession() (même variable que le Web Push et
+                    //   qu'Android — sondée jusqu'à 20s après showApp()).
                     Plugins.FirebaseMessaging.addListener('notificationActionPerformed', function(event) {
                         var data = (event && event.notification && event.notification.data) || {};
+                        // Bouton "Répondre" (UNTextInputNotificationAction "REPLY_ACTION", voir
+                        // AppDelegate.swift / codemagic.yaml et aps.category côté serveur) —
+                        // équivalent iOS de ReplyReceiver.java. event.inputValue/actionId déjà
+                        // exposés nativement par le plugin (voir définitions officielles).
+                        if (event && event.actionId === 'REPLY_ACTION' && event.inputValue && data.replyTo && data.replyRole) {
+                            window.FAGMobile._sendNotificationReply(data.replyRole, data.replyTo, event.inputValue);
+                            return;
+                        }
                         var hash = null;
                         if (data.url) {
                             var idx = data.url.indexOf('#');
                             hash = idx !== -1 ? data.url.slice(idx + 1) : null;
                         }
-                        if (hash && typeof window._handleNotifHash === 'function') {
-                            window._handleNotifHash(hash);
-                        } else if (data.url) {
-                            window.location.href = data.url;
-                        } else if (data.tab) {
+                        if (!hash && data.tab) {
                             try { if (typeof nav === 'function') nav(data.tab); } catch(e) {}
+                            return;
+                        }
+                        if (!hash) return;
+                        if (window._navSessionRestored && typeof window._handleNotifHash === 'function') {
+                            window._handleNotifHash(hash);
+                        } else {
+                            window._pendingDeepLinkHash = hash;
                         }
                     });
                 }
@@ -303,6 +328,49 @@
             });
         } catch(e) {
             console.warn('[FAG Mobile] _sendTokenToServer error:', e.message);
+        }
+    };
+
+    // Réponse directe depuis une notification iOS (bouton "Répondre", voir
+    // notificationActionPerformed ci-dessus) — équivalent JS de ReplyReceiver.java. Contrairement
+    // à Android (BroadcastReceiver natif, fonctionne même app totalement fermée), ceci nécessite
+    // que l'app soit au moins en arrière-plan (processus vivant) — limite connue et documentée
+    // (voir commentaire sur l'étape Codemagic "Register reply-from-notification category").
+    window.FAGMobile._sendNotificationReply = function(role, replyTo, text) {
+        try {
+            var api = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+            var authToken = role === 'partner'
+                ? (localStorage.getItem('fa_genesis_partner_token') || '')
+                : (localStorage.getItem('fa_genesis_token') || '');
+            if (!authToken) { console.warn('[FAG Mobile] Réponse notification : session absente'); return; }
+
+            var replyPath = role === 'partner' ? '/api/partner/inbox/reply' : '/api/messages';
+            var replyBody = role === 'partner'
+                ? { to_email: replyTo, content: text }
+                : { to_type: 'partner', to_id: replyTo, content: text };
+
+            fetch(api + replyPath, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+                body: JSON.stringify(replyBody)
+            }).then(function(r) {
+                if (!r.ok) { console.warn('[FAG Mobile] Réponse notification refusée par le serveur'); return; }
+                console.log('[FAG Mobile] Réponse envoyée depuis la notification');
+                // Répondre implique d'avoir vu le message — même logique que ReplyReceiver.java
+                // (markConversationRead) : sans cet appel, le badge "non lu" restait affiché dans
+                // l'app alors que la réponse venait pourtant d'être envoyée.
+                var readPath = role === 'partner' ? '/api/partner/inbox/conversation/read' : '/api/messages/conversation/read';
+                var readBody = role === 'partner' ? { client_email: replyTo } : { counterpart: replyTo };
+                fetch(api + readPath, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+                    body: JSON.stringify(readBody)
+                }).catch(function() {});
+            }).catch(function(e) {
+                console.warn('[FAG Mobile] Réponse notification réseau:', e.message);
+            });
+        } catch(e) {
+            console.warn('[FAG Mobile] _sendNotificationReply error:', e.message);
         }
     };
 

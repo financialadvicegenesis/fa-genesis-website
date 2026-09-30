@@ -2884,7 +2884,23 @@ function sendFcmToUser(userId, payload) {
             // iOS n'a pas d'équivalent de GenesisMessagingService.java (pas d'extension de
             // service de notification native) pour construire l'alerte à partir d'un message
             // data-only — sans bloc apns.payload.aps.alert, l'OS ne montre jamais rien.
-            msg.apns = { payload: { aps: { alert: { title: dataPayload.title, body: dataPayload.body }, sound: 'default', 'content-available': 1 } } };
+            var aps = { alert: { title: dataPayload.title, body: dataPayload.body }, sound: 'default', 'content-available': 1 };
+            // Badge numérique natif — équivalent iOS de BadgeUtils.setBadgeCount (Android) : sur
+            // iOS, l'OS applique directement aps.badge sur l'icône, aucun code natif requis.
+            if (dataPayload.badgeCount != null) {
+                var _b = parseInt(dataPayload.badgeCount, 10);
+                if (!isNaN(_b)) aps.badge = _b;
+            }
+            // Messages uniquement (replyTo présent) : équivalent iOS du style "conversation"
+            // groupé d'Android (buildMessagingStyle) — thread-id regroupe automatiquement les
+            // notifications du même contact dans le Centre de notifications iOS, et category
+            // attache le bouton "Répondre" (UNTextInputNotificationAction "REPLY_ACTION",
+            // enregistrée dans AppDelegate.swift, voir codemagic.yaml) à cette notification.
+            if (dataPayload.replyTo) {
+                aps['thread-id'] = dataPayload.replyTo;
+                if (dataPayload.replyRole) aps.category = 'GENESIS_REPLY';
+            }
+            msg.apns = { payload: { aps: aps } };
         } else {
             msg.android = { priority: 'high' };
         }

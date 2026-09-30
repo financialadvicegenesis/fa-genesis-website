@@ -4266,6 +4266,12 @@ function profilBack(){
 }
 
 function _restoreNavSession(){
+  // Repère utilisé côté iOS (mobile-bridge.js, notificationActionPerformed) pour savoir si un
+  // tap sur une notification peut naviguer directement (session déjà restaurée, "warm start")
+  // ou doit passer par window._pendingDeepLinkHash + le sondage ci-dessous (démarrage à froid,
+  // showApp() pas encore terminé) — posé tout en haut, avant tout retour anticipé, puisque
+  // _restoreNavSession() n'est de toute façon appelé qu'une seule fois, APRÈS showApp().
+  window._navSessionRestored = true;
   try{
     // Priorité absolue : notification deep-link en attente (app était fermée au clic).
     // Consommer le ticket ici garantit que la navigation arrive APRÈS showApp(),
@@ -22117,6 +22123,6 @@ async function _confirmBalancePayment(){
      indéfiniment (contrairement à app.html, rechargé à chaque navigation, un <script src> externe
      peut rester en cache bien au-delà de l'en-tête Cache-Control du serveur selon l'implémentation
      exacte du cache HTTP de la WebView) — à incrémenter à chaque modification de ce fichier. -->
-<script src="mobile-bridge.js?v=20260930b" defer></script>
+<script src="mobile-bridge.js?v=20260930c" defer></script>
 </body>
 </html>
