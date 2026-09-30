@@ -67,6 +67,23 @@ workflows:
         # iOS (@capacitor-firebase/messaging) n'a aucune configuration à charger au démarrage.
         script: |
           cp ios-config/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
+      - name: Register GoogleService-Info.plist in Xcode project
+        # Cause du crash au lancement sur le build 13 : "cp" seul copie le fichier sur le disque
+        # mais ne l'enregistre pas dans project.pbxproj — Xcode ne l'inclut donc jamais dans le
+        # bundle compilé de l'app, et FirebaseApp.configure() (appelé automatiquement par le SDK)
+        # plante immédiatement au démarrage en ne le trouvant pas dans le bundle. xcodeproj (gem
+        # Ruby fournie par CocoaPods, déjà présente sur l'agent) ajoute la vraie référence pour
+        # qu'Xcode copie réellement le fichier dans l'app à la compilation.
+        script: |
+          ruby -e "
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('ios/App/App.xcodeproj')
+          target = project.targets.find { |t| t.name == 'App' }
+          group = project.main_group.find_subpath('App', true)
+          file_ref = group.new_reference('GoogleService-Info.plist')
+          target.resources_build_phase.add_file_reference(file_ref)
+          project.save
+          "
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install
