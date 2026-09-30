@@ -133,10 +133,28 @@
                     });
                 }
 
-                var tokenResult = await Plugins.FirebaseMessaging.getToken();
+                // getToken() juste après l'autorisation échoue souvent silencieusement sur iOS :
+                // Apple met un court instant à finaliser l'enregistrement APNs en interne
+                // (didRegisterForRemoteNotificationsWithDeviceToken est asynchrone), et Firebase
+                // refuse de émettre un jeton FCM tant que le jeton APNs natif n'est pas encore
+                // disponible ("APNS device token not set before retrieving FCM Token" — bug connu
+                // et documenté du SDK). On retente donc plusieurs fois avec un délai croissant ;
+                // le listener 'tokenReceived' ci-dessus reste en place comme filet de sécurité si
+                // Firebase finit par pousser le jeton de lui-même après toutes les tentatives.
+                var tokenResult = null;
+                for (var attempt = 0; attempt < 5 && !tokenResult; attempt++) {
+                    try {
+                        if (attempt > 0) await new Promise(function(r) { setTimeout(r, attempt * 1500); });
+                        tokenResult = await Plugins.FirebaseMessaging.getToken();
+                    } catch(tokenErr) {
+                        console.warn('[FAG Mobile] getToken iOS tentative ' + (attempt + 1) + ' échouée:', tokenErr.message);
+                    }
+                }
                 if (tokenResult && tokenResult.token) {
                     localStorage.setItem('fag_fcm_token', tokenResult.token);
                     window.FAGMobile._sendTokenToServer(tokenResult.token, userId);
+                } else {
+                    console.warn('[FAG Mobile] getToken iOS : échec après 5 tentatives — le listener tokenReceived pourra encore rattraper le jeton plus tard');
                 }
             } catch(e) {
                 console.warn('[FAG Mobile] Push init iOS failed:', e.message);
