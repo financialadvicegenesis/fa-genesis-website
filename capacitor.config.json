@@ -32,10 +32,11 @@
     },
     "SplashScreen": {
       "launchAutoHide": false,
-      "backgroundColor": "#000000",
+      "backgroundColor": "#FFFFFF",
       "androidScaleType": "CENTER_CROP",
       "splashFullScreen": true,
-      "splashImmersive": true
+      "splashImmersive": true,
+      "launchFadeOutDuration": 300
     }
   }
 }
