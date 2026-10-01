@@ -117,6 +117,22 @@ workflows:
           end
           project.save
           "
+      - name: Restrict to iPhone only (no iPad)
+        # L'app n'a jamais été conçue ni testée sur un écran iPad (barre de navigation en bas,
+        # mise en page mobile) — Capacitor configure "Universel" (iPhone+iPad) par défaut
+        # (TARGETED_DEVICE_FAMILY "1,2"), jamais changé jusqu'ici. "1" seul = iPhone uniquement :
+        # évite de livrer une expérience tablette non testée, et élimine l'exigence Apple de
+        # capture d'écran iPad 13 pouces pour la soumission.
+        script: |
+          ruby -e "
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('ios/App/App.xcodeproj')
+          target = project.targets.find { |t| t.name == 'App' }
+          target.build_configurations.each do |config|
+            config.build_settings['TARGETED_DEVICE_FAMILY'] = '1'
+          end
+          project.save
+          "
       - name: Set bundle version from build number
         script: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" ios/App/App/Info.plist
