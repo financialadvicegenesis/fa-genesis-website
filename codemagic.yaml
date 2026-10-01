@@ -137,6 +137,10 @@ workflows:
         script: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
+          # Déclare directement que l'app n'utilise que le chiffrement HTTPS standard du système
+          # (aucun algorithme propriétaire/personnalisé) — évite la question de conformité export
+          # posée manuellement à chaque build (déjà répondue identiquement plusieurs fois ce jour).
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
       - name: Apply GENESIS branding (icon + splash screen)
         # Parité avec Android : sans ceci, l'app iOS affiche l'icône et l'écran de démarrage
         # génériques par défaut de Capacitor (jamais remplacés jusqu'ici) au lieu du logo GENESIS.
