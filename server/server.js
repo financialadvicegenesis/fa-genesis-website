@@ -11991,6 +11991,8 @@ var CHAT_ARCHIVES_FILE = path.join(DATA_DIR,'chat-archives.json');
 var SUPPORT_TICKETS_FILE = path.join(DATA_DIR,'support-tickets.json');
 var CONTOURNEMENT_LOG_FILE = path.join(DATA_DIR,'contournement-log.json');
 var CLIENT_ERRORS_FILE = path.join(DATA_DIR,'client-errors.json');
+var USER_REPORTS_FILE = path.join(DATA_DIR,'user-reports.json');
+var USER_BLOCKS_FILE = path.join(DATA_DIR,'user-blocks.json');
 
 function loadChat() {
     try {
@@ -12141,6 +12143,44 @@ function logContournementAttempt(accountType, accountId, accountLabel, content, 
         (blockedNow ? '🚫 Messagerie suspendue — ' : '⚠️ Tentative de contournement — ') + (accountLabel || accountType),
         (accountType === 'partner' ? 'Prestataire' : 'Client') + ' ' + (accountLabel || '') + ' a tenté de partager des coordonnées personnelles vers ' + (toLabel || 'un destinataire') + ' (avertissement ' + warnings + '/3).',
         '/admin.html#open-contournement');
+}
+
+// ===== SIGNALEMENT ET BLOCAGE ENTRE UTILISATEURS (conformité Apple 1.2 — UGC/messagerie) =====
+// Exigé par Apple pour toute app avec messagerie entre utilisateurs : un moyen de signaler du
+// contenu/un utilisateur abusif, et un moyen de bloquer un utilisateur. Distinct du système de
+// contournement ci-dessus (qui détecte le partage de coordonnées) et de messagingBlocked (qui
+// suspend TOUTE la messagerie d'un compte, décidé par l'admin) — ici c'est l'utilisateur
+// lui-même qui signale/bloque une personne précise.
+function loadUserReports() {
+    try {
+        if (fs.existsSync(USER_REPORTS_FILE)) return JSON.parse(fs.readFileSync(USER_REPORTS_FILE, 'utf8'));
+    } catch (e) { console.error('[USER-REPORTS] Erreur lecture:', e.message); }
+    return [];
+}
+function saveUserReports(rows) {
+    try { fs.writeFileSync(USER_REPORTS_FILE, JSON.stringify(rows, null, 2), 'utf8'); }
+    catch (e) { console.error('[USER-REPORTS] Erreur ecriture:', e.message); }
+    persistentStore.persistToCloud('user-reports', rows).catch(function(e) {});
+}
+function loadUserBlocks() {
+    try {
+        if (fs.existsSync(USER_BLOCKS_FILE)) return JSON.parse(fs.readFileSync(USER_BLOCKS_FILE, 'utf8'));
+    } catch (e) { console.error('[USER-BLOCKS] Erreur lecture:', e.message); }
+    return [];
+}
+function saveUserBlocks(rows) {
+    try { fs.writeFileSync(USER_BLOCKS_FILE, JSON.stringify(rows, null, 2), 'utf8'); }
+    catch (e) { console.error('[USER-BLOCKS] Erreur ecriture:', e.message); }
+    persistentStore.persistToCloud('user-blocks', rows).catch(function(e) {});
+}
+// Vrai si un blocage existe dans L'UNE OU L'AUTRE direction entre ces deux comptes — empêche
+// aussi bien "A a bloqué B" que "B a bloqué A" d'échanger des messages dans les deux sens.
+function isBlockedPair(typeA, idA, typeB, idB) {
+    var blocks = loadUserBlocks();
+    return blocks.some(function(b) {
+        return (b.blocker_type === typeA && b.blocker_id === idA && b.blocked_type === typeB && b.blocked_id === idB) ||
+               (b.blocker_type === typeB && b.blocker_id === idB && b.blocked_type === typeA && b.blocked_id === idA);
+    });
 }
 
 // ===== REMONTÉE D'ERREURS JS CÔTÉ CLIENT (window.onerror / unhandledrejection, app.html) =====
@@ -12552,6 +12592,11 @@ app.post('/api/messages', function(req, res) {
             var partners = loadPartners();
             var targetPartner = partners.find(function(p) { return p.email === toId || p.id === toId; });
             if (!targetPartner) return res.status(404).json({ error: 'Partenaire introuvable' });
+            // Blocage utilisateur (voir isBlockedPair) : empêche l'envoi dans les deux sens, que ce
+            // soit le client qui ait bloqué ce prestataire ou l'inverse.
+            if (isBlockedPair('client', user.email, 'partner', targetPartner.email)) {
+                return res.status(403).json({ error: 'blocked', message: 'Vous ne pouvez pas envoyer de message à ce prestataire.' });
+            }
             toEmail = targetPartner.email;
             toName = ((targetPartner.prenom || '') + ' ' + (targetPartner.nom || '')).trim();
         }
@@ -12612,6 +12657,155 @@ app.post('/api/messages', function(req, res) {
         res.json({ ok: true, message: newMsg });
     } catch (err) {
         console.error('[CHAT] Erreur POST client:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/report-user — Signaler une conversation/un utilisateur (client OU prestataire,
+ * conformité Apple 1.2). Identité résolue via resolveCurrentIdentity (gère les deux rôles).
+ */
+app.post('/api/report-user', function(req, res) {
+    try {
+        var identity = resolveCurrentIdentity(req);
+        if (!identity || identity.role === 'admin') return res.status(401).json({ error: 'Non autorise' });
+
+        var reportedType = req.body.reported_type === 'partner' ? 'partner' : 'client';
+        var reportedId = String(req.body.reported_id || '').trim();
+        var reason = String(req.body.reason || '').trim().substring(0, 1000);
+        if (!reportedId || !reason) return res.status(400).json({ error: 'reported_id et reason requis' });
+
+        var reporterType = identity.role === 'partner' ? 'partner' : 'client';
+        var reporterLabel = identity.role === 'partner'
+            ? (((identity.partner.prenom || '') + ' ' + (identity.partner.nom || '')).trim() || identity.email)
+            : (((identity.user.prenom || '') + ' ' + (identity.user.nom || '')).trim() || identity.email);
+
+        var rows = loadUserReports();
+        var report = {
+            id: 'RPT-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase(),
+            reporter_type: reporterType,
+            reporter_email: identity.email,
+            reporter_label: reporterLabel,
+            reported_type: reportedType,
+            reported_id: reportedId,
+            reason: reason,
+            status: 'open',
+            created_at: new Date().toISOString()
+        };
+        rows.push(report);
+        saveUserReports(rows);
+
+        notifyUser(null, 'admin', 'user_report',
+            '🚩 Signalement — ' + reporterLabel,
+            (reporterType === 'partner' ? 'Prestataire' : 'Client') + ' ' + reporterLabel + ' a signalé ' + (reportedType === 'partner' ? 'le prestataire' : 'le client') + ' ' + reportedId + ' : ' + reason.substring(0, 150),
+            '/admin.html#moderation');
+
+        res.json({ ok: true, report: report });
+    } catch (err) {
+        console.error('[USER-REPORT] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/block-user — Bloquer un utilisateur précis (empêche l'envoi de messages dans les
+ * deux sens, voir isBlockedPair, appliqué dans POST /api/messages et /api/partner/inbox/reply).
+ */
+app.post('/api/block-user', function(req, res) {
+    try {
+        var identity = resolveCurrentIdentity(req);
+        if (!identity || identity.role === 'admin') return res.status(401).json({ error: 'Non autorise' });
+
+        var blockedType = req.body.blocked_type === 'partner' ? 'partner' : 'client';
+        var blockedId = String(req.body.blocked_id || '').trim();
+        if (!blockedId) return res.status(400).json({ error: 'blocked_id requis' });
+
+        var blockerType = identity.role === 'partner' ? 'partner' : 'client';
+        var rows = loadUserBlocks();
+        var already = rows.some(function(b) {
+            return b.blocker_type === blockerType && b.blocker_id === identity.email &&
+                   b.blocked_type === blockedType && b.blocked_id === blockedId;
+        });
+        if (!already) {
+            rows.push({
+                id: 'BLK-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase(),
+                blocker_type: blockerType,
+                blocker_id: identity.email,
+                blocked_type: blockedType,
+                blocked_id: blockedId,
+                created_at: new Date().toISOString()
+            });
+            saveUserBlocks(rows);
+        }
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('[USER-BLOCK] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/unblock-user — Lève un blocage posé par l'utilisateur courant (jamais un blocage
+ * posé par l'AUTRE personne sur soi — seul le blocker peut lever son propre blocage).
+ */
+app.post('/api/unblock-user', function(req, res) {
+    try {
+        var identity = resolveCurrentIdentity(req);
+        if (!identity || identity.role === 'admin') return res.status(401).json({ error: 'Non autorise' });
+
+        var blockedType = req.body.blocked_type === 'partner' ? 'partner' : 'client';
+        var blockedId = String(req.body.blocked_id || '').trim();
+        var blockerType = identity.role === 'partner' ? 'partner' : 'client';
+
+        var rows = loadUserBlocks().filter(function(b) {
+            return !(b.blocker_type === blockerType && b.blocker_id === identity.email &&
+                     b.blocked_type === blockedType && b.blocked_id === blockedId);
+        });
+        saveUserBlocks(rows);
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('[USER-UNBLOCK] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/block-status?counterpart_type=partner&counterpart_id=... — État du blocage pour
+ * l'interface (afficher "Bloquer" ou "Débloquer", et si l'AUTRE personne a bloqué l'utilisateur
+ * courant, le signaler aussi sans révéler lequel des deux a bloqué l'autre côté UI si besoin).
+ */
+app.get('/api/block-status', function(req, res) {
+    try {
+        var identity = resolveCurrentIdentity(req);
+        if (!identity || identity.role === 'admin') return res.status(401).json({ error: 'Non autorise' });
+
+        var cType = req.query.counterpart_type === 'partner' ? 'partner' : 'client';
+        var cId = String(req.query.counterpart_id || '').trim();
+        var myType = identity.role === 'partner' ? 'partner' : 'client';
+
+        var blocks = loadUserBlocks();
+        var iBlockedThem = blocks.some(function(b) {
+            return b.blocker_type === myType && b.blocker_id === identity.email && b.blocked_type === cType && b.blocked_id === cId;
+        });
+        var theyBlockedMe = blocks.some(function(b) {
+            return b.blocker_type === cType && b.blocker_id === cId && b.blocked_type === myType && b.blocked_id === identity.email;
+        });
+        res.json({ ok: true, blocked_by_me: iBlockedThem, blocked: iBlockedThem || theyBlockedMe });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/admin/user-reports — Liste des signalements pour le panneau Modération.
+ */
+app.get('/api/admin/user-reports', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var limit = parseInt(req.query.limit, 10) || 100;
+        var rows = loadUserReports().sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); }).slice(0, limit);
+        res.json({ ok: true, reports: rows });
+    } catch (err) {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -12881,6 +13075,10 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
         var toEmail = req.body.to_email;
         var content = (req.body.content || '').trim();
         if (!toEmail || !content) return res.status(400).json({ error: 'to_email et content requis' });
+
+        if (isBlockedPair('partner', partner.email, 'client', toEmail)) {
+            return res.status(403).json({ error: 'blocked', message: 'Vous ne pouvez pas envoyer de message à ce client.' });
+        }
 
         if (detectContournement(content)) {
             if (pIndex !== -1) {

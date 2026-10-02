@@ -58,7 +58,9 @@ var COLLECTIONS = [
     'contracts',
     'campagnes',
     'contournement-log',
-    'client-errors'
+    'client-errors',
+    'user-reports',
+    'user-blocks'
 ];
 
 /**

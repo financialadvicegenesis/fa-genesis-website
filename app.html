@@ -3709,6 +3709,47 @@ function showActionSheet(actions, title){
   });
 }
 
+// Signaler/bloquer un utilisateur depuis une conversation (conformité Apple 1.2 — toute app
+// avec messagerie entre utilisateurs doit proposer ces deux mécanismes). Partagé entre le client
+// et le prestataire : counterpartType/counterpartId identifient l'AUTRE personne (jamais soi-même),
+// authToken le jeton du rôle courant (USER._token côté client, _ptnrToken côté prestataire).
+function _convSafetyMenu(counterpartType, counterpartId, counterpartName, authToken){
+  if(!counterpartId || !authToken) return;
+  var api = window.FA_GENESIS_API || API;
+  fetch(api+'/api/block-status?counterpart_type='+encodeURIComponent(counterpartType)+'&counterpart_id='+encodeURIComponent(counterpartId), {
+    headers:{'Authorization':'Bearer '+authToken}
+  }).then(function(r){return r.json();}).then(function(status){
+    var isBlockedByMe = !!(status && status.blocked_by_me);
+    var actions = [
+      { label:'Signaler cette conversation', value:'report' },
+      { label: isBlockedByMe ? 'Débloquer cet utilisateur' : 'Bloquer cet utilisateur', value: isBlockedByMe ? 'unblock' : 'block', danger: !isBlockedByMe }
+    ];
+    showActionSheet(actions, counterpartName||'Options').then(function(choice){
+      if(!choice) return;
+      if(choice==='report'){
+        var reason = window.prompt('Pourquoi signalez-vous cette conversation ?\n(message abusif, contenu inapproprié, arnaque...)');
+        if(!reason || !reason.trim()) return;
+        fetch(api+'/api/report-user', {
+          method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
+          body: JSON.stringify({ reported_type: counterpartType, reported_id: counterpartId, reason: reason.trim() })
+        }).then(function(r){return r.json();}).then(function(d){
+          if(d && d.ok) showToast('Signalement envoyé', 'Notre équipe va l\'examiner.', 'success');
+          else showToast('Erreur', 'Signalement non envoyé.', 'error');
+        }).catch(function(){ showToast('Erreur','Erreur réseau.','error'); });
+      } else {
+        var path = choice==='block' ? '/api/block-user' : '/api/unblock-user';
+        fetch(api+path, {
+          method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
+          body: JSON.stringify({ blocked_type: counterpartType, blocked_id: counterpartId })
+        }).then(function(r){return r.json();}).then(function(d){
+          if(d && d.ok) showToast(choice==='block' ? 'Utilisateur bloqué' : 'Utilisateur débloqué', '', 'success');
+          else showToast('Erreur','Action impossible.','error');
+        }).catch(function(){ showToast('Erreur','Erreur réseau.','error'); });
+      }
+    });
+  }).catch(function(){ showToast('Erreur','Impossible de charger les options.','error'); });
+}
+
 // Notifications "toast" (bandeau temporaire en haut/bas d'écran).
 function showToast(title,sub,type){
   var stack=document.getElementById('toast-stack'); if(!stack) return;
@@ -10227,6 +10268,7 @@ function openConversation(key, name, icon, partnerEmail){
     +'<button class="chat-back-btn" onclick="renderMsgTab()">&#8249;</button>'
     +'<div style="font-size:16px;line-height:1;margin-right:6px;"><i class="fa-solid fa-'+(icon||'comment-dots')+'"></i></div>'
     +'<div class="chat-conv-name">'+name+'</div>'
+    +(partnerEmail ? '<button class="chat-back-btn" style="margin-left:auto;" onclick="_convSafetyMenu(\'partner\',\''+String(partnerEmail).replace(/\'/g,"\\\'")+'\',\''+String(name||'').replace(/\'/g,"\\\'")+'\',USER&&USER._token)"><i class="fa-solid fa-ellipsis-vertical"></i></button>' : '')
     +'</div>'
     +'<div class="chat-messages" id="chat-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>'
     // Bandeau "en train de répondre à..." (façon Instagram) — masqué tant qu'aucun message
@@ -10385,8 +10427,16 @@ function sendChatMessage(){
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
     body:JSON.stringify(body)
-  }).then(function(r){return r.json();}).then(function(){
+  }).then(function(r){return r.json();}).then(function(resp){
     if(btn){btn.disabled=false;btn.textContent='↑';}
+    // resp.error (ex: envoi refusé suite à un blocage, voir _convSafetyMenu) : la bulle
+    // optimiste ci-dessus doit disparaître, sinon le message a l'air envoyé alors qu'il ne l'a
+    // pas été. d (fermeture plus haut) reste bien la bulle DOM — pas de collision de nom ici.
+    if(resp && resp.error){
+      if(msgs && d && d.parentNode) d.remove();
+      showToast('Message non envoyé', resp.message||'', 'error');
+      return;
+    }
     setTimeout(function(){ loadChatMessages(_chatPartnerEmail); }, 1200);
   }).catch(function(){
     if(btn){btn.disabled=false;btn.textContent='↑';}
@@ -15304,6 +15354,7 @@ function _ptnrOpenConversation(email, name){
     +'<button class="chat-back-btn" onclick="_ptnrCloseConversation()">&#8249;</button>'
     +'<div style="font-size:16px;line-height:1;margin-right:6px;"><i class="fa-solid fa-user-tie"></i></div>'
     +'<div class="chat-conv-name">'+_escHtml(name||'Client')+'</div>'
+    +'<button class="chat-back-btn" style="margin-left:auto;" onclick="_convSafetyMenu(\'client\',\''+String(email).replace(/\'/g,"\\\'")+'\',\''+String(name||'').replace(/\'/g,"\\\'")+'\',_ptnrToken)"><i class="fa-solid fa-ellipsis-vertical"></i></button>'
     +'</div>'
     +'<div class="chat-messages" id="ptnr-chat-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>'
     +'<div id="ptnr-chat-att-preview" style="display:flex;gap:6px;flex-wrap:wrap;padding:0 12px;"></div>'
@@ -15642,7 +15693,10 @@ function _ptnrSendConvReply(){
   _ptnrCurrentAttachments = [];
   _ptnrFetch('/api/partner/inbox/reply','POST',{to_email:toEmail, content:msg, to_name:toName, attachments:atts, reply_to_id:replyToId}).then(function(data){
     if(btn) btn.disabled = false;
-    if(data && data.error){ showToast('Erreur', data.message || 'Erreur d\'envoi', 'error'); return; }
+    if(data && data.error){
+      if(msgsEl && d && d.parentNode) d.remove();
+      showToast('Erreur', data.message || 'Erreur d\'envoi', 'error'); return;
+    }
     setTimeout(function(){ if(_ptnrCurrentConvEmail===toEmail) _ptnrLoadConversationMessages(toEmail); }, 1200);
   }).catch(function(){
     if(btn) btn.disabled = false;
