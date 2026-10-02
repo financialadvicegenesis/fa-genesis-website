@@ -1790,8 +1790,20 @@ _load_actualites();
     actualites: 'actualites.html',
     telecharger: 'telecharger.html'
   };
-  function syncShareableUrl(id){
+  // BUG corrigé : history.replaceState() retire le #fragment de l'URL affichée (remplacée par
+  // ex. "actualites.html", sans hash). Si cet appel survenait avant que le navigateur n'ait fini
+  // son propre défilement natif vers l'ancre #actualites (notamment au chargement initial d'un
+  // lien externe type index.html#actualites, pendant que la section encore vide/en chargement -
+  // voir #actu-loader - grandit de façon asynchrone), le hash disparaissait avant la fin du
+  // défilement natif et celui-ci pouvait ne jamais aboutir, laissant la page sur la section
+  // précédente (#espaces). On déclenche donc nous-mêmes le défilement vers l'élément AVANT de
+  // réécrire l'URL, sans dépendre du comportement natif du navigateur.
+  function syncShareableUrl(id, doScroll){
     var path = SECTION_URLS[id];
+    if(doScroll){
+      var el = document.getElementById(id);
+      if(el) el.scrollIntoView({ block: 'start' });
+    }
     if(!path || typeof history === 'undefined' || !history.replaceState) return;
     try{ history.replaceState(null, '', path); }catch(e){}
   }
@@ -1799,12 +1811,12 @@ _load_actualites();
     var id = a.getAttribute('href').slice(1);
     if(!SECTION_URLS[id]) return;
     a.addEventListener('click', function(){
-      setTimeout(function(){ syncShareableUrl(id); }, 0);
+      setTimeout(function(){ syncShareableUrl(id, false); }, 0);
     });
   });
   if(location.hash){
     var currentId = location.hash.slice(1);
-    if(SECTION_URLS[currentId]) syncShareableUrl(currentId);
+    if(SECTION_URLS[currentId]) setTimeout(function(){ syncShareableUrl(currentId, true); }, 0);
   }
 })();
 </script>
