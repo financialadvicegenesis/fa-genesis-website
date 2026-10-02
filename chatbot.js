@@ -35,7 +35,7 @@
             // accepté : comme ce topic est le premier du tableau, il gagne les égalités de score
             // (ex. "payer sur genesis" égalité avec payment_how) — jugé acceptable face au gain
             // (c'est LE topic "qu'est-ce que GENESIS", une mention de la marque y est pertinente).
-            keywords: ['genesis', 'c\'est quoi', 'qu\'est-ce que', 'qu est ce', 'financial advice', 'fa genesis', 'genesis c\'est', 'qui etes', 'qui vous', 'c est quoi', 'votre entreprise', 'votre societe', 'presentez', 'a propos'],
+            keywords: ['genesis', 'c\'est quoi', 'qu\'est-ce que', 'financial advice', 'fa genesis', 'genesis c\'est', 'qui etes', 'qui vous', 'votre entreprise', 'votre societe', 'presentez', 'a propos', 'vous faites quoi', 'expliquez moi la plateforme', 'comment ca fonctionne'],
             response: 'Financial Advice Genesis est une plateforme qui met en relation des clients avec des prestataires ind\u00e9pendants (photographes, vid\u00e9astes, sp\u00e9cialistes marketing, professionnels m\u00e9dia...) pour donner vie \u00e0 leurs projets. Le paiement est s\u00e9curis\u00e9 gr\u00e2ce \u00e0 GENESIS SAFE\u2122.',
             quickReplies: ['Voir les prestations', 'Comment \u00e7a marche ?', 'Contacter l\u2019\u00e9quipe'],
             link: null
@@ -135,7 +135,7 @@
         {
             id: 'payment_installments',
             category: 'paiement',
-            keywords: ['plusieurs fois', 'echelon', 'facilite', 'mensualite', 'etaler', 'en 2 fois', 'en 3 fois', 'en 4 fois', 'echelonne'],
+            keywords: ['plusieurs fois', 'echelon', 'facilite', 'mensualite', 'mensualites', 'etaler', 'en 2 fois', 'en 3 fois', 'en 4 fois', 'echelonne'],
             response: 'Oui, le paiement en plusieurs fois est possible sur certaines prestations (jusqu\u2019\u00e0 8 versements selon le cas) \u2014 c\u2019est indiqu\u00e9 directement au moment de la r\u00e9servation. Contactez notre \u00e9quipe si vous avez une question sur les modalit\u00e9s d\u2019une prestation en particulier.',
             quickReplies: ['Contacter l\u2019\u00e9quipe', 'Voir les prestations'],
             link: null
@@ -143,7 +143,7 @@
         {
             id: 'deposit_balance',
             category: 'paiement',
-            keywords: ['acompte', 'solde', '30%', '70%', 'reste a payer', 'premier paiement', 'depot'],
+            keywords: ['acompte', 'quoi l acompte', 'solde', '30%', '70%', 'reste a payer', 'premier paiement', 'depot'],
             response: 'Selon la prestation, le paiement peut se faire int\u00e9gralement \u00e0 la r\u00e9servation, ou en acompte + solde (le solde \u00e9tant d\u00fb \u00e0 la livraison). Dans tous les cas, gr\u00e2ce \u00e0 GENESIS SAFE\u2122, l\u2019argent reste s\u00e9curis\u00e9 et n\u2019est vers\u00e9 au prestataire qu\u2019apr\u00e8s validation de la prestation par vos soins.',
             quickReplies: ['Voir les prestations'],
             link: null
@@ -159,7 +159,7 @@
         {
             id: 'payment_security',
             category: 'paiement',
-            keywords: ['securise', 'securite', 'fiable', 'confiance', 'arnaque', 'serieux', 'sur'],
+            keywords: ['securise', 'securite', 'fiable', 'confiance', 'arnaque', 'serieux'],
             response: 'Votre s\u00e9curit\u00e9 est notre priorit\u00e9. Les paiements sont trait\u00e9s via Stripe, une plateforme certifi\u00e9e, et prot\u00e9g\u00e9s par GENESIS SAFE\u2122 : l\u2019argent n\u2019est vers\u00e9 au prestataire qu\u2019apr\u00e8s validation de la prestation par le client. Vos donn\u00e9es bancaires ne sont jamais stock\u00e9es sur nos serveurs.',
             quickReplies: ['Voir les prestations'],
             link: null
@@ -177,7 +177,7 @@
         {
             id: 'create_account',
             category: 'espace_client',
-            keywords: ['creer compte', 'inscription', 's\'inscrire', 'nouveau compte', 'register', 'enregistrer', 'ouvrir compte'],
+            keywords: ['creer compte', 'creer un compte', 'inscription', 's\'inscrire', 'nouveau compte', 'register', 'enregistrer', 'ouvrir compte', 'ouvrir un compte'],
             response: 'Pour cr\u00e9er votre compte, rendez-vous sur la page d\u2019inscription. Vous aurez besoin de vos informations personnelles, puis vous pourrez directement r\u00e9server une prestation aupr\u00e8s du prestataire de votre choix.',
             quickReplies: [],
             link: { url: 'register.html', label: 'Cr\u00e9er un compte' }
@@ -185,7 +185,7 @@
         {
             id: 'documents',
             category: 'espace_client',
-            keywords: ['document', 'livrable', 'fichier', 'telecharger', 'pdf', 'livraison', 'telechargement'],
+            keywords: ['document', 'livrable', 'livrables', 'fichier', 'telecharger', 'pdf', 'livraison', 'telechargement'],
             response: 'Vos documents et livrables sont accessibles depuis votre espace client, dans le d\u00e9tail de chaque commande. Les livrables (photos, vid\u00e9os, fichiers...) sont disponibles au t\u00e9l\u00e9chargement une fois la prestation valid\u00e9e.',
             quickReplies: [],
             link: { url: 'login.html', label: 'Acc\u00e9der \u00e0 mes documents' }
@@ -217,7 +217,7 @@
         {
             id: 'account_management',
             category: 'espace_client',
-            keywords: ['modifier profil', 'changer email', 'supprimer compte', 'desactiver', 'modifier informations', 'mettre a jour'],
+            keywords: ['modifier profil', 'changer email', 'supprimer compte', 'supprimer mon compte', 'supprimer', 'desactiver', 'desactiver mon compte', 'modifier informations', 'mettre a jour'],
             response: 'Vous pouvez g\u00e9rer vos informations personnelles depuis la section \u00ab Mon compte \u00bb de votre espace client. Pour supprimer ou d\u00e9sactiver votre compte, rendez-vous \u00e9galement dans cette section.',
             quickReplies: [],
             link: { url: 'login.html', label: 'Acc\u00e9der \u00e0 mon compte' }
@@ -243,7 +243,7 @@
         {
             id: 'start_project',
             category: 'contact',
-            keywords: ['lancer', 'demarrer', 'commencer projet', 'je veux', 'interesse', 'ca m\'interesse', 'comment demarrer', 'je suis interesse'],
+            keywords: ['lancer', 'demarrer', 'commencer projet', 'interesse', 'ca m\'interesse', 'comment demarrer', 'je suis interesse'],
             response: 'Super ! Pour lancer votre projet avec FA Genesis, vous avez deux options :\n\n1. Consulter nos offres pour choisir celle qui vous convient\n2. Nous contacter directement pour en discuter\n\nL\u2019\u00e9quipe sera ravie de vous accompagner !',
             quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
             link: { url: 'app.html#prestataires', label: 'D\u00e9couvrir les offres' }
@@ -363,7 +363,7 @@
         {
             id: 'company_values',
             category: 'general',
-            keywords: ['valeur', 'mission', 'vision', 'philosophie', 'approche', 'methode', 'innovation', 'authenticite', 'ambition'],
+            keywords: ['valeur', 'valeurs', 'vos valeurs', 'mission', 'vision', 'philosophie', 'approche', 'methode', 'innovation', 'authenticite', 'ambition'],
             response: 'FA Genesis repose sur trois valeurs fondamentales :\n\n\u2022 INNOVATION \u2014 Nous croyons en l\u2019innovation comme moteur de transformation\n\u2022 AUTHENTICIT\u00c9 \u2014 Votre identit\u00e9 unique est au c\u0153ur de notre approche\n\u2022 AMBITION \u2014 Nous mettons en relation ceux qui osent voir grand avec des prestataires de confiance\n\nNotre mission : connecter des clients \u00e0 des prestataires ind\u00e9pendants v\u00e9rifi\u00e9s, avec un paiement s\u00e9curis\u00e9 de bout en bout.',
             quickReplies: ['C\u2019est quoi FA Genesis ?', 'Voir les prestations'],
             link: { url: 'a-propos.html', label: 'En savoir plus' }
@@ -371,7 +371,7 @@
         {
             id: 'fa_industries',
             category: 'general',
-            keywords: ['fa industries', 'ecosysteme', 'groupe', 'maison mere', 'structure', 'holding'],
+            keywords: ['fa industries', 'industries', 'ecosysteme', 'groupe', 'maison mere', 'structure', 'holding'],
             response: 'FA Genesis fait partie de l\u2019\u00e9cosyst\u00e8me FA Industries. FA Genesis est le p\u00f4le d\u00e9di\u00e9 \u00e0 la mise en relation entre clients et prestataires ind\u00e9pendants (photo, vid\u00e9o, marketing, m\u00e9dia). C\u2019est la plateforme qui s\u00e9curise la transaction et la relation entre les deux parties.',
             quickReplies: ['C\u2019est quoi FA Genesis ?'],
             link: { url: 'a-propos.html', label: 'Page \u00c0 propos' }
@@ -413,7 +413,7 @@
         {
             id: 'checkout_process',
             category: 'panier',
-            keywords: ['passer commande', 'valider commande', 'finaliser', 'checkout', 'commander', 'inscription avant paiement', 'faut creer compte', 'compte avant payer', 'comment valider'],
+            keywords: ['passer commande', 'passer une commande', 'valider commande', 'finaliser', 'checkout', 'commander', 'inscription avant paiement', 'faut creer compte', 'compte avant payer', 'comment valider'],
             response: 'Pour passer commande :\n\n1\ufe0f\u20e3 Cr\u00e9ez votre compte (ou connectez-vous)\n2\ufe0f\u20e3 Ajoutez vos prestations au panier depuis l\u2019annuaire de prestataires\n3\ufe0f\u20e3 Cliquez sur \u00ab Valider mon panier \u00bb\n4\ufe0f\u20e3 Payez par carte bancaire, de mani\u00e8re s\u00e9curis\u00e9e\n\nGr\u00e2ce \u00e0 GENESIS SAFE\u2122, l\u2019argent est autoris\u00e9 \u00e0 la r\u00e9servation mais n\u2019est vers\u00e9 au prestataire qu\u2019apr\u00e8s validation de la prestation.',
             quickReplies: ['Comment fonctionne le paiement ?', 'Espace client'],
             link: { url: 'app.html', label: 'Mon panier' }
@@ -431,7 +431,7 @@
         {
             id: 'order_status',
             category: 'espace_client',
-            keywords: ['statut commande', 'ou est ma commande', 'quand commence', 'etat commande', 'suivi commande', 'ma commande', 'avancement', 'progression commande'],
+            keywords: ['statut commande', 'ou est ma commande', 'quand commence', 'etat commande', 'suivi commande', 'ma commande', 'avancement', 'progression commande', 'ma mission', 'suivre ma mission', 'statut de ma mission', 'suivi mission'],
             response: 'Suivez vos commandes depuis votre espace client :\n\n\u2022 \ud83d\udcca Mes commandes \u2014 vue d\u2019ensemble et statut de paiement\n\u2022 \ud83d\udcac Messages \u2014 \u00e9changez directement avec votre prestataire\n\u2022 \ud83d\udcc1 Livrables \u2014 vos fichiers disponibles au t\u00e9l\u00e9chargement\n\nConnectez-vous avec l\u2019email utilis\u00e9 lors de la commande.',
             quickReplies: ['Espace client', 'Mes livrables'],
             link: { url: 'app.html', label: 'Mon espace client' }
@@ -493,7 +493,7 @@
         {
             id: 'feedback_how',
             category: 'espace_client',
-            keywords: ['laisser avis', 'donner avis', 'note', 'satisfaction', 'retour experience', 'espace feedback', 'evaluer', 'opinion', 'avis client', 'temoignage laisser'],
+            keywords: ['laisser avis', 'laisser un avis', 'donner avis', 'note', 'noter', 'satisfaction', 'retour experience', 'espace feedback', 'evaluer', 'opinion', 'avis client', 'temoignage laisser'],
             response: 'Vous pouvez laisser un retour d\u2019exp\u00e9rience depuis votre espace client, dans la section \u00ab Feedback \u00bb. Vous pouvez :\n\n\u2b50 Attribuer une note\n\ud83d\udcac Laisser un commentaire\n\u2705 Accepter que votre t\u00e9moignage soit visible sur le site\n\nVotre avis compte vraiment pour am\u00e9liorer nos services !',
             quickReplies: ['Espace client'],
             link: { url: 'feedback.html', label: 'Laisser un feedback' }
@@ -511,7 +511,7 @@
         {
             id: 'client_loyalty_qg',
             category: 'espace_client',
-            keywords: ['points qg', 'niveau genesis', 'gamification', 'recompense', 'fidelite', 'explorateur', 'createur', 'xp', 'monter de niveau', 'programme fidelite', 'avantages niveau', 'parrainage'],
+            keywords: ['points qg', 'qg', 'niveau genesis', 'gamification', 'recompense', 'fidelite', 'explorateur', 'createur', 'xp', 'monter de niveau', 'programme fidelite', 'programme de parrainage', 'avantages niveau', 'parrainage'],
             response: 'Chaque action sur GENESIS (r\u00e9servation, avis laiss\u00e9, profil compl\u00e9t\u00e9...) vous fait gagner des \u00ab\u00a0Points QG\u00a0\u00bb \ud83c\udfdb\ufe0f et progresser dans les niveaux GENESIS (Explorateur, Cr\u00e9ateur et au-del\u00e0). Plus vous montez, plus vous d\u00e9bloquez d\u2019avantages exclusifs, comme le programme de parrainage. Votre niveau et votre progression sont visibles directement sur votre page d\u2019accueil, dans votre espace client.',
             quickReplies: ['Espace client', 'Voir les prestations'],
             link: { url: 'login.html', label: 'Voir mon niveau GENESIS' }
@@ -521,7 +521,7 @@
         {
             id: 'become_partner',
             category: 'espace_prestataire',
-            keywords: ['devenir prestataire', 'rejoindre en tant que prestataire', 'inscription prestataire', 'proposer mes services', 'candidater prestataire', 'travailler avec vous', 'etre prestataire', 'creer profil prestataire', 'rejoindre genesis'],
+            keywords: ['devenir prestataire', 'rejoindre en tant que prestataire', 'candidater en tant que prestataire', 'inscrire comme prestataire', 'inscription prestataire', 'proposer mes services', 'candidater prestataire', 'travailler avec vous', 'etre prestataire', 'creer profil prestataire', 'rejoindre genesis'],
             response: 'Pour devenir prestataire GENESIS, cr\u00e9ez votre profil en quelques minutes : pr\u00e9sentez votre activit\u00e9, votre zone d\u2019intervention et votre portfolio. Une fois votre profil v\u00e9rifi\u00e9 par notre \u00e9quipe, vous appara\u00eetrez dans l\u2019annuaire et pourrez recevoir des demandes de mission directement depuis votre tableau de bord.',
             quickReplies: ['Comment sont pay\u00e9s les prestataires ?', 'Contacter l\u2019\u00e9quipe'],
             link: { url: 'partner-register.html', label: 'Devenir prestataire' }
@@ -529,7 +529,7 @@
         {
             id: 'partner_badges',
             category: 'espace_prestataire',
-            keywords: ['badge', 'badges', 'bronze', 'elite', 'badge prestataire', 'bronze argent or elite', 'niveau prestataire', 'progression prestataire', 'classement prestataire', 'badge genesis', 'monter en grade', 'statut prestataire'],
+            keywords: ['badge', 'badges', 'les badges', 'bronze', 'elite', 'badge prestataire', 'bronze argent or elite', 'niveau prestataire', 'progression prestataire', 'classement prestataire', 'badge genesis', 'monter en grade', 'statut prestataire'],
             response: 'Chaque prestataire progresse \u00e0 travers 4 badges GENESIS \ud83c\udfc6 : Bronze \u2192 Argent \u2192 Or \u2192 \u00c9lite. La progression d\u00e9pend de votre activit\u00e9 sur la plateforme (missions r\u00e9alis\u00e9es, avis clients...). Un badge plus \u00e9lev\u00e9 am\u00e9liore votre visibilit\u00e9 dans l\u2019annuaire aupr\u00e8s des clients.',
             quickReplies: ['Devenir prestataire', 'Comment sont pay\u00e9s les prestataires ?'],
             link: null
@@ -537,7 +537,7 @@
         {
             id: 'partner_payout_international',
             category: 'espace_prestataire',
-            keywords: ['paiement prestataire', 'etre paye', 'versement prestataire', 'stripe wise', 'virement international', 'recevoir argent prestataire', 'portefeuille genesis', 'wallet', 'commission', 'combien garde genesis', 'frais plateforme'],
+            keywords: ['paiement prestataire', 'etre paye', 'je suis paye', 'wallet prestataire', 'versement prestataire', 'stripe wise', 'virement international', 'recevoir argent prestataire', 'retirer mon argent', 'retirer', 'portefeuille genesis', 'wallet', 'commission', 'combien garde genesis', 'frais plateforme'],
             response: 'Vos revenus sont centralis\u00e9s dans votre Portefeuille GENESIS \ud83d\udcb3, aliment\u00e9 \u00e0 chaque mission valid\u00e9e par un client (gr\u00e2ce \u00e0 GENESIS SAFE\u2122). Vous pouvez ensuite demander un versement vers votre compte via Stripe ou Wise \u2014 Wise permettant de recevoir vos fonds partout dans le monde, m\u00eame hors zone euro. GENESIS pr\u00e9l\u00e8ve une commission unique de 5\u00a0% sur chaque mission, quel que soit votre badge.',
             quickReplies: ['Devenir prestataire', 'Contacter l\u2019\u00e9quipe'],
             link: null
@@ -545,7 +545,7 @@
         {
             id: 'partner_quotes_contracts',
             category: 'espace_prestataire',
-            keywords: ['devis prestataire', 'contrat prestataire', 'envoyer devis', 'generer contrat', 'proposition client', 'faire un devis', 'signer contrat', 'contrat mission'],
+            keywords: ['devis prestataire', 'contrat prestataire', 'envoyer devis', 'generer contrat', 'generer un contrat', 'proposition client', 'faire un devis', 'signer contrat', 'signer le contrat', 'contrat mission', 'contrat de mission', 'contrat'],
             response: 'Depuis votre tableau de bord prestataire, vous pouvez r\u00e9pondre \u00e0 une demande client avec un devis personnalis\u00e9, puis g\u00e9n\u00e9rer et faire signer le contrat de mission directement dans l\u2019app \u2014 en un clic, sans aller-retour de documents par e-mail. Une fois accept\u00e9, le client paie via GENESIS SAFE\u2122 et vous pouvez d\u00e9marrer la mission en toute s\u00e9curit\u00e9.',
             quickReplies: ['Devenir prestataire', 'Comment sont pay\u00e9s les prestataires ?'],
             link: null
@@ -553,10 +553,100 @@
         {
             id: 'jeremie_ai',
             category: 'espace_prestataire',
-            keywords: ['jeremie', 'assistant ia prestataire', 'conseiller ia', 'chatbot prestataire', 'ia personnelle', 'coach prestataire', 'assistant genesis'],
+            keywords: ['jeremie', 'quoi jeremie', 'assistant ia prestataire', 'conseiller ia', 'chatbot prestataire', 'ia personnelle', 'coach prestataire', 'assistant genesis'],
             response: 'J\u00e9r\u00e9mie est l\u2019assistant IA personnel disponible dans l\u2019espace prestataire \ud83e\udd16 \u2014 il vous accompagne au quotidien\u00a0: conseils pour progresser dans les niveaux GENESIS, aide \u00e0 la r\u00e9daction de r\u00e9ponses clients, et orientation dans les fonctionnalit\u00e9s de votre tableau de bord. Il est accessible \u00e0 tout moment depuis votre espace, une fois connect\u00e9.',
             quickReplies: ['Devenir prestataire', 'Espace client'],
             link: null
+        },
+
+        // ===================== RECHERCHE DE PRESTATAIRE =====================
+        {
+            id: 'find_provider',
+            category: 'offres',
+            keywords: ['trouver un prestataire', 'trouver prestataire', 'chercher un prestataire', 'rechercher un prestataire', 'liste des prestataires', 'parcourir l\'annuaire', 'filtrer par categorie', 'filtrer par ville', 'rechercher par ville', 'chercher par categorie', 'voir les prestataires disponibles', 'annuaire'],
+            response: 'Pour trouver un prestataire, rendez-vous dans l\u2019annuaire : vous pouvez filtrer par cat\u00e9gorie (PHOTO, VID\u00c9O, MARKETING, M\u00c9DIA, Coworking...) et par zone g\u00e9ographique. Consultez les profils (portfolio, avis, tarifs) puis contactez ou r\u00e9servez directement celui qui correspond \u00e0 votre besoin.',
+            quickReplies: ['Voir les prestations', 'Demander un devis'],
+            link: { url: 'app.html#prestataires', label: 'Parcourir l\u2019annuaire' }
+        },
+
+        // ===================== MESSAGERIE PRESTATAIRE =====================
+        {
+            id: 'messaging_provider',
+            category: 'espace_client',
+            keywords: ['contacter un prestataire', 'contacter le prestataire', 'envoyer un message au prestataire', 'message au prestataire', 'discuter avec', 'discuter avec mon', 'discuter avec le', 'echanger avec le prestataire', 'comment fonctionne la messagerie', 'messagerie prestataire', 'ecrire a mon prestataire', 'parler a mon prestataire', 'messagerie'],
+            response: 'Vous pouvez \u00e9changer directement avec votre prestataire via la messagerie int\u00e9gr\u00e9e \u00e0 votre espace client (accessible une fois la demande de devis envoy\u00e9e ou la r\u00e9servation effectu\u00e9e). C\u2019est l\u00e0 que vous convenez des d\u00e9tails de la prestation (date, lieu, attentes...).',
+            quickReplies: ['Espace client'],
+            link: { url: 'login.html', label: 'Acc\u00e9der \u00e0 ma messagerie' }
+        },
+
+        // ===================== SIGNALER / BLOQUER UN UTILISATEUR =====================
+        {
+            id: 'report_block_user',
+            category: 'espace_client',
+            keywords: ['signaler un prestataire', 'signaler un client', 'signaler cette conversation', 'signaler un utilisateur', 'signalement', 'signaler', 'bloquer un prestataire', 'bloquer un client', 'bloquer quelqu\'un', 'bloquer un utilisateur', 'bloquer dans la messagerie', 'bloquer', 'comportement inapproprie'],
+            response: 'Dans n\u2019importe quelle conversation (c\u00f4t\u00e9 client ou prestataire), le bouton \u00ab \u22ee \u00bb en haut \u00e0 droite vous permet de signaler la conversation ou de bloquer l\u2019autre utilisateur. Notre \u00e9quipe examine chaque signalement rapidement.',
+            quickReplies: ['Espace client', 'Contacter l\u2019\u00e9quipe'],
+            link: { url: 'login.html', label: 'Acc\u00e9der \u00e0 mes messages' }
+        },
+
+        // ===================== LITIGES =====================
+        {
+            id: 'disputes_litiges',
+            category: 'espace_client',
+            keywords: ['litige', 'litiges', 'mes litiges', 'ouvrir un litige', 'contester une prestation', 'contester la prestation', 'probleme avec le prestataire', 'desaccord prestataire', 'resoudre un litige'],
+            response: 'Si une prestation ne s\u2019est pas d\u00e9roul\u00e9e comme pr\u00e9vu, vous pouvez ouvrir un litige depuis la section \u00ab Mes litiges \u00bb de votre espace client. Notre \u00e9quipe traite chaque litige sous environ 48h ouvr\u00e9es et vous tient inform\u00e9 directement dans le fil de discussion d\u00e9di\u00e9.',
+            quickReplies: ['Espace client', 'Contacter l\u2019\u00e9quipe'],
+            link: { url: 'app.html#litiges', label: 'Voir mes litiges' }
+        },
+
+        // ===================== BOOST DE VISIBILITE (PRESTATAIRE) =====================
+        {
+            id: 'partner_monthly_boost',
+            category: 'espace_prestataire',
+            keywords: ['boost de visibilite', 'boost mensuel', 'booster mon profil', 'booster ma visibilite', 'boost visibilite', 'visibilite mensuelle', 'boost', 'activer mon boost'],
+            response: 'Selon votre badge GENESIS (Argent, Or ou \u00c9lite), vous disposez d\u2019un quota de boosts de visibilit\u00e9 mensuels \u00e0 activer vous-m\u00eame depuis la section \u00ab Mes badges \u00bb de votre tableau de bord. Un boost met votre profil en avant dans l\u2019annuaire pendant 48h. Le quota se r\u00e9initialise chaque mois.',
+            quickReplies: ['Devenir prestataire', 'Comment sont pay\u00e9s les prestataires ?'],
+            link: null
+        },
+
+        // ===================== PROFIL / PORTFOLIO PRESTATAIRE =====================
+        {
+            id: 'partner_profile_management',
+            category: 'espace_prestataire',
+            keywords: ['modifier mon profil prestataire', 'modifier profil prestataire', 'gerer mon profil prestataire', 'profil prestataire', 'mon portfolio', 'portfolio', 'completer mon profil', 'modifier mes informations prestataire', 'zone d\'intervention'],
+            response: 'Vous g\u00e9rez votre profil prestataire (pr\u00e9sentation, portfolio, zone d\u2019intervention, tarifs indicatifs...) directement depuis votre tableau de bord, dans la section \u00ab Mon profil \u00bb. Un profil complet et \u00e0 jour am\u00e9liore votre visibilit\u00e9 aupr\u00e8s des clients.',
+            quickReplies: ['Devenir prestataire'],
+            link: { url: 'partner-login.html', label: 'Acc\u00e9der \u00e0 mon espace prestataire' }
+        },
+
+        // ===================== COWORKING =====================
+        {
+            id: 'coworking_category',
+            category: 'offres',
+            keywords: ['coworking', 'espace coworking', 'bureau partage', 'salle de reunion', 'reserver un coworking', 'categorie coworking', 'proposer du coworking'],
+            response: 'Oui, le coworking est une cat\u00e9gorie de prestataire comme les autres sur GENESIS (au m\u00eame titre que Photo, Vid\u00e9o, Marketing et M\u00e9dia). Que vous cherchiez un espace de coworking ou que vous en proposiez un, cela fonctionne exactement comme pour les autres prestataires\u00a0: annuaire, devis, r\u00e9servation et paiement s\u00e9curis\u00e9 via GENESIS SAFE\u2122.',
+            quickReplies: ['Voir les prestations', 'Devenir prestataire'],
+            link: { url: 'app.html#prestataires', label: 'Voir les espaces coworking' }
+        },
+
+        // ===================== SUPPORT PRESTATAIRE BLOQUE / SUSPENDU =====================
+        {
+            id: 'partner_support_blocked',
+            category: 'espace_prestataire',
+            keywords: ['compte prestataire bloque', 'compte prestataire', 'prestataire suspendu', 'compte bloque', 'profil bloque', 'compte suspendu', 'bloque', 'suspendu', 'je suis suspendu', 'assistance prestataire'],
+            response: 'Si votre compte prestataire est bloqu\u00e9 ou suspendu, vous pouvez quand m\u00eame nous joindre via la section \u00ab Assistance \u00bb de votre tableau de bord \u2014 un canal d\u00e9di\u00e9, ind\u00e9pendant de la messagerie classique, pr\u00e9vu sp\u00e9cialement pour ce cas. Notre \u00e9quipe examine votre demande et peut d\u00e9bloquer votre compte si la situation le justifie.',
+            quickReplies: ['Contacter l\u2019\u00e9quipe'],
+            link: { url: 'partner-login.html', label: 'Acc\u00e9der \u00e0 mon espace prestataire' }
+        },
+
+        // ===================== APPLICATION MOBILE =====================
+        {
+            id: 'mobile_app',
+            category: 'general',
+            keywords: ['application mobile', 'app mobile', 'application genesis', 'app store', 'google play', 'disponible sur android', 'telecharger l\'app', 'telecharger l\'application', 'application', 'app', 'android', 'appli'],
+            response: 'Oui ! GENESIS est disponible en application mobile sur Google Play (Android), ainsi qu\u2019en Progressive Web App et en version web classique \u2014 accessible sur tous vos appareils, avec toutes les fonctionnalit\u00e9s\u00a0: annuaire, messagerie, paiement s\u00e9curis\u00e9 GENESIS SAFE\u2122.',
+            quickReplies: [],
+            link: { url: 'telecharger.html', label: 'T\u00e9l\u00e9charger l\u2019application' }
         }
     ];
 
