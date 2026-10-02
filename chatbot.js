@@ -564,9 +564,17 @@
             id: 'find_provider',
             category: 'offres',
             keywords: ['trouver un prestataire', 'trouver prestataire', 'chercher un prestataire', 'rechercher un prestataire', 'liste des prestataires', 'parcourir l\'annuaire', 'filtrer par categorie', 'filtrer par ville', 'rechercher par ville', 'chercher par categorie', 'voir les prestataires disponibles', 'annuaire'],
-            response: 'Pour trouver un prestataire, rendez-vous dans l\u2019annuaire : vous pouvez filtrer par cat\u00e9gorie (PHOTO, VID\u00c9O, MARKETING, M\u00c9DIA, Coworking...) et par zone g\u00e9ographique. Consultez les profils (portfolio, avis, tarifs) puis contactez ou r\u00e9servez directement celui qui correspond \u00e0 votre besoin.',
+            response: 'Pour trouver un prestataire, rendez-vous dans la section Explorer \ud83d\uddfa\ufe0f : une carte interactive g\u00e9olocalis\u00e9e vous montre les prestataires autour de vous, filtrables par cat\u00e9gorie (PHOTO, VID\u00c9O, MARKETING, M\u00c9DIA, Coworking...), ville et badge (Bronze \u00e0 \u00c9lite). Consultez les profils (portfolio, avis, tarifs) puis contactez ou r\u00e9servez directement celui qui correspond \u00e0 votre besoin \u2014 le tout en moins d\u2019une minute.',
             quickReplies: ['Voir les prestations', 'Demander un devis'],
             link: { url: 'app.html#prestataires', label: 'Parcourir l\u2019annuaire' }
+        },
+        {
+            id: 'news_events',
+            category: 'general',
+            keywords: ['actualite', 'actualites', 'evenement', 'evenements', 'partenariat', 'partenariats', 'conference', 'news', 'derniere nouvelle', 'quoi de neuf'],
+            response: 'Retrouvez toutes nos actualit\u00e9s \u2014 \u00e9v\u00e9nements, partenariats et moments cl\u00e9s qui jalonnent le d\u00e9veloppement de GENESIS \u2014 dans la section Actualit\u00e9s de notre page d\u2019accueil.',
+            quickReplies: ['C\u2019est quoi FA Genesis ?'],
+            link: { url: 'index.html#actualites', label: 'Voir les actualit\u00e9s' }
         },
 
         // ===================== MESSAGERIE PRESTATAIRE =====================
