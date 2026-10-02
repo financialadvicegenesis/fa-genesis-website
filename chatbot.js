@@ -231,7 +231,7 @@
             id: 'social_media',
             category: 'contact',
             keywords: ['instagram', 'linkedin', 'tiktok', 'reseaux sociaux', 'reseau', 'social', 'insta'],
-            response: 'Retrouvez-nous sur nos r\u00e9seaux sociaux :\n\n\u2022 Instagram : @fagenesis_\n\u2022 LinkedIn : Financial Advice Genesis\n\u2022 TikTok : @financial.advice.genesis\n\nN\u2019h\u00e9sitez pas \u00e0 nous envoyer un message directement !',
+            response: 'Retrouvez-nous sur nos r\u00e9seaux sociaux :\n\n\u2022 Instagram : @fagenesis_\n\u2022 LinkedIn : Financial Advice Genesis\n\u2022 TikTok : @fa.genesis\n\nN\u2019h\u00e9sitez pas \u00e0 nous envoyer un message directement !',
             quickReplies: [],
             link: null
         },
@@ -306,32 +306,32 @@
         {
             id: 'photo_detail',
             category: 'services',
-            keywords: ['photo', 'photo essentiel', 'photo pro', 'photo event', 'shooting photo', 'seance photo', 'combien photo', 'retouchee', 'portrait', 'nombre photo', 'tarif photo', 'shooting', 'photographe'],
-            response: 'FA Genesis collabore avec plusieurs photographes professionnels ind\u00e9pendants.\n\nLe tarif d\u00e9pend du projet, du format, de la dur\u00e9e et du prestataire s\u00e9lectionn\u00e9.\n\nPrestations incluses :\n\u2022 S\u00e9ance photo personnalis\u00e9e\n\u2022 Orientation posture & image professionnelle\n\u2022 Format r\u00e9seaux sociaux\n\u2022 Nombre de photos retouch\u00e9es adapt\u00e9\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
+            keywords: ['photo', 'photo pro', 'photo event', 'shooting photo', 'seance photo', 'combien photo', 'retouchee', 'portrait', 'nombre photo', 'tarif photo', 'shooting', 'photographe'],
+            response: 'FA Genesis collabore avec plusieurs photographes professionnels ind\u00e9pendants.\n\nChaque photographe fixe librement son propre tarif et le contenu de sa prestation (nombre de photos retouch\u00e9es, format, dur\u00e9e de s\u00e9ance...) selon votre projet \u2014 il n\u2019y a pas de forfait impos\u00e9 par FA Genesis.\n\nPaiement possible en plusieurs fois selon la prestation choisie.\nParcourez l\u2019annuaire pour comparer les profils et leurs tarifs, ou demandez un devis personnalis\u00e9 pour un besoin sp\u00e9cifique.',
             quickReplies: ['Demander un devis', 'Voir les offres'],
             link: { url: 'contact.html?objet=devis&service=photo', label: 'Demander un devis photo' }
         },
         {
             id: 'video_detail',
             category: 'services',
-            keywords: ['video', 'video pro', 'video storytelling', 'video visibility', 'tournage video', 'montage video', 'format video', 'duree video', 'reels', 'clip', 'tarif video', 'tournage', 'videaste', 'filmer'],
-            response: 'Les tarifs vid\u00e9o sont d\u00e9finis en fonction du format, des objectifs du projet et du vid\u00e9aste partenaire.\n\nPrestations incluses :\n\u2022 Tournage vid\u00e9o personnalis\u00e9\n\u2022 Nombre de vid\u00e9os adapt\u00e9\n\u2022 Direction narrative & storytelling\n\u2022 Conseils de diffusion\n\u2022 Son & cadrage professionnels\n\u2022 Orientation posture & discours\n\u2022 Format r\u00e9seaux sociaux\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
+            keywords: ['video', 'video pro', 'tournage video', 'montage video', 'format video', 'duree video', 'reels', 'clip', 'tarif video', 'tournage', 'videaste', 'filmer'],
+            response: 'FA Genesis collabore avec plusieurs vid\u00e9astes ind\u00e9pendants.\n\nChaque vid\u00e9aste fixe librement son propre tarif et le contenu de sa prestation (format, dur\u00e9e, nombre de vid\u00e9os, montage...) selon votre projet \u2014 il n\u2019y a pas de forfait impos\u00e9 par FA Genesis.\n\nPaiement possible en plusieurs fois selon la prestation choisie.\nParcourez l\u2019annuaire pour comparer les profils et leurs tarifs, ou demandez un devis personnalis\u00e9 pour un besoin sp\u00e9cifique.',
             quickReplies: ['Demander un devis', 'Voir les offres'],
             link: { url: 'contact.html?objet=devis&service=video', label: 'Demander un devis vid\u00e9o' }
         },
         {
             id: 'marketing_detail',
             category: 'services',
-            keywords: ['marketing', 'marketing express', 'marketing strategy', 'marketing impact', 'strategie marketing', 'analyse marketing', 'positionnement marketing', 'branding', 'audience', 'digital', 'conseil marketing', 'communication digitale'],
-            response: 'FA Genesis collabore avec plusieurs sp\u00e9cialistes marketing ind\u00e9pendants.\n\nLe tarif d\u00e9pend du besoin (analyse, positionnement, strat\u00e9gie, plan de publication...) et du prestataire s\u00e9lectionn\u00e9 \u2014 chacun fixe librement son tarif.\n\nPrestations possibles :\n\u2022 Analyse de votre projet et de votre audience cible\n\u2022 Positionnement, message, branding\n\u2022 Diagnostic approfondi + plan de publication\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
+            keywords: ['marketing', 'strategie marketing', 'analyse marketing', 'positionnement marketing', 'branding', 'audience', 'digital', 'conseil marketing', 'communication digitale'],
+            response: 'FA Genesis collabore avec plusieurs sp\u00e9cialistes marketing ind\u00e9pendants.\n\nChaque prestataire fixe librement son propre tarif et le contenu de sa prestation (analyse, positionnement, strat\u00e9gie, plan de publication...) selon votre besoin \u2014 il n\u2019y a pas de forfait impos\u00e9 par FA Genesis.\n\nPaiement possible en plusieurs fois selon la prestation choisie.\nParcourez l\u2019annuaire pour comparer les profils et leurs tarifs, ou demandez un devis personnalis\u00e9 pour un besoin sp\u00e9cifique.',
             quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
             link: { url: 'app.html#prestataires', label: 'Voir les prestations marketing' }
         },
         {
             id: 'media_detail',
             category: 'services',
-            keywords: ['media', 'media visibility', 'media impact', 'media premium', 'media promotion', 'publication media', 'presse', 'article', 'credibilite media', 'post media', 'story media', 'stories', 'publication'],
-            response: 'FA Genesis collabore avec plusieurs professionnels m\u00e9dia ind\u00e9pendants (publication sur m\u00e9dias cr\u00e9dibles).\n\nLe tarif d\u00e9pend du nombre de publications, de la dur\u00e9e de la campagne et du prestataire s\u00e9lectionn\u00e9 \u2014 chacun fixe librement son tarif.\n\nPrestations possibles :\n\u2022 Publication (posts / stories) sur un m\u00e9dia cr\u00e9dible\n\u2022 Brief en amont pour cadrer le message\n\u2022 Strat\u00e9gie de visibilit\u00e9 sur le long terme\n\nGagnez en cr\u00e9dibilit\u00e9 gr\u00e2ce \u00e0 des publications sur des m\u00e9dias reconnus.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
+            keywords: ['media', 'publication media', 'presse', 'article', 'credibilite media', 'post media', 'story media', 'stories', 'publication'],
+            response: 'FA Genesis collabore avec plusieurs professionnels m\u00e9dia ind\u00e9pendants (publication sur m\u00e9dias cr\u00e9dibles).\n\nChaque prestataire fixe librement son propre tarif et le contenu de sa prestation (nombre de publications, dur\u00e9e de la campagne...) selon votre projet \u2014 il n\u2019y a pas de forfait impos\u00e9 par FA Genesis.\n\nPaiement possible en plusieurs fois selon la prestation choisie.\nParcourez l\u2019annuaire pour comparer les profils et leurs tarifs, ou demandez un devis personnalis\u00e9 pour un besoin sp\u00e9cifique.',
             quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
             link: { url: 'app.html#prestataires', label: 'Voir les prestations m\u00e9dia' }
         },
