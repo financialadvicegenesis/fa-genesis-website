@@ -263,7 +263,7 @@
             category: 'meta',
             keywords: ['bonjour', 'salut', 'hello', 'bonsoir', 'hey', 'coucou', 'yo', 'allo', 'bsr', 'bjr'],
             response: 'Bonjour ! Bienvenue chez FA Genesis. Comment puis-je vous aider aujourd\u2019hui ?',
-            quickReplies: ['C\u2019est quoi FA Genesis ?', 'Voir les offres', 'Contacter l\u2019\u00e9quipe'],
+            quickReplies: ['C\u2019est quoi FA Genesis ?', 'Voir les offres', 'Actualit\u00e9s', 'Contacter l\u2019\u00e9quipe'],
             link: null
         },
         {
@@ -673,6 +673,7 @@
         'Paiement': 'Comment fonctionne le paiement ?',
         'Espace client': 'Comment acc\u00e9der \u00e0 mon espace client ?',
         'Contact': 'Comment vous contacter ?',
+        'Actualités': 'Quelles sont vos actualités ?',
         'Devenir prestataire': 'Comment devenir prestataire ?',
         'Comment sont pay\u00e9s les prestataires ?': 'Comment fonctionne le paiement prestataire ?',
         'Voir la FAQ': '__FAQ_REDIRECT__',
@@ -1133,7 +1134,7 @@
                 if (!chatInitialized) {
                     addBotMessage(
                         CHATBOT_CONFIG.welcomeMessage,
-                        ['C\u2019est quoi FA Genesis ?', 'Voir les offres', 'Contacter l\u2019\u00e9quipe'],
+                        ['C\u2019est quoi FA Genesis ?', 'Voir les offres', 'Actualit\u00e9s', 'Contacter l\u2019\u00e9quipe'],
                         null
                     );
                     chatInitialized = true;
