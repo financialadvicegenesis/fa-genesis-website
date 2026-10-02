@@ -524,7 +524,7 @@
         {
             id: 'partner_badges',
             category: 'espace_prestataire',
-            keywords: ['badge prestataire', 'bronze argent or elite', 'niveau prestataire', 'progression prestataire', 'classement prestataire', 'badge genesis', 'monter en grade', 'statut prestataire'],
+            keywords: ['badge', 'badges', 'bronze', 'elite', 'badge prestataire', 'bronze argent or elite', 'niveau prestataire', 'progression prestataire', 'classement prestataire', 'badge genesis', 'monter en grade', 'statut prestataire'],
             response: 'Chaque prestataire progresse \u00e0 travers 4 badges GENESIS \ud83c\udfc6 : Bronze \u2192 Argent \u2192 Or \u2192 \u00c9lite. La progression d\u00e9pend de votre activit\u00e9 sur la plateforme (missions r\u00e9alis\u00e9es, avis clients...). Un badge plus \u00e9lev\u00e9 am\u00e9liore votre visibilit\u00e9 dans l\u2019annuaire aupr\u00e8s des clients.',
             quickReplies: ['Devenir prestataire', 'Comment sont pay\u00e9s les prestataires ?'],
             link: null
