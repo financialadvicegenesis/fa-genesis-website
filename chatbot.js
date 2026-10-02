@@ -30,7 +30,12 @@
         {
             id: 'what_is_fa_genesis',
             category: 'general',
-            keywords: ['c\'est quoi', 'qu\'est-ce que', 'qu est ce', 'financial advice', 'fa genesis', 'genesis c\'est', 'qui etes', 'qui vous', 'c est quoi', 'votre entreprise', 'votre societe', 'presentez', 'a propos'],
+            // 'genesis' seul : corrige "explique moi GENESIS" (sans match avant ce mot-clé,
+            // aucune autre phrase ne couvrait une mention isolée de la marque). Risque mineur
+            // accepté : comme ce topic est le premier du tableau, il gagne les égalités de score
+            // (ex. "payer sur genesis" égalité avec payment_how) — jugé acceptable face au gain
+            // (c'est LE topic "qu'est-ce que GENESIS", une mention de la marque y est pertinente).
+            keywords: ['genesis', 'c\'est quoi', 'qu\'est-ce que', 'qu est ce', 'financial advice', 'fa genesis', 'genesis c\'est', 'qui etes', 'qui vous', 'c est quoi', 'votre entreprise', 'votre societe', 'presentez', 'a propos'],
             response: 'Financial Advice Genesis est une plateforme qui met en relation des clients avec des prestataires ind\u00e9pendants (photographes, vid\u00e9astes, sp\u00e9cialistes marketing, professionnels m\u00e9dia...) pour donner vie \u00e0 leurs projets. Le paiement est s\u00e9curis\u00e9 gr\u00e2ce \u00e0 GENESIS SAFE\u2122.',
             quickReplies: ['Voir les prestations', 'Comment \u00e7a marche ?', 'Contacter l\u2019\u00e9quipe'],
             link: null
