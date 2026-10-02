@@ -500,6 +500,58 @@
             response: 'Si vous avez un probl\u00e8me d\u2019inscription ou n\u2019avez pas re\u00e7u votre email de confirmation :\n\n1\ufe0f\u20e3 V\u00e9rifiez vos spams / courriers ind\u00e9sirables\n2\ufe0f\u20e3 Attendez 5 \u00e0 10 minutes\n3\ufe0f\u20e3 Si rien apr\u00e8s 30 minutes, contactez-nous \u00e0 contact@fagenesis.com avec l\u2019email utilis\u00e9\n\nNous cr\u00e9erons votre compte manuellement si n\u00e9cessaire.',
             quickReplies: ['Contacter l\u2019\u00e9quipe'],
             link: null
+        },
+
+        // ===================== ESPACE CLIENT \u2014 FID\u00c9LIT\u00c9 & NIVEAUX =====================
+        {
+            id: 'client_loyalty_qg',
+            category: 'espace_client',
+            keywords: ['points qg', 'niveau genesis', 'gamification', 'recompense', 'fidelite', 'explorateur', 'createur', 'xp', 'monter de niveau', 'programme fidelite', 'avantages niveau', 'parrainage'],
+            response: 'Chaque action sur GENESIS (r\u00e9servation, avis laiss\u00e9, profil compl\u00e9t\u00e9...) vous fait gagner des \u00ab\u00a0Points QG\u00a0\u00bb \ud83c\udfdb\ufe0f et progresser dans les niveaux GENESIS (Explorateur, Cr\u00e9ateur et au-del\u00e0). Plus vous montez, plus vous d\u00e9bloquez d\u2019avantages exclusifs, comme le programme de parrainage. Votre niveau et votre progression sont visibles directement sur votre page d\u2019accueil, dans votre espace client.',
+            quickReplies: ['Espace client', 'Voir les prestations'],
+            link: { url: 'login.html', label: 'Voir mon niveau GENESIS' }
+        },
+
+        // ===================== ESPACE PRESTATAIRE =====================
+        {
+            id: 'become_partner',
+            category: 'espace_prestataire',
+            keywords: ['devenir prestataire', 'rejoindre en tant que prestataire', 'inscription prestataire', 'proposer mes services', 'candidater prestataire', 'travailler avec vous', 'etre prestataire', 'creer profil prestataire', 'rejoindre genesis'],
+            response: 'Pour devenir prestataire GENESIS, cr\u00e9ez votre profil en quelques minutes : pr\u00e9sentez votre activit\u00e9, votre zone d\u2019intervention et votre portfolio. Une fois votre profil v\u00e9rifi\u00e9 par notre \u00e9quipe, vous appara\u00eetrez dans l\u2019annuaire et pourrez recevoir des demandes de mission directement depuis votre tableau de bord.',
+            quickReplies: ['Comment sont pay\u00e9s les prestataires ?', 'Contacter l\u2019\u00e9quipe'],
+            link: { url: 'partner-register.html', label: 'Devenir prestataire' }
+        },
+        {
+            id: 'partner_badges',
+            category: 'espace_prestataire',
+            keywords: ['badge prestataire', 'bronze argent or elite', 'niveau prestataire', 'progression prestataire', 'classement prestataire', 'badge genesis', 'monter en grade', 'statut prestataire'],
+            response: 'Chaque prestataire progresse \u00e0 travers 4 badges GENESIS \ud83c\udfc6 : Bronze \u2192 Argent \u2192 Or \u2192 \u00c9lite. La progression d\u00e9pend de votre activit\u00e9 sur la plateforme (missions r\u00e9alis\u00e9es, avis clients...). Un badge plus \u00e9lev\u00e9 am\u00e9liore votre visibilit\u00e9 dans l\u2019annuaire aupr\u00e8s des clients.',
+            quickReplies: ['Devenir prestataire', 'Comment sont pay\u00e9s les prestataires ?'],
+            link: null
+        },
+        {
+            id: 'partner_payout_international',
+            category: 'espace_prestataire',
+            keywords: ['paiement prestataire', 'etre paye', 'versement prestataire', 'stripe wise', 'virement international', 'recevoir argent prestataire', 'portefeuille genesis', 'wallet', 'commission', 'combien garde genesis', 'frais plateforme'],
+            response: 'Vos revenus sont centralis\u00e9s dans votre Portefeuille GENESIS \ud83d\udcb3, aliment\u00e9 \u00e0 chaque mission valid\u00e9e par un client (gr\u00e2ce \u00e0 GENESIS SAFE\u2122). Vous pouvez ensuite demander un versement vers votre compte via Stripe ou Wise \u2014 Wise permettant de recevoir vos fonds partout dans le monde, m\u00eame hors zone euro. GENESIS pr\u00e9l\u00e8ve une commission unique de 5\u00a0% sur chaque mission, quel que soit votre badge.',
+            quickReplies: ['Devenir prestataire', 'Contacter l\u2019\u00e9quipe'],
+            link: null
+        },
+        {
+            id: 'partner_quotes_contracts',
+            category: 'espace_prestataire',
+            keywords: ['devis prestataire', 'contrat prestataire', 'envoyer devis', 'generer contrat', 'proposition client', 'faire un devis', 'signer contrat', 'contrat mission'],
+            response: 'Depuis votre tableau de bord prestataire, vous pouvez r\u00e9pondre \u00e0 une demande client avec un devis personnalis\u00e9, puis g\u00e9n\u00e9rer et faire signer le contrat de mission directement dans l\u2019app \u2014 en un clic, sans aller-retour de documents par e-mail. Une fois accept\u00e9, le client paie via GENESIS SAFE\u2122 et vous pouvez d\u00e9marrer la mission en toute s\u00e9curit\u00e9.',
+            quickReplies: ['Devenir prestataire', 'Comment sont pay\u00e9s les prestataires ?'],
+            link: null
+        },
+        {
+            id: 'jeremie_ai',
+            category: 'espace_prestataire',
+            keywords: ['jeremie', 'assistant ia prestataire', 'conseiller ia', 'chatbot prestataire', 'ia personnelle', 'coach prestataire', 'assistant genesis'],
+            response: 'J\u00e9r\u00e9mie est l\u2019assistant IA personnel disponible dans l\u2019espace prestataire \ud83e\udd16 \u2014 il vous accompagne au quotidien\u00a0: conseils pour progresser dans les niveaux GENESIS, aide \u00e0 la r\u00e9daction de r\u00e9ponses clients, et orientation dans les fonctionnalit\u00e9s de votre tableau de bord. Il est accessible \u00e0 tout moment depuis votre espace, une fois connect\u00e9.',
+            quickReplies: ['Devenir prestataire', 'Espace client'],
+            link: null
         }
     ];
 
@@ -518,6 +570,8 @@
         'Paiement': 'Comment fonctionne le paiement ?',
         'Espace client': 'Comment acc\u00e9der \u00e0 mon espace client ?',
         'Contact': 'Comment vous contacter ?',
+        'Devenir prestataire': 'Comment devenir prestataire ?',
+        'Comment sont pay\u00e9s les prestataires ?': 'Comment fonctionne le paiement prestataire ?',
         'Voir la FAQ': '__FAQ_REDIRECT__',
         'Oui, transmettre ma question': '__ESCALATION__',
         'Passer une commande': 'Comment passer une commande ?',
