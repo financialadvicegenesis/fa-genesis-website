@@ -18579,7 +18579,8 @@ function _ptnrRenderMissionsList(){
       html += '<div class="dispatch-card new-card" id="pdisp-'+d.id+'" style="margin-bottom:10px;border:none;background:#1a1a1a;">';
       html += '<div class="dispatch-badge" style="background:rgba(255,200,0,0.15);color:var(--yellow);"><span class="dispatch-badge-dot" style="background:var(--yellow);"></span>Commande payée</div>';
       html += '<div class="dispatch-title">'+(orderInfo.client_name||'Client')+' — '+(orderInfo.product_name||'Prestation')+'</div>';
-      html += '<div class="dispatch-meta">Acompte perçu : '+(orderInfo.deposit_amount||'?')+' €</div>';
+      var _depositLabel = orderInfo.payment_tier === 'small' ? 'Acompte sécurisé (carte réservée)' : 'Acompte perçu';
+      html += '<div class="dispatch-meta">'+_depositLabel+' : '+(orderInfo.deposit_amount||'?')+' €</div>';
       html += '<div style="font-size:12px;color:#aaa;margin:6px 0 12px;">Vous avez 24h pour accepter ou refuser. En cas de refus, le client est automatiquement remboursé.</div>';
       html += '<div style="display:flex;gap:10px;">';
       html += '<button class="dispatch-claim-btn" style="flex:1;" onclick="_ptnrAcceptDispatch(\''+d.id+'\',this)"><i class="fa-solid fa-check"></i> ACCEPTER</button>';

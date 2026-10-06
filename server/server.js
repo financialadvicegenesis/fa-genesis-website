@@ -499,7 +499,6 @@ function saveDispatches(data) {
     catch(e) { console.error('[DISPATCH] Erreur sauvegarde:', e); }
     persistentStore.persistToCloud('dispatches', data).catch(function(e) {});
 }
-var _dispatchLocks = {}; // verrou en mémoire contre les race conditions
 
 // ── Demandes directes client → partenaire (marketplace, remplace le dispatch broadcast) ──
 function loadPartnerRequests() {
@@ -1232,7 +1231,8 @@ function requestPartnerReviews(clientEmail, acceptedDispatches) {
 }
 
 // Commande "prestation partenaire" (marketplace) : le client a déjà choisi un partenaire précis,
-// donc la mission est créée directement acceptée (pas de dispatch ouvert à réclamation).
+// donc la mission est assignée directement à lui, en attente de son acceptation (pas de dispatch
+// ouvert à réclamation par d'autres partenaires) — voir pending_acceptance ci-dessous.
 function createPartnerServiceDispatch(order) {
     try {
         if (!order || order.product_type !== 'partner_service' || !order.partner_id) return null;
@@ -6374,6 +6374,7 @@ app.get('/api/partner/dispatches/pending', authenticatePartner, async (req, res)
                     product_name: order.product_name,
                     deposit_amount: order.deposit_amount,
                     total_price: order.total_price,
+                    payment_tier: order.payment_tier,
                     client_name: order.client_info ? ((order.client_info.first_name || '') + ' ' + (order.client_info.last_name || '')).trim() : 'Client'
                 } : null
             });
@@ -17432,174 +17433,6 @@ app.get('/api/partner/dispatches/count', authenticatePartner, function(req, res)
         res.json({ count: count });
     } catch(e) {
         res.status(500).json({ error: 'Erreur' });
-    }
-});
-
-// POST /api/partner/dispatches/:id/claim — prendre en charge (premier arrivé = servi)
-app.post('/api/partner/dispatches/:id/claim', authenticatePartner, function(req, res) {
-    var dispatchId = req.params.id;
-    if (_dispatchLocks[dispatchId]) {
-        return res.status(409).json({ error: 'Mission en cours de traitement. Réessayez dans un instant.' });
-    }
-    _dispatchLocks[dispatchId] = true;
-    try {
-        var dispatches = loadDispatches();
-        var idx = dispatches.findIndex(function(d) { return d.id === dispatchId; });
-        if (idx === -1) {
-            delete _dispatchLocks[dispatchId];
-            return res.status(404).json({ error: 'Mission introuvable' });
-        }
-        var dispatch = dispatches[idx];
-        var isPendingAcc = dispatch.status === 'pending_acceptance';
-        if (dispatch.status !== 'open' && !isPendingAcc) {
-            delete _dispatchLocks[dispatchId];
-            return res.status(409).json({ taken: true, error: 'Cette mission a déjà été prise en charge par un autre partenaire.' });
-        }
-        if (dispatch.partner_type !== req.partner.partner_type) {
-            delete _dispatchLocks[dispatchId];
-            return res.status(403).json({ error: 'Cette mission ne correspond pas à votre domaine.' });
-        }
-
-        var partnerName = req.body.partner_name || req.partner.prenom || req.partner.email;
-        var claimMessage = req.body.claim_message || '';
-        var proposedStart = req.body.proposed_start || null;
-        var profileId = req.body.profile_id || null;
-
-        dispatches[idx].status = isPendingAcc ? 'accepted' : 'taken';
-        dispatches[idx].claimed_by_name = partnerName;
-        dispatches[idx].claimed_by_profile = profileId;
-        dispatches[idx].claimed_by_partner_id = req.partner.id;
-        dispatches[idx].claimed_at = new Date().toISOString();
-        dispatches[idx].claim_message = claimMessage;
-        dispatches[idx].proposed_start = proposedStart;
-        if (isPendingAcc) dispatches[idx].accepted_at = new Date().toISOString();
-        saveDispatches(dispatches);
-
-        // Créer l'assignation partenaire pour que le projet apparaisse dans son espace
-        var assignments = loadPartnerAssignments();
-        assignments.push({
-            id: 'ASG-' + uuidv4().split('-')[0],
-            partner_id: req.partner.id,
-            partner_email: req.partner.email,
-            partner_type: req.partner.partner_type,
-            order_id: dispatch.order_id,
-            assigned_at: new Date().toISOString(),
-            assigned_by: 'partner-claim',
-            status: 'active',
-            notes: 'Mission prise en charge par ' + partnerName + (proposedStart ? ' — Démarrage proposé : ' + proposedStart : ''),
-            dispatch_id: dispatchId,
-            sub_profile_name: partnerName
-        });
-        savePartnerAssignments(assignments);
-
-        // Si la mission était en attente d'acceptation, déclencher le versement de l'acompte
-        if (isPendingAcc) {
-            processDispatchPayout(dispatches[idx], 'deposit').catch(function(e) { console.error('[PAYOUT] Erreur acompte claim:', e); });
-        }
-
-        delete _dispatchLocks[dispatchId];
-        var claimMsg = isPendingAcc ? 'Mission acceptée ! Votre acompte est en cours de versement.' : 'Mission prise en charge avec succès !';
-        res.json({ success: true, message: claimMsg });
-    } catch(e) {
-        delete _dispatchLocks[dispatchId];
-        console.error('[DISPATCH] Erreur claim:', e);
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
-
-// POST /api/partner/dispatches/:id/accept — accepter explicitement une mission (pending_acceptance → accepted)
-app.post('/api/partner/dispatches/:id/accept', authenticatePartner, function(req, res) {
-    var dispatchId = req.params.id;
-    if (_dispatchLocks[dispatchId]) {
-        return res.status(409).json({ error: 'Mission en cours de traitement. Réessayez dans un instant.' });
-    }
-    _dispatchLocks[dispatchId] = true;
-    try {
-        var dispatches = loadDispatches();
-        var idx = dispatches.findIndex(function(d) { return d.id === dispatchId; });
-        if (idx === -1) { delete _dispatchLocks[dispatchId]; return res.status(404).json({ error: 'Mission introuvable' }); }
-
-        var dispatch = dispatches[idx];
-        if (dispatch.status !== 'pending_acceptance') {
-            delete _dispatchLocks[dispatchId];
-            return res.status(409).json({ error: 'Cette mission n\'est plus en attente d\'acceptation (statut: ' + dispatch.status + ').' });
-        }
-        var isDirectAssignment = dispatch.claimed_by_partner_id || dispatch.partner_id;
-        if (isDirectAssignment) {
-            // Mission assignée à un partenaire spécifique : seul ce partenaire peut l'accepter
-            var assignedTo = dispatch.claimed_by_partner_id || dispatch.partner_id;
-            if (assignedTo !== req.partner.id) {
-                delete _dispatchLocks[dispatchId];
-                return res.status(403).json({ error: 'Cette mission vous a été assignée à un autre prestataire.' });
-            }
-        } else if (dispatch.partner_type && dispatch.partner_type !== req.partner.partner_type) {
-            // Mission ouverte : vérifier le type de partenaire
-            delete _dispatchLocks[dispatchId];
-            return res.status(403).json({ error: 'Cette mission ne correspond pas à votre domaine.' });
-        }
-
-        var partnerName = req.partner.prenom || req.partner.email;
-        dispatches[idx].status = 'accepted';
-        dispatches[idx].claimed_by_name = partnerName;
-        dispatches[idx].claimed_by_partner_id = req.partner.id;
-        dispatches[idx].claimed_at = new Date().toISOString();
-        dispatches[idx].accepted_at = new Date().toISOString();
-        saveDispatches(dispatches);
-
-        var assignments = loadPartnerAssignments();
-        assignments.push({
-            id: 'ASG-' + uuidv4().split('-')[0],
-            partner_id: req.partner.id,
-            partner_email: req.partner.email,
-            partner_type: req.partner.partner_type,
-            order_id: dispatch.order_id,
-            assigned_at: new Date().toISOString(),
-            assigned_by: 'partner-accept',
-            status: 'active',
-            notes: 'Mission acceptée par ' + partnerName,
-            dispatch_id: dispatchId,
-            sub_profile_name: partnerName
-        });
-        savePartnerAssignments(assignments);
-
-        var _claimOrder = loadOrders().find(function(o) { return o.id === dispatch.order_id; });
-        if (!_claimOrder || _claimOrder.payment_tier !== 'small') {
-            processDispatchPayout(dispatches[idx], 'deposit').catch(function(e) { console.error('[PAYOUT] Erreur acompte accept:', e); });
-        }
-
-        delete _dispatchLocks[dispatchId];
-        res.json({ success: true, message: 'Mission acceptée ! Votre acompte est en cours de versement.' });
-    } catch(e) {
-        delete _dispatchLocks[dispatchId];
-        console.error('[DISPATCH] Erreur accept:', e);
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
-
-// POST /api/partner/dispatches/:id/decline — refuser une mission (reste visible pour les autres partenaires)
-app.post('/api/partner/dispatches/:id/decline', authenticatePartner, function(req, res) {
-    try {
-        var dispatches = loadDispatches();
-        var idx = dispatches.findIndex(function(d) { return d.id === req.params.id; });
-        if (idx === -1) return res.status(404).json({ error: 'Mission introuvable' });
-
-        if (dispatches[idx].partner_type !== req.partner.partner_type) {
-            return res.status(403).json({ error: 'Cette mission ne correspond pas à votre domaine.' });
-        }
-        if (dispatches[idx].status !== 'pending_acceptance') {
-            return res.status(409).json({ error: 'Statut invalide pour refuser cette mission.' });
-        }
-
-        var declined = dispatches[idx].declined_partners || [];
-        if (declined.indexOf(req.partner.id) === -1) declined.push(req.partner.id);
-        dispatches[idx].declined_partners = declined;
-        saveDispatches(dispatches);
-
-        console.log('[DISPATCH] Refus de ' + req.partner.email + ' pour mission ' + req.params.id);
-        res.json({ success: true, message: 'Mission refusée.' });
-    } catch(e) {
-        console.error('[DISPATCH] Erreur decline:', e);
-        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
