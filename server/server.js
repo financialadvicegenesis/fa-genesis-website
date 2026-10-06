@@ -744,6 +744,35 @@ function releasePendingWalletEntry(partnerId, dispatchId, stage, fallbackAmount)
     }
 }
 
+// Annuler une entrée pending (mission refusée / fenêtre d'acceptation expirée) : contrairement à
+// releasePendingWalletEntry, l'argent ne part PAS vers balance_available (le partenaire ne touchera
+// jamais cette somme, elle est remboursée au client) — on la retire simplement de balance_pending et
+// on marque la transaction 'cancelled' pour qu'elle reste visible dans l'historique sans gonfler
+// le total "En attente" affiché au partenaire.
+function cancelPendingWalletEntry(partnerId, dispatchId, stage) {
+    try {
+        var wallets = loadWallets();
+        var idx = wallets.findIndex(function(w) { return w.partner_id === partnerId; });
+        if (idx === -1) return false;
+        var txns = wallets[idx].transactions || [];
+        var txnIdx = txns.findIndex(function(t) {
+            return t.dispatch_id === dispatchId && t.stage === stage && t.status === 'pending';
+        });
+        if (txnIdx === -1) return false;
+        var amount = txns[txnIdx].amount || 0;
+        txns[txnIdx].status = 'cancelled';
+        txns[txnIdx].cancelled_at = new Date().toISOString();
+        wallets[idx].transactions = txns;
+        wallets[idx].balance_pending = parseFloat(Math.max(0, (wallets[idx].balance_pending || 0) - amount).toFixed(2));
+        saveWallets(wallets);
+        console.log('[WALLET] Cancelled pending ' + amount + '€ → ' + partnerId + ' (dispatch ' + dispatchId + ' ' + stage + ', refusée/expirée)');
+        return true;
+    } catch(e) {
+        console.error('[WALLET] Erreur cancelPendingWalletEntry:', e);
+        return false;
+    }
+}
+
 function loadPromotions() {
     try {
         if (!fs.existsSync(PROMOTIONS_FILE)) return [];
@@ -3424,6 +3453,77 @@ async function checkAutoPaymentRelease() {
 // Premier passage 2 min après démarrage, puis toutes les heures
 setTimeout(checkAutoPaymentRelease, 120000);
 setInterval(checkAutoPaymentRelease, 60 * 60 * 1000);
+
+// Fait respecter la fenêtre de 24h annoncée au partenaire ET au client ("Acceptez ou refusez
+// dans les 24h" / "En cas de refus, le client est automatiquement remboursé") pour les dispatches
+// en 'pending_acceptance' : sans ce job, un partenaire qui ne répond jamais laissait l'argent du
+// client bloqué indéfiniment, sans remboursement automatique (bug trouvé à l'audit — aucun code
+// existant ne couvrait ce cas, checkAutoPaymentRelease ne gère que le délai de 7j post-livraison).
+async function checkExpiredPendingAcceptance() {
+    try {
+        var now = Date.now();
+        var windowMs = 24 * 60 * 60 * 1000;
+        var dispatches = loadDispatches();
+
+        for (var i = 0; i < dispatches.length; i++) {
+            var disp = dispatches[i];
+            if (disp.status !== 'pending_acceptance') continue;
+            if (!disp.created_at) continue;
+            if (now - new Date(disp.created_at).getTime() < windowMs) continue;
+
+            try {
+                console.log('[AUTO-DECLINE] Fenêtre 24h expirée — refus automatique du dispatch', disp.id);
+
+                var _freshDispatches = loadDispatches();
+                var _idx = _freshDispatches.findIndex(function(d) { return d.id === disp.id; });
+                if (_idx === -1 || _freshDispatches[_idx].status !== 'pending_acceptance') continue; // déjà traité entre-temps
+
+                _freshDispatches[_idx] = Object.assign({}, _freshDispatches[_idx], {
+                    status: 'declined',
+                    mission_status: 'declined',
+                    declined_at: new Date().toISOString(),
+                    declined_reason: 'auto_expired_24h'
+                });
+                saveDispatches(_freshDispatches);
+
+                var _partnerId = disp.partner_id || disp.claimed_by_partner_id;
+                cancelPendingWalletEntry(_partnerId, disp.id, 'deposit');
+
+                var order = getOrderById(disp.order_id);
+                var refunded = false;
+                if (order) {
+                    refunded = await refundClientOrder(order);
+                    if (order.client_info && order.client_info.email) {
+                        var refundMsg = refunded
+                            ? 'Le prestataire n\'a pas répondu dans le délai de 24h. Vous serez remboursé sous 3 à 5 jours ouvrés.'
+                            : 'Le prestataire n\'a pas répondu dans le délai de 24h. Notre équipe vous contactera pour le remboursement.';
+                        notifyUser(order.client_info.email, 'client', 'mission_declined',
+                            '⏱️ Délai expiré — mission refusée',
+                            refundMsg,
+                            '/app.html#client:order:' + order.id);
+                    }
+                }
+
+                var _partner = getPartnerById(_partnerId);
+                var _partnerEmail = _partner && (_partner.email || _partner.contact_email);
+                if (_partnerEmail) {
+                    notifyUser(_partnerEmail, 'partner', 'mission_declined',
+                        '⏱️ Mission expirée',
+                        'Vous n\'avez pas répondu dans le délai de 24h — la mission a été automatiquement refusée et le client remboursé.',
+                        '#partner:dispatches');
+                }
+
+                console.log('[AUTO-DECLINE] Dispatch', disp.id, 'auto-refusé — remboursé:', refunded);
+            } catch(innerErr) {
+                console.error('[AUTO-DECLINE] Erreur pour dispatch', disp.id, ':', innerErr.message);
+            }
+        }
+    } catch(e) {
+        console.error('[AUTO-DECLINE] Erreur globale:', e.message);
+    }
+}
+setTimeout(checkExpiredPendingAcceptance, 180000);
+setInterval(checkExpiredPendingAcceptance, 60 * 60 * 1000);
 
 // ============================================================
 // HELPERS - CALCUL JOUR COURANT (ACCOMPAGNEMENT)
@@ -6352,6 +6452,11 @@ app.post('/api/partner/dispatches/:id/decline-mission', authenticatePartner, asy
             declined_at: new Date().toISOString()
         });
         saveDispatches(dispatches);
+
+        // Retirer l'acompte affiché comme "En attente" dans le wallet du prestataire : il ne la
+        // touchera jamais (remboursée au client ci-dessous) — sans ça, une entrée pending fantôme
+        // restait indéfiniment et gonflait le total "En attente" affiché (bug trouvé à l'audit).
+        cancelPendingWalletEntry(partnerId, disp.id, 'deposit');
 
         var order = getOrderById(disp.order_id);
         var refunded = false;
