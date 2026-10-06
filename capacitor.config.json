@@ -19,7 +19,6 @@
     "contentInset": "never",
     "allowsLinkPreview": false,
     "scrollEnabled": true,
-    "limitsNavigationsToAppBoundDomains": true,
     "backgroundColor": "#000000"
   },
   "android": {

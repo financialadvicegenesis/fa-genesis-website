@@ -68,6 +68,24 @@ workflows:
           )
           File.write('ios/App/App/AppDelegate.swift', content)
           RUBYEOF
+      - name: Clear app icon badge on foreground (parity with Android onResume)
+        # Équivalent iOS de MainActivity.onResume() → BadgeUtils.setBadgeCount(this, 0) côté Android.
+        # Sans ça, le badge posé par un push (aps.badge, voir server.js _computeNotificationBadgeCount)
+        # restait affiché indéfiniment sur l'icône après ouverture/lecture des messages dans l'app —
+        # TokenStore.refreshBadge() (mobile-bridge.js) est un plugin natif Android-only (TokenStorePlugin.java)
+        # et no-op silencieusement sur iOS, donc rien d'autre ne remet le badge iOS à zéro. Couvre le cas
+        # dominant (l'utilisateur rouvre/revient sur l'app) ; le cas plus rare "lire un message sans jamais
+        # quitter l'app au premier plan" resterait obsolète jusqu'au prochain cycle arrière-plan/premier plan
+        # — accepté comme limitation mineure plutôt que construire un plugin natif dédié pour ce seul cas.
+        script: |
+          ruby << 'RUBYEOF'
+          content = File.read('ios/App/App/AppDelegate.swift')
+          content = content.sub(
+            "func applicationDidBecomeActive(_ application: UIApplication) {\n        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.\n    }",
+            "func applicationDidBecomeActive(_ application: UIApplication) {\n        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.\n        UIApplication.shared.applicationIconBadgeNumber = 0\n    }"
+          )
+          File.write('ios/App/App/AppDelegate.swift', content)
+          RUBYEOF
       - name: Add Firebase push notification bridging (AppDelegate)
         # AppDelegate.swift est régénéré à neuf (template Capacitor vanilla, ios/ gitignored) à
         # chaque build — @capacitor-firebase/messaging exige ces 3 méthodes pour transmettre les
