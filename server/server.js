@@ -5774,9 +5774,14 @@ app.post('/api/contracts/sign', function(req, res) {
             var _partner = loadPartners().find(function(p) { return p.id === b.partnerId; });
             if (_partner) {
                 var _clientDisplayName = b.signatureName || payload.email;
+                // BUG CORRIGÉ : "Retrouvez LA MISSION dans Mes livrables" laissait croire qu'une
+                // mission existait déjà — or à ce stade, seul le contrat est signé, aucune commande
+                // n'existe tant que le client n'a pas réellement payé (voir _pbEnsureOrderId() côté
+                // app.html, appelé séparément après la signature). Texte corrigé pour refléter
+                // l'état réel : le contrat (document) est consultable, le paiement reste en attente.
                 notifyUser(_partner.email, 'partner', 'contract_signed',
                     'Contrat signé par un client',
-                    _clientDisplayName + ' a signé le contrat pour : ' + b.serviceLabel + '. Retrouvez la mission dans Mes livrables.',
+                    _clientDisplayName + ' a signé le contrat pour : ' + b.serviceLabel + '. Le document est disponible dans Mes livrables — en attente de son paiement pour démarrer la mission.',
                     '#partner:contract:' + contractId
                 );
                 emailService.sendContractSignedToPartnerEmail(
