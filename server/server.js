@@ -1318,41 +1318,26 @@ function createPartnerServiceDispatch(order) {
         // (abandon, retry...), et exposer "la mission"/le document avant tout paiement réel a été
         // une source de confusion confirmée pour le prestataire (voir /api/contracts/sign). Ce
         // bloc ne s'exécute qu'une fois le paiement réellement confirmé, comme tout le reste ici.
+        // Le contrat (PDF) n'est volontairement PAS ajouté à "Mes livrables" ici : il ne doit
+        // devenir disponible qu'une fois la mission réellement ACCEPTÉE (voir
+        // /api/partner/dispatches/:id/accept-mission, qui crée ce livrable) — parcours demandé :
+        // signature+paiement → notification → le prestataire décide → acceptation → contrat
+        // disponible + prise en charge. L'exposer dès ce stade, avant toute décision du
+        // prestataire, serait la même confusion déjà corrigée une fois (voir plus haut).
         var _dispContract = loadContracts().find(function(c) { return c.order_id === order.id; });
-        if (_dispContract) {
-            try {
-                var _pLivs = loadLivrables();
-                if (!_pLivs.some(function(l) { return l.contract_id === _dispContract.id; })) {
-                    _pLivs.push({
-                        id: 'LIV-CTR-' + Date.now().toString(36).toUpperCase(),
-                        contract_id: _dispContract.id,
-                        partner_id: order.partner_id,
-                        client_email: clientEmail,
-                        order_id: order.id,
-                        name: 'Contrat — ' + (order.product_name || 'Prestation'),
-                        type: 'contract',
-                        status: 'ready',
-                        audience: 'partner',
-                        download_url: '/api/contracts/' + _dispContract.id + '/pdf',
-                        created_at: new Date().toISOString()
-                    });
-                    saveLivrables(_pLivs);
-                }
-            } catch(_le) { console.warn('[DISPATCH] Erreur création livrable contrat:', _le.message); }
-            if (_dispPartnerEmail) {
-                emailService.sendContractSignedToPartnerEmail(
-                    _dispPartnerEmail,
-                    partner && (partner.prenom || partner.firstName) || '',
-                    _dispContract.signature_name || clientPrenom,
-                    order.product_name || '',
-                    _dispContract.ref || ''
-                ).catch(function(e) { console.warn('[DISPATCH] Email contrat signé non envoyé:', e.message); });
-            }
+        if (_dispContract && _dispPartnerEmail) {
+            emailService.sendContractSignedToPartnerEmail(
+                _dispPartnerEmail,
+                partner && (partner.prenom || partner.firstName) || '',
+                _dispContract.signature_name || clientPrenom,
+                order.product_name || '',
+                _dispContract.ref || ''
+            ).catch(function(e) { console.warn('[DISPATCH] Email contrat signé non envoyé:', e.message); });
         }
         if (_dispPartnerEmail) {
             notifyUser(_dispPartnerEmail, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
                 clientPrenom + ' a réservé « ' + (order.product_name || 'votre prestation') + ' ». Le paiement est sécurisé.'
-                    + (_dispContract ? ' Le contrat signé est disponible dans Mes livrables.' : '')
+                    + (_dispContract ? ' Le contrat est signé.' : '')
                     + ' Acceptez ou refusez dans les 24h.',
                 '#partner:mission:' + dispatch.id);
         }
@@ -6568,6 +6553,35 @@ app.post('/api/partner/dispatches/:id/accept-mission', authenticatePartner, asyn
             await processDispatchPayout(dispatches[idx], 'deposit').catch(function(e) {
                 console.error('[ACCEPT_MISSION] Payout erreur:', e.message);
             });
+        }
+
+        // Rendre le contrat signé disponible dans "Mes livrables" seulement maintenant, la mission
+        // étant acceptée — parcours demandé : signature+paiement → notification → décision du
+        // prestataire → acceptation → contrat disponible + prise en charge (voir le commentaire
+        // dans createPartnerServiceDispatch sur pourquoi ce n'est pas fait plus tôt).
+        if (order) {
+            try {
+                var _amContract = loadContracts().find(function(c) { return c.order_id === order.id; });
+                if (_amContract) {
+                    var _amLivs = loadLivrables();
+                    if (!_amLivs.some(function(l) { return l.contract_id === _amContract.id; })) {
+                        _amLivs.push({
+                            id: 'LIV-CTR-' + Date.now().toString(36).toUpperCase(),
+                            contract_id: _amContract.id,
+                            partner_id: partnerId,
+                            client_email: order.client_info && order.client_info.email || '',
+                            order_id: order.id,
+                            name: 'Contrat — ' + (order.product_name || 'Prestation'),
+                            type: 'contract',
+                            status: 'ready',
+                            audience: 'partner',
+                            download_url: '/api/contracts/' + _amContract.id + '/pdf',
+                            created_at: new Date().toISOString()
+                        });
+                        saveLivrables(_amLivs);
+                    }
+                }
+            } catch(_amLe) { console.warn('[ACCEPT_MISSION] Erreur création livrable contrat:', _amLe.message); }
         }
         // Notifier le client
         if (order && order.client_info && order.client_info.email) {
