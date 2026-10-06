@@ -5911,6 +5911,61 @@ app.patch('/api/contracts/:id/set-order', function(req, res) {
 });
 
 /**
+ * GET /api/admin/diagnostic/signed-requests
+ * Lecture seule — pour diagnostiquer précisément où la chaîne casse (sans deviner) quand le
+ * prestataire voit encore "Commande acceptée" au lieu d'Accepter/Refuser après une réservation
+ * fraîche. Retourne les demandes 'signed' les plus récentes avec, pour chacune, l'état réel de
+ * chaque maillon : order_id posé ou non, commande retrouvée (et son statut de paiement), dispatch
+ * retrouvé (et son statut). Ne modifie jamais rien.
+ */
+app.get('/api/admin/diagnostic/signed-requests', authenticateAdmin, function(req, res) {
+    try {
+        var limit = parseInt(req.query.limit) || 10;
+        var requests = loadPartnerRequests()
+            .filter(function(r) { return r.status === 'signed'; })
+            .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })
+            .slice(0, limit);
+        var orders = loadOrders();
+        var dispatches = loadDispatches();
+
+        var out = requests.map(function(r) {
+            var order = r.order_id ? orders.find(function(o) { return o.id === r.order_id; }) : null;
+            var dispatch = r.order_id ? dispatches.find(function(d) { return d.order_id === r.order_id; }) : null;
+            // Si order_id est null, chercher quand même une commande plausible pour voir si elle
+            // existe mais n'a simplement jamais été reliée (sinon on ne peut pas distinguer "la
+            // commande n'existe pas" de "la commande existe mais le lien a échoué").
+            var plausibleOrder = !order ? orders.find(function(o) {
+                return o.product_type === 'partner_service' && o.partner_id === r.partner_id
+                    && o.product_name === r.service_label
+                    && o.client_info && o.client_info.email
+                    && o.client_info.email.toLowerCase() === (r.client_email || '').toLowerCase();
+            }) : null;
+            return {
+                request_id: r.id,
+                client_email: r.client_email,
+                service_label: r.service_label,
+                created_at: r.created_at,
+                contract_id: r.contract_id,
+                order_id: r.order_id || null,
+                order_found: !!order,
+                order_status: order ? order.status : null,
+                order_deposit_paid: order ? order.deposit_paid : null,
+                order_deposit_authorized: order ? order.deposit_authorized : null,
+                order_payment_tier: order ? order.payment_tier : null,
+                dispatch_found: !!dispatch,
+                dispatch_status: dispatch ? dispatch.status : null,
+                plausible_unlinked_order_id: plausibleOrder ? plausibleOrder.id : null,
+                plausible_unlinked_order_status: plausibleOrder ? plausibleOrder.status : null
+            };
+        });
+        res.json({ ok: true, requests: out });
+    } catch(e) {
+        console.error('[DIAGNOSTIC] signed-requests:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/admin/repair/link-signed-requests
  * Réparation ponctuelle : avant le correctif du bug de re-signature (voir /api/contracts/sign),
  * une demande partner_request 'signed' pouvait rester avec order_id=null pour toujours, rendant
