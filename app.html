@@ -2,6 +2,33 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<script>
+// CORRECTIF CACHE NATIF — à lire avant de toucher à nouveau app.html côté app mobile.
+// L'app native (Android, bientôt iOS) charge cette page DIRECTEMENT depuis GitHub Pages
+// (capacitor.config.json server.url), qui impose Cache-Control: max-age=600 sur TOUS les
+// fichiers sans aucun moyen de le personnaliser (confirmé : GitHub Pages ignore les en-têtes
+// Cache-Control custom). Un Service Worker avait été activé un temps dans l'app native
+// spécifiquement pour contourner ça, mais a causé un écran noir total sur au moins un
+// appareil réel (voir pwa-init.js, _isNative) — il reste donc désactivé en natif, PAR
+// CHOIX ASSUMÉ, ne pas le réactiver pour "corriger" ceci. Conséquence concrète observée :
+// un correctif tout juste déployé pouvait mettre jusqu'à 10 min à atteindre réellement le
+// téléphone d'un prestataire, sans aucun signe visible que l'ancienne version tournait
+// encore (symptôme vécu : un bug "corrigé" côté serveur semblait ne rien changer au test).
+// Solution indépendante du Service Worker : ajouter un paramètre d'URL unique à chaque
+// lancement natif. GitHub Pages (Fastly) met en cache par URL exacte, requête incluse —
+// un paramètre jamais vu est donc TOUJOURS un cache-miss garanti, sans jamais nécessiter
+// de recompiler l'app native (contrairement à une version figée dans server.url). Ne
+// s'exécute qu'une fois par lancement (redirige seulement si "_cb" est absent), et
+// uniquement en natif — le web/PWA garde sa vraie protection via le Service Worker
+// (sw.js, cache:'no-store' sur /app.html).
+try{
+  var _isNativeBoot = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  if(_isNativeBoot && window.location.search.indexOf('_cb=')===-1){
+    var _cbSep = window.location.search ? '&' : '?';
+    window.location.replace(window.location.pathname + window.location.search + _cbSep + '_cb=' + Date.now() + window.location.hash);
+  }
+}catch(e){}
+</script>
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>GENESIS</title>
