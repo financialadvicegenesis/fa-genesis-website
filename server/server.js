@@ -8339,6 +8339,17 @@ function computeMissionDisplayStatus(request, dispatch, order, livrables, hasRev
             return { key: 'pending_payment', label: 'En attente de paiement', emoji: '⏳' };
         }
     }
+    // BUG CORRIGÉ : pour une réservation directe (pb-sheet), signer le contrat ne crée pas encore
+    // de commande — celle-ci n'existe qu'une fois le paiement réellement initié (voir
+    // _pbEnsureOrderId()/_pbPayDepositStripeDirect() côté app.html). Sans ce cas, une demande
+    // 'signed' sans AUCUNE commande (contrat signé mais paiement jamais finalisé/abandonné)
+    // retombait tout en bas sur le fallback MISSION_STATUS_META.accepted — affichant "Commande
+    // acceptée" chez le prestataire pour une mission qui n'a jamais été payée ni acceptée par
+    // personne. Ne s'applique qu'à 'signed' : 'accepted'/'proposed' (flux devis) sont des étapes
+    // légitimes sans commande, avant que le client ne paie le devis proposé par le partenaire.
+    if (!order && request && request.status === 'signed') {
+        return { key: 'pending_payment', label: 'En attente de paiement', emoji: '⏳' };
+    }
     if (hasReview) return MISSION_STATUS_META.reviewed;
     // Commande terminée : client a validé OU paiement solde effectué OU status explicitement 'completed'
     if (order && (order.client_validated === true || order.balance_paid === true || order.status === 'completed')) {
