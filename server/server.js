@@ -1313,9 +1313,47 @@ function createPartnerServiceDispatch(order) {
         // étape. Ne pas dupliquer un notifyUser(..., 'partner', 'mission_pending', ...) séparé
         // chez un appelant : il ferait doublon avec celui-ci.
         var _dispPartnerEmail = partner && (partner.email || partner.contact_email);
+        // Contrat signé (réservation directe pb-sheet) : exposer le document et envoyer l'email
+        // de signature ICI, pas à la signature elle-même — un client peut signer sans jamais payer
+        // (abandon, retry...), et exposer "la mission"/le document avant tout paiement réel a été
+        // une source de confusion confirmée pour le prestataire (voir /api/contracts/sign). Ce
+        // bloc ne s'exécute qu'une fois le paiement réellement confirmé, comme tout le reste ici.
+        var _dispContract = loadContracts().find(function(c) { return c.order_id === order.id; });
+        if (_dispContract) {
+            try {
+                var _pLivs = loadLivrables();
+                if (!_pLivs.some(function(l) { return l.contract_id === _dispContract.id; })) {
+                    _pLivs.push({
+                        id: 'LIV-CTR-' + Date.now().toString(36).toUpperCase(),
+                        contract_id: _dispContract.id,
+                        partner_id: order.partner_id,
+                        client_email: clientEmail,
+                        order_id: order.id,
+                        name: 'Contrat — ' + (order.product_name || 'Prestation'),
+                        type: 'contract',
+                        status: 'ready',
+                        audience: 'partner',
+                        download_url: '/api/contracts/' + _dispContract.id + '/pdf',
+                        created_at: new Date().toISOString()
+                    });
+                    saveLivrables(_pLivs);
+                }
+            } catch(_le) { console.warn('[DISPATCH] Erreur création livrable contrat:', _le.message); }
+            if (_dispPartnerEmail) {
+                emailService.sendContractSignedToPartnerEmail(
+                    _dispPartnerEmail,
+                    partner && (partner.prenom || partner.firstName) || '',
+                    _dispContract.signature_name || clientPrenom,
+                    order.product_name || '',
+                    _dispContract.ref || ''
+                ).catch(function(e) { console.warn('[DISPATCH] Email contrat signé non envoyé:', e.message); });
+            }
+        }
         if (_dispPartnerEmail) {
             notifyUser(_dispPartnerEmail, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
-                clientPrenom + ' a réservé « ' + (order.product_name || 'votre prestation') + ' ». Le paiement est sécurisé. Acceptez ou refusez dans les 24h.',
+                clientPrenom + ' a réservé « ' + (order.product_name || 'votre prestation') + ' ». Le paiement est sécurisé.'
+                    + (_dispContract ? ' Le contrat signé est disponible dans Mes livrables.' : '')
+                    + ' Acceptez ou refusez dans les 24h.',
                 '#partner:mission:' + dispatch.id);
         }
 
@@ -5769,30 +5807,12 @@ app.post('/api/contracts/sign', function(req, res) {
         });
         saveContracts(contracts);
 
-        // Notifier le prestataire (in-app + email)
-        try {
-            var _partner = loadPartners().find(function(p) { return p.id === b.partnerId; });
-            if (_partner) {
-                var _clientDisplayName = b.signatureName || payload.email;
-                // BUG CORRIGÉ : "Retrouvez LA MISSION dans Mes livrables" laissait croire qu'une
-                // mission existait déjà — or à ce stade, seul le contrat est signé, aucune commande
-                // n'existe tant que le client n'a pas réellement payé (voir _pbEnsureOrderId() côté
-                // app.html, appelé séparément après la signature). Texte corrigé pour refléter
-                // l'état réel : le contrat (document) est consultable, le paiement reste en attente.
-                notifyUser(_partner.email, 'partner', 'contract_signed',
-                    'Contrat signé par un client',
-                    _clientDisplayName + ' a signé le contrat pour : ' + b.serviceLabel + '. Le document est disponible dans Mes livrables — en attente de son paiement pour démarrer la mission.',
-                    '#partner:contract:' + contractId
-                );
-                emailService.sendContractSignedToPartnerEmail(
-                    _partner.email,
-                    _partner.prenom || _partner.firstName || '',
-                    _clientDisplayName,
-                    b.serviceLabel,
-                    b.contractRef
-                ).catch(function(e) { console.warn('[CONTRACT] Email prestataire non envoyé:', e.message); });
-            }
-        } catch(_ne) { console.warn('[CONTRACT] Erreur notification prestataire:', _ne.message); }
+        // Pas de notification ni de livrable prestataire ici : le client peut signer sans jamais
+        // payer (abandon, retry...) — voir le diagnostic réel qui a confirmé des contrats signés
+        // sans AUCUNE commande créée. Notifier le prestataire et exposer le contrat dans "Mes
+        // livrables" à ce stade lui faisait croire qu'une mission existait alors que rien n'était
+        // payé. Les deux sont désormais déclenchés ensemble dans createPartnerServiceDispatch(),
+        // qui ne s'exécute qu'une fois le paiement réellement confirmé (voir son commentaire).
 
         // ── Créer une entrée partner_request 'signed' pour que la mission apparaisse
         // dans "Mes missions" du prestataire (même sans flux devis préalable)
@@ -5841,25 +5861,6 @@ app.post('/api/contracts/sign', function(req, res) {
                 savePartnerRequests(_prs);
             }
         } catch(_re) { console.warn('[CONTRACT] Erreur création partner_request:', _re.message); }
-
-        // ── Livrable contrat côté partenaire (visible dans ses documents de mission)
-        try {
-            var _pLivs = loadLivrables();
-            _pLivs.push({
-                id: 'LIV-CTR-' + Date.now().toString(36).toUpperCase(),
-                contract_id: contractId,
-                partner_id: b.partnerId,
-                client_email: payload.email,
-                order_id: null,
-                name: 'Contrat — ' + b.serviceLabel,
-                type: 'contract',
-                status: 'ready',
-                audience: 'partner',
-                download_url: '/api/contracts/' + contractId + '/pdf',
-                created_at: now
-            });
-            saveLivrables(_pLivs);
-        } catch(_le) { console.warn('[CONTRACT] Erreur création livrable partenaire:', _le.message); }
 
         console.log('[CONTRACT] Signé:', contractId, payload.email, b.serviceLabel);
         res.json({ ok: true, contractId: contractId });
