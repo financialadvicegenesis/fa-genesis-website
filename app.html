@@ -18548,7 +18548,18 @@ function _ptnrRenderMissionsList(){
   // 'completed' inclus pour que les missions terminées restent visibles (historique) au lieu
   // de disparaître — _ptnrRenderEngagedMissionCard affiche déjà le trophée "Projet terminé"
   // via display_status.key==='completed'/'reviewed'.
-  var engaged = items.filter(function(r){ return r.status==='signed'||r.status==='completed'; });
+  // BUG CORRIGÉ : r.status==='signed' veut seulement dire que le CLIENT a signé le contrat —
+  // ça ne dit rien sur une décision du partenaire. Dès que le paiement arrive, un dispatch
+  // 'pending_acceptance' est créé et s'affiche déjà, avec son propre bouton Accepter/Refuser,
+  // tout en haut de la liste (voir pendingDispatches plus bas) — sans cette exclusion, la MÊME
+  // mission apparaissait EN MÊME TEMPS ici comme "déjà acceptée" (frise de suivi, bouton
+  // "Prestation terminée", dépôt de livrables) alors que le partenaire n'avait encore rien
+  // décidé. 'pending_payment' exclu aussi : contrat signé mais pas encore payé, rien à montrer.
+  var engaged = items.filter(function(r){
+    if(r.status!=='signed' && r.status!=='completed') return false;
+    var k = r.display_status && r.display_status.key;
+    return k !== 'pending_acceptance' && k !== 'pending_payment';
+  });
 
   if(filterEl){
     if(!engaged.length){ filterEl.innerHTML = ''; }
