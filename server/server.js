@@ -5793,13 +5793,14 @@ app.post('/api/contracts/sign', function(req, res) {
         // dans "Mes missions" du prestataire (même sans flux devis préalable)
         try {
             var _prs = loadPartnerRequests();
-            var _existingReq = _prs.find(function(r) {
+            var _existingReqIdx = _prs.findIndex(function(r) {
                 return r.partner_id === b.partnerId
                     && r.client_email === payload.email
                     && r.status === 'signed'
+                    && !r.order_id
                     && (Date.now() - new Date(r.created_at || 0).getTime()) < 300000;
             });
-            if (!_existingReq) {
+            if (_existingReqIdx === -1) {
                 _prs.push({
                     id: 'REQ-' + Date.now() + '-' + Math.random().toString(36).substr(2,5).toUpperCase(),
                     partner_id: b.partnerId,
@@ -5815,6 +5816,23 @@ app.post('/api/contracts/sign', function(req, res) {
                     created_at: now,
                     updated_at: now
                 });
+                savePartnerRequests(_prs);
+            } else {
+                // BUG CORRIGÉ : une re-signature dans les 5 min (retry, onglet rouvert, double-tap)
+                // réutilisait l'ancienne requête SANS jamais mettre à jour son contract_id — le
+                // nouveau contractId était pourtant celui renvoyé au client et utilisé ensuite par
+                // /api/contracts/:id/set-order pour relier order_id à cette requête. Comme aucune
+                // requête stockée n'avait ce contract_id, set-order ne trouvait jamais rien et
+                // order_id restait null pour TOUJOURS — dispatchForReq ne se résolvait donc jamais
+                // dans GET /api/partner/requests, et computeMissionDisplayStatus retombait en
+                // permanence sur le statut 'accepted' (fallback), même quand le dispatch
+                // 'pending_acceptance' existait réellement : le prestataire ne pouvait alors plus
+                // jamais voir le bouton Accepter/Refuser pour cette mission. On réutilise la même
+                // requête (une seule doit exister) mais on la pointe vers le contrat le plus
+                // récent, celui que le client va effectivement utiliser pour lier la commande.
+                _prs[_existingReqIdx].contract_id = contractId;
+                _prs[_existingReqIdx].contract_signed_at = now;
+                _prs[_existingReqIdx].updated_at = now;
                 savePartnerRequests(_prs);
             }
         } catch(_re) { console.warn('[CONTRACT] Erreur création partner_request:', _re.message); }
