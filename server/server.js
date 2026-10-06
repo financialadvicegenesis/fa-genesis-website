@@ -5911,6 +5911,79 @@ app.patch('/api/contracts/:id/set-order', function(req, res) {
 });
 
 /**
+ * POST /api/admin/repair/link-signed-requests
+ * Réparation ponctuelle : avant le correctif du bug de re-signature (voir /api/contracts/sign),
+ * une demande partner_request 'signed' pouvait rester avec order_id=null pour toujours, rendant
+ * sa mission invisible du bon flux d'acceptation (toujours affichée "Commande acceptée" au lieu
+ * du vrai statut, même quand le dispatch pending_acceptance existait bel et bien). Cet endpoint
+ * retrouve, pour chaque demande encore cassée, la commande correspondante (même partenaire, même
+ * email client, même prestation, type 'partner_service', pas déjà liée à une autre demande) et
+ * comble order_id. Idempotent et sans effet si rejoué : ne touche jamais une demande qui a déjà
+ * un order_id.
+ */
+app.post('/api/admin/repair/link-signed-requests', authenticateAdmin, function(req, res) {
+    try {
+        var requests = loadPartnerRequests();
+        var orders = loadOrders();
+        var alreadyLinkedOrderIds = {};
+        requests.forEach(function(r) { if (r.order_id) alreadyLinkedOrderIds[r.order_id] = true; });
+
+        var repaired = [];
+        var unmatched = [];
+        var ambiguous = [];
+
+        requests.forEach(function(r) {
+            if (r.status !== 'signed' || r.order_id) return;
+
+            var candidates = orders.filter(function(o) {
+                return o.product_type === 'partner_service'
+                    && o.partner_id === r.partner_id
+                    && o.product_name === r.service_label
+                    && o.client_info && o.client_info.email
+                    && o.client_info.email.toLowerCase() === (r.client_email || '').toLowerCase()
+                    && o.status !== 'cancelled' && o.status !== 'refunded'
+                    && !alreadyLinkedOrderIds[o.id];
+            });
+
+            if (candidates.length === 0) {
+                unmatched.push({ request_id: r.id, client_email: r.client_email, service_label: r.service_label, signed_at: r.contract_signed_at || r.created_at });
+                return;
+            }
+            // Plusieurs candidats possibles : garder celui créé le plus proche dans le temps de la signature.
+            candidates.sort(function(a, b) {
+                return Math.abs(new Date(a.created_at) - new Date(r.contract_signed_at || r.created_at))
+                     - Math.abs(new Date(b.created_at) - new Date(r.contract_signed_at || r.created_at));
+            });
+            var match = candidates[0];
+            if (candidates.length > 1) {
+                ambiguous.push({ request_id: r.id, chosen_order_id: match.id, other_candidates: candidates.slice(1).map(function(o){ return o.id; }) });
+            }
+
+            r.order_id = match.id;
+            r.updated_at = new Date().toISOString();
+            alreadyLinkedOrderIds[match.id] = true;
+
+            var dispatch = loadDispatches().find(function(d) { return d.order_id === match.id; });
+            repaired.push({
+                request_id: r.id,
+                order_id: match.id,
+                client_email: r.client_email,
+                service_label: r.service_label,
+                dispatch_status: dispatch ? dispatch.status : 'AUCUN DISPATCH TROUVÉ'
+            });
+        });
+
+        if (repaired.length > 0) savePartnerRequests(requests);
+
+        console.log('[REPAIR] link-signed-requests —', repaired.length, 'réparées,', unmatched.length, 'non trouvées,', ambiguous.length, 'ambiguës');
+        res.json({ ok: true, repaired: repaired, unmatched: unmatched, ambiguous: ambiguous });
+    } catch(e) {
+        console.error('[REPAIR] link-signed-requests:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * ══════════════════════════════════════════════════════
  *  PAYPAL
  * ══════════════════════════════════════════════════════

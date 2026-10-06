@@ -1618,6 +1618,13 @@
                         <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
                     </div>
                 </div>
+
+                <div style="margin-top:32px;border-top:1px solid #222;padding-top:24px;">
+                    <h3 style="font-size:16px;font-weight:900;color:#a78bfa;margin:0 0 10px;"><i class="fas fa-wrench mr-2"></i>RÉPARATION — missions "signées" jamais liées à leur commande</h3>
+                    <div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Bug corrigé (re-signature d'un contrat en moins de 5 min) : certaines missions restaient affichées "Commande acceptée" côté prestataire au lieu de proposer Accepter/Refuser, car leur demande n'était jamais reliée à la commande payée. Ce bouton retrouve et répare les demandes encore cassées — sans effet sur celles déjà correctement liées. Peut être relancé sans risque.</div>
+                    <button onclick="_runLinkSignedRequestsRepair()" id="repairLinkBtn" style="background:#a78bfa;color:#000;border:none;padding:10px 18px;font-weight:800;font-size:13px;border-radius:8px;cursor:pointer;">Lancer la réparation</button>
+                    <div id="repairLinkResult" style="margin-top:14px;font-size:12px;color:#e0e0e0;"></div>
+                </div>
             </div>
 
             <!-- ===== SECTION ERREURS APP (crash reporter JS côté client) ===== -->
@@ -7534,6 +7541,45 @@
                 }).catch(function() {
                     el.innerHTML = '<div style="color:#f03e3e;padding:12px;">Impossible de charger les signalements.</div>';
                 });
+        }
+
+        // Réparation ponctuelle (voir POST /api/admin/repair/link-signed-requests côté serveur) :
+        // relie les demandes 'signed' restées orphelines (order_id jamais posé à cause du bug de
+        // re-signature sous 5 min) à leur vraie commande. Idempotent, peut être relancé sans risque.
+        function _runLinkSignedRequestsRepair() {
+            var btn = document.getElementById('repairLinkBtn');
+            var out = document.getElementById('repairLinkResult');
+            if (!out) return;
+            if (btn) { btn.disabled = true; btn.textContent = 'Réparation en cours…'; }
+            out.innerHTML = '';
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/repair/link-signed-requests', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + tok }
+            }).then(function(r) { return r.json(); })
+              .then(function(d) {
+                if (btn) { btn.disabled = false; btn.textContent = 'Lancer la réparation'; }
+                if (d.error) { out.innerHTML = '<div style="color:#f03e3e;">' + d.error + '</div>'; return; }
+                var html = '<div style="color:#6dbf6d;font-weight:800;margin-bottom:10px;">' + d.repaired.length + ' mission(s) réparée(s) — ' + d.unmatched.length + ' introuvable(s) — ' + d.ambiguous.length + ' ambiguë(s)</div>';
+                if (d.repaired.length) {
+                    html += '<div style="font-weight:700;color:#e0e0e0;margin-bottom:6px;">Réparées :</div>';
+                    d.repaired.forEach(function(r) {
+                        html += '<div style="background:#0d0d0d;border:1px solid rgba(167,139,250,.25);border-radius:8px;padding:8px 12px;margin-bottom:6px;">'
+                            + r.client_email + ' — ' + r.service_label + ' → commande ' + r.order_id
+                            + ' <span style="color:#888;">(dispatch: ' + r.dispatch_status + ')</span></div>';
+                    });
+                }
+                if (d.unmatched.length) {
+                    html += '<div style="font-weight:700;color:#f59e0b;margin:10px 0 6px;">Aucune commande trouvée (vérifier manuellement) :</div>';
+                    d.unmatched.forEach(function(r) {
+                        html += '<div style="background:#0d0d0d;border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:8px 12px;margin-bottom:6px;">' + r.client_email + ' — ' + r.service_label + '</div>';
+                    });
+                }
+                out.innerHTML = html;
+              }).catch(function() {
+                if (btn) { btn.disabled = false; btn.textContent = 'Lancer la réparation'; }
+                out.innerHTML = '<div style="color:#f03e3e;">Erreur réseau. Réessayez.</div>';
+              });
         }
 
         // ── ERREURS APP (crash reporter JS) ─────────────────────────────
