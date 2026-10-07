@@ -731,6 +731,15 @@ function releasePendingWalletEntry(partnerId, dispatchId, stage, fallbackAmount)
         var amount = txns[txnIdx].amount || fallbackAmount || 0;
         txns[txnIdx].status = 'available';
         txns[txnIdx].released_at = new Date().toISOString();
+        // BUG CORRIGÉ : la description posée à la création ("... (en attente)", voir
+        // addPendingWalletEntry) n'était jamais mise à jour ici — une fois réellement
+        // disponible, l'historique du prestataire continuait d'afficher "(en attente)" pour une
+        // somme qu'il peut désormais retirer, ce qui est trompeur (confirmé sur une vraie
+        // capture d'écran : "Mission : Graphiste — Paiement (en attente)" alors que le solde
+        // disponible affichait bien le bon montant).
+        if (typeof txns[txnIdx].description === 'string') {
+            txns[txnIdx].description = txns[txnIdx].description.replace(/\s*\(en attente\)\s*$/, '');
+        }
         wallets[idx].transactions = txns;
         wallets[idx].balance_pending   = parseFloat(Math.max(0, (wallets[idx].balance_pending   || 0) - amount).toFixed(2));
         wallets[idx].balance_available = parseFloat(((wallets[idx].balance_available || 0) + amount).toFixed(2));

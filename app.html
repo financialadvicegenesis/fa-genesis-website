@@ -19559,7 +19559,11 @@ function _ptnrSubmitWithdraw(){
   _ptnrFetch('/api/partner/wallet/withdraw','POST',{amount:amount,method:_ptnrWdMethod,country:country,details:details})
   .then(function(d){
     if(d.ok){
-      showToast('Retrait demandé',amount.toFixed(2)+' € en cours de traitement.','success');
+      // BUG CORRIGÉ : le serveur renvoie déjà un message donnant un délai concret ("Traitement
+      // sous 2-5 jours ouvrés") mais il était ignoré ici en faveur d'un toast générique — sans
+      // ce repère, "en cours de traitement" ne dit pas au prestataire combien de temps attendre
+      // avant de s'inquiéter si le statut reste sur "En cours".
+      showToast('Retrait demandé', d.message || (amount.toFixed(2)+' € en cours de traitement.'), 'success');
       _ptnrLoadVersements();
     } else {
       if(errEl){ errEl.textContent=d.error||'Erreur lors du retrait.'; errEl.style.display='block'; }
