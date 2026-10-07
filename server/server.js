@@ -7673,6 +7673,10 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
             notifyUser(req.partner.email, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
                 'Votre retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' a été envoyé.',
                 '#partner:wallet:' + withdrawal.id);
+            // Email en redondance du push, demandé pour ne pas dépendre uniquement du push si
+            // l'app n'est pas ouverte / le token FCM a expiré.
+            emailService.sendWithdrawalSentToPartnerEmail(req.partner.email, req.partner.prenom || req.partner.firstName || '', amount, method)
+                .catch(function(e) { console.warn('[WALLET] Email virement envoyé non envoyé:', e.message); });
         } else {
             notifyUser(req.partner.email, 'partner', 'withdrawal_pending', '📤 Retrait en cours',
                 'Votre demande de retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' est en cours de traitement.',
@@ -24003,8 +24007,11 @@ app.post('/api/admin/withdrawals/:id/mark-sent', function(req, res) {
         var partners = loadPartners();
         var p = partners.find(function(x) { return x.id === wdrs[idx].partner_id; });
         if (p && (p.email || p.contact_email)) {
-            notifyUser(p.email || p.contact_email, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
+            var _msPartnerEmail = p.email || p.contact_email;
+            notifyUser(_msPartnerEmail, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
                 'Votre retrait de ' + wdrs[idx].amount.toFixed(2) + ' € a été envoyé.', '#partner:wallet:' + wdrs[idx].id);
+            emailService.sendWithdrawalSentToPartnerEmail(_msPartnerEmail, p.prenom || p.firstName || '', wdrs[idx].amount, wdrs[idx].method)
+                .catch(function(e) { console.warn('[WALLET] Email virement envoyé non envoyé:', e.message); });
         }
 
         res.json({ ok: true, withdrawal: wdrs[idx] });
@@ -24144,6 +24151,8 @@ app.post('/api/admin/withdrawals/:id/retry', async function(req, res) {
                 notifyUser(_retryPartnerEmail, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
                     'Votre retrait de ' + parseFloat(wd.amount || 0).toFixed(2) + '€ a été envoyé.',
                     '#partner:wallet:' + wd.id);
+                emailService.sendWithdrawalSentToPartnerEmail(_retryPartnerEmail, rPartner.prenom || rPartner.firstName || '', wd.amount, wd.method)
+                    .catch(function(e) { console.warn('[ADMIN WITHDRAW RETRY] Email virement envoyé non envoyé:', e.message); });
             }
         }
 

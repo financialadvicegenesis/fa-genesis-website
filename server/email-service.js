@@ -2199,6 +2199,60 @@ async function sendContractSignedToPartnerEmail(partnerEmail, partnerPrenom, cli
     }
 }
 
+// Email de redondance au push/in-app "💸 Virement envoyé" (voir notifyUser(...,
+// 'withdrawal_sent', ...) côté server.js) — même événement, canal supplémentaire demandé pour
+// ne pas dépendre uniquement du push si l'app n'est pas ouverte/le token FCM a expiré. Envoyé
+// aux 3 mêmes moments que la notification : succès automatique instantané (Wise/PayPal), retrait
+// relancé manuellement par un admin, et confirmation manuelle admin (virement fait à la main).
+async function sendWithdrawalSentToPartnerEmail(partnerEmail, partnerPrenom, amount, method) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configuré - email virement envoyé non envoyé');
+        return { success: false, reason: 'SMTP non configuré' };
+    }
+    var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    var methodLabel = (method || '').replace('_', ' ').toUpperCase();
+    var amountStr = (parseFloat(amount) || 0).toFixed(2);
+    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Virement envoyé</title></head>'
+        + '<body style="margin:0;padding:0;background:#f5f5f5;font-family:\'Helvetica Neue\',Arial,sans-serif;">'
+        + '<table role="presentation" width="100%" style="border-collapse:collapse;background:#f5f5f5;">'
+        + '<tr><td style="padding:24px 12px;">'
+        + '<table role="presentation" width="100%" style="max-width:600px;margin:0 auto;border-collapse:collapse;">'
+        + '<tr><td style="background:#000;padding:20px 32px;border-radius:12px 12px 0 0;">'
+        + '<span style="font-family:\'Arial Black\',Arial,sans-serif;font-size:20px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">FA GENESIS</span>'
+        + '<div style="font-size:10px;color:#FFD700;opacity:.75;margin-top:1px;">Groupe FA Industries</div>'
+        + '</td></tr>'
+        + '<tr><td style="background:#fff;padding:32px 32px 24px;border-bottom:1px solid #eee;text-align:center;">'
+        + '<p style="margin:0 0 12px;font-size:24px;">💸</p>'
+        + '<p style="margin:0 0 16px;font-size:21px;font-weight:800;color:#1a1a1a;line-height:1.3;">Virement envoyé !</p>'
+        + '<p style="margin:0;font-size:15px;color:#555;line-height:1.6;">Bonjour <strong>' + (partnerPrenom || 'Prestataire') + '</strong>,<br>'
+        + 'Votre retrait de <strong style="color:#1a1a1a;">' + amountStr + ' €</strong> vient d\'être envoyé'
+        + (methodLabel ? ' via <strong style="color:#1a1a1a;">' + methodLabel + '</strong>' : '') + '.</p>'
+        + '</td></tr>'
+        + '<tr><td style="background:#fff;padding:24px 32px;text-align:center;border-bottom:1px solid #eee;">'
+        + '<p style="margin:0 0 16px;font-size:14px;color:#555;">Le délai de réception dépend de votre banque ou de votre compte PayPal (généralement quelques heures à 1 jour ouvré).</p>'
+        + '<a href="' + frontUrl + '/app.html#partner:wallet" style="display:inline-block;background:#FFD700;color:#000;font-weight:900;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;">Voir mon Wallet →</a>'
+        + '</td></tr>'
+        + '<tr><td style="background:#1a1a1a;padding:16px 32px;border-radius:0 0 12px 12px;text-align:center;">'
+        + '<p style="margin:0;font-size:11px;color:#888;">FA GENESIS · Plateforme de services créatifs et professionnels</p>'
+        + '</td></tr>'
+        + '</table></td></tr></table></body></html>';
+
+    try {
+        var mailOptions = {
+            from: '"FA GENESIS" <' + (process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@fagenesis.com') + '>',
+            to: partnerEmail,
+            subject: '💸 Virement envoyé — ' + amountStr + ' €',
+            html: html
+        };
+        var result = await transport.sendMail(mailOptions);
+        return { success: true, messageId: result.messageId };
+    } catch(e) {
+        console.warn('[EMAIL] Erreur envoi email virement envoyé prestataire:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -2237,6 +2291,7 @@ module.exports = {
     sendInstallmentReminderEmail,
     sendContractSignedToPartnerEmail,
     sendPayoutDestinationChangedEmail,
+    sendWithdrawalSentToPartnerEmail,
     sendEmail
 };
 
