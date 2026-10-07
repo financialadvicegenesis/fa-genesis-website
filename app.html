@@ -7611,17 +7611,21 @@ function renderLivrableValidationCard(l){
       contentHtml = '<div style="margin-top:8px;padding:10px;background:#0d0d0d;border:1px solid #222;border-radius:8px;font-size:12px;color:#ccc;line-height:1.7;white-space:pre-wrap;max-height:150px;overflow-y:auto;">'+_escHtml(l.content_text)+'</div>';
     }
   } else if(ltype === 'image' || (ltype === 'file' && (mime.indexOf('image/')===0 || (urlVal && urlVal.indexOf('data:image')===0)))){
-    // BUG CORRIGÉ : l'aperçu était plafonné à max-height:240px — une fraction minuscule de
-    // l'écran sur un téléphone moderne (iPhone/Android), sans aucun moyen d'agrandir l'image
-    // (pas de plein écran, pas de zoom). Le client recevait des photos qu'il ne pouvait
-    // quasiment pas examiner en détail. Deux correctifs : hauteur d'aperçu basée sur la
-    // fenêtre (55vh, s'adapte réellement à la taille de l'écran, iOS et Android) au lieu d'un
-    // pixel fixe, ET un visionneur plein écran au tap (_openLivImageLightbox), même mécanisme
-    // que _livDownloadData pour éviter de mettre un data: URI potentiellement énorme dans un
-    // attribut onclick.
+    // BUG CORRIGÉ (deux fois) : l'aperçu était d'abord plafonné à max-height:240px (minuscule
+    // sur un téléphone), puis un premier correctif est passé à max-height:55vh SUR L'IMG
+    // elle-même sans hauteur explicite — repéré sur un vrai appareil (capture d'écran fournie)
+    // comme ne fonctionnant PAS pour une photo au format très vertical (portrait) : sans
+    // 'height' posé, le navigateur dérive d'abord la hauteur depuis le ratio intrinsèque de
+    // l'image ET la largeur à 100%, et ce calcul n'est pas fiable à travers WebKit (iOS) et
+    // Chromium (Android WebView) pour ensuite appliquer max-height correctement — l'image
+    // s'affichait alors à sa hauteur "naturelle" complète (très grande), obligeant à défiler
+    // et donnant l'impression d'un cadrage zoomé/coupé. Pattern robuste à la place : le
+    // CONTENEUR reçoit une hauteur EXPLICITE (height:55vh, pas max-height), et l'img remplit
+    // ce conteneur à 100%x100% avec object-fit:contain — la combinaison fiable standard pour
+    // un cadre à hauteur fixe, sans dépendre du calcul de hauteur automatique d'une image.
     _livImageData[l.id] = urlVal;
-    contentHtml = '<div style="position:relative;margin-top:8px;">'
-      +'<img src="'+urlVal+'" alt="Aperçu"'+noRightClick+' onclick="_openLivImageLightbox(\''+l.id+'\')" style="max-width:100%;width:100%;border-radius:8px;max-height:55vh;object-fit:contain;background:#000;display:block;cursor:pointer;">'
+    contentHtml = '<div style="position:relative;margin-top:8px;height:55vh;border-radius:8px;overflow:hidden;background:#000;">'
+      +'<img src="'+urlVal+'" alt="Aperçu"'+noRightClick+' onclick="_openLivImageLightbox(\''+l.id+'\')" style="width:100%;height:100%;object-fit:contain;display:block;cursor:pointer;">'
       +'<div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;pointer-events:none;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-expand"></i> Agrandir</div>'
       +_livWatermarkOverlay(!canDownload)
       +'</div>';
