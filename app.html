@@ -19520,7 +19520,7 @@ function _ptnrLoadWdMethods(){
       // de se déclencher. Résultat observé : sélectionner "Virement SEPA"/"PayPal" ne faisait
       // jamais rien, _ptnrWdMethod restait null, et le bouton "Confirmer" restait désactivé
       // pour toujours (silencieusement — aucune erreur, car un bouton disabled ignore les clics).
-      h += '<input type="radio" name="ptnr-wd-method-r" value="'+_escHtml(m.id)+'" onchange="_ptnrSelectWdMethod(\''+_escHtml(m.id)+'\','+JSON.stringify(m.fields).replace(/"/g,'&quot;')+')" style="accent-color:#FFD700;">';
+      h += '<input type="radio" name="ptnr-wd-method-r" value="'+_escHtml(m.id)+'" onchange="_ptnrSelectWdMethod(\''+_escHtml(m.id)+'\','+JSON.stringify(m.fields).replace(/"/g,'&quot;')+','+(m.linked?'true':'false')+')" style="accent-color:#FFD700;">';
       h += '<i class="fa-solid '+_escHtml(m.icon)+'" style="color:#FFD700;width:16px;"></i>';
       h += '<span style="font-size:13px;font-weight:700;color:#fff;">'+_escHtml(m.label)+'</span></label>';
     });
@@ -19532,11 +19532,25 @@ function _ptnrLoadWdMethods(){
   }).catch(function(){});
 }
 
-function _ptnrSelectWdMethod(methodId, fields){
+function _ptnrSelectWdMethod(methodId, fields, linked){
   _ptnrWdMethod = methodId;
   var dWrap = document.getElementById('ptnr-wd-details-wrap');
   var submitBtn = document.getElementById('ptnr-wd-submit-btn');
   if(!dWrap) return;
+  // BUG CORRIGÉ : si des coordonnées sont déjà enregistrées pour cette méthode, ne plus proposer
+  // des champs vierges — les saisir ici était de toute façon silencieusement ignoré côté serveur
+  // (registerPartnerWiseBankDetails ne (re)crée un wiseRecipientId que si aucun n'existe déjà).
+  // On montre un résumé clair + un lien vers Profil > Coordonnées de versement, le seul endroit
+  // qui permet réellement de les modifier (protégé par mot de passe).
+  if(linked){
+    dWrap.innerHTML = '<div style="background:#111;border:1px solid #333;border-radius:10px;padding:12px 14px;font-size:12px;color:#aaa;line-height:1.6;">'
+      +'<i class="fa-solid fa-circle-check" style="color:#22c55e;margin-right:6px;"></i>Coordonnées déjà enregistrées pour cette méthode.<br>'
+      +'<a href="#" onclick="_ptnrToggleWithdraw();_ptnrNav(\'profil\');_ptnrShowPayoutDetails();return false;" style="color:#FFD700;font-weight:700;">Voir / modifier dans Profil →</a>'
+      +'</div>';
+    dWrap.style.display = 'block';
+    if(submitBtn){ submitBtn.disabled=false; submitBtn.style.opacity='1'; submitBtn.style.cursor='pointer'; }
+    return;
+  }
   var labels = {holder:'Nom du titulaire',iban:'IBAN',bic:'BIC / SWIFT (optionnel)',email:'Adresse email',phone:'Numéro de téléphone'};
   var h = '';
   (fields||[]).forEach(function(f){
@@ -20385,6 +20399,7 @@ function _ptnrLoadProfil(){
     +'<div class="plus-section-title">MON PROFIL</div>'
     +'<div class="plus-group">'
     +pli('<i class="fa-solid fa-circle-user"></i>',       '#1a1a00','Paramètres du profil', null,'_ptnrProfilEditParams()')
+    +pli('<i class="fa-solid fa-building-columns"></i>',  '#001a12','Coordonnées de versement', null,'_ptnrShowPayoutDetails()')
     +pli('<i class="fa-solid fa-clock"></i>',             '#14000a','Temps de réponse',     null,'_ptnrProfilEditResponseTime()')
     +pli('<i class="fa-solid fa-headset"></i>',           '#1a0a00','Assistance',           null,'_ptnrShowSupport()')
     +bioRowHtml
@@ -20670,6 +20685,119 @@ function _ptnrProfilEditResponseTime(){
     +'</div></div></div>';
   var sel = document.getElementById('ptnr-response-time-select');
   if(sel && typeof current === 'number') sel.value = String(current);
+}
+
+// ── COORDONNÉES DE VERSEMENT ─────────────────────────────────────────────────
+// Écran manquant jusqu'ici : le prestataire n'avait AUCUN moyen de voir son IBAN/PayPal déjà
+// enregistré (seul le formulaire de retrait les affichait, toujours vierge — voir
+// _ptnrSelectWdMethod). Pire, taper un IBAN différent dans ce formulaire de retrait était
+// silencieusement ignoré dès qu'un wiseRecipientId existait déjà (registerPartnerWiseBankDetails
+// ne s'exécute que si aucun n'existe). Les endpoints sécurisés /api/partner/bank-details et
+// /api/partner/profile/set-paypal existaient déjà côté serveur (mot de passe actuel exigé pour
+// modifier, alerte anti-détournement) mais n'étaient appelés depuis AUCUNE page de l'app.
+function _ptnrShowPayoutDetails(){
+  var c = document.getElementById('ptnr-profil-content');
+  if(!c) return;
+  c.innerHTML = '<div class="plus-subpage">'
+    +'<div class="plus-back-bar">'
+    +'<button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button>'
+    +'<div class="plus-sub-title">Coordonnées de versement</div>'
+    +'</div>'
+    +'<div class="plus-section" style="padding-top:20px;"><div class="ptnr-card"><div style="text-align:center;padding:16px;color:#555;font-size:12px;">Chargement…</div></div></div>';
+  _ptnrFetch('/api/partner/bank-details').then(function(d){
+    if(!d || d.error){ c.innerHTML = '<div class="plus-subpage"><div class="plus-back-bar"><button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button><div class="plus-sub-title">Coordonnées de versement</div></div><div class="plus-section" style="padding-top:20px;"><div class="ptnr-card"><div style="color:#ef4444;font-size:12px;">Erreur de chargement.</div></div></div></div>'; return; }
+    var bd = d.bankDetails;
+    var ibanSummary = bd ? (bd.iban + (bd.accountHolderName ? ' — '+_escHtml(bd.accountHolderName) : '')) : 'Non renseigné';
+    var paypalSummary = d.paypalLinked ? d.paypalEmailMasked : 'Non renseigné';
+    c.innerHTML = '<div class="plus-subpage">'
+      +'<div class="plus-back-bar">'
+      +'<button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button>'
+      +'<div class="plus-sub-title">Coordonnées de versement</div>'
+      +'</div>'
+      +'<div style="font-size:12px;color:#888;padding:16px 16px 0;line-height:1.5;">C\'est ici que l\'argent de vos retraits est envoyé. Modifier une coordonnée déjà enregistrée demande votre mot de passe actuel, par sécurité.</div>'
+
+      // ── IBAN / Wise ──
+      +'<div class="plus-section">'
+      +'<div class="plus-section-title">VIREMENT SEPA (IBAN)</div>'
+      +'<div class="ptnr-card">'
+      +'<div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:10px;">'+_escHtml(ibanSummary)+'</div>'
+      +'<button class="ptnr-login-btn" style="margin-top:0;padding:11px;background:transparent;border:1.5px solid #FFD700;color:#FFD700;" onclick="_ptnrTogglePayoutForm(\'iban\')">'+(d.wiseLinked?'Modifier':'Renseigner')+'</button>'
+      +'<div id="ptnr-payout-iban-form" style="display:none;margin-top:12px;">'
+      +'<input class="ptnr-input" id="ptnr-payout-holder" type="text" placeholder="Nom du titulaire du compte">'
+      +'<input class="ptnr-input" id="ptnr-payout-iban" type="text" placeholder="IBAN" autocapitalize="characters">'
+      +'<input class="ptnr-input" id="ptnr-payout-bic" type="text" placeholder="BIC / SWIFT (optionnel)">'
+      +(d.wiseLinked ? '<input class="ptnr-input" id="ptnr-payout-iban-pwd" type="password" placeholder="Mot de passe actuel" autocomplete="current-password">' : '')
+      +'<button class="ptnr-login-btn" id="ptnr-payout-iban-btn" style="margin-top:4px;" onclick="_ptnrSaveBankDetails()">Enregistrer</button>'
+      +'<div class="ptnr-login-err" id="ptnr-payout-iban-msg" style="margin-top:8px;"></div>'
+      +'</div></div></div>'
+
+      // ── PayPal ──
+      +'<div class="plus-section">'
+      +'<div class="plus-section-title">PAYPAL</div>'
+      +'<div class="ptnr-card">'
+      +'<div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:10px;">'+_escHtml(paypalSummary)+'</div>'
+      +'<button class="ptnr-login-btn" style="margin-top:0;padding:11px;background:transparent;border:1.5px solid #FFD700;color:#FFD700;" onclick="_ptnrTogglePayoutForm(\'paypal\')">'+(d.paypalLinked?'Modifier':'Renseigner')+'</button>'
+      +'<div id="ptnr-payout-paypal-form" style="display:none;margin-top:12px;">'
+      +'<input class="ptnr-input" id="ptnr-payout-paypal-email" type="email" placeholder="Email PayPal" autocomplete="email">'
+      +(d.paypalLinked ? '<input class="ptnr-input" id="ptnr-payout-paypal-pwd" type="password" placeholder="Mot de passe actuel" autocomplete="current-password">' : '')
+      +'<button class="ptnr-login-btn" id="ptnr-payout-paypal-btn" style="margin-top:4px;" onclick="_ptnrSavePaypalEmail()">Enregistrer</button>'
+      +'<div class="ptnr-login-err" id="ptnr-payout-paypal-msg" style="margin-top:8px;"></div>'
+      +'</div></div></div>'
+      +'</div>';
+  }).catch(function(){
+    c.innerHTML = '<div class="plus-subpage"><div class="plus-back-bar"><button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button><div class="plus-sub-title">Coordonnées de versement</div></div><div class="plus-section" style="padding-top:20px;"><div class="ptnr-card"><div style="color:#ef4444;font-size:12px;">Erreur réseau.</div></div></div></div>';
+  });
+}
+
+function _ptnrTogglePayoutForm(which){
+  var f = document.getElementById('ptnr-payout-'+which+'-form');
+  if(f) f.style.display = (f.style.display==='none') ? 'block' : 'none';
+}
+
+function _ptnrSaveBankDetails(){
+  var holder = (document.getElementById('ptnr-payout-holder')||{}).value||'';
+  var iban   = (document.getElementById('ptnr-payout-iban')||{}).value||'';
+  var bic    = (document.getElementById('ptnr-payout-bic')||{}).value||'';
+  var pwdEl  = document.getElementById('ptnr-payout-iban-pwd');
+  var msgEl  = document.getElementById('ptnr-payout-iban-msg');
+  var btn    = document.getElementById('ptnr-payout-iban-btn');
+  if(!holder.trim() || !iban.trim()){ if(msgEl){ msgEl.textContent='Titulaire et IBAN requis.'; msgEl.style.display='block'; } return; }
+  if(pwdEl && !pwdEl.value){ if(msgEl){ msgEl.textContent='Mot de passe actuel requis.'; msgEl.style.display='block'; } return; }
+  if(msgEl) msgEl.style.display='none';
+  if(btn){ btn.disabled=true; btn.textContent='Enregistrement…'; }
+  _ptnrFetch('/api/partner/bank-details','POST',{
+    accountHolderName: holder.trim(), iban: iban.trim(), bic: bic.trim(),
+    currentPassword: pwdEl ? pwdEl.value : undefined
+  }).then(function(d){
+    if(btn){ btn.disabled=false; btn.textContent='Enregistrer'; }
+    if(d && d.ok){ showToast('Coordonnées mises à jour','Votre IBAN a bien été enregistré.','success'); _ptnrShowPayoutDetails(); }
+    else { if(msgEl){ msgEl.textContent=(d&&d.error)||'Erreur lors de l\'enregistrement.'; msgEl.style.display='block'; } }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='Enregistrer'; }
+    if(msgEl){ msgEl.textContent='Erreur réseau. Réessayez.'; msgEl.style.display='block'; }
+  });
+}
+
+function _ptnrSavePaypalEmail(){
+  var email = (document.getElementById('ptnr-payout-paypal-email')||{}).value||'';
+  var pwdEl = document.getElementById('ptnr-payout-paypal-pwd');
+  var msgEl = document.getElementById('ptnr-payout-paypal-msg');
+  var btn   = document.getElementById('ptnr-payout-paypal-btn');
+  if(!email.trim() || email.indexOf('@')===-1){ if(msgEl){ msgEl.textContent='Email PayPal invalide.'; msgEl.style.display='block'; } return; }
+  if(pwdEl && !pwdEl.value){ if(msgEl){ msgEl.textContent='Mot de passe actuel requis.'; msgEl.style.display='block'; } return; }
+  if(msgEl) msgEl.style.display='none';
+  if(btn){ btn.disabled=true; btn.textContent='Enregistrement…'; }
+  _ptnrFetch('/api/partner/profile/set-paypal','POST',{
+    paypal_email: email.trim(),
+    currentPassword: pwdEl ? pwdEl.value : undefined
+  }).then(function(d){
+    if(btn){ btn.disabled=false; btn.textContent='Enregistrer'; }
+    if(d && d.success){ showToast('Coordonnées mises à jour','Votre email PayPal a bien été enregistré.','success'); _ptnrShowPayoutDetails(); }
+    else { if(msgEl){ msgEl.textContent=(d&&d.error)||'Erreur lors de l\'enregistrement.'; msgEl.style.display='block'; } }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='Enregistrer'; }
+    if(msgEl){ msgEl.textContent='Erreur réseau. Réessayez.'; msgEl.style.display='block'; }
+  });
 }
 
 // ── LIVRABLES (contrats disponibles en téléchargement) ──────────────────────

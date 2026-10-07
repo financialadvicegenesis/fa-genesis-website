@@ -7506,7 +7506,19 @@ app.get('/api/partner/wallet/methods', authenticatePartner, function(req, res) {
         orange_money: { label: 'Orange Money',         icon: 'fa-mobile-screen',    fields: ['phone'] },
         mtn_money:    { label: 'MTN Mobile Money',     icon: 'fa-mobile-screen',    fields: ['phone'] }
     };
-    res.json({ methods: methods.map(function(m){ return Object.assign({ id: m }, labels[m] || { label: m, icon: 'fa-credit-card', fields: ['detail'] }); }) });
+    // BUG CORRIGÉ : le formulaire de retrait affichait toujours des champs IBAN/PayPal vierges,
+    // même quand des coordonnées étaient déjà enregistrées — et les saisir à nouveau était
+    // silencieusement ignoré (registerPartnerWiseBankDetails ne (re)crée un wiseRecipientId que
+    // si aucun n'existe déjà). "linked" permet au client de proposer un résumé en lecture seule
+    // + un lien vers Profil > Coordonnées de versement (seul endroit qui permet réellement de
+    // modifier, protégé par mot de passe) plutôt que des champs trompeurs.
+    var partners = loadPartners();
+    var me = partners.find(function(p) { return p.id === req.partner.id; });
+    var linkedByMethod = {
+        sepa: !!(me && me.wiseRecipientId), wise: !!(me && me.wiseRecipientId),
+        paypal: !!(me && me.payout_paypal_email)
+    };
+    res.json({ methods: methods.map(function(m){ return Object.assign({ id: m, linked: linkedByMethod[m] || false }, labels[m] || { label: m, icon: 'fa-credit-card', fields: ['detail'] }); }) });
 });
 
 /**
@@ -23774,7 +23786,18 @@ app.get('/api/partner/bank-details', authenticatePartner, function(req, res) {
             masked.iban = '•••• •••• •••• ' + masked.iban.slice(-4);
         }
     }
-    res.json({ ok: true, bankDetails: masked, wiseLinked: !!p.wiseRecipientId });
+    // PayPal ajouté ici (était absent) pour que l'écran "Coordonnées de versement" du profil
+    // prestataire puisse afficher les DEUX moyens de versement en un seul appel — ce couple
+    // GET/POST /api/partner/bank-details existait déjà, sécurisé (mot de passe requis pour
+    // modifier), mais n'était jamais appelé depuis aucune page de l'app.
+    var paypalMasked = null;
+    if (p.payout_paypal_email) {
+        var _atIdx = p.payout_paypal_email.indexOf('@');
+        paypalMasked = _atIdx > 1
+            ? p.payout_paypal_email.slice(0, 2) + '•••' + p.payout_paypal_email.slice(_atIdx)
+            : '•••' + p.payout_paypal_email.slice(p.payout_paypal_email.indexOf('@'));
+    }
+    res.json({ ok: true, bankDetails: masked, wiseLinked: !!p.wiseRecipientId, paypalEmailMasked: paypalMasked, paypalLinked: !!p.payout_paypal_email });
 });
 
 // ── Admin : vérifier le solde Wise ───────────────────────────
