@@ -7542,6 +7542,27 @@ function _livDownloadBtnHtml(livId, filename, url, label){
   return '<button onclick="_livDownload(\''+livId+'\',this)" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:8px 12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;color:#22c55e;font-size:12px;font-weight:600;cursor:pointer;">'
     +'<i class="fa-solid fa-download"></i> '+(label||'Télécharger l\'original')+'</button>';
 }
+// Visionneur plein écran pour les photos livrées au client (voir renderLivrableValidationCard) —
+// même logique que _livDownloadData : l'URL (souvent un data: URI de plusieurs Mo) est rangée
+// dans une map indexée par id de livrable plutôt que mise directement dans un attribut onclick.
+var _livImageData = {};
+function _openLivImageLightbox(livId){
+  var url = _livImageData[livId];
+  if(!url) return;
+  var old = document.getElementById('_liv-lightbox'); if(old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = '_liv-lightbox';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.96);display:flex;align-items:center;justify-content:center;'
+    +'padding:calc(16px + env(safe-area-inset-top,0px)) 12px calc(16px + env(safe-area-inset-bottom,0px));';
+  ov.innerHTML = '<img src="'+url+'" alt="Photo" oncontextmenu="return false" ondragstart="return false" style="max-width:100%;max-height:100%;object-fit:contain;-webkit-user-select:none;user-select:none;">'
+    +'<button onclick="_closeLivImageLightbox()" aria-label="Fermer" style="position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:14px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.14);border:none;color:#fff;font-size:20px;line-height:1;cursor:pointer;">&times;</button>';
+  ov.addEventListener('click', function(e){ if(e.target === ov) _closeLivImageLightbox(); });
+  document.body.appendChild(ov);
+}
+function _closeLivImageLightbox(){
+  var ov = document.getElementById('_liv-lightbox');
+  if(ov) ov.remove();
+}
 function _livWatermarkOverlay(locked){
   if(!locked) return '';
   return '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;background:rgba(0,0,0,.06);">'
@@ -7590,9 +7611,18 @@ function renderLivrableValidationCard(l){
       contentHtml = '<div style="margin-top:8px;padding:10px;background:#0d0d0d;border:1px solid #222;border-radius:8px;font-size:12px;color:#ccc;line-height:1.7;white-space:pre-wrap;max-height:150px;overflow-y:auto;">'+_escHtml(l.content_text)+'</div>';
     }
   } else if(ltype === 'image' || (ltype === 'file' && (mime.indexOf('image/')===0 || (urlVal && urlVal.indexOf('data:image')===0)))){
-    // Aperçu image toujours visible — filigrane tant que non validé, téléchargement débloqué après
+    // BUG CORRIGÉ : l'aperçu était plafonné à max-height:240px — une fraction minuscule de
+    // l'écran sur un téléphone moderne (iPhone/Android), sans aucun moyen d'agrandir l'image
+    // (pas de plein écran, pas de zoom). Le client recevait des photos qu'il ne pouvait
+    // quasiment pas examiner en détail. Deux correctifs : hauteur d'aperçu basée sur la
+    // fenêtre (55vh, s'adapte réellement à la taille de l'écran, iOS et Android) au lieu d'un
+    // pixel fixe, ET un visionneur plein écran au tap (_openLivImageLightbox), même mécanisme
+    // que _livDownloadData pour éviter de mettre un data: URI potentiellement énorme dans un
+    // attribut onclick.
+    _livImageData[l.id] = urlVal;
     contentHtml = '<div style="position:relative;margin-top:8px;">'
-      +'<img src="'+urlVal+'" alt="Aperçu"'+noRightClick+' style="max-width:100%;width:100%;border-radius:8px;max-height:240px;object-fit:contain;background:#000;display:block;"></img>'
+      +'<img src="'+urlVal+'" alt="Aperçu"'+noRightClick+' onclick="_openLivImageLightbox(\''+l.id+'\')" style="max-width:100%;width:100%;border-radius:8px;max-height:55vh;object-fit:contain;background:#000;display:block;cursor:pointer;">'
+      +'<div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;pointer-events:none;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-expand"></i> Agrandir</div>'
       +_livWatermarkOverlay(!canDownload)
       +'</div>';
     if(canDownload && urlVal){
