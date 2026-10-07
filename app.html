@@ -19513,7 +19513,14 @@ function _ptnrLoadWdMethods(){
     var h = '<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Méthode de retrait</div>';
     methods.forEach(function(m){
       h += '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #333;border-radius:10px;cursor:pointer;margin-bottom:6px;background:#1a1a1a;">';
-      h += '<input type="radio" name="ptnr-wd-method-r" value="'+_escHtml(m.id)+'" onchange="_ptnrSelectWdMethod(\''+_escHtml(m.id)+'\','+JSON.stringify(m.fields)+')" style="accent-color:#FFD700;">';
+      // BUG CORRIGÉ : JSON.stringify(m.fields) produit des guillemets doubles non échappés
+      // (ex. ["holder","iban","bic"]) insérés tels quels dans un attribut onchange lui-même
+      // délimité par des guillemets doubles — le navigateur coupait l'attribut au tout premier
+      // guillemet rencontré (juste après le "["), ce qui cassait le HTML et empêchait l'onchange
+      // de se déclencher. Résultat observé : sélectionner "Virement SEPA"/"PayPal" ne faisait
+      // jamais rien, _ptnrWdMethod restait null, et le bouton "Confirmer" restait désactivé
+      // pour toujours (silencieusement — aucune erreur, car un bouton disabled ignore les clics).
+      h += '<input type="radio" name="ptnr-wd-method-r" value="'+_escHtml(m.id)+'" onchange="_ptnrSelectWdMethod(\''+_escHtml(m.id)+'\','+JSON.stringify(m.fields).replace(/"/g,'&quot;')+')" style="accent-color:#FFD700;">';
       h += '<i class="fa-solid '+_escHtml(m.icon)+'" style="color:#FFD700;width:16px;"></i>';
       h += '<span style="font-size:13px;font-weight:700;color:#fff;">'+_escHtml(m.label)+'</span></label>';
     });
