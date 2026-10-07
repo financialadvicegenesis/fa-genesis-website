@@ -24124,13 +24124,28 @@ app.post('/api/admin/withdrawals/:id/retry', async function(req, res) {
         var profileId  = await _wiseGetProfileId();
         var wiseResult = await _wiseTransfer(profileId, rPartner.wiseRecipientId, wd.amount, currency, 'Retrait GENESIS ' + wd.id);
 
-        wdrs[wIdx].status           = wiseResult.status === 'outgoing_payment_sent' ? 'sent' : 'processing';
+        var _retrySent = wiseResult.status === 'outgoing_payment_sent';
+        wdrs[wIdx].status           = _retrySent ? 'sent' : 'processing';
         wdrs[wIdx].wise_transfer_id = wiseResult.transferId;
         wdrs[wIdx].wise_status       = wiseResult.status;
         wdrs[wIdx].processed_at     = new Date().toISOString();
         wdrs[wIdx].note             = 'Déclenché manuellement par admin';
         delete wdrs[wIdx].wise_error;
         saveWithdrawals(wdrs);
+
+        // BUG CORRIGÉ : c'est justement LE cas qui manquait — un virement resté bloqué (solde
+        // Wise insuffisant lors de la première tentative) puis relancé à la main par un admin
+        // une fois Wise réapprovisionné ne notifiait jamais le prestataire que son argent était
+        // enfin parti. Les deux autres cas (succès automatique instantané, confirmation manuelle
+        // via mark-sent) envoient déjà "💸 Virement envoyé" — celui-ci ne le faisait pas.
+        if (_retrySent) {
+            var _retryPartnerEmail = rPartner.email || rPartner.contact_email;
+            if (_retryPartnerEmail) {
+                notifyUser(_retryPartnerEmail, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
+                    'Votre retrait de ' + parseFloat(wd.amount || 0).toFixed(2) + '€ a été envoyé.',
+                    '#partner:wallet:' + wd.id);
+            }
+        }
 
         res.json({ ok: true, transferId: wiseResult.transferId, status: wiseResult.status });
     } catch(e) {
