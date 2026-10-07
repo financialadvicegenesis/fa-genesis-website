@@ -7724,7 +7724,12 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
             }).catch(function(e) { console.error('[WALLET] Email admin withdraw:', e.message); });
         });
 
-        res.json({ ok: true, withdrawal_id: withdrawal.id, message: 'Demande de retrait enregistrée. Traitement sous 2–5 jours ouvrés.' });
+        // Délai élargi (était 2-5j) : la chaîne réelle peut inclure un virement entrant vers le
+        // compte bancaire de l'entreprise avant même le virement sortant vers Wise (confirmé par
+        // le flux réel : Stripe → Boursorama en ~2j, PUIS virement manuel Boursorama → Wise avant
+        // que l'automatisation ne puisse reprendre la main) — promettre 2-5j à chaque fois
+        // risquait de ne pas être tenu selon la réactivité de ce virement manuel intermédiaire.
+        res.json({ ok: true, withdrawal_id: withdrawal.id, message: 'Demande de retrait enregistrée. Traitement sous 5 à 10 jours ouvrés.' });
     } catch(e) {
         console.error('[WALLET] Erreur withdraw:', e);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -24309,7 +24314,7 @@ async function runWeeklyAutoPayouts() {
                         .catch(function(e) { console.warn('[AUTO-PAYOUT] Email virement envoyé non envoyé:', e.message); });
                 } else {
                     notifyUser(_ap.email, 'partner', 'withdrawal_pending', '📤 Virement automatique en cours',
-                        _apAmount.toFixed(2) + '€ sont en cours de virement automatique (traitement sous 2–5 jours ouvrés).',
+                        _apAmount.toFixed(2) + '€ sont en cours de virement automatique (traitement sous 5 à 10 jours ouvrés).',
                         '#partner:wallet:' + _apWd.id);
                 }
 
