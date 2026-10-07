@@ -7557,6 +7557,13 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
         withdrawals.push(withdrawal);
         saveWithdrawals(withdrawals);
 
+        // Posé à true par les blocs Wise/PayPal ci-dessous si le virement est réellement parti à
+        // l'instant (pas seulement "demande enregistrée") — sert à choisir le bon message final
+        // envoyé au prestataire : voir plus bas, BUG CORRIGÉ (le prestataire ne recevait jamais
+        // de confirmation "argent envoyé" quand l'automatisation réussissait du premier coup,
+        // seulement quand un admin devait confirmer un virement fait à la main).
+        var _wdInstantSent = false;
+
         // Auto-virement Wise pour retraits SEPA si le partenaire a un wiseRecipientId — sinon,
         // s'il vient de saisir son IBAN dans CE formulaire de retrait, on l'enregistre à la
         // volée (il n'existe pas de page "coordonnées bancaires" séparée dans l'app : ce
@@ -7591,6 +7598,7 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
                         _wdList[_wdIdx].processed_at      = new Date().toISOString();
                         saveWithdrawals(_wdList);
                     }
+                    _wdInstantSent = _wdResult.status === 'outgoing_payment_sent';
                     console.log('[WALLET] Virement SEPA Wise déclenché :', _wdResult.transferId, 'pour', req.partner.email, amount + '€');
                 } else {
                     console.warn('[WALLET] Retrait SEPA', withdrawal.id, 'sans wiseRecipientId — traitement manuel requis pour', req.partner.email);
@@ -7634,6 +7642,7 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
                         saveWithdrawals(_wdPpList);
                     }
                     _wdPaypalSent = _wdPpResult.success;
+                    if (_wdPpResult.success) _wdInstantSent = true;
                     console.log('[WALLET] Virement PayPal', _wdPpResult.success ? 'déclenché' : 'ÉCHOUÉ', ':', withdrawal.id, 'pour', req.partner.email, amount + '€');
                 } else {
                     console.warn('[WALLET] Retrait PayPal', withdrawal.id, 'sans email PayPal enregistré — traitement manuel requis pour', req.partner.email);
@@ -7646,10 +7655,20 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
             }
         }
 
-        // Notifier le partenaire
-        notifyUser(req.partner.email, 'partner', 'withdrawal_pending', '📤 Retrait en cours',
-            'Votre demande de retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' est en cours de traitement.',
-            '#partner:wallet:' + withdrawal.id);
+        // Notifier le partenaire — message différent si le virement est réellement déjà parti
+        // (Wise/PayPal ont répondu "envoyé" à l'instant) plutôt que juste "demande enregistrée".
+        // Sans ça, le prestataire n'avait AUCUN moyen de savoir que son argent était bien parti
+        // quand tout s'était passé automatiquement — seule une confirmation manuelle admin
+        // (/api/admin/withdrawals/:id/mark-sent) envoyait ce message, jamais le cas qui marche.
+        if (_wdInstantSent) {
+            notifyUser(req.partner.email, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
+                'Votre retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' a été envoyé.',
+                '#partner:wallet:' + withdrawal.id);
+        } else {
+            notifyUser(req.partner.email, 'partner', 'withdrawal_pending', '📤 Retrait en cours',
+                'Votre demande de retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' est en cours de traitement.',
+                '#partner:wallet:' + withdrawal.id);
+        }
 
         // Notifier l'admin par email : montant à virer sur Wise avant l'envoi automatique
         var _wdPartnerName = ((req.partner.prenom || '') + ' ' + (req.partner.nom || '')).trim() || req.partner.email;

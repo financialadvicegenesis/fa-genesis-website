@@ -19412,8 +19412,15 @@ function _ptnrLoadVersements(){
     if(wdrs.length){
       html += '<div style="font-size:11px;font-weight:700;color:#888;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;">Retraits</div>';
       wdrs.slice(0,5).forEach(function(w){
-        var sc = {pending:'#f59e0b',processing:'#818cf8',completed:'#22c55e',failed:'#f87171'}[w.status]||'#888';
-        var sl = {pending:'En attente',processing:'En cours',completed:'Versé ✓',failed:'Échec'}[w.status]||w.status;
+        // BUG CORRIGÉ : le serveur ne pose jamais 'completed' sur un retrait (voir POST
+        // /api/partner/wallet/withdraw et /api/admin/withdrawals/:id/mark-sent) — le statut
+        // réel une fois l'argent réellement envoyé (automatiquement via Wise/PayPal, ou
+        // confirmé à la main par un admin) est 'sent'. Comme 'sent' n'était pas dans cette
+        // table, le prestataire voyait littéralement le mot anglais "sent" non traduit, en
+        // gris neutre au lieu d'une confirmation claire — alors que c'est justement LE
+        // moment où il doit savoir que son argent est parti.
+        var sc = {pending:'#f59e0b',processing:'#818cf8',sent:'#22c55e',failed:'#f87171'}[w.status]||'#888';
+        var sl = {pending:'En attente',processing:'En cours',sent:'Envoyé ✓',failed:'Échec'}[w.status]||w.status;
         html += '<div id="ptnr-wd-'+w.id+'" style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
         html += '<div><div style="font-size:12px;font-weight:700;color:#ccc;">Retrait '+(w.method||'').toUpperCase().replace('_',' ')+'</div>';
         html += '<div style="font-size:11px;color:'+sc+';font-weight:700;margin-top:2px;">'+sl+'</div></div>';
