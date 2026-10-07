@@ -24107,6 +24107,74 @@ app.post('/api/admin/contournement-reset', function(req, res) {
     }
 });
 
+// ── Retenter un retrait Wise/SEPA (partagé entre le bouton admin et la relance
+// automatique périodique ci-dessous) ─────────────────────────────────────────
+// Renvoie {ok:false, error} si la tentative n'a même pas pu être lancée (pas de
+// wiseRecipientId...), sinon {ok:true, sent, status} — sent=false veut dire "toujours pas parti"
+// (le plus souvent : solde Wise encore insuffisant), pas une erreur en soi.
+async function _retryOneWiseWithdrawal(wd, noteIfSuccess) {
+    var wdrs = loadWithdrawals();
+    var wIdx = wdrs.findIndex(function(w) { return w.id === wd.id; });
+    if (wIdx === -1) return { ok: false, error: 'Retrait introuvable' };
+
+    var partners = loadPartners();
+    var rPartner = partners.find(function(p) { return p.id === wd.partner_id; });
+    if (!rPartner || !rPartner.wiseRecipientId) {
+        return { ok: false, error: 'Partenaire sans wiseRecipientId — enregistrer ses coordonnées via /api/admin/wise/retry-recipient/' + (rPartner ? rPartner.id : '') };
+    }
+
+    var currency   = (rPartner.bankDetails && rPartner.bankDetails.currency) || 'EUR';
+    var profileId  = await _wiseGetProfileId();
+    var wiseResult = await _wiseTransfer(profileId, rPartner.wiseRecipientId, wd.amount, currency, 'Retrait GENESIS ' + wd.id);
+
+    var sent = wiseResult.status === 'outgoing_payment_sent';
+    wdrs[wIdx].status           = sent ? 'sent' : 'processing';
+    wdrs[wIdx].wise_transfer_id = wiseResult.transferId;
+    wdrs[wIdx].wise_status      = wiseResult.status;
+    wdrs[wIdx].processed_at     = new Date().toISOString();
+    if (sent && noteIfSuccess) wdrs[wIdx].note = noteIfSuccess;
+    delete wdrs[wIdx].wise_error;
+    saveWithdrawals(wdrs);
+
+    if (sent) {
+        var email = rPartner.email || rPartner.contact_email;
+        if (email) {
+            notifyUser(email, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
+                'Votre retrait de ' + parseFloat(wd.amount || 0).toFixed(2) + '€ a été envoyé.',
+                '#partner:wallet:' + wd.id);
+            emailService.sendWithdrawalSentToPartnerEmail(email, rPartner.prenom || rPartner.firstName || '', wd.amount, wd.method)
+                .catch(function(e) { console.warn('[WISE RETRY] Email virement envoyé non envoyé:', e.message); });
+        }
+    }
+    return { ok: true, sent: sent, status: wiseResult.status, transferId: wiseResult.transferId };
+}
+
+// Relance automatique périodique : sans ça, réapprovisionner le solde Wise (virement bancaire
+// manuel, hors de ce système) ne débloquait RIEN tout seul — un admin devait se souvenir
+// d'aller cliquer "relancer" sur CHAQUE retrait bloqué un par un, sans quoi le prestataire
+// pouvait attendre indéfiniment sans que personne ne s'en rende compte. Ici, dès que le solde
+// Wise redevient suffisant, le prochain passage (toutes les 2h) renvoie automatiquement les
+// virements restés en 'processing' — le prestataire est notifié (push + email) dès que ça part,
+// sans dépendre d'une action humaine pour s'en souvenir.
+async function autoRetryStuckWiseWithdrawals() {
+    try {
+        if (!WISE_TOKEN) return;
+        var stuck = loadWithdrawals().filter(function(w) {
+            return w.status === 'processing' && (w.method === 'wise' || w.method === 'sepa');
+        });
+        if (!stuck.length) return;
+        console.log('[AUTO-RETRY-WISE]', stuck.length, 'retrait(s) Wise/SEPA en attente — nouvelle tentative automatique...');
+        for (var i = 0; i < stuck.length; i++) {
+            try {
+                var r = await _retryOneWiseWithdrawal(stuck[i], 'Relancé automatiquement');
+                if (r.ok && r.sent) console.log('[AUTO-RETRY-WISE] Envoyé avec succès:', stuck[i].id);
+                else if (!r.ok) console.warn('[AUTO-RETRY-WISE]', stuck[i].id, '—', r.error);
+            } catch(e) { console.error('[AUTO-RETRY-WISE] Erreur pour', stuck[i].id, ':', e.message); }
+        }
+    } catch(e) { console.error('[AUTO-RETRY-WISE] Erreur globale:', e.message); }
+}
+setInterval(autoRetryStuckWiseWithdrawals, 2 * 60 * 60 * 1000); // toutes les 2h
+
 // ── Admin : retry Wise pour un retrait échoué/pending ────────
 
 app.post('/api/admin/withdrawals/:id/retry', async function(req, res) {
@@ -24115,48 +24183,15 @@ app.post('/api/admin/withdrawals/:id/retry', async function(req, res) {
         if (!WISE_TOKEN) return res.status(503).json({ error: 'WISE_API_TOKEN non configuré' });
 
         var wdrs = loadWithdrawals();
-        var wIdx = wdrs.findIndex(function(w) { return w.id === req.params.id; });
-        if (wIdx === -1) return res.status(404).json({ error: 'Retrait introuvable' });
-
-        var wd = wdrs[wIdx];
+        var wd = wdrs.find(function(w) { return w.id === req.params.id; });
+        if (!wd) return res.status(404).json({ error: 'Retrait introuvable' });
         if (wd.method !== 'sepa' && wd.method !== 'wise')
             return res.status(400).json({ error: 'Ce retrait n\'est pas SEPA/Wise (' + wd.method + ')' });
 
-        var partners = loadPartners();
-        var rPartner = partners.find(function(p) { return p.id === wd.partner_id; });
-        if (!rPartner || !rPartner.wiseRecipientId)
-            return res.status(400).json({ error: 'Partenaire sans wiseRecipientId — enregistrer ses coordonnées via /api/admin/wise/retry-recipient/' + (rPartner ? rPartner.id : '') });
+        var result = await _retryOneWiseWithdrawal(wd, 'Déclenché manuellement par admin');
+        if (!result.ok) return res.status(400).json({ error: result.error });
 
-        var currency   = (rPartner.bankDetails && rPartner.bankDetails.currency) || 'EUR';
-        var profileId  = await _wiseGetProfileId();
-        var wiseResult = await _wiseTransfer(profileId, rPartner.wiseRecipientId, wd.amount, currency, 'Retrait GENESIS ' + wd.id);
-
-        var _retrySent = wiseResult.status === 'outgoing_payment_sent';
-        wdrs[wIdx].status           = _retrySent ? 'sent' : 'processing';
-        wdrs[wIdx].wise_transfer_id = wiseResult.transferId;
-        wdrs[wIdx].wise_status       = wiseResult.status;
-        wdrs[wIdx].processed_at     = new Date().toISOString();
-        wdrs[wIdx].note             = 'Déclenché manuellement par admin';
-        delete wdrs[wIdx].wise_error;
-        saveWithdrawals(wdrs);
-
-        // BUG CORRIGÉ : c'est justement LE cas qui manquait — un virement resté bloqué (solde
-        // Wise insuffisant lors de la première tentative) puis relancé à la main par un admin
-        // une fois Wise réapprovisionné ne notifiait jamais le prestataire que son argent était
-        // enfin parti. Les deux autres cas (succès automatique instantané, confirmation manuelle
-        // via mark-sent) envoient déjà "💸 Virement envoyé" — celui-ci ne le faisait pas.
-        if (_retrySent) {
-            var _retryPartnerEmail = rPartner.email || rPartner.contact_email;
-            if (_retryPartnerEmail) {
-                notifyUser(_retryPartnerEmail, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
-                    'Votre retrait de ' + parseFloat(wd.amount || 0).toFixed(2) + '€ a été envoyé.',
-                    '#partner:wallet:' + wd.id);
-                emailService.sendWithdrawalSentToPartnerEmail(_retryPartnerEmail, rPartner.prenom || rPartner.firstName || '', wd.amount, wd.method)
-                    .catch(function(e) { console.warn('[ADMIN WITHDRAW RETRY] Email virement envoyé non envoyé:', e.message); });
-            }
-        }
-
-        res.json({ ok: true, transferId: wiseResult.transferId, status: wiseResult.status });
+        res.json({ ok: true, transferId: result.transferId, status: result.status });
     } catch(e) {
         console.error('[ADMIN WITHDRAW RETRY]', e.message);
         res.status(500).json({ error: e.message });
