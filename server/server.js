@@ -24199,6 +24199,44 @@ async function autoRetryStuckWiseWithdrawals() {
                 else if (!r.ok) console.warn('[AUTO-RETRY-WISE]', stuck[i].id, '—', r.error);
             } catch(e) { console.error('[AUTO-RETRY-WISE] Erreur pour', stuck[i].id, ':', e.message); }
         }
+
+        // Alerte admin par email — jusqu'ici, un retrait resté bloqué après plusieurs cycles de
+        // relance (24h+, typiquement solde Wise toujours insuffisant) ne générait qu'une ligne
+        // de log serveur, invisible sans aller fouiller les logs Render. Une seule alerte par
+        // tranche de 24h (pas à chaque passage de 2h) pour ne pas spammer, via
+        // last_admin_stuck_alert_at posé sur le retrait lui-même.
+        var now = Date.now();
+        var stillStuck = loadWithdrawals().filter(function(w) {
+            if (w.status !== 'processing' || (w.method !== 'wise' && w.method !== 'sepa')) return false;
+            if (now - new Date(w.created_at).getTime() < 24 * 60 * 60 * 1000) return false;
+            if (w.last_admin_stuck_alert_at && (now - new Date(w.last_admin_stuck_alert_at).getTime() < 24 * 60 * 60 * 1000)) return false;
+            return true;
+        });
+        if (stillStuck.length) {
+            var partners = loadPartners();
+            var rows = stillStuck.map(function(w) {
+                var p = partners.find(function(x) { return x.id === w.partner_id; });
+                var name = p ? ((p.prenom || '') + ' ' + (p.nom || '')).trim() || p.email : (w.partner_email || '?');
+                var ageHours = Math.round((now - new Date(w.created_at).getTime()) / 3600000);
+                return '<tr><td style="padding:6px 12px;color:#6b7280;">' + name + '</td><td style="padding:6px 12px;">' + parseFloat(w.amount || 0).toFixed(2) + ' €</td><td style="padding:6px 12px;">' + ageHours + 'h</td></tr>';
+            }).join('');
+            ADMIN_EMAILS.forEach(function(adminEmail) {
+                emailService.sendEmail && emailService.sendEmail({
+                    to: adminEmail.trim(),
+                    subject: '⚠️ ' + stillStuck.length + ' retrait(s) Wise/SEPA bloqué(s) depuis 24h+',
+                    html: '<h2>Retraits prestataires toujours en attente</h2>'
+                        + '<p>La relance automatique n\'a pas réussi à les envoyer — vérifiez le solde Wise (admin.html → Paiements → Retraits prestataires) et réapprovisionnez si nécessaire.</p>'
+                        + '<table style="border-collapse:collapse;font-family:sans-serif;"><tr><th style="padding:6px 12px;text-align:left;color:#6b7280;">Prestataire</th><th style="padding:6px 12px;text-align:left;color:#6b7280;">Montant</th><th style="padding:6px 12px;text-align:left;color:#6b7280;">Bloqué depuis</th></tr>' + rows + '</table>'
+                }).catch(function(e) { console.error('[AUTO-RETRY-WISE] Email admin non envoyé:', e.message); });
+            });
+            var _allWdrs = loadWithdrawals();
+            stillStuck.forEach(function(sw) {
+                var _idx = _allWdrs.findIndex(function(w) { return w.id === sw.id; });
+                if (_idx !== -1) _allWdrs[_idx].last_admin_stuck_alert_at = new Date().toISOString();
+            });
+            saveWithdrawals(_allWdrs);
+            console.log('[AUTO-RETRY-WISE] Alerte admin envoyée pour', stillStuck.length, 'retrait(s) bloqué(s) 24h+');
+        }
     } catch(e) { console.error('[AUTO-RETRY-WISE] Erreur globale:', e.message); }
 }
 setInterval(autoRetryStuckWiseWithdrawals, 2 * 60 * 60 * 1000); // toutes les 2h
