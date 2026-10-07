@@ -24266,16 +24266,28 @@ async function runWeeklyAutoPayouts() {
                 saveWithdrawals(_apWdrs);
 
                 // Déclencher le virement
+                // BUG CORRIGÉ : le statut posé ici était toujours 'processing' (Wise) et la
+                // notification plus bas disait pourtant systématiquement "ont été virés" — même
+                // quand le virement n'était en réalité PAS parti (ex. solde Wise insuffisant).
+                // Même classe de faux signal déjà corrigée pour le retrait manuel (voir
+                // /api/partner/wallet/withdraw, _wdInstantSent) : on distingue maintenant
+                // "réellement envoyé à l'instant" de "juste enregistré, pas encore parti" avant
+                // de choisir le texte de la notification — et un retrait Wise resté 'processing'
+                // ici est de toute façon repris automatiquement par autoRetryStuckWiseWithdrawals()
+                // (toutes les 2h) dès que le solde Wise redevient suffisant.
+                var _apSent = false;
                 if (_apMethod === 'wise' && WISE_TOKEN) {
                     var _apProfile = await _wiseGetProfileId();
                     var _apCurrency = (_ap.bankDetails && _ap.bankDetails.currency) || 'EUR';
                     var _apResult = await _wiseTransfer(_apProfile, _ap.wiseRecipientId, _apAmount, _apCurrency, 'Virement auto GENESIS ' + _apWd.id);
+                    _apSent = _apResult.status === 'outgoing_payment_sent';
                     var _upWdrs = loadWithdrawals();
                     var _upIdx = _upWdrs.findIndex(function(w) { return w.id === _apWd.id; });
-                    if (_upIdx !== -1) { _upWdrs[_upIdx].status = 'processing'; _upWdrs[_upIdx].wise_transfer_id = _apResult.transferId; _upWdrs[_upIdx].processed_at = now.toISOString(); saveWithdrawals(_upWdrs); }
-                    console.log('[AUTO-PAYOUT] Wise déclenché pour', _ap.email, ':', _apAmount + '€', _apResult.transferId);
+                    if (_upIdx !== -1) { _upWdrs[_upIdx].status = _apSent ? 'sent' : 'processing'; _upWdrs[_upIdx].wise_transfer_id = _apResult.transferId; _upWdrs[_upIdx].processed_at = now.toISOString(); saveWithdrawals(_upWdrs); }
+                    console.log('[AUTO-PAYOUT] Wise', _apSent ? 'envoyé' : 'déclenché (en attente)', 'pour', _ap.email, ':', _apAmount + '€', _apResult.transferId);
                 } else if (_apMethod === 'paypal' && _ap.payout_paypal_email) {
                     var _apPpResult = await triggerPayPalPayouts([{ recipient_email: _ap.payout_paypal_email, amount: _apAmount, currency: 'EUR', note: 'Virement automatique FA GENESIS' }]);
+                    _apSent = !!_apPpResult.success;
                     var _upWdrs2 = loadWithdrawals();
                     var _upIdx2 = _upWdrs2.findIndex(function(w) { return w.id === _apWd.id; });
                     if (_upIdx2 !== -1) {
@@ -24288,10 +24300,18 @@ async function runWeeklyAutoPayouts() {
                     console.log('[AUTO-PAYOUT] PayPal', _apPpResult.success ? 'OK' : 'ÉCHOUÉ', 'pour', _ap.email, ':', _apAmount + '€');
                 }
 
-                // Notifier le prestataire
-                notifyUser(_ap.email, 'partner', 'auto_payout', '💸 Virement automatique envoyé',
-                    _apAmount.toFixed(2) + '€ ont été virés automatiquement sur votre compte ce lundi.',
-                    '#partner:wallet:' + _apWd.id);
+                // Notifier le prestataire — texte honnête selon ce qui s'est réellement passé.
+                if (_apSent) {
+                    notifyUser(_ap.email, 'partner', 'withdrawal_sent', '💸 Virement automatique envoyé',
+                        _apAmount.toFixed(2) + '€ ont été virés automatiquement sur votre compte ce lundi.',
+                        '#partner:wallet:' + _apWd.id);
+                    emailService.sendWithdrawalSentToPartnerEmail(_ap.email, _ap.prenom || _ap.firstName || '', _apAmount, _apMethod)
+                        .catch(function(e) { console.warn('[AUTO-PAYOUT] Email virement envoyé non envoyé:', e.message); });
+                } else {
+                    notifyUser(_ap.email, 'partner', 'withdrawal_pending', '📤 Virement automatique en cours',
+                        _apAmount.toFixed(2) + '€ sont en cours de virement automatique (traitement sous 2–5 jours ouvrés).',
+                        '#partner:wallet:' + _apWd.id);
+                }
 
                 processed++;
             } catch(_apErr) {
