@@ -23597,8 +23597,15 @@ async function _wiseGetProfileId() {
     });
     const profiles = await r.json();
     if (!Array.isArray(profiles)) throw new Error('Wise: profils non disponibles');
-    const biz = profiles.find(function(p) { return p.type === 'BUSINESS'; });
+    // BUG CORRIGÉ (suspecté après vérification manuelle que le jeton Render EST bien celui du
+    // compte entreprise, contredisant le diagnostic précédent) : comparaison stricte à 'BUSINESS'
+    // en majuscules — si l'API Wise renvoie "business" en minuscules (ou toute autre casse), ce
+    // filtre ne matchait jamais, et le code retombait systématiquement sur profiles[0], qui peut
+    // très bien être le profil personnel si l'API les liste dans cet ordre. Comparaison
+    // insensible à la casse pour ne plus dépendre de la casse exacte utilisée par Wise.
+    const biz = profiles.find(function(p) { return (p.type || '').toUpperCase() === 'BUSINESS'; });
     _wiseProfileId = biz ? biz.id : profiles[0].id;
+    console.log('[WISE] Profils reçus:', JSON.stringify(profiles.map(function(p){ return {id:p.id, type:p.type}; })), '→ utilisé:', _wiseProfileId);
     return _wiseProfileId;
 }
 

@@ -7368,7 +7368,11 @@
                         if (cur === 'EUR' && val != null && isStandard && p.isUsedForTransfers) { eurBal += val; eurFound = true; }
                         return (b.type || '?') + ' / ' + cur + ' : ' + (val != null ? val.toFixed(2) : '?') + ' €' + (cur === 'EUR' && !isStandard ? ' (non disponible pour virement)' : '');
                     });
-                    var label = (p.type === 'BUSINESS' ? 'Profil BUSINESS' : 'Profil PERSONAL') + ' (id ' + p.id + ')' + (p.isUsedForTransfers ? ' — utilisé pour les virements ✓' : '');
+                    // BUG CORRIGÉ : comparaison sensible à la casse ('BUSINESS' exact) pouvait
+                    // mal étiqueter un profil business si Wise renvoie une casse différente —
+                    // on affiche maintenant la valeur BRUTE de p.type (pas une étiquette
+                    // recalculée) pour être sûr à 100% de ce que Wise renvoie réellement.
+                    var label = 'Profil ' + (p.type || '?') + ' (id ' + p.id + ')' + (p.isUsedForTransfers ? ' — utilisé pour les virements ✓' : '');
                     return '<div style="margin-top:6px;' + (p.isUsedForTransfers ? 'color:#aaa;' : 'color:#f59e0b;') + '"><strong>' + label + '</strong><br>' + (rows.length ? rows.join('<br>') : 'Aucune poche.') + '</div>';
                 });
                 var debugHtml = '<div style="font-size:10px;margin-top:8px;line-height:1.6;">' + (profileBlocks.length ? profileBlocks.join('') : 'Aucun profil renvoyé par Wise.') + '</div>';
