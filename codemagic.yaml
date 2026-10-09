@@ -164,8 +164,10 @@ workflows:
         # génériques par défaut de Capacitor (jamais remplacés jusqu'ici) au lieu du logo GENESIS.
         # Assets.xcassets est une seule référence de dossier dans le projet Xcode (contrairement à
         # GoogleService-Info.plist plus haut) : remplacer les PNG qu'il contient suffit, pas besoin
-        # du gem xcodeproj ici. Fond BLANC (demande explicite), logo seul (fond transparent)
-        # composité sur blanc dans Splash-2732.png.
+        # du gem xcodeproj ici. Fond BLANC, icône encadrée (coins arrondis façon squircle, même
+        # composition que AppIcon-1024.png) composité sur blanc dans Splash-2732.png — parité
+        # visuelle avec Android, qui affiche nativement sa vraie icône adaptative encadrée sur
+        # fond blanc à l'ouverture (demande explicite, confirmée par capture d'écran réelle).
         # CORRECTION (capture TestFlight réelle le 09/10 : fond NOIR malgré Splash-2732.png blanc) :
         # le backgroundColor par défaut du LaunchScreen.storyboard généré par Capacitor référence
         # la couleur sémantique/dynamique "systemBackgroundColor" (systemColor="…", pas une valeur
