@@ -23843,15 +23843,16 @@ app.get('/api/admin/wise/balance', async function(req, res) {
             var balances = [];
             var rawError = null;
             try {
-                // BUG CORRIGÉ : balances = Array.isArray(bdata) ? bdata : [] avalait SILENCIEUSEMENT
-                // toute réponse qui n'était pas un tableau brut (ex. une erreur HTTP, ou un objet
-                // {balances:[...]} au lieu d'un tableau direct) — le profil business venait de
-                // renvoyer "Aucune poche" malgré un argent confirmé réel par l'utilisateur sur ce
-                // même profil, donc quelque chose dans cette réponse n'était probablement PAS ce que
-                // ce code attendait. On garde maintenant le statut HTTP et le corps brut en cas
-                // d'échec, au lieu de le transformer silencieusement en liste vide indiscernable
-                // d'un "vraiment aucune poche".
-                var br = await fetch(WISE_BASE + '/v4/profiles/' + p.id + '/balances', { headers: { 'Authorization': 'Bearer ' + WISE_TOKEN } });
+                // BUG CORRIGÉ (confirmé par l'erreur réelle renvoyée par Wise : {"code":"not.valid",
+                // "errors":[{"code":"query.types","message":"NotNull"}]}) : le paramètre ?types=
+                // n'est PAS optionnel sur cet endpoint Wise, contrairement à ce qu'un commit
+                // précédent supposait en le retirant pour "voir toutes les poches" — Wise rejette
+                // purement et simplement la requête sans lui, pour N'IMPORTE QUEL profil. Remis ici.
+                // STANDARD = le solde courant/classique (celui qui finance les virements, voir
+                // _wiseTransfer étape 3 type:'BALANCE') — à distinguer d'un éventuel SAVINGS/
+                // produit de rendement, non interrogé ici volontairement (voir le commentaire plus
+                // haut sur isStandard côté admin.html).
+                var br = await fetch(WISE_BASE + '/v4/profiles/' + p.id + '/balances?types=STANDARD', { headers: { 'Authorization': 'Bearer ' + WISE_TOKEN } });
                 var bdata = await br.json();
                 if (Array.isArray(bdata)) {
                     balances = bdata;
