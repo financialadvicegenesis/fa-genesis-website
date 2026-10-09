@@ -112,7 +112,7 @@ var PARTNERSHIP_CLAUSES = [
     {
         id: 'commission',
         title: 'Article 3 — Commission FA GENESIS',
-        body: 'En contrepartie de l\'accès à la plateforme, de la gestion sécurisée des paiements, de la mise en relation avec les clients et des outils professionnels mis à disposition, GENESIS prélève une commission fixe de 5 % sur chaque paiement reçu, quel que soit le badge détenu par le Prestataire. Les badges sont attribués automatiquement selon le nombre de missions réalisées et la note moyenne obtenue, et donnent accès à des avantages de visibilité et de versement, sans effet sur le taux de commission. La commission est déduite automatiquement avant tout versement.'
+        body: 'En contrepartie de l\'accès à la plateforme, de la gestion sécurisée des paiements, de la mise en relation avec les clients et des outils professionnels mis à disposition, GENESIS prélève une commission fixe de 5 % sur chaque paiement reçu, quel que soit le badge détenu par le Prestataire. Les badges sont attribués automatiquement selon le nombre de missions réalisées et la note moyenne obtenue ; ils donnent accès à des avantages de visibilité (mises en avant mensuelles dans l\'annuaire) et, pour les niveaux les plus élevés, à des événements réservés aux partenaires, mais n\'ont aucun effet sur le taux de commission ni sur les délais de versement, identiques pour tous les Prestataires. La commission est déduite automatiquement avant tout versement.'
     },
     {
         id: 'obligations_prestataire',
