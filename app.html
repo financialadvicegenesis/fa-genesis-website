@@ -11185,6 +11185,13 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     // Level-up card
     var card = document.createElement('div');
     card.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:20px;padding:28px 32px;text-align:center;pointer-events:auto;animation:luCardIn .45s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px;max-width:86vw;box-shadow:0 0 40px rgba(255,215,0,.35);';
+    // BUG CORRIGÉ : levelIcon reçoit en réalité le slug du badge ('bronze'/'argent'/'or'/'elite',
+    // voir l'appel _triggerLevelUp(meta.label, _luBadgeId) où _luBadgeId = d.badge) — pas une
+    // classe FontAwesome comme le nom du paramètre le suggère. L'icône du popup utilisait ce
+    // slug tel quel comme classe CSS ("fa-solid bronze"), une classe qui n'existe pas → icône
+    // jamais affichée correctement. Même correspondance que iconForLvl dans showClientLevels().
+    var _luIconMap = { bronze: 'fa-fire', argent: 'fa-bolt', or: 'fa-crown', elite: 'fa-infinity' };
+    var _luIconClass = _luIconMap[levelIcon] || 'fa-crown';
     var _luAdvMap = {
       bronze: ['Programme de parrainage','Missions GENESIS','Patrimoine GENESIS','Jérémie IA personnalisé'],
       argent: ['Offres promo prestataires','Webinaires & ateliers GENESIS','Alertes intelligentes','Campagnes & jeux concours'],
@@ -11196,14 +11203,19 @@ function _triggerLevelUp(levelLabel, levelIcon) {
       + '<div style="font-size:10px;color:#a89000;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;">Nouvellement débloqué :</div>'
       + _luAdvs.map(function(a){ return '<div style="font-size:12px;color:#ccc;display:flex;align-items:center;gap:7px;margin-bottom:4px;"><i class="fa-solid fa-circle-check" style="color:#4caf50;font-size:11px;flex-shrink:0;"></i>'+a+'</div>'; }).join('')
       + '</div>' : '';
-    card.innerHTML = '<div style="font-size:36px;margin-bottom:8px;"><i class="fa-solid '+(levelIcon||'fa-crown')+'" style="color:#FFD700;"></i></div>'
+    card.innerHTML = '<div style="font-size:36px;margin-bottom:8px;"><i class="fa-solid '+_luIconClass+'" style="color:#FFD700;"></i></div>'
       + '<div style="font-size:11px;color:#a89000;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;margin-bottom:6px;">Nouveau niveau !</div>'
       + '<div style="font-size:24px;font-weight:900;color:#FFD700;margin-bottom:6px;">'+levelLabel+'</div>'
       + '<div style="font-size:12px;color:#888;margin-bottom:14px;">Félicitations, vous avez atteint un nouveau niveau GENESIS !</div>'
       + _luAdvHtml
       + '<div style="display:flex;gap:8px;">'
       + '<button onclick="document.getElementById(\'levelup-overlay\').innerHTML=\'\'" style="flex:1;background:rgba(255,255,255,.06);border:1px solid #333;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;color:#aaa;cursor:pointer;">Fermer</button>'
-      + '<button onclick="document.getElementById(\'levelup-overlay\').innerHTML=\'\';showClientLevels();" style="flex:2;background:linear-gradient(135deg,#FFD700,#e6c200);border:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:800;color:#1a1200;cursor:pointer;"><i class="fa-solid fa-crown"></i> Voir mes avantages</button>'
+      // BUG CORRIGÉ : showClientLevels() rouvrait toujours la liste depuis le haut (intro +
+      // explications QG), obligeant le client à défiler manuellement pour retrouver son propre
+      // niveau parmi Créateur/Bâtisseur/Visionnaire/Générateur — surtout pénible pour les niveaux
+      // les plus hauts. On lui transmet maintenant le slug du niveau qu'il vient d'atteindre pour
+      // que l'écran défile et le mette en évidence automatiquement (voir showClientLevels()).
+      + '<button onclick="document.getElementById(\'levelup-overlay\').innerHTML=\'\';showClientLevels(\''+levelIcon+'\');" style="flex:2;background:linear-gradient(135deg,#FFD700,#e6c200);border:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:800;color:#1a1200;cursor:pointer;"><i class="fa-solid fa-crown"></i> Voir mes avantages</button>'
       + '</div>';
     overlay.appendChild(card);
     // Inject animation keyframes once
@@ -12196,7 +12208,11 @@ function _ppSave() {
 }
 
 // ── NIVEAUX GENESIS CLIENT ────────────────────────────────────────
-function showClientLevels() {
+// scrollToLevel (optionnel) : slug 'bronze'/'argent'/'or'/'elite' — transmis par le bouton "Voir
+// mes avantages" du popup de félicitations (_triggerLevelUp) pour amener directement le client
+// sur SON niveau fraîchement atteint, au lieu de le laisser défiler manuellement depuis le haut
+// de l'écran (intro + explications QG) parmi les 4 niveaux pour le retrouver.
+function showClientLevels(scrollToLevel) {
   var c = document.getElementById('profilContent');
   if (!c) return;
   if (!USER || GUEST) { renderProfil(); return; }
@@ -12261,7 +12277,7 @@ function showClientLevels() {
         var borderColor = isCurrent ? 'var(--yellow)' : (unlocked ? '#4caf50' : '#1e1e1e');
         var titleColor = isCurrent ? 'var(--yellow)' : (unlocked ? '#4caf50' : '#444');
         var iconForLvl = { bronze: 'fa-fire', argent: 'fa-bolt', or: 'fa-crown', elite: 'fa-infinity' }[lvl.id] || 'fa-seedling';
-        html += '<div style="background:#0e0e0e;border:1.5px solid ' + borderColor + ';border-radius:14px;padding:14px 15px;margin-bottom:12px;' + (isCurrent ? 'box-shadow:0 0 14px rgba(var(--yellow-rgb),.18);' : '') + '">';
+        html += '<div id="client-level-card-' + lvl.id + '" style="background:#0e0e0e;border:1.5px solid ' + borderColor + ';border-radius:14px;padding:14px 15px;margin-bottom:12px;transition:box-shadow .3s ease;' + (isCurrent ? 'box-shadow:0 0 14px rgba(var(--yellow-rgb),.18);' : '') + '">';
         // Header
         html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">';
         html += '<div style="width:38px;height:38px;border-radius:50%;background:' + (unlocked ? 'rgba(var(--yellow-rgb),.12)' : '#111') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
@@ -12303,6 +12319,20 @@ function showClientLevels() {
         html += '</div></div>';
       });
       el.innerHTML = html;
+      // Défiler jusqu'au niveau demandé (bouton "Voir mes avantages" du popup de félicitations)
+      // et le mettre brièvement en évidence — même pattern que _ptnrScrollToMission ailleurs
+      // dans l'app. setTimeout(0) : laisser le navigateur peindre le HTML injecté ci-dessus
+      // avant de calculer sa position pour le scroll.
+      if (scrollToLevel) {
+        setTimeout(function() {
+          var card = document.getElementById('client-level-card-' + scrollToLevel);
+          if (!card) return;
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          var _origShadow = card.style.boxShadow;
+          card.style.boxShadow = '0 0 0 2px var(--yellow, #FFD700)';
+          setTimeout(function() { card.style.boxShadow = _origShadow; }, 2200);
+        }, 50);
+      }
     })
     .catch(function() {
       var el = document.getElementById('client-levels-content');
