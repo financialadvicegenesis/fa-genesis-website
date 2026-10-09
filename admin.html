@@ -7344,29 +7344,34 @@
                     el.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:10px 14px;font-size:12px;color:#888;">Solde Wise indisponible : ' + balData.error + '</div>';
                     return;
                 }
-                var balances = Array.isArray(balData.balances) ? balData.balances : [];
-                // BUG CORRIGÉ : un compte Wise peut avoir PLUSIEURS poches EUR (ex. solde courant +
-                // "Wise Assets", le produit de rendement visible dans l'app Wise elle-même — voir
-                // capture d'écran fournie : "23,84 EUR / Vos rendements · Fourni par Wise Assets
-                // Europe") — ne garder que la DERNIÈRE poche EUR trouvée pouvait afficher 0,00€ si
-                // cette dernière poche n'était pas celle qui contient réellement l'argent. On
-                // additionne maintenant TOUTES les poches EUR, et on affiche aussi le détail brut
-                // ci-dessous pour que ce soit vérifiable d'un coup d'œil plutôt que de devoir faire
-                // confiance à un seul chiffre calculé.
-                // Seules les poches de type STANDARD financent réellement un virement (voir
-                // _wiseTransfer côté serveur) — une poche EUR "Wise Assets"/épargne compte pour le
-                // diagnostic affiché (debugRows) mais pas pour le total "disponible" ci-dessous,
-                // sinon le bandeau dirait "suffisant" alors qu'un virement échouerait quand même.
+                // BUG CORRIGÉ (x2, confirmé en situation réelle) :
+                // 1) Un compte Wise peut avoir plusieurs poches EUR — seules celles de type
+                //    STANDARD financent réellement un virement (voir _wiseTransfer côté serveur,
+                //    étape 3, type:'BALANCE') ; une autre poche (ex. "Wise Assets") ne compte pas
+                //    pour la disponibilité réelle même si elle contient de l'argent.
+                // 2) _wiseGetProfileId() (serveur) choisit AUTOMATIQUEMENT le profil BUSINESS s'il
+                //    en existe un, sans vérifier si c'est bien celui où l'argent atterrit — un
+                //    compte peut avoir un profil PERSONAL et un profil BUSINESS distincts, chacun
+                //    avec ses propres soldes. Confirmé : le profil utilisé affichait 0,00€ alors
+                //    que l'app Wise (vue d'ensemble) montrait bien 23,84€ — l'argent était donc
+                //    probablement sur L'AUTRE profil. On affiche maintenant CHAQUE profil avec ses
+                //    propres poches pour rendre ce décalage visible directement ici, avec le
+                //    profil réellement utilisé pour les virements marqué explicitement.
+                var profiles = Array.isArray(balData.profiles) ? balData.profiles : [];
                 var eurBal = 0;
                 var eurFound = false;
-                var debugRows = balances.map(function(b) {
-                    var cur = (b.amount && b.amount.currency) || b.currency || '?';
-                    var val = (b.amount && b.amount.value != null) ? b.amount.value : (b.value != null ? b.value : null);
-                    var isStandard = (b.type || '').toUpperCase() === 'STANDARD';
-                    if (cur === 'EUR' && val != null && isStandard) { eurBal += val; eurFound = true; }
-                    return (b.type || '?') + ' / ' + cur + ' : ' + (val != null ? val.toFixed(2) : '?') + ' €' + (cur === 'EUR' && !isStandard ? ' (non disponible pour virement)' : '');
+                var profileBlocks = profiles.map(function(p) {
+                    var rows = (p.balances || []).map(function(b) {
+                        var cur = (b.amount && b.amount.currency) || b.currency || '?';
+                        var val = (b.amount && b.amount.value != null) ? b.amount.value : (b.value != null ? b.value : null);
+                        var isStandard = (b.type || '').toUpperCase() === 'STANDARD';
+                        if (cur === 'EUR' && val != null && isStandard && p.isUsedForTransfers) { eurBal += val; eurFound = true; }
+                        return (b.type || '?') + ' / ' + cur + ' : ' + (val != null ? val.toFixed(2) : '?') + ' €' + (cur === 'EUR' && !isStandard ? ' (non disponible pour virement)' : '');
+                    });
+                    var label = (p.type === 'BUSINESS' ? 'Profil BUSINESS' : 'Profil PERSONAL') + ' (id ' + p.id + ')' + (p.isUsedForTransfers ? ' — utilisé pour les virements ✓' : '');
+                    return '<div style="margin-top:6px;' + (p.isUsedForTransfers ? 'color:#aaa;' : 'color:#f59e0b;') + '"><strong>' + label + '</strong><br>' + (rows.length ? rows.join('<br>') : 'Aucune poche.') + '</div>';
                 });
-                var debugHtml = '<div style="font-size:10px;color:#666;margin-top:8px;line-height:1.6;">' + (debugRows.length ? debugRows.join('<br>') : 'Aucune poche renvoyée par Wise.') + '</div>';
+                var debugHtml = '<div style="font-size:10px;margin-top:8px;line-height:1.6;">' + (profileBlocks.length ? profileBlocks.join('') : 'Aucun profil renvoyé par Wise.') + '</div>';
                 var pendingWise = (wdData.withdrawals || []).filter(function(w) {
                     return w.status !== 'sent' && (w.method === 'wise' || w.method === 'sepa');
                 });

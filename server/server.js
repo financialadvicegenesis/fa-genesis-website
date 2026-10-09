@@ -23812,19 +23812,37 @@ app.get('/api/admin/wise/balance', async function(req, res) {
     try {
         if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
         if (!WISE_TOKEN) return res.status(503).json({ error: 'Wise non configuré' });
-        var profileId = await _wiseGetProfileId();
-        // BUG CORRIGÉ : le filtre ?types=STANDARD pouvait cacher exactement l'endroit où l'argent
-        // se trouve réellement — un compte Wise peut avoir plusieurs poches EUR (solde courant +
-        // "Wise Assets", le produit de rendement visible dans l'app Wise) et seul le solde
-        // STANDARD peut financer un virement (voir _wiseTransfer, étape 3, type:'BALANCE'). Sans
-        // filtre ici, l'admin voit TOUTES les poches (voir admin.html _loadWiseBalanceStatus, qui
-        // ne compte que celles de type STANDARD pour la disponibilité réelle, mais affiche les
-        // autres pour diagnostiquer si l'argent est "coincé" dans une poche non-standard.
-        var r = await fetch(WISE_BASE + '/v4/profiles/' + profileId + '/balances', {
-            headers: { 'Authorization': 'Bearer ' + WISE_TOKEN }
-        });
-        var data = await r.json();
-        res.json({ ok: true, balances: data });
+        var usedProfileId = await _wiseGetProfileId();
+        // BUG CORRIGÉ (x2) :
+        // 1) Le filtre ?types=STANDARD pouvait cacher exactement l'endroit où l'argent se trouve
+        //    réellement — seul le solde STANDARD peut financer un virement (voir _wiseTransfer,
+        //    étape 3, type:'BALANCE') mais une poche EUR non-standard (ex. "Wise Assets") reste
+        //    utile à voir pour diagnostiquer. Retiré ici, filtré côté admin.html à la place.
+        // 2) _wiseGetProfileId() choisit AUTOMATIQUEMENT le profil BUSINESS s'il en existe un,
+        //    sans jamais vérifier si c'est bien celui où l'argent atterrit réellement — confirmé
+        //    en situation réelle : solde API à 0,00€ sur ce profil alors que le compte Wise (vu
+        //    dans l'app, toutes vues confondues) affichait bien 23,84€. Un compte Wise peut avoir
+        //    un profil PERSONAL et un profil BUSINESS distincts, chacun avec ses propres soldes —
+        //    si le virement bancaire entrant a été crédité sur le profil que ce code ne choisit
+        //    PAS, cette route verra toujours 0€ quoi qu'il arrive. On renvoie maintenant TOUS les
+        //    profils avec leurs soldes respectifs pour rendre ce genre de décalage visible
+        //    directement dans l'admin au lieu de devoir le deviner à partir d'une seule capture.
+        var pr = await fetch(WISE_BASE + '/v1/profiles', { headers: { 'Authorization': 'Bearer ' + WISE_TOKEN } });
+        var allProfiles = await pr.json();
+        if (!Array.isArray(allProfiles)) throw new Error('Wise: profils non disponibles');
+        var profilesOut = [];
+        for (var pi = 0; pi < allProfiles.length; pi++) {
+            var p = allProfiles[pi];
+            var br;
+            var balances = [];
+            try {
+                br = await fetch(WISE_BASE + '/v4/profiles/' + p.id + '/balances', { headers: { 'Authorization': 'Bearer ' + WISE_TOKEN } });
+                var bdata = await br.json();
+                balances = Array.isArray(bdata) ? bdata : [];
+            } catch(_pe) { /* ce profil reste avec balances:[] si l'appel échoue */ }
+            profilesOut.push({ id: p.id, type: p.type, isUsedForTransfers: p.id === usedProfileId, balances: balances });
+        }
+        res.json({ ok: true, usedProfileId: usedProfileId, profiles: profilesOut, balances: (profilesOut.find(function(p){return p.isUsedForTransfers;}) || {}).balances || [] });
     } catch(e) {
         console.error('[WISE BALANCE]', e.message);
         res.status(500).json({ error: 'Erreur Wise: ' + e.message });
