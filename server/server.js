@@ -24239,7 +24239,15 @@ async function autoRetryStuckWiseWithdrawals() {
         }
     } catch(e) { console.error('[AUTO-RETRY-WISE] Erreur globale:', e.message); }
 }
-setInterval(autoRetryStuckWiseWithdrawals, 2 * 60 * 60 * 1000); // toutes les 2h
+// BUG CORRIGÉ : il n'y avait qu'un setInterval, pas de premier passage rapide au démarrage (même
+// pattern que checkAutoPaymentRelease un peu plus haut, qui en a un). Problème concret : Render
+// redéploie (donc redémarre le process Node, qui remet TOUS les setInterval à zéro) à chaque push
+// sur main — chose qui arrive plusieurs fois par jour lors d'une session de correctifs comme
+// celle-ci. Sans ce premier passage rapide, le minuteur de 2h recommençait de zéro à chaque
+// déploiement et pouvait ne jamais atteindre réellement ses 2h d'affilée, laissant un retrait
+// pourtant déblocable (solde Wise réapprovisionné) attendre indéfiniment malgré le mécanisme.
+setTimeout(autoRetryStuckWiseWithdrawals, 2 * 60 * 1000); // 2 min après démarrage
+setInterval(autoRetryStuckWiseWithdrawals, 2 * 60 * 60 * 1000); // puis toutes les 2h
 
 // ── Admin : retry Wise pour un retrait échoué/pending ────────
 
