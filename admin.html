@@ -7290,6 +7290,16 @@
                         if (w.error) html += '<div style="font-size:11px;color:#ef4444;margin-top:6px;"><i class="fas fa-triangle-exclamation" style="margin-right:4px;"></i>' + w.error + '</div>';
                         html += '</div>';
                         html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
+                        // Bouton "Relancer maintenant" — n'existait jusqu'ici que comme appel API
+                        // technique documenté dans l'email d'alerte (/api/admin/withdrawals/:id/retry),
+                        // sans aucun moyen de le déclencher depuis l'interface. Un admin qui venait de
+                        // réapprovisionner Wise devait attendre jusqu'à 2h la prochaine relance
+                        // automatique (autoRetryStuckWiseWithdrawals) sans pouvoir forcer l'envoi
+                        // immédiat alors qu'il savait le solde désormais suffisant. Uniquement pour
+                        // Wise/SEPA (seules méthodes que cet endpoint sait retenter) et pas encore 'sent'.
+                        if ((w.method === 'wise' || w.method === 'sepa') && w.status !== 'sent') {
+                            html += '<button onclick="_retryPartnerWithdrawalNow(\'' + w.id + '\',this)" id="retry-wd-btn-' + w.id + '" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);border:none;border-radius:8px;padding:9px 18px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;"><i class="fas fa-rotate" style="margin-right:6px;"></i>Relancer maintenant</button>';
+                        }
                         html += '<button onclick="_markPartnerWithdrawalSent(\'' + w.id + '\')" style="background:linear-gradient(135deg,#14532d,#16a34a);border:none;border-radius:8px;padding:9px 18px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;"><i class="fas fa-check" style="margin-right:6px;"></i>Marquer comme envoyé</button>';
                         html += '</div>';
                         html += '</div>';
@@ -7357,6 +7367,31 @@
                 if (d.ok) { loadPartnerWithdrawals(); }
                 else { alert(d.error || 'Erreur'); }
             }).catch(function() { alert('Erreur réseau'); });
+        }
+
+        // Force une tentative immédiate (/api/admin/withdrawals/:id/retry, voir son commentaire
+        // côté serveur) au lieu d'attendre jusqu'à 2h la prochaine relance automatique — utile
+        // juste après avoir réapprovisionné Wise, quand on sait le solde désormais suffisant.
+        function _retryPartnerWithdrawalNow(id, btn) {
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>Relance en cours…'; }
+            fetch(API_BASE_URL + '/api/admin/withdrawals/' + id + '/retry', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.ok && d.status === 'outgoing_payment_sent') {
+                    loadPartnerWithdrawals();
+                } else if (d.ok) {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-rotate" style="margin-right:6px;"></i>Relancer maintenant'; }
+                    alert('Toujours pas parti (statut Wise : ' + d.status + '). Le solde Wise est probablement encore insuffisant — vérifiez le bandeau ci-dessus.');
+                } else {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-rotate" style="margin-right:6px;"></i>Relancer maintenant'; }
+                    alert(d.error || 'Erreur');
+                }
+            }).catch(function() {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-rotate" style="margin-right:6px;"></i>Relancer maintenant'; }
+                alert('Erreur réseau');
+            });
         }
 
         // ── RETRAITS GENESIS SAFE™ CLIENTS (virements manuels) ─────────
