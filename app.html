@@ -16581,7 +16581,19 @@ function _pbApproveContract(){
   _pbApproved = true;
   var ab=document.getElementById('pb-approve-btn');
   if(ab){ ab.disabled=true; ab.style.background='#0a2a0a'; ab.style.borderColor='#22c55e'; ab.style.color='#22c55e';
-    ab.innerHTML='<i class="fa-solid fa-check-double" style="margin-right:6px;"></i>APPROUVÉ ✓'; }
+    ab.innerHTML='<i class="fa-solid fa-check-double" style="margin-right:6px;"></i>APPROUVÉ ✓';
+    // BUG CORRIGÉ (confirmé reproductible à 100% sur iOS, capture d'écran à l'appui) : changer
+    // le fond, la bordure, la couleur ET le contenu du bouton en une seule fois provoquait un
+    // bug d'affichage classique de WebKit (iOS) — l'ancien texte "LU ET APPROUVÉ" restait visible
+    // en fantôme, superposé au nouveau "APPROUVÉ ✓", tant que rien ne forçait un vrai repaint.
+    // Forcer un reflow/repaint synchrone (bascule display:none → lecture layout → retour à la
+    // normale) est la technique standard pour contourner ce bug WebKit — fiable, sans flash
+    // visible car tout se passe dans le même tick JS, avant que le navigateur n'ait eu l'occasion
+    // de peindre l'état intermédiaire "none".
+    ab.style.display = 'none';
+    void ab.offsetHeight;
+    ab.style.display = '';
+  }
   var si=document.getElementById('pb-sign-input'); if(si) si.disabled=false;
   var sc=document.getElementById('pb-sign-check'); if(sc) sc.disabled=false;
   var sb=document.getElementById('pb-sign-btn'); if(sb) sb.disabled=false;
