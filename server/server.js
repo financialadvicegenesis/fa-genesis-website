@@ -24181,7 +24181,7 @@ async function _retryOneWiseWithdrawal(wd, noteIfSuccess) {
 // manuel, hors de ce système) ne débloquait RIEN tout seul — un admin devait se souvenir
 // d'aller cliquer "relancer" sur CHAQUE retrait bloqué un par un, sans quoi le prestataire
 // pouvait attendre indéfiniment sans que personne ne s'en rende compte. Ici, dès que le solde
-// Wise redevient suffisant, le prochain passage (toutes les 2h) renvoie automatiquement les
+// Wise redevient suffisant, le prochain passage (toutes les 1h) renvoie automatiquement les
 // virements restés en 'processing' — le prestataire est notifié (push + email) dès que ça part,
 // sans dépendre d'une action humaine pour s'en souvenir.
 async function autoRetryStuckWiseWithdrawals() {
@@ -24247,7 +24247,7 @@ async function autoRetryStuckWiseWithdrawals() {
 // déploiement et pouvait ne jamais atteindre réellement ses 2h d'affilée, laissant un retrait
 // pourtant déblocable (solde Wise réapprovisionné) attendre indéfiniment malgré le mécanisme.
 setTimeout(autoRetryStuckWiseWithdrawals, 2 * 60 * 1000); // 2 min après démarrage
-setInterval(autoRetryStuckWiseWithdrawals, 2 * 60 * 60 * 1000); // puis toutes les 2h
+setInterval(autoRetryStuckWiseWithdrawals, 60 * 60 * 1000); // puis toutes les 1h
 
 // ── Admin : retry Wise pour un retrait échoué/pending ────────
 
@@ -24348,7 +24348,7 @@ async function runWeeklyAutoPayouts() {
                 // "réellement envoyé à l'instant" de "juste enregistré, pas encore parti" avant
                 // de choisir le texte de la notification — et un retrait Wise resté 'processing'
                 // ici est de toute façon repris automatiquement par autoRetryStuckWiseWithdrawals()
-                // (toutes les 2h) dès que le solde Wise redevient suffisant.
+                // (toutes les 1h) dès que le solde Wise redevient suffisant.
                 var _apSent = false;
                 if (_apMethod === 'wise' && WISE_TOKEN) {
                     var _apProfile = await _wiseGetProfileId();
