@@ -23660,10 +23660,16 @@ async function _wiseTransfer(profileId, recipientId, amount, currency, reference
     const tr = await fetch(WISE_BASE + '/v1/transfers', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + WISE_TOKEN, 'Content-Type': 'application/json' },
+        // BUG CORRIGÉ (confirmé par l'erreur réelle retournée par l'API Wise : "Illegal query
+        // argument" sur le champ customerTransactionId) : randomBytes(16).toString('hex') produit
+        // une chaîne hex de 32 caractères SANS tirets (ex. "a3f5e8b2c1d4f6a7b8c9d0e1f2a3b4c5"),
+        // pas un UUID valide — Wise exige explicitement un UUID (format avec tirets) pour ce champ
+        // idempotence, et rejetait donc CHAQUE virement Wise/SEPA avant même d'atteindre l'étape
+        // de financement. crypto.randomUUID() génère le bon format ("xxxxxxxx-xxxx-...").
         body: JSON.stringify({
             targetAccount: recipientId,
             quoteUuid: quote.id,
-            customerTransactionId: require('crypto').randomBytes(16).toString('hex'),
+            customerTransactionId: require('crypto').randomUUID(),
             details: { reference: reference || 'Paiement FA GENESIS' }
         })
     });
