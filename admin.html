@@ -2102,6 +2102,13 @@
             document.getElementById('devisSection').style.display = 'none';
             var payoutsEl = document.getElementById('payoutsSection');
             if (payoutsEl) payoutsEl.style.display = 'none';
+            // Le rafraîchissement auto du solde Wise (voir _loadWiseBalanceStatus) ne doit tourner
+            // que pendant que cet onglet est réellement affiché — sans ça, quitter "Paiements"
+            // laisserait l'appel réseau continuer indéfiniment en arrière-plan.
+            if (typeof _wiseBalanceRefreshInterval !== 'undefined' && _wiseBalanceRefreshInterval) {
+                clearInterval(_wiseBalanceRefreshInterval);
+                _wiseBalanceRefreshInterval = null;
+            }
             var marketplaceEl = document.getElementById('marketplaceSection');
             if (marketplaceEl) marketplaceEl.style.display = 'none';
             var litigesEl = document.getElementById('litigesSection');
@@ -2156,6 +2163,10 @@
                 loadPartnerWithdrawals();
                 loadClientWithdrawals();
                 _loadWiseBalanceStatus();
+                // Rafraîchi automatiquement toutes les 20s tant que cet onglet reste ouvert —
+                // demandé explicitement : savoir dès que le réapprovisionnement Wise arrive
+                // réellement, sans avoir à changer d'onglet et revenir pour forcer un rechargement.
+                _wiseBalanceRefreshInterval = setInterval(_loadWiseBalanceStatus, 20000);
             } else if (section === 'litiges') {
                 if (litigesEl) litigesEl.style.display = 'block';
                 loadAdminDisputes();
@@ -7316,42 +7327,62 @@
         // Compare le solde Wise actuel à la somme des retraits Wise/SEPA encore non envoyés, pour
         // savoir d'un coup d'œil si un réapprovisionnement (Boursorama → Wise) est nécessaire
         // avant que ça ne bloque un prestataire.
+        var _wiseBalanceRefreshInterval = null;
         function _loadWiseBalanceStatus() {
             var el = document.getElementById('wiseBalanceStatus');
             if (!el) return;
-            el.innerHTML = '<p style="color:#aaa;opacity:0.6;font-size:12px;">Vérification du solde Wise…</p>';
+            if (!el.dataset.loaded) el.innerHTML = '<p style="color:#aaa;opacity:0.6;font-size:12px;">Vérification du solde Wise…</p>';
             var tok = localStorage.getItem('fa_genesis_admin_token') || '';
             Promise.all([
                 fetch(API_BASE_URL + '/api/admin/wise/balance', { headers: { 'Authorization': 'Bearer ' + tok } }).then(function(r) { return r.json(); }),
                 fetch(API_BASE_URL + '/api/admin/withdrawals', { headers: { 'Authorization': 'Bearer ' + tok } }).then(function(r) { return r.json(); })
             ]).then(function(res) {
+                el.dataset.loaded = '1';
                 var balData = res[0] || {};
                 var wdData = res[1] || {};
                 if (balData.error) {
                     el.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:10px 14px;font-size:12px;color:#888;">Solde Wise indisponible : ' + balData.error + '</div>';
                     return;
                 }
-                var balances = (balData.balances && balData.balances.length ? balData.balances : (Array.isArray(balData.balances) ? balData.balances : []));
-                var eurBal = null;
-                (balances || []).forEach(function(b) {
-                    var cur = (b.amount && b.amount.currency) || b.currency;
-                    if (cur === 'EUR') eurBal = (b.amount && b.amount.value != null) ? b.amount.value : b.value;
+                var balances = Array.isArray(balData.balances) ? balData.balances : [];
+                // BUG CORRIGÉ : un compte Wise peut avoir PLUSIEURS poches EUR (ex. solde courant +
+                // "Wise Assets", le produit de rendement visible dans l'app Wise elle-même — voir
+                // capture d'écran fournie : "23,84 EUR / Vos rendements · Fourni par Wise Assets
+                // Europe") — ne garder que la DERNIÈRE poche EUR trouvée pouvait afficher 0,00€ si
+                // cette dernière poche n'était pas celle qui contient réellement l'argent. On
+                // additionne maintenant TOUTES les poches EUR, et on affiche aussi le détail brut
+                // ci-dessous pour que ce soit vérifiable d'un coup d'œil plutôt que de devoir faire
+                // confiance à un seul chiffre calculé.
+                // Seules les poches de type STANDARD financent réellement un virement (voir
+                // _wiseTransfer côté serveur) — une poche EUR "Wise Assets"/épargne compte pour le
+                // diagnostic affiché (debugRows) mais pas pour le total "disponible" ci-dessous,
+                // sinon le bandeau dirait "suffisant" alors qu'un virement échouerait quand même.
+                var eurBal = 0;
+                var eurFound = false;
+                var debugRows = balances.map(function(b) {
+                    var cur = (b.amount && b.amount.currency) || b.currency || '?';
+                    var val = (b.amount && b.amount.value != null) ? b.amount.value : (b.value != null ? b.value : null);
+                    var isStandard = (b.type || '').toUpperCase() === 'STANDARD';
+                    if (cur === 'EUR' && val != null && isStandard) { eurBal += val; eurFound = true; }
+                    return (b.type || '?') + ' / ' + cur + ' : ' + (val != null ? val.toFixed(2) : '?') + ' €' + (cur === 'EUR' && !isStandard ? ' (non disponible pour virement)' : '');
                 });
+                var debugHtml = '<div style="font-size:10px;color:#666;margin-top:8px;line-height:1.6;">' + (debugRows.length ? debugRows.join('<br>') : 'Aucune poche renvoyée par Wise.') + '</div>';
                 var pendingWise = (wdData.withdrawals || []).filter(function(w) {
                     return w.status !== 'sent' && (w.method === 'wise' || w.method === 'sepa');
                 });
                 var pendingTotal = pendingWise.reduce(function(s, w) { return s + (parseFloat(w.amount) || 0); }, 0);
-                if (eurBal == null) {
-                    el.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:10px 14px;font-size:12px;color:#888;">Solde Wise EUR introuvable dans la réponse.</div>';
+                if (!eurFound) {
+                    el.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:10px 14px;font-size:12px;color:#888;">Solde Wise EUR introuvable dans la réponse.' + debugHtml + '</div>';
                     return;
                 }
                 var ok = eurBal >= pendingTotal;
                 var color = ok ? '#22c55e' : '#ef4444';
-                el.innerHTML = '<div style="background:' + color + '14;border:1.5px solid ' + color + '55;border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'
+                el.innerHTML = '<div style="background:' + color + '14;border:1.5px solid ' + color + '55;border-radius:10px;padding:12px 16px;">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'
                     + '<div><div style="font-size:11px;color:' + color + ';font-weight:800;text-transform:uppercase;letter-spacing:.5px;">' + (ok ? '✅ Solde Wise suffisant' : '⚠️ Solde Wise insuffisant — réapprovisionner (Boursorama → Wise)') + '</div>'
                     + '<div style="font-size:12px;color:#aaa;margin-top:4px;">' + pendingWise.length + ' retrait(s) Wise/SEPA en attente, pour ' + pendingTotal.toFixed(2) + ' € au total</div></div>'
-                    + '<div style="text-align:right;"><div style="font-size:22px;font-weight:900;color:' + color + ';">' + eurBal.toFixed(2) + ' €</div><div style="font-size:10px;color:#888;">Solde Wise EUR</div></div>'
-                    + '</div>';
+                    + '<div style="text-align:right;"><div style="font-size:22px;font-weight:900;color:' + color + ';">' + eurBal.toFixed(2) + ' €</div><div style="font-size:10px;color:#888;">Solde Wise EUR (toutes poches) · actualisé toutes les 20s</div></div>'
+                    + '</div>' + debugHtml + '</div>';
             }).catch(function() {
                 el.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:10px 14px;font-size:12px;color:#888;">Impossible de vérifier le solde Wise.</div>';
             });

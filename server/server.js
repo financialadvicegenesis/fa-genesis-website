@@ -23813,7 +23813,14 @@ app.get('/api/admin/wise/balance', async function(req, res) {
         if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
         if (!WISE_TOKEN) return res.status(503).json({ error: 'Wise non configuré' });
         var profileId = await _wiseGetProfileId();
-        var r = await fetch(WISE_BASE + '/v4/profiles/' + profileId + '/balances?types=STANDARD', {
+        // BUG CORRIGÉ : le filtre ?types=STANDARD pouvait cacher exactement l'endroit où l'argent
+        // se trouve réellement — un compte Wise peut avoir plusieurs poches EUR (solde courant +
+        // "Wise Assets", le produit de rendement visible dans l'app Wise) et seul le solde
+        // STANDARD peut financer un virement (voir _wiseTransfer, étape 3, type:'BALANCE'). Sans
+        // filtre ici, l'admin voit TOUTES les poches (voir admin.html _loadWiseBalanceStatus, qui
+        // ne compte que celles de type STANDARD pour la disponibilité réelle, mais affiche les
+        // autres pour diagnostiquer si l'argent est "coincé" dans une poche non-standard.
+        var r = await fetch(WISE_BASE + '/v4/profiles/' + profileId + '/balances', {
             headers: { 'Authorization': 'Bearer ' + WISE_TOKEN }
         });
         var data = await r.json();
