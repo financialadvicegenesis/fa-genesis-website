@@ -23654,11 +23654,27 @@ async function _wiseCreateRecipient(profileId, info) {
 }
 
 async function _wiseTransfer(profileId, recipientId, amount, currency, reference) {
+    // Décision produit (confirmée explicitement) : c'est GENESIS qui absorbe les frais Wise, le
+    // prestataire doit toujours recevoir le montant plein affiché ("Net à envoyer" dans l'admin,
+    // le solde débité de son wallet) — pas ce montant moins les frais Wise. Observé en situation
+    // réelle : un retrait de 23,75€ ne créditait le prestataire que de 22,80€, Wise prélevant
+    // ~0,95€ de frais sur ce que le bénéficiaire reçoit quand on fixe sourceAmount (montant
+    // débité du solde GENESIS) — target Amount fait l'inverse : on fixe ce que le bénéficiaire
+    // DOIT recevoir, et Wise calcule tout seul le montant à débiter du solde GENESIS pour
+    // couvrir ses propres frais en plus. Uniquement pour une conversion EUR→EUR (le cas réel ici,
+    // SEPA) : pour une devise locale différente (targetCurrency non-EUR), `amount` représente un
+    // montant EUR à convertir, pas un montant déjà dans la devise cible — y appliquer targetAmount
+    // enverrait un montant absurde (ex. "23,75 XOF" au lieu de l'équivalent de 23,75€). Le
+    // comportement pour ce cas reste donc inchangé (sourceAmount), hors du périmètre demandé ici.
+    var _wtTargetCur = currency || 'EUR';
+    var _wtSameCurrency = _wtTargetCur === 'EUR';
+    var _wtQuoteBody = { sourceCurrency: 'EUR', targetCurrency: _wtTargetCur, profile: profileId };
+    if (_wtSameCurrency) { _wtQuoteBody.targetAmount = amount; } else { _wtQuoteBody.sourceAmount = amount; }
     // 1) Quote
     const qr = await fetch(WISE_BASE + '/v2/quotes', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + WISE_TOKEN, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceCurrency: 'EUR', targetCurrency: currency || 'EUR', sourceAmount: amount, profile: profileId })
+        body: JSON.stringify(_wtQuoteBody)
     });
     const quote = await qr.json();
     if (!quote.id) throw new Error('Wise quote error: ' + JSON.stringify(quote));
@@ -24193,6 +24209,19 @@ app.post('/api/admin/contournement-reset', function(req, res) {
 // Renvoie {ok:false, error} si la tentative n'a même pas pu être lancée (pas de
 // wiseRecipientId...), sinon {ok:true, sent, status} — sent=false veut dire "toujours pas parti"
 // (le plus souvent : solde Wise encore insuffisant), pas une erreur en soi.
+// Statuts Wise où le virement est définitivement mort (jamais abouti, ne peut plus avancer) —
+// seuls ceux-là autorisent à en recréer un nouveau. Tout le reste (y compris un statut qu'on ne
+// reconnaît pas) est traité comme "encore potentiellement en vie", par précaution.
+var _WISE_TERMINAL_FAILURE_STATUSES = ['cancelled', 'funds_refunded', 'bounced_back', 'charged_back'];
+
+async function _wiseGetTransferStatus(transferId) {
+    try {
+        var r = await fetch(WISE_BASE + '/v1/transfers/' + transferId, { headers: { 'Authorization': 'Bearer ' + WISE_TOKEN } });
+        var data = await r.json();
+        return (data && data.status) ? data.status : null;
+    } catch(e) { return null; }
+}
+
 async function _retryOneWiseWithdrawal(wd, noteIfSuccess) {
     var wdrs = loadWithdrawals();
     var wIdx = wdrs.findIndex(function(w) { return w.id === wd.id; });
@@ -24202,6 +24231,34 @@ async function _retryOneWiseWithdrawal(wd, noteIfSuccess) {
     var rPartner = partners.find(function(p) { return p.id === wd.partner_id; });
     if (!rPartner || !rPartner.wiseRecipientId) {
         return { ok: false, error: 'Partenaire sans wiseRecipientId — enregistrer ses coordonnées via /api/admin/wise/retry-recipient/' + (rPartner ? rPartner.id : '') };
+    }
+
+    // BUG CORRIGÉ (confirmé en situation réelle — 4 virements identiques accumulés en attente
+    // dans Wise après une seule relance automatique horaire répétée sur plusieurs heures) :
+    // chaque appel ici créait un NOUVEAU virement Wise sans jamais vérifier qu'un précédent
+    // n'était pas déjà en vie. Un virement peut rester "en attente" légitimement pendant un
+    // moment — notamment incoming_payment_waiting, qui signifie que WISE attend une confirmation
+    // manuelle du titulaire du compte dans l'app Wise (authentification forte/SCA), pas que le
+    // virement a échoué. Recréer un virement à chaque relance dans ce cas accumule des doublons
+    // qui, si approuvés par erreur, enverraient plusieurs fois la même somme au prestataire — un
+    // vrai risque financier observé concrètement. On vérifie maintenant le statut RÉEL du dernier
+    // virement connu avant d'en créer un nouveau.
+    if (wd.wise_transfer_id) {
+        var existingStatus = await _wiseGetTransferStatus(wd.wise_transfer_id);
+        if (existingStatus === 'outgoing_payment_sent') {
+            wdrs[wIdx].status = 'sent';
+            wdrs[wIdx].wise_status = existingStatus;
+            if (noteIfSuccess) wdrs[wIdx].note = noteIfSuccess;
+            saveWithdrawals(wdrs);
+            return { ok: true, sent: true, status: existingStatus, transferId: wd.wise_transfer_id };
+        }
+        if (existingStatus && _WISE_TERMINAL_FAILURE_STATUSES.indexOf(existingStatus) === -1) {
+            wdrs[wIdx].wise_status = existingStatus;
+            saveWithdrawals(wdrs);
+            return { ok: true, sent: false, status: existingStatus, transferId: wd.wise_transfer_id, alreadyPending: true };
+        }
+        // Sinon (échec terminal confirmé, ou statut introuvable) : on continue ci-dessous et on
+        // en crée un nouveau, comme avant.
     }
 
     var currency   = (rPartner.bankDetails && rPartner.bankDetails.currency) || 'EUR';
@@ -24318,7 +24375,7 @@ app.post('/api/admin/withdrawals/:id/retry', async function(req, res) {
         var result = await _retryOneWiseWithdrawal(wd, 'Déclenché manuellement par admin');
         if (!result.ok) return res.status(400).json({ error: result.error });
 
-        res.json({ ok: true, transferId: result.transferId, status: result.status });
+        res.json({ ok: true, transferId: result.transferId, status: result.status, alreadyPending: !!result.alreadyPending });
     } catch(e) {
         console.error('[ADMIN WITHDRAW RETRY]', e.message);
         res.status(500).json({ error: e.message });

@@ -7428,7 +7428,17 @@
                     loadPartnerWithdrawals();
                 } else if (d.ok) {
                     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-rotate" style="margin-right:6px;"></i>Relancer maintenant'; }
-                    alert('Toujours pas parti (statut Wise : ' + d.status + '). Le solde Wise est probablement encore insuffisant — vérifiez le bandeau ci-dessus.');
+                    // BUG CORRIGÉ : ce message supposait systématiquement "solde insuffisant", ce
+                    // qui a conduit par le passé à relancer plusieurs fois le même virement — créant
+                    // des doublons dans Wise — alors que le vrai blocage était tout autre (le
+                    // virement attendait une confirmation manuelle dans l'app Wise, pas un nouveau
+                    // virement). alreadyPending (voir _retryOneWiseWithdrawal côté serveur) distingue
+                    // maintenant les deux cas : ici, AUCUN nouveau virement n'a été créé.
+                    if (d.alreadyPending) {
+                        alert('Ce virement est déjà en cours chez Wise (statut : ' + d.status + ') — aucun nouveau virement n\'a été créé. Si le statut est "incoming_payment_waiting", ouvrez l\'app Wise : une confirmation manuelle de votre part est probablement nécessaire (authentification forte), pas un réapprovisionnement.');
+                    } else {
+                        alert('Toujours pas parti (statut Wise : ' + d.status + '). Le solde Wise est probablement encore insuffisant — vérifiez le bandeau ci-dessus.');
+                    }
                 } else {
                     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-rotate" style="margin-right:6px;"></i>Relancer maintenant'; }
                     alert(d.error || 'Erreur');
