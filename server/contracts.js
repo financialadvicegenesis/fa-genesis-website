@@ -5,7 +5,7 @@ var path = require('path');
 var PDFDocument = require('pdfkit');
 
 var CONTRACTS_FILE = path.join(__dirname, 'data', 'contracts.json');
-var CONTRACT_VERSION = 'v2-2026';
+var CONTRACT_VERSION = 'v3-2026';
 
 // Logo FA GENESIS embarqué en base64 (lu une fois au démarrage)
 var _LOGO_DATA_URI = '';
@@ -122,7 +122,7 @@ var PARTNERSHIP_CLAUSES = [
     {
         id: 'engagements_genesis',
         title: 'Article 5 — Engagements de FA GENESIS',
-        body: 'GENESIS s\'engage à : (1) mettre à disposition une plateforme sécurisée, fonctionnelle et régulièrement mise à jour ; (2) assurer la gestion et la sécurisation des paiements via GENESIS SAFE™ ; (3) verser la rémunération du Prestataire selon les étapes de livraison validées, dans les délais prévus ; (4) traiter équitablement les litiges via le système de médiation ; (5) communiquer avec un préavis de 30 jours tout changement tarifaire majeur affectant les commissions.'
+        body: 'GENESIS s\'engage à : (1) mettre à disposition une plateforme sécurisée, fonctionnelle et régulièrement mise à jour ; (2) assurer la gestion et la sécurisation des paiements via GENESIS SAFE™ ; (3) verser la rémunération du Prestataire selon les modalités et délais précisés à l\'Article 8, et à prendre à sa charge les frais de transfert éventuels afin que le Prestataire reçoive toujours le montant intégral de ses gains ; (4) traiter équitablement les litiges via le système de médiation ; (5) communiquer avec un préavis de 30 jours tout changement tarifaire majeur affectant les commissions.'
     },
     {
         id: 'qualite',
@@ -132,26 +132,31 @@ var PARTNERSHIP_CLAUSES = [
     {
         id: 'genesis_safe',
         title: 'Article 7 — Protection des clients et GENESIS SAFE™',
-        body: 'Les fonds versés par les clients sont conservés en escrow par GENESIS SAFE™ et ne sont reversés au Prestataire qu\'après livraison validée, conformément au plan de paiement (acompte 30% — livrable intermédiaire 40% — livraison finale 30% pour les prestations supérieures à 300 €). En cas de litige non résolu par la médiation interne, GENESIS peut décider d\'un remboursement partiel ou total au client. Le Prestataire accepte ce mécanisme de protection comme condition d\'utilisation de la plateforme.'
+        body: 'Les fonds versés par les clients sont conservés en escrow par GENESIS SAFE™ et ne sont reversés au Prestataire qu\'après acceptation de la mission et livraison validée. Selon la formule retenue pour chaque prestation, le client règle soit l\'intégralité du montant à la commande, soit un acompte suivi d\'un solde selon les modalités définies sur la fiche de prestation, soit plusieurs échéances convenues à l\'avance. Dans tous les cas, les fonds restent protégés par GENESIS SAFE™ jusqu\'à la validation de la livraison. En cas de litige non résolu par la médiation interne, GENESIS peut décider d\'un remboursement partiel ou total au client. Le Prestataire accepte ce mécanisme de protection comme condition d\'utilisation de la plateforme.'
+    },
+    {
+        id: 'versement_remunerations',
+        title: 'Article 8 — Modalités et délais de versement de la rémunération',
+        body: 'Dès qu\'un paiement client est confirmé sur une mission, le Prestataire dispose d\'un délai de 24 heures pour l\'accepter ou la refuser. En l\'absence de réponse ou en cas de refus dans ce délai, le client est intégralement remboursé et aucune rémunération n\'est due au Prestataire. Une fois la mission acceptée et la prestation livrée — et, le cas échéant, validée par le client ou réputée acceptée à l\'expiration du délai de validation prévu — le montant dû au Prestataire, déduction faite de la commission GENESIS, est crédité sur son Wallet GENESIS au sein de l\'application. Le Prestataire peut ensuite demander le retrait de ses gains à tout moment dès que son solde disponible atteint 20 €, vers le moyen de paiement de son choix parmi ceux proposés selon son pays de résidence (virement bancaire SEPA, PayPal, ou mobile money selon les zones géographiques). Le traitement d\'une demande de retrait prend généralement entre 5 et 10 jours ouvrés. Les frais éventuels prélevés par les prestataires de paiement tiers lors du versement sont intégralement pris en charge par GENESIS : le Prestataire reçoit toujours le montant intégral demandé, sans déduction supplémentaire.'
     },
     {
         id: 'confidentialite',
-        title: 'Article 8 — Confidentialité',
+        title: 'Article 9 — Confidentialité',
         body: 'Les informations personnelles des clients (coordonnées, données de paiement, informations professionnelles) sont strictement confidentielles. Le Prestataire s\'interdit de les utiliser à des fins autres que l\'exécution de la prestation commandée, et s\'engage à ne pas les transmettre à des tiers. Cette obligation perdure après la fin du contrat.'
     },
     {
         id: 'propriete_intellectuelle',
-        title: 'Article 9 — Propriété intellectuelle',
+        title: 'Article 10 — Propriété intellectuelle',
         body: 'Sauf accord spécifique écrit entre les parties, les créations réalisées dans le cadre d\'une prestation (visuels, contenus, codes, productions audiovisuelles, etc.) sont cédées au client à l\'issue du paiement intégral. Le Prestataire conserve le droit de mentionner la prestation dans son portfolio ou ses références commerciales, sous réserve de l\'accord du client et de l\'absence de clause de confidentialité spécifique.'
     },
     {
         id: 'resiliation',
-        title: 'Article 10 — Durée et résiliation',
+        title: 'Article 11 — Durée et résiliation',
         body: 'Le présent contrat est conclu pour une durée indéterminée à compter de sa signature. Il peut être résilié par l\'une ou l\'autre des parties avec un préavis de 15 jours calendaires, sous réserve de l\'achèvement de toutes les missions en cours. GENESIS se réserve le droit de résilier immédiatement le contrat en cas de manquement grave aux obligations du Prestataire, notamment en cas de fraude, de violation répétée des règles de la plateforme ou de comportement préjudiciable envers les clients.'
     },
     {
         id: 'loi',
-        title: 'Article 11 — Loi applicable et juridiction',
+        title: 'Article 12 — Loi applicable et juridiction',
         body: 'Le présent contrat est soumis au droit français. Tout litige relatif à son interprétation ou à son exécution, qui ne pourrait être résolu amiablement par les parties, sera soumis à la juridiction compétente du ressort du siège social de FA GENESIS. Les parties s\'engagent à recourir en priorité à la procédure de médiation prévue par la plateforme avant toute action contentieuse.'
     }
 ];
