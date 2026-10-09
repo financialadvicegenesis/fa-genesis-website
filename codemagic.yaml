@@ -164,14 +164,23 @@ workflows:
         # génériques par défaut de Capacitor (jamais remplacés jusqu'ici) au lieu du logo GENESIS.
         # Assets.xcassets est une seule référence de dossier dans le projet Xcode (contrairement à
         # GoogleService-Info.plist plus haut) : remplacer les PNG qu'il contient suffit, pas besoin
-        # du gem xcodeproj ici. Fond BLANC (demande explicite) : logo seul (fond transparent)
-        # composité sur blanc dans Splash-2732.png — LaunchScreen.storyboard garde son blanc par
-        # défaut (white="1"), pas besoin de le patcher ici contrairement à la version précédente.
+        # du gem xcodeproj ici. Fond BLANC (demande explicite), logo seul (fond transparent)
+        # composité sur blanc dans Splash-2732.png.
+        # CORRECTION (capture TestFlight réelle le 09/10 : fond NOIR malgré Splash-2732.png blanc) :
+        # le backgroundColor par défaut du LaunchScreen.storyboard généré par Capacitor référence
+        # la couleur sémantique/dynamique "systemBackgroundColor" (systemColor="…", pas une valeur
+        # littérale) — son white="1" dans le XML n'est qu'un aperçu figé pour Interface Builder ;
+        # au runtime, UIKit résout cette couleur selon le mode clair/sombre RÉEL de l'appareil, donc
+        # sur un iPhone en Mode Sombre (cas très courant) l'écran de démarrage s'affiche en NOIR
+        # quoi qu'il arrive, même si Splash-2732.png lui-même est bien blanc. sed remplace cette
+        # référence dynamique par une couleur blanche statique (non adaptative), seule façon de
+        # garantir un fond blanc identique quel que soit le réglage d'apparence de l'utilisateur.
         script: |
           cp ios-config/AppIcon-1024.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
           cp ios-config/Splash-2732.png ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png
           cp ios-config/Splash-2732.png ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-1.png
           cp ios-config/Splash-2732.png ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-2.png
+          sed -i '' 's/<color key="backgroundColor" systemColor="systemBackgroundColor"\/>/<color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"\/>/' ios/App/App/Base.lproj/LaunchScreen.storyboard
       - name: Copy Firebase iOS config
         # ios/ est régénéré à neuf à chaque build (gitignored) — ce fichier de config Firebase
         # (non sensible : identifiants publics liés au bundle ID, pas un secret) est donc commité
