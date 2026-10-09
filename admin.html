@@ -7373,7 +7373,12 @@
                     // on affiche maintenant la valeur BRUTE de p.type (pas une étiquette
                     // recalculée) pour être sûr à 100% de ce que Wise renvoie réellement.
                     var label = 'Profil ' + (p.type || '?') + ' (id ' + p.id + ')' + (p.isUsedForTransfers ? ' — utilisé pour les virements ✓' : '');
-                    return '<div style="margin-top:6px;' + (p.isUsedForTransfers ? 'color:#aaa;' : 'color:#f59e0b;') + '"><strong>' + label + '</strong><br>' + (rows.length ? rows.join('<br>') : 'Aucune poche.') + '</div>';
+                    // BUG CORRIGÉ : "Aucune poche" s'affichait aussi bien pour "vraiment aucune
+                    // poche" que pour "l'appel à Wise a échoué/renvoyé autre chose qu'un tableau"
+                    // — impossible à distinguer. rawError (voir le serveur) rend maintenant ce
+                    // deuxième cas visible, au lieu de ressembler à un compte vide.
+                    var body = p.rawError ? ('<span style="color:#ef4444;">Erreur : ' + p.rawError + '</span>') : (rows.length ? rows.join('<br>') : 'Aucune poche.');
+                    return '<div style="margin-top:6px;' + (p.isUsedForTransfers ? 'color:#aaa;' : 'color:#f59e0b;') + '"><strong>' + label + '</strong><br>' + body + '</div>';
                 });
                 var debugHtml = '<div style="font-size:10px;margin-top:8px;line-height:1.6;">' + (profileBlocks.length ? profileBlocks.join('') : 'Aucun profil renvoyé par Wise.') + '</div>';
                 var pendingWise = (wdData.withdrawals || []).filter(function(w) {

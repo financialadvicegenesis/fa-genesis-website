@@ -23840,14 +23840,28 @@ app.get('/api/admin/wise/balance', async function(req, res) {
         var profilesOut = [];
         for (var pi = 0; pi < allProfiles.length; pi++) {
             var p = allProfiles[pi];
-            var br;
             var balances = [];
+            var rawError = null;
             try {
-                br = await fetch(WISE_BASE + '/v4/profiles/' + p.id + '/balances', { headers: { 'Authorization': 'Bearer ' + WISE_TOKEN } });
+                // BUG CORRIGÉ : balances = Array.isArray(bdata) ? bdata : [] avalait SILENCIEUSEMENT
+                // toute réponse qui n'était pas un tableau brut (ex. une erreur HTTP, ou un objet
+                // {balances:[...]} au lieu d'un tableau direct) — le profil business venait de
+                // renvoyer "Aucune poche" malgré un argent confirmé réel par l'utilisateur sur ce
+                // même profil, donc quelque chose dans cette réponse n'était probablement PAS ce que
+                // ce code attendait. On garde maintenant le statut HTTP et le corps brut en cas
+                // d'échec, au lieu de le transformer silencieusement en liste vide indiscernable
+                // d'un "vraiment aucune poche".
+                var br = await fetch(WISE_BASE + '/v4/profiles/' + p.id + '/balances', { headers: { 'Authorization': 'Bearer ' + WISE_TOKEN } });
                 var bdata = await br.json();
-                balances = Array.isArray(bdata) ? bdata : [];
-            } catch(_pe) { /* ce profil reste avec balances:[] si l'appel échoue */ }
-            profilesOut.push({ id: p.id, type: p.type, isUsedForTransfers: p.id === usedProfileId, balances: balances });
+                if (Array.isArray(bdata)) {
+                    balances = bdata;
+                } else if (bdata && Array.isArray(bdata.balances)) {
+                    balances = bdata.balances;
+                } else {
+                    rawError = 'HTTP ' + br.status + ': ' + JSON.stringify(bdata).slice(0, 300);
+                }
+            } catch(_pe) { rawError = _pe.message; }
+            profilesOut.push({ id: p.id, type: p.type, isUsedForTransfers: p.id === usedProfileId, balances: balances, rawError: rawError });
         }
         res.json({ ok: true, usedProfileId: usedProfileId, profiles: profilesOut, balances: (profilesOut.find(function(p){return p.isUsedForTransfers;}) || {}).balances || [] });
     } catch(e) {
