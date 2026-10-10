@@ -4143,10 +4143,12 @@
                         '<p class="text-sm font-bold uppercase opacity-70 mb-1">Type</p>' +
                         '<p class="font-black">' + typeLabel + '</p>' +
                     '</div>' +
-                    '<div>' +
-                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Spécialité</p>' +
-                        '<p class="font-black">' + (partner.specialite || 'N/A') + '</p>' +
-                    '</div>' +
+                    (partner.specialite ?
+                        '<div>' +
+                            '<p class="text-sm font-bold uppercase opacity-70 mb-1">Spécialité</p>' +
+                            '<p class="font-black">' + partner.specialite + '</p>' +
+                        '</div>'
+                        : '') +
                     '<div>' +
                         '<p class="text-sm font-bold uppercase opacity-70 mb-1">Statut</p>' +
                         '<p class="font-black">' + (partner.accountStatus === 'deactivated' ? 'Désactivé' : (partner.accountStatus === 'pending' ? 'En attente de validation' : 'Actif')) + '</p>' +
