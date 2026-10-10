@@ -3809,6 +3809,13 @@ var API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
 
 // ── SPLASH → APP ─────────────────────────────────────────────
+// 900ms : juste après la fin de l'animation de la barre de progression (sFill, délai 0.2s +
+// durée 0.5s = termine à 0.7s) — laisse l'animation se jouer entièrement sans l'étirer
+// artificiellement. Avant ce correctif, ce délai était fixé à 2500ms (+ 820ms de fondu de
+// sortie = 3.3s minimum à chaque ouverture, quelle que soit la vitesse de l'appareil), bien
+// plus long que l'écran de démarrage d'Instagram/WhatsApp/Facebook (demande explicite de
+// parité). Ce délai ne dépend d'aucun chargement réel (la restauration de session ci-dessous
+// est synchrone) — c'était une pause purement décorative.
 setTimeout(function(){
   var _bootHandled = false;
   // Session cliente — isolée dans son propre try : si cette valeur est corrompue
@@ -3845,7 +3852,7 @@ setTimeout(function(){
     } catch(e){}
   }
   if(!_bootHandled){ _exitSplash(showRoleChoice); }
-}, 2500);
+}, 900);
 
 function _exitSplash(callback){
   var splash = document.getElementById('splash');
