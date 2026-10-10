@@ -2556,19 +2556,20 @@ function _genesisSignalNativeReady(){
       }
     }
   }catch(e){}
-  // Démarre aussi la sortie du splash JS (logo/nom/barre) exactement au même instant que le
-  // splash natif, au lieu d'un minuteur décoratif indépendant — parité avec le temps d'affichage
-  // des apps natives (Instagram/WhatsApp/Facebook : l'écran de démarrage ne reste affiché que le
-  // temps réel du lancement, jamais une pause artificielle fixe). 350ms plancher pour laisser
-  // l'animation d'apparition du logo/nom (sPop/sUp, terminent à 450ms) rester lisible sur un
-  // appareil/réseau très rapide, plutôt que de la couper brutalement à mi-course — en dessous de
-  // ce plancher seule la fin de l'animation de la barre (sFill, 700ms) peut encore être écourtée.
-  // _genesisBootApp est défini plus bas dans le document (bloc <script> séparé) ; comme ce signal
-  // ne peut se déclencher qu'après DOMContentLoaded, l'événement vidéo ou le filet de secours 8s,
-  // le document est déjà entièrement analysé à ce stade et la fonction existe — garde défensive
-  // quand même (retente une fois après 50ms) au cas où un chemin imprévu l'appellerait plus tôt.
+  // Démarre aussi la sortie du splash JS (logo/nom/barre) au même instant que le splash natif
+  // (ou juste après, voir plancher ci-dessous), au lieu d'un minuteur décoratif indépendant —
+  // parité avec le temps d'affichage des apps natives (Instagram/WhatsApp/Facebook : l'icône
+  // reste visible un court instant clairement perceptible, jamais 0ms ni une pause artificielle
+  // longue). 700ms plancher : laisse l'animation d'apparition du logo/nom/barre (sPop/sUp/sFill,
+  // termine à 700ms) se jouer entièrement et l'icône rester visible assez longtemps pour être
+  // perçue, même sur un appareil/réseau très rapide où la disponibilité réelle arrive en quelques
+  // dizaines de ms. _genesisBootApp est défini plus bas dans le document (bloc <script> séparé) ;
+  // comme ce signal ne peut se déclencher qu'après DOMContentLoaded, l'événement vidéo ou le
+  // filet de secours 8s, le document est déjà entièrement analysé à ce stade et la fonction
+  // existe — garde défensive quand même (retente une fois après 50ms) au cas où un chemin
+  // imprévu l'appellerait plus tôt.
   var _elapsed = Date.now() - _genesisStartTime;
-  var _floorDelay = Math.max(0, 350 - _elapsed);
+  var _floorDelay = Math.max(0, 700 - _elapsed);
   setTimeout(function _genesisTryBoot(){
     if(typeof _genesisBootApp === 'function'){ _genesisBootApp(); }
     else { setTimeout(_genesisTryBoot, 50); }
