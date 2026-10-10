@@ -5688,8 +5688,8 @@
                         html += '<div style="border:3px solid ' + (isWaiting ? '#f44336' : '#ddd') + ';margin-bottom:10px;background:#fafafa;">';
                         html += '<div style="background:' + (isWaiting ? '#fff3f3' : '#f5f5f5') + ';border-bottom:2px solid #ddd;padding:0.65rem 1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
                         html += '<div>';
-                        html += '<span style="font-weight:900;font-size:14px;">' + (t.client_name || t.client_email || '').replace(/</g,'&lt;') + '</span>';
-                        html += '<span style="font-size:11px;color:#888;margin-left:8px;">' + (t.client_email || '') + '</span>';
+                        html += '<span style="font-weight:900;font-size:14px;color:#000;">' + (t.client_name || t.client_email || '').replace(/</g,'&lt;') + '</span>';
+                        html += '<span style="font-size:11px;color:#000;margin-left:8px;">' + (t.client_email || '') + '</span>';
                         if (isWaiting) html += '<span style="background:#f44336;color:#fff;font-size:10px;font-weight:900;padding:1px 6px;border:1px solid black;margin-left:6px;">En attente de réponse</span>';
                         html += '</div>';
                         html += '<button onclick="showSection(\'support\');setTimeout(function(){openSupportTicket(\'' + safeId + '\');},300);" style="background:var(--genesis-yellow);border:2px solid black;padding:5px 12px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;white-space:nowrap;"><i class="fas fa-reply mr-1"></i>Répondre</button>';
