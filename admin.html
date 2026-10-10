@@ -4101,11 +4101,13 @@
           try {
             // Toujours fetcher depuis le serveur pour avoir les données fraîches
             var partner = null;
+            var financials = null;
             try {
                 var resp = await fetch(API_BASE_URL + '/api/admin/partners/' + encodeURIComponent(partnerId));
                 if (resp.ok) {
                     var raw = await resp.json();
                     partner = raw.partner || raw;
+                    financials = raw.financials || null;
                 }
             } catch (fetchErr) {}
 
@@ -4158,6 +4160,26 @@
                         '<p class="font-black" style="color:' + (partner.founderBadge ? '#FFD700' : 'inherit') + '">' + (partner.founderBadge ? 'Oui' : 'Non') + '</p>' +
                     '</div>' +
                 '</div>' +
+                '<hr class="border-2 border-black my-6">' +
+                '<h3 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-sack-dollar mr-2"></i>REVENUS & COMMISSION GENESIS</h3>' +
+                (financials ?
+                    '<div class="grid md:grid-cols-3 gap-4 mb-8">' +
+                        '<div class="border-4 border-black p-4">' +
+                            '<p class="text-xs font-bold uppercase opacity-70 mb-1">Revenu total généré</p>' +
+                            '<p class="text-2xl font-black">' + financials.total_revenue.toFixed(2) + ' €</p>' +
+                        '</div>' +
+                        '<div class="border-4 border-[var(--genesis-yellow)] bg-black p-4">' +
+                            '<p class="text-xs font-bold uppercase opacity-70 mb-1 text-[var(--genesis-yellow)]">Commission GENESIS</p>' +
+                            '<p class="text-2xl font-black text-[var(--genesis-yellow)]">' + financials.total_commission.toFixed(2) + ' €</p>' +
+                        '</div>' +
+                        '<div class="border-4 border-black p-4">' +
+                            '<p class="text-xs font-bold uppercase opacity-70 mb-1">Net versé au prestataire</p>' +
+                            '<p class="text-2xl font-black">' + financials.total_net_paid.toFixed(2) + ' €</p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<p class="text-xs opacity-60 mb-8">Basé sur ' + financials.payout_count + ' versement(s) réellement crédité(s) au wallet du prestataire (litiges en cours exclus).</p>'
+                    : '<p class="text-sm opacity-70 mb-8">Données financières indisponibles.</p>'
+                ) +
                 '<hr class="border-2 border-black my-6">' +
                 '<h3 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-cog mr-2"></i>ACTIONS</h3>' +
                 '<div class="flex gap-3 flex-wrap">';

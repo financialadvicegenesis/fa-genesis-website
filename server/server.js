@@ -19880,7 +19880,27 @@ app.get('/api/admin/partners/:partnerId', (req, res) => {
         }
         const { password, ...partnerSafe } = partner;
         const assignments = loadPartnerAssignments().filter(a => a.partner_id === partner.id);
-        res.json({ partner: partnerSafe, assignments: assignments });
+        // Revenu/commission réels, agrégés depuis payouts.json — chaque versement stocke déjà
+        // le montant net versé au prestataire (amount) ET la commission GENESIS exacte au taux
+        // réellement appliqué à ce moment-là (fa_amount = stageTotal - paidAmount, voir
+        // processDispatchPayout), donc aucun recalcul/hypothèse de taux n'est nécessaire ici —
+        // fiable même pour les versements antérieurs au passage à la commission plate à 5%.
+        // 'on_hold' exclu : litige en cours, l'argent n'a pas encore été réellement crédité au
+        // wallet du prestataire (voir processDispatchPayout, return false avant creditPartnerWallet).
+        const partnerPayouts = loadPayouts().filter(p => p.partner_id === partner.id && p.status !== 'on_hold');
+        const financials = partnerPayouts.reduce((acc, p) => {
+            const net = parseFloat(p.amount) || 0;
+            const commission = parseFloat(p.fa_amount) || 0;
+            acc.total_revenue += net + commission;
+            acc.total_commission += commission;
+            acc.total_net_paid += net;
+            return acc;
+        }, { total_revenue: 0, total_commission: 0, total_net_paid: 0 });
+        financials.total_revenue = parseFloat(financials.total_revenue.toFixed(2));
+        financials.total_commission = parseFloat(financials.total_commission.toFixed(2));
+        financials.total_net_paid = parseFloat(financials.total_net_paid.toFixed(2));
+        financials.payout_count = partnerPayouts.length;
+        res.json({ partner: partnerSafe, assignments: assignments, financials: financials });
     } catch (error) {
         console.error('[ADMIN] Erreur detail partenaire:', error);
         res.status(500).json({ error: 'Erreur chargement partenaire' });
