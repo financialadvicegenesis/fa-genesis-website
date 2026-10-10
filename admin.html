@@ -563,6 +563,12 @@
         #adminPanel [style*="background:#f5f5f5"] [style*="color:#000"],
         #adminPanel [style*="background:#fff3f3"] [style*="color:#000"] { color: #000 !important; }
 
+        /* Bulles de message (client #e8e8e8, GENESIS fond doré) dans le même thread de chat —
+           sans ça, le texte hérite de --c-text (#e8e8e8, la couleur de texte par défaut du thème
+           sombre) qui est EXACTEMENT la même valeur que le fond #e8e8e8 des bulles client,
+           rendant le texte totalement invisible (texte et fond de couleur identique). */
+        #adminPanel [style*="color:#000"][style*="background:#e8e8e8"] { color: #000 !important; }
+
         /* 2 ── Fonds blancs / gris clairs → sombre */
         #adminPanel [style*="background: white"],
         #adminPanel [style*="background:white"],
@@ -5757,7 +5763,7 @@
                             var time = '';
                             try { time = new Date(m.created_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); } catch(e) {}
                             html += '<div style="display:flex;flex-direction:column;align-items:' + align + ';">';
-                            html += '<div style="background:' + bg + ';border:2px solid black;padding:8px 12px;max-width:75%;font-size:13px;white-space:pre-wrap;">';
+                            html += '<div style="background:' + bg + ';color:#000;border:2px solid black;padding:8px 12px;max-width:75%;font-size:13px;white-space:pre-wrap;">';
                             if (m.subject) html += '<p style="font-weight:900;font-size:11px;text-transform:uppercase;margin-bottom:4px;">' + m.subject + '</p>';
                             html += (m.content || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                             html += '</div>';
