@@ -5031,7 +5031,23 @@
                 else { badge.style.display = 'none'; }
             }
 
-            renderAdminQuotes();
+            // Cas observé en prod : stats affichaient "1 devis total" mais la liste "Aucun devis"
+            // — logiquement impossible si renderAdminQuotes() s'exécute jusqu'au bout (même
+            // tableau allAdminQuotes, lu juste après les stats, synchrone). Si une exception
+            // survient à l'intérieur (ex: un champ inattendu sur CE devis précis), elle n'était
+            // catchée nulle part : la liste restait figée sur son HTML précédent ("Aucun devis"
+            // si déjà vide avant, sans jamais signaler l'erreur) pendant que les stats, elles,
+            // s'étaient déjà mises à jour correctement juste avant. Ce try/catch rend l'échec
+            // visible au lieu de silencieux, avec le JSON du devis fautif dans la console pour
+            // identifier precisement quel champ a posé problème.
+            try {
+                renderAdminQuotes();
+            } catch (renderErr) {
+                console.error('[ADMIN] Erreur rendu devis — données complètes :', JSON.stringify(allAdminQuotes, null, 2));
+                console.error(renderErr);
+                var listEl2 = document.getElementById('quotesList');
+                if (listEl2) listEl2.innerHTML = '<p class="text-center py-8 font-bold" style="color:#ff6b6b;">Erreur d\'affichage (' + allAdminQuotes.length + ' devis chargé(s) mais non affichable(s)) — voir la console. <button onclick="loadAdminQuotes()" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">Réessayer</button></p>';
+            }
         }
 
         function filterAdminQuotes(status) {
