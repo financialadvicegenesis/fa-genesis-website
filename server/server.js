@@ -9781,6 +9781,23 @@ function _purgeAccountData(opts) {
     } catch(e) { errs.push('jeremie_memory:' + e.message); }
 
     try {
+        // Messagerie (chat.json, client<->admin ET client<->prestataire) — jamais nettoyée
+        // jusqu'ici lors d'une suppression de compte (même classe de lacune que les trous
+        // MongoDB déjà rencontrés sur ce projet : wallets, withdrawals, partner_requests).
+        // Supprime tout message où le compte effacé est émetteur OU destinataire — pas
+        // d'anonymisation ici (contrairement à "orders" plus bas, conservé pour raisons
+        // comptables) : une conversation de support/chat n'a pas de valeur de registre à
+        // préserver une fois l'une des deux parties supprimée.
+        var chatMsgs = loadChat();
+        var cmc = chatMsgs.filter(function(m) {
+            var isSender = m.from_type === role && m.from_email && m.from_email.toLowerCase() === email;
+            var isRecipient = m.to_type === role && m.to_email && m.to_email.toLowerCase() === email;
+            return !isSender && !isRecipient;
+        });
+        if (cmc.length !== chatMsgs.length) saveChat(cmc);
+    } catch(e) { errs.push('chat:' + e.message); }
+
+    try {
         // Tickets support (anonymiser)
         var tickets = loadSupportTickets();
         var tchanged = false;
@@ -20036,6 +20053,11 @@ app.delete('/api/admin/partners/:partnerId', (req, res) => {
             }
         });
         if (modified) savePartnerAssignments(assignments);
+        // Contrairement à la suppression client (DELETE /api/admin/users/:email), cette route
+        // n'appelait jamais _purgeAccountData — sessions, notifications, tokens FCM, messagerie
+        // (chat.json), tickets support, Hall of Fame et demandes directes de CE prestataire
+        // restaient donc orphelins indéfiniment après suppression.
+        _purgeAccountData({ userId: null, email: (removed.email || '').toLowerCase(), role: 'partner', partnerId: removed.id });
         console.log('[ADMIN] Partenaire supprimé:', removed.email);
         res.json({ success: true, message: 'Partenaire supprimé' });
     } catch (error) {
