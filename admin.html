@@ -1981,7 +1981,11 @@
             // panel), juste un tick plus tard, invisible pour l'admin.
             setTimeout(function(){ if (typeof loadAdminNotifInbox === 'function') loadAdminNotifInbox(); }, 0);
             loadPartnersList();
-            _loadModerationAccounts();
+            // Même cause que loadAdminNotifInbox ci-dessus : _loadModerationAccounts est AUSSI
+            // définie dans le <script> plus tardif (après la ligne 6000) — confirmé par une 2e
+            // ReferenceError en console après le premier correctif, exactement le symptôme
+            // attendu (le code continuait plus loin, jusqu'au prochain appel non défini).
+            setTimeout(function(){ if (typeof _loadModerationAccounts === 'function') _loadModerationAccounts(); }, 0);
             // Deep-link depuis notification ou email
             var hash = window.location.hash || '';
             if (hash) {
@@ -1989,7 +1993,10 @@
                 var supportMatch = hash.match(/^#support-(SUP-[\d]+)$/);
                 if (supportMatch) {
                     showSection('support');
-                    openSupportTicket(supportMatch[1]);
+                    // openSupportTicket est dans le même <script> tardif que les deux fonctions
+                    // ci-dessus — même correctif préventif, même si ce chemin conditionnel
+                    // n'a pas encore été vu planter en pratique.
+                    setTimeout(function(){ if (typeof openSupportTicket === 'function') openSupportTicket(supportMatch[1]); }, 0);
                 } else if (hash === '#open-disputes' || hash === '#litiges') {
                     showSection('litiges');
                 } else if (hash === '#open-contournement' || hash === '#moderation') {
@@ -2197,16 +2204,31 @@
                 _wiseBalanceRefreshInterval = setInterval(_loadWiseBalanceStatus, 20000);
             } else if (section === 'litiges') {
                 if (litigesEl) litigesEl.style.display = 'block';
-                loadAdminDisputes();
+                // loadAdminDisputes est définie dans le <script> plus tardif du document (après
+                // la ligne 6000) — si showSection('litiges') est atteint de façon synchrone
+                // avant que ce bloc n'ait fini de s'exécuter (ex: deep-link #litiges au chargement
+                // initial de showAdminPanel(), avant que tous les <script> de la page n'aient
+                // tourné), un appel direct planterait comme loadAdminNotifInbox/
+                // _loadModerationAccounts avant correctif. typeof-guard + relance différée au cas
+                // où, sans rien casser pour les appels normaux (clic sidebar, bien après chargement).
+                if (typeof loadAdminDisputes === 'function') loadAdminDisputes();
+                else setTimeout(function(){ if (typeof loadAdminDisputes === 'function') loadAdminDisputes(); }, 0);
             } else if (section === 'moderation') {
                 if (moderationEl) moderationEl.style.display = 'block';
-                loadModerationPanel();
+                // Même précaution — loadModerationPanel est aussi définie dans le <script> plus
+                // tardif du document (section atteignable via le deep-link #moderation/
+                // #open-contournement au chargement de showAdminPanel()).
+                if (typeof loadModerationPanel === 'function') loadModerationPanel();
+                else setTimeout(function(){ if (typeof loadModerationPanel === 'function') loadModerationPanel(); }, 0);
             } else if (section === 'clienterrors') {
                 if (clienterrorsEl) clienterrorsEl.style.display = 'block';
                 loadClientErrors();
             } else if (section === 'support') {
                 if (supportEl) supportEl.style.display = 'block';
-                loadAdminSupport();
+                // Même précaution que pour loadAdminDisputes ci-dessus — loadAdminSupport est
+                // aussi définie dans le <script> plus tardif du document.
+                if (typeof loadAdminSupport === 'function') loadAdminSupport();
+                else setTimeout(function(){ if (typeof loadAdminSupport === 'function') loadAdminSupport(); }, 0);
             } else if (section === 'prospects') {
                 if (prospectsEl) prospectsEl.style.display = 'block';
                 loadAdminProspects();
