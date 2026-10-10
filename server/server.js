@@ -10031,6 +10031,31 @@ function _purgeAccountData(opts) {
 }
 
 /**
+ * POST /api/admin/users/:email/reset-payment-status
+ * Remet paymentStatus à 'registered' sur la fiche client — corrige un champ resté figé sur
+ * users.json depuis l'ancien système d'achat à produit unique (avant le passage aux devis/
+ * commandes) ou une ancienne commande de test dont le statut a été synchronisé ici puis jamais
+ * remis à jour. N'affecte aucune vraie commande (orders.json, non touché) — c'est un champ
+ * d'affichage legacy sur la fiche client.
+ */
+app.post('/api/admin/users/:email/reset-payment-status', function(req, res) {
+    try {
+        var email = decodeURIComponent(req.params.email).toLowerCase();
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.email && u.email.toLowerCase() === email; });
+        if (idx === -1) return res.status(404).json({ error: 'Utilisateur non trouve' });
+        users[idx].paymentStatus = 'registered';
+        users[idx].payment_status = 'registered';
+        users[idx].activeOrderId = null;
+        saveUsers(users);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[ADMIN] Erreur reset paymentStatus:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * DELETE /api/admin/users/:email
  * Supprimer un utilisateur (Admin)
  */

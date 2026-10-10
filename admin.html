@@ -2577,6 +2577,24 @@
             }
         }
 
+        // Corrige le champ legacy paymentStatus sur la fiche client (voir le bouton dédié dans
+        // openClientModal) — reliquat de l'ancien système d'achat à produit unique, sans lien
+        // avec les vraies commandes (orders.json, non touché par cette action).
+        async function resetClientPaymentStatus(email) {
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/users/' + encodeURIComponent(email) + '/reset-payment-status', { method: 'POST' });
+                var data = await resp.json();
+                if (resp.ok && data.success) {
+                    closeClientModal();
+                    loadClientsList();
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible de réinitialiser'));
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
+        }
+
         function closeClientModal() {
             var m = document.getElementById('clientModal');
             if (m) m.style.display = 'none';
@@ -2699,9 +2717,15 @@
                             ${studStatusHtml}
                         </div>
                     </div>
-                    <button onclick="deleteClient('${client.email}')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-xs font-black hover:bg-red-700">
-                        <i class="fas fa-trash mr-1"></i>SUPPRIMER
-                    </button>
+                    <div style="display:flex;gap:8px;">
+                        ${client.paymentStatus && client.paymentStatus !== 'registered' ? `
+                        <button onclick="resetClientPaymentStatus('${client.email}')" class="border-4 border-[var(--genesis-yellow)] bg-transparent text-[var(--genesis-yellow)] px-4 py-2 text-xs font-black hover:bg-[var(--genesis-yellow)] hover:text-black" title="Champ legacy figé depuis l'ancien système d'achat à produit unique, sans lien avec les vraies commandes">
+                            <i class="fas fa-rotate-left mr-1"></i>RÉINITIALISER STATUT PAIEMENT
+                        </button>` : ''}
+                        <button onclick="deleteClient('${client.email}')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-xs font-black hover:bg-red-700">
+                            <i class="fas fa-trash mr-1"></i>SUPPRIMER
+                        </button>
+                    </div>
                 </div>
 
                 <div class="grid md:grid-cols-3 gap-6 mb-8">
