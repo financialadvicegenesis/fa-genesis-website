@@ -567,7 +567,8 @@
            sans ça, le texte hérite de --c-text (#e8e8e8, la couleur de texte par défaut du thème
            sombre) qui est EXACTEMENT la même valeur que le fond #e8e8e8 des bulles client,
            rendant le texte totalement invisible (texte et fond de couleur identique). */
-        #adminPanel [style*="color:#000"][style*="background:#e8e8e8"] { color: #000 !important; }
+        #adminPanel [style*="color:#000"][style*="background:#e8e8e8"],
+        #adminPanel [style*="color:#000"][style*="background:#cfe8ff"] { color: #000 !important; }
 
         /* 2 ── Fonds blancs / gris clairs → sombre */
         #adminPanel [style*="background: white"],
@@ -5757,9 +5758,17 @@
                         html += '<div id="thread-' + email.replace(/[^a-z0-9]/gi, '_') + '" style="display:none;padding:1rem;">';
                         html += '<div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;padding:0.5rem;background:#fff;border:2px solid #eee;" id="thread-msgs-' + email.replace(/[^a-z0-9]/gi, '_') + '">';
                         t.msgs.forEach(function(m) {
-                            var isSent = m.from_type !== 'client';
-                            var bg = isSent ? 'var(--genesis-yellow)' : '#e8e8e8';
-                            var align = isSent ? 'flex-end' : 'flex-start';
+                            // BUG CORRIGÉ : tout message non envoyé par le client était étiqueté
+                            // "FA GENESIS" sans distinction — un message réellement envoyé par un
+                            // PRESTATAIRE au client (conversation peer-to-peer, pas une réponse
+                            // admin) s'affichait donc à tort comme si GENESIS l'avait écrit,
+                            // rendant ce fil illisible pour la supervision anti-fraude (impossible
+                            // de distinguer "nous avons répondu" de "le prestataire a répondu").
+                            var isClient = m.from_type === 'client';
+                            var isPartner = m.from_type === 'partner';
+                            var bg = isClient ? '#e8e8e8' : (isPartner ? '#cfe8ff' : 'var(--genesis-yellow)');
+                            var align = isClient ? 'flex-start' : 'flex-end';
+                            var label = isClient ? (m.from_name || '') : (isPartner ? (m.from_name || 'Prestataire') + ' (Prestataire)' : 'FA GENESIS');
                             var time = '';
                             try { time = new Date(m.created_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); } catch(e) {}
                             html += '<div style="display:flex;flex-direction:column;align-items:' + align + ';">';
@@ -5767,7 +5776,7 @@
                             if (m.subject) html += '<p style="font-weight:900;font-size:11px;text-transform:uppercase;margin-bottom:4px;">' + m.subject + '</p>';
                             html += (m.content || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                             html += '</div>';
-                            html += '<span style="font-size:10px;color:#999;font-weight:900;margin-top:2px;">' + (isSent ? 'FA GENESIS' : (m.from_name || '')) + ' · ' + time + '</span>';
+                            html += '<span style="font-size:10px;color:#999;font-weight:900;margin-top:2px;">' + label + ' · ' + time + '</span>';
                             html += '</div>';
                         });
                         html += '</div>';
