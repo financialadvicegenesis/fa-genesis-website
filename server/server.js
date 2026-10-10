@@ -13189,6 +13189,40 @@ app.get('/api/admin/inbox', function(req, res) {
 });
 
 /**
+ * DELETE /api/admin/inbox/thread — Supprime tous les messages d'un fil (client, interlocuteur)
+ * précis dans chat.json. Nécessaire car une conversation peut exister sans compte client associé
+ * (ex: données de test injectées directement, ou tout futur cas de compte déjà supprimé par
+ * ailleurs) — _purgeAccountData (déclenchée par la suppression d'un compte) ne couvre que les
+ * conversations liées à un VRAI compte ; ceci couvre le cas général, utilisable directement
+ * depuis l'inbox admin (modération / nettoyage).
+ */
+app.delete('/api/admin/inbox/thread', function(req, res) {
+    try {
+        var clientEmail = (req.body.client_email || '').toLowerCase();
+        var counterpartType = req.body.counterpart_type || 'admin';
+        var counterpartEmail = (req.body.counterpart_email || 'admin').toLowerCase();
+        if (!clientEmail) return res.status(400).json({ error: 'client_email requis' });
+
+        var msgs = loadChat();
+        var kept = msgs.filter(function(m) {
+            var isClientFrom = m.from_type === 'client';
+            var mClientEmail = isClientFrom ? (m.from_email || '').toLowerCase() : ((m.to_type === 'client') ? (m.to_email || '').toLowerCase() : null);
+            if (!mClientEmail || mClientEmail !== clientEmail) return true; // pas ce fil, on garde
+            var mCounterpartType = isClientFrom ? (m.to_type || 'admin') : m.from_type;
+            var mCounterpartEmail = (isClientFrom ? (m.to_email || 'admin') : m.from_email || '').toLowerCase();
+            var matches = mCounterpartType === counterpartType && mCounterpartEmail === counterpartEmail;
+            return !matches; // on garde tout ce qui N'EST PAS ce fil précis
+        });
+        var deleted = msgs.length - kept.length;
+        if (deleted > 0) saveChat(kept);
+        res.json({ ok: true, deleted: deleted });
+    } catch (err) {
+        console.error('[ADMIN] Erreur suppression fil inbox:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/admin/inbox/reply — Admin repond a un client
  */
 app.post('/api/admin/inbox/reply', function(req, res) {

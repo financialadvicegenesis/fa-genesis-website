@@ -5780,7 +5780,10 @@
                         html += '<span style="font-size:11px;color:#555;margin-left:8px;"><i class="fas fa-arrows-left-right" style="margin-right:3px;"></i>' + counterpartLabel + '</span>';
                         if (unread > 0) html += '<span style="background:#f44336;color:#fff;font-size:10px;font-weight:900;padding:1px 6px;border:1px solid black;margin-left:8px;">' + unread + ' non lu</span>';
                         html += '</div>';
+                        html += '<div style="display:flex;gap:6px;">';
                         html += '<button onclick="toggleAdminThread(\'' + key + '\')" style="background:var(--genesis-yellow);border:2px solid black;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;">Voir / Répondre</button>';
+                        html += '<button onclick="deleteAdminThread(\'' + key + '\')" style="background:#f44336;color:#fff;border:2px solid black;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;" title="Supprimer ce fil"><i class="fas fa-trash"></i></button>';
+                        html += '</div>';
                         html += '</div>';
 
                         html += '<div id="thread-' + domId + '" style="display:none;padding:1rem;">';
@@ -5871,6 +5874,31 @@
                 if (redBadgeEl) redBadgeEl.remove();
                 var redHeader = threadRow.querySelector('div[style*="fff3f3"]');
                 if (redHeader) redHeader.style.background = '#f5f5f5';
+            }
+        }
+
+        // Supprime un fil entier de chat.json — utile notamment quand la conversation n'a pas
+        // de compte client associé (ex: données de test injectées directement), auquel cas
+        // "Supprimer le compte" côté Clients n'a aucune prise dessus.
+        async function deleteAdminThread(key) {
+            var thread = adminInboxThreads[key];
+            if (!thread) return;
+            var label = (thread.clientName || thread.clientEmail) + ' <-> ' + (thread.counterpartType === 'partner' ? (thread.counterpartName || 'Prestataire') : 'FA GENESIS');
+            if (!confirm('Supprimer définitivement ce fil de conversation ?\n\n' + label + ' (' + thread.msgs.length + ' message(s))\n\nCette action est irréversible.')) return;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/inbox/thread', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ client_email: thread.clientEmail, counterpart_type: thread.counterpartType, counterpart_email: thread.counterpartEmail })
+                });
+                var data = await resp.json();
+                if (resp.ok && data.ok) {
+                    loadAdminInbox();
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible de supprimer'));
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
             }
         }
 
