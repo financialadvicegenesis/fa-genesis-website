@@ -2535,6 +2535,7 @@ a{text-decoration:none;color:inherit}
 // mécanisme s'applique désormais à TOUS les appareils, y compris à RAM limitée (voir MainActivity.
 // onCreate — l'ancien contournement RAM a été supprimé, il était lui-même la cause d'un écran noir).
 var _genesisNativeReadySignaled = false;
+var _genesisStartTime = Date.now();
 function _genesisSignalNativeReady(){
   if(_genesisNativeReadySignaled) return;
   _genesisNativeReadySignaled = true;
@@ -2555,6 +2556,23 @@ function _genesisSignalNativeReady(){
       }
     }
   }catch(e){}
+  // Démarre aussi la sortie du splash JS (logo/nom/barre) exactement au même instant que le
+  // splash natif, au lieu d'un minuteur décoratif indépendant — parité avec le temps d'affichage
+  // des apps natives (Instagram/WhatsApp/Facebook : l'écran de démarrage ne reste affiché que le
+  // temps réel du lancement, jamais une pause artificielle fixe). 350ms plancher pour laisser
+  // l'animation d'apparition du logo/nom (sPop/sUp, terminent à 450ms) rester lisible sur un
+  // appareil/réseau très rapide, plutôt que de la couper brutalement à mi-course — en dessous de
+  // ce plancher seule la fin de l'animation de la barre (sFill, 700ms) peut encore être écourtée.
+  // _genesisBootApp est défini plus bas dans le document (bloc <script> séparé) ; comme ce signal
+  // ne peut se déclencher qu'après DOMContentLoaded, l'événement vidéo ou le filet de secours 8s,
+  // le document est déjà entièrement analysé à ce stade et la fonction existe — garde défensive
+  // quand même (retente une fois après 50ms) au cas où un chemin imprévu l'appellerait plus tôt.
+  var _elapsed = Date.now() - _genesisStartTime;
+  var _floorDelay = Math.max(0, 350 - _elapsed);
+  setTimeout(function _genesisTryBoot(){
+    if(typeof _genesisBootApp === 'function'){ _genesisBootApp(); }
+    else { setTimeout(_genesisTryBoot, 50); }
+  }, _floorDelay);
 }
 // CORRECTIF EN PROFONDEUR (écran noir persistant sur Galaxy A06, réapparu malgré la suppression du
 // contournement RAM natif) : le seul signal "prêt" disponible jusqu'ici dépendait de la vidéo
@@ -3809,14 +3827,16 @@ var API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
 
 // ── SPLASH → APP ─────────────────────────────────────────────
-// 900ms : juste après la fin de l'animation de la barre de progression (sFill, délai 0.2s +
-// durée 0.5s = termine à 0.7s) — laisse l'animation se jouer entièrement sans l'étirer
-// artificiellement. Avant ce correctif, ce délai était fixé à 2500ms (+ 820ms de fondu de
-// sortie = 3.3s minimum à chaque ouverture, quelle que soit la vitesse de l'appareil), bien
-// plus long que l'écran de démarrage d'Instagram/WhatsApp/Facebook (demande explicite de
-// parité). Ce délai ne dépend d'aucun chargement réel (la restauration de session ci-dessous
-// est synchrone) — c'était une pause purement décorative.
-setTimeout(function(){
+// Appelée depuis _genesisSignalNativeReady (même instant que le masquage du splash natif, voir
+// plus haut) plutôt que déclenchée par son propre minuteur fixe — avant ce correctif, ce bloc
+// tournait sur un setTimeout(2500ms) totalement indépendant et purement décoratif (la logique
+// ci-dessous est synchrone), portant la durée minimale de l'écran de démarrage à 3.3s à chaque
+// ouverture quelle que soit la vitesse de l'appareil, bien plus long que sur les apps natives
+// (Instagram/WhatsApp/Facebook — demande explicite de parité).
+var _genesisBootAppCalled = false;
+function _genesisBootApp(){
+  if(_genesisBootAppCalled) return;
+  _genesisBootAppCalled = true;
   var _bootHandled = false;
   // Session cliente — isolée dans son propre try : si cette valeur est corrompue
   // (JSON.parse échoue), ça ne doit PAS empêcher de retomber sur la session
@@ -3852,7 +3872,7 @@ setTimeout(function(){
     } catch(e){}
   }
   if(!_bootHandled){ _exitSplash(showRoleChoice); }
-}, 900);
+}
 
 function _exitSplash(callback){
   var splash = document.getElementById('splash');
