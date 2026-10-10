@@ -5634,9 +5634,13 @@
         })();
 
         // ============================================================
-        // ADMIN INBOX (Chat client <-> admin)
+        // ADMIN INBOX (Chat client <-> admin, + conversations peer-to-peer client <-> prestataire
+        // en lecture seule pour supervision anti-fraude)
         // ============================================================
         var allChatMessages = [];
+        // Un fil par paire (client, interlocuteur) — clé 'clientEmail::counterpartType::counterpartEmail'.
+        // Repeuplé à chaque loadAdminInbox(), lu par toggleAdminThread()/sendAdminInboxReply().
+        var adminInboxThreads = {};
 
         async function loadAdminInbox() {
             var loader = document.getElementById('adminInboxLoader');
@@ -5734,29 +5738,53 @@
                               + '</div>';
                     }
 
-                    // Grouper par client
-                    var threads = {};
+                    // Grouper par PAIRE (client, interlocuteur) — pas seulement par client : avant
+                    // ce correctif, toutes les conversations d'un même client (avec l'admin ET
+                    // avec chaque prestataire) étaient mélangées dans un seul fil, rendant
+                    // impossible de suivre une conversation précise (demande explicite : fils
+                    // séparés par conversation). adminInboxThreads est global (pas "var" local) car
+                    // toggleAdminThread()/sendAdminInboxReply() doivent pouvoir relire exactement
+                    // les messages de CE fil précis, sans re-filtrer allChatMessages par email
+                    // client seul (qui remélangerait tout).
+                    adminInboxThreads = {};
                     allChatMessages.forEach(function(m) {
-                        var clientEmail = m.from_type === 'client' ? m.from_email : m.to_email;
-                        var clientName = m.from_type === 'client' ? m.from_name : m.to_name;
-                        if (!threads[clientEmail]) threads[clientEmail] = { email: clientEmail, name: clientName, msgs: [] };
-                        threads[clientEmail].msgs.push(m);
+                        var isClientFrom = m.from_type === 'client';
+                        var clientEmail = isClientFrom ? m.from_email : (m.to_type === 'client' ? m.to_email : null);
+                        if (!clientEmail) return; // message sans partie "client" identifiable (ne devrait pas arriver) — ignoré par sécurité
+                        var clientName = isClientFrom ? m.from_name : m.to_name;
+                        var counterpartType = isClientFrom ? (m.to_type || 'admin') : m.from_type;
+                        var counterpartEmail = isClientFrom ? (m.to_email || 'admin') : m.from_email;
+                        var counterpartName = isClientFrom ? m.to_name : m.from_name;
+                        var key = clientEmail + '::' + counterpartType + '::' + counterpartEmail;
+                        if (!adminInboxThreads[key]) {
+                            adminInboxThreads[key] = {
+                                key: key, clientEmail: clientEmail, clientName: clientName,
+                                counterpartType: counterpartType, counterpartEmail: counterpartEmail, counterpartName: counterpartName,
+                                msgs: []
+                            };
+                        }
+                        adminInboxThreads[key].msgs.push(m);
                     });
 
-                    Object.keys(threads).forEach(function(email) {
-                        var t = threads[email];
+                    Object.keys(adminInboxThreads).forEach(function(key) {
+                        var t = adminInboxThreads[key];
+                        var domId = key.replace(/[^a-z0-9]/gi, '_');
                         var unread = t.msgs.filter(function(m) { return m.from_type === 'client' && !m.read_at; }).length;
+                        var counterpartLabel = t.counterpartType === 'partner'
+                            ? (t.counterpartName || 'Prestataire') + ' (Prestataire)'
+                            : 'FA GENESIS';
                         html += '<div style="border:3px solid ' + (unread > 0 ? '#f44336' : '#ddd') + ';margin-bottom:1rem;background:#fafafa;">';
                         html += '<div style="background:' + (unread > 0 ? '#fff3f3' : '#f5f5f5') + ';border-bottom:2px solid #ddd;padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
-                        html += '<div><span style="font-weight:900;font-size:15px;color:#000;">' + (t.name || email) + '</span>';
-                        html += '<span style="font-size:12px;color:#000;margin-left:8px;">' + email + '</span>';
+                        html += '<div><span style="font-weight:900;font-size:15px;color:#000;">' + (t.clientName || t.clientEmail) + '</span>';
+                        html += '<span style="font-size:12px;color:#000;margin-left:8px;">' + t.clientEmail + '</span>';
+                        html += '<span style="font-size:11px;color:#555;margin-left:8px;"><i class="fas fa-arrows-left-right" style="margin-right:3px;"></i>' + counterpartLabel + '</span>';
                         if (unread > 0) html += '<span style="background:#f44336;color:#fff;font-size:10px;font-weight:900;padding:1px 6px;border:1px solid black;margin-left:8px;">' + unread + ' non lu</span>';
                         html += '</div>';
-                        html += '<button onclick="toggleAdminThread(\'' + email + '\')" style="background:var(--genesis-yellow);border:2px solid black;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;">Voir / Répondre</button>';
+                        html += '<button onclick="toggleAdminThread(\'' + key + '\')" style="background:var(--genesis-yellow);border:2px solid black;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;">Voir / Répondre</button>';
                         html += '</div>';
 
-                        html += '<div id="thread-' + email.replace(/[^a-z0-9]/gi, '_') + '" style="display:none;padding:1rem;">';
-                        html += '<div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;padding:0.5rem;background:#fff;border:2px solid #eee;" id="thread-msgs-' + email.replace(/[^a-z0-9]/gi, '_') + '">';
+                        html += '<div id="thread-' + domId + '" style="display:none;padding:1rem;">';
+                        html += '<div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;padding:0.5rem;background:#fff;border:2px solid #eee;" id="thread-msgs-' + domId + '">';
                         t.msgs.forEach(function(m) {
                             // BUG CORRIGÉ : tout message non envoyé par le client était étiqueté
                             // "FA GENESIS" sans distinction — un message réellement envoyé par un
@@ -5782,9 +5810,9 @@
                         html += '</div>';
 
                         html += '<div>';
-                        html += '<textarea id="reply-' + email.replace(/[^a-z0-9]/gi, '_') + '" rows="3" style="width:100%;border:3px solid black;padding:8px;font-family:inherit;font-size:13px;resize:vertical;" placeholder="Votre réponse..."></textarea>';
+                        html += '<textarea id="reply-' + domId + '" rows="3" style="width:100%;border:3px solid black;padding:8px;font-family:inherit;font-size:13px;resize:vertical;" placeholder="Votre réponse au client..."></textarea>';
                         html += '<div style="margin-top:8px;">';
-                        html += '<button onclick="sendAdminInboxReply(\'' + email + '\', \'' + (t.name || '').replace(/'/g, "\\'") + '\')" style="background:var(--genesis-yellow);border:3px solid black;padding:8px 16px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;">';
+                        html += '<button onclick="sendAdminInboxReply(\'' + key + '\')" style="background:var(--genesis-yellow);border:3px solid black;padding:8px 16px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;">';
                         html += '<i class="fas fa-paper-plane mr-1"></i>Envoyer</button>';
                         html += '</div>';
                         html += '</div>';
@@ -5801,19 +5829,23 @@
             }
         }
 
-        async function toggleAdminThread(email) {
-            var id = 'thread-' + email.replace(/[^a-z0-9]/gi, '_');
-            var el = document.getElementById(id);
+        async function toggleAdminThread(key) {
+            var domId = key.replace(/[^a-z0-9]/gi, '_');
+            var el = document.getElementById('thread-' + domId);
             if (!el) return;
             var isOpening = el.style.display === 'none';
             el.style.display = isOpening ? '' : 'none';
 
             if (!isOpening) return;
 
-            // Marquer tous les messages non lus de ce client comme lus
-            var unreadMsgs = allChatMessages.filter(function(m) {
-                return m.from_type === 'client' && m.from_email === email && !m.read_at;
-            });
+            // Marquer comme lus uniquement les messages non lus de CE fil précis (ce client avec
+            // CET interlocuteur) — pas tous les messages non lus de ce client tous fils confondus,
+            // sinon ouvrir le fil "client <-> prestataire A" marquerait à tort comme lus des
+            // messages encore non lus adressés à l'admin ou à un autre prestataire.
+            var thread = adminInboxThreads[key];
+            var unreadMsgs = thread ? thread.msgs.filter(function(m) {
+                return m.from_type === 'client' && !m.read_at;
+            }) : [];
             if (unreadMsgs.length === 0) return;
 
             for (var i = 0; i < unreadMsgs.length; i++) {
@@ -5842,17 +5874,23 @@
             }
         }
 
-        async function sendAdminInboxReply(toEmail, toName) {
-            var id = toEmail.replace(/[^a-z0-9]/gi, '_');
-            var ta = document.getElementById('reply-' + id);
+        async function sendAdminInboxReply(key) {
+            // La réponse admin part toujours VERS LE CLIENT (même pour un fil client <->
+            // prestataire : l'admin n'y est qu'en supervision, mais s'il répond, c'est pour
+            // intervenir directement auprès du client, pas pour se faire passer pour le prestataire).
+            var thread = adminInboxThreads[key];
+            if (!thread) return;
+            var toEmail = thread.clientEmail;
+            var toName = thread.clientName || '';
+            var domId = key.replace(/[^a-z0-9]/gi, '_');
+            var ta = document.getElementById('reply-' + domId);
             if (!ta) return;
             var content = ta.value.trim();
             if (!content) { alert('Veuillez écrire un message.'); return; }
 
-            // Extraire le sujet du fil pour la continuité
-            var threadMsgs = allChatMessages.filter(function(m) {
-                return (m.from_email === toEmail || m.to_email === toEmail) && m.subject;
-            });
+            // Extraire le sujet de CE fil précis pour la continuité (plus seulement "un message
+            // quelconque de ce client", qui pouvait piocher le sujet d'une autre conversation).
+            var threadMsgs = thread.msgs.filter(function(m) { return m.subject; });
             var origSubject = threadMsgs.length > 0 ? threadMsgs[threadMsgs.length - 1].subject : '';
             var replySubject = '';
             if (origSubject) {
