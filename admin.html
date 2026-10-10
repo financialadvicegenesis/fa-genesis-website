@@ -5734,8 +5734,8 @@
                         var unread = t.msgs.filter(function(m) { return m.from_type === 'client' && !m.read_at; }).length;
                         html += '<div style="border:3px solid ' + (unread > 0 ? '#f44336' : '#ddd') + ';margin-bottom:1rem;background:#fafafa;">';
                         html += '<div style="background:' + (unread > 0 ? '#fff3f3' : '#f5f5f5') + ';border-bottom:2px solid #ddd;padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
-                        html += '<div><span style="font-weight:900;font-size:15px;">' + (t.name || email) + '</span>';
-                        html += '<span style="font-size:12px;color:#888;margin-left:8px;">' + email + '</span>';
+                        html += '<div><span style="font-weight:900;font-size:15px;color:#000;">' + (t.name || email) + '</span>';
+                        html += '<span style="font-size:12px;color:#000;margin-left:8px;">' + email + '</span>';
                         if (unread > 0) html += '<span style="background:#f44336;color:#fff;font-size:10px;font-weight:900;padding:1px 6px;border:1px solid black;margin-left:8px;">' + unread + ' non lu</span>';
                         html += '</div>';
                         html += '<button onclick="toggleAdminThread(\'' + email + '\')" style="background:var(--genesis-yellow);border:2px solid black;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;">Voir / Répondre</button>';
