@@ -1965,7 +1965,21 @@
             document.getElementById('loginPage').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             loadDashboard();
-            loadAdminNotifInbox();
+            // CAUSE RACINE d'un bug bien plus large que l'affichage des devis (trouvé via
+            // console navigateur, 2026-10-11) : loadAdminNotifInbox() est définie dans un
+            // <script> SÉPARÉ et plus tardif (ouvre après la ligne 6000) que celui-ci
+            // (1925-5990) — chaque balise <script> s'exécute entièrement avant même que la
+            // suivante soit analysée, donc la fonction n'existait pas encore à cet instant.
+            // L'appel direct levait un ReferenceError non intercepté qui interrompait TOUT le
+            // reste de l'exécution synchrone de CE bloc <script> — chaque "var" top-level déclaré
+            // plus bas dans ce même bloc (ex: selectedQuoteIds pour les devis) restait alors
+            // "undefined" au lieu de recevoir sa vraie valeur initiale, cassant silencieusement
+            // des fonctionnalités sans rapport apparent avec les notifications. setTimeout(...,0)
+            // diffère l'appel au tick suivant, une fois TOUS les <script> de la page analysés et
+            // exécutés (y compris celui qui définit réellement la fonction) — comportement
+            // final identique (la boîte de notifs se charge toujours au moment de l'ouverture du
+            // panel), juste un tick plus tard, invisible pour l'admin.
+            setTimeout(function(){ if (typeof loadAdminNotifInbox === 'function') loadAdminNotifInbox(); }, 0);
             loadPartnersList();
             _loadModerationAccounts();
             // Deep-link depuis notification ou email
