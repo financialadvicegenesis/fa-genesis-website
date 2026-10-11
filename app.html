@@ -6972,9 +6972,14 @@ function renderResaTab(){
   // Demandes directes à un partenaire (hors annuaire de prestations) en attente d'une action du
   // client — acceptée (à payer) ou avec une proposition reçue (à signer) — voir renderProposalCard.
   // Chargées séparément de /api/reservations/me (coworking/événements), source de données distincte.
+  // 'signed' && pas encore d'order_id inclus ici aussi : avant ce correctif, une demande signée
+  // disparaissait purement et simplement de l'écran du client — aucun bouton "Payer" n'existait
+  // nulle part dans toute l'app (seuls accept→propose→signer étaient réellement câblés). Ce sont
+  // ces demandes-là que renderProposalCard affiche maintenant avec un CTA de paiement au lieu du
+  // formulaire de signature.
   var _resaProposalsPromise = fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
-    .then(function(d){ return (d&&Array.isArray(d.requests)) ? d.requests.filter(function(r){ return r.status==='accepted'||r.status==='proposed'; }) : []; })
+    .then(function(d){ return (d&&Array.isArray(d.requests)) ? d.requests.filter(function(r){ return r.status==='accepted'||r.status==='proposed'||(r.status==='signed'&&!r.order_id); }) : []; })
     .catch(function(){ return []; });
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
@@ -7072,13 +7077,16 @@ function renderProposalCard(r){
   var itemsHtml = (p.items||[]).map(function(it){
     return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;"><span>'+(it.label||'')+'</span><span>'+(it.amount||0)+' €</span></div>';
   }).join('');
+  // m.amount (montant réel en euros, calculé côté serveur selon le mode choisi par le
+  // prestataire) — repli sur l'ancien format m.pct pour une proposition en vol créée avant ce
+  // correctif (découpage 30/40/30 fixe, jamais autre chose jusqu'ici).
   var milestonesHtml = (p.milestones||[]).map(function(m){
-    var amt = Math.round((p.total_price||0)*(m.pct||0)/100);
-    return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--muted);"><span>'+(m.label||'')+' ('+(m.pct||0)+'%)</span><span>'+amt+' €</span></div>';
+    var amt = m.amount != null ? m.amount : Math.round((p.total_price||0)*(m.pct||0)/100);
+    var lbl = m.label || '';
+    return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--muted);"><span>'+lbl+'</span><span>'+amt+' €</span></div>';
   }).join('');
-  return '<div class="resa-card" id="prop-card-'+r.id+'">'
-    +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Demande')+'</div>'
-    +'<span class="resa-status s-pending">📋 Proposition reçue</span></div>'
+  var bodyHtml = '<div class="resa-top"><div class="resa-name">'+(r.service_label||'Demande')+'</div>'
+    +'<span class="resa-status s-pending">'+(r.status==='signed'?'✅ Signé — à payer':'📋 Proposition reçue')+'</span></div>'
     +'<div class="resa-date"><i class="fa-solid fa-user"></i> '+(r.partner_name||'')+'</div>'
     +'<div class="detail-feats-title" style="margin:10px 0 4px;font-size:13px;">Récapitulatif contractuel</div>'
     +itemsHtml
@@ -7087,13 +7095,48 @@ function renderProposalCard(r){
     +(p.revisions_included?'<div style="font-size:13px;color:var(--muted);">Révisions incluses : '+p.revisions_included+'</div>':'')
     +(p.notes?'<div style="font-size:13px;color:var(--muted);margin-top:4px;">'+p.notes+'</div>':'')
     +'<div class="detail-feats-title" style="margin:10px 0 4px;font-size:13px;">Échéancier de paiement sécurisé</div>'
-    +milestonesHtml
-    +'<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">'
-    +'<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer;"><input type="checkbox" id="sign-accept-'+r.id+'" style="margin-top:2px;"> J\'accepte les conditions ci-dessus</label>'
-    +'<input type="text" id="sign-name-'+r.id+'" placeholder="Votre nom complet" style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:#fff;">'
-    +'<div id="sign-err-'+r.id+'" style="color:#ef4444;font-size:12px;margin-top:6px;display:none;"></div>'
-    +'<button class="resa-action-btn rab-primary" style="width:100%;margin-top:10px;" onclick="signRequestContract(\''+r.id+'\')">Signer le contrat</button>'
-    +'</div></div>';
+    +milestonesHtml;
+  // Demande déjà signée ("Lu et approuvé") : plus rien à signer, juste à payer — avant ce
+  // correctif, aucun CTA de paiement n'existait nulle part pour cet état (voir
+  // payDevisProposal). Sinon (status==='proposed'), formulaire de signature classique.
+  var actionHtml = r.status==='signed'
+    ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">'
+      +'<div style="font-size:12px;color:#4ade80;margin-bottom:8px;"><i class="fa-solid fa-check-circle mr-1"></i>Contrat signé le '+_ptnrFmt(r.contract_signed_at)+'</div>'
+      +'<button class="resa-action-btn rab-primary" style="width:100%;" onclick="payDevisProposal(\''+r.id+'\')"><i class="fa-solid fa-lock mr-1"></i> Payer en sécurité (GENESIS SAFE™)</button>'
+      +'</div>'
+    : '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">'
+      +'<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer;"><input type="checkbox" id="sign-accept-'+r.id+'" style="margin-top:2px;"> J\'accepte les conditions ci-dessus</label>'
+      +'<input type="text" id="sign-name-'+r.id+'" placeholder="Votre nom complet" style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:#fff;">'
+      +'<div id="sign-err-'+r.id+'" style="color:#ef4444;font-size:12px;margin-top:6px;display:none;"></div>'
+      +'<button class="resa-action-btn rab-primary" style="width:100%;margin-top:10px;" onclick="signRequestContract(\''+r.id+'\')">Signer le contrat</button>'
+      +'</div>';
+  return '<div class="resa-card" id="prop-card-'+r.id+'">'+bodyHtml+actionHtml+'</div>';
+}
+
+// Déclenche le paiement GENESIS SAFE™ d'une demande de devis déjà signée ("Lu et approuvé") —
+// réutilise tout le pipeline de paiement existant (_showPbPayUI, contrat Stripe/PayPal) déjà
+// câblé pour les prestations à prix fixe, via un objet "service" synthétique construit à partir
+// de la proposition du prestataire (prix + mode de paiement qu'IL a choisi lors de
+// l'élaboration du devis, voir _ptnrRenderProposalForm) au lieu d'une fiche du catalogue.
+// skipContract=true car le client a déjà signé le contrat de la proposition plus haut
+// (signRequestContract) — _showPbPayUI ne doit pas en faire signer un second.
+function payDevisProposal(requestId){
+  if(!USER||GUEST){ showLoginSheet(); return; }
+  fetch((window.FA_GENESIS_API||API)+'/api/my-requests/'+requestId,{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var r = data && data.request;
+      if(!r || !r.proposal){ showToast('Erreur','Proposition introuvable.','error'); return; }
+      var p = r.proposal;
+      var partner = (_dirPartnerCache && _dirPartnerCache[r.partner_id])
+        ? Object.assign({}, _dirPartnerCache[r.partner_id])
+        : {id: r.partner_id, prenom: r.partner_name||'Prestataire', nom: ''};
+      var service = {
+        id: null, label: r.service_label, price: p.total_price||0, max_installments: 1,
+        payment_mode: p.payment_mode||'single', deposit_pct: p.deposit_pct, installment_count: p.installment_count
+      };
+      _showPbPayUI(partner, service, null, true, requestId);
+    }).catch(function(){ showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
 }
 function signRequestContract(requestId){
   if(!USER||GUEST) return;
@@ -16247,6 +16290,11 @@ function _closeAdminPanel(){
 
 // ── PARTNER SERVICE BOOKING (marketplace : commande directe sur un partenaire choisi) ──
 var _pbPartner=null, _pbService=null, _pbServices=null, _pbMode='request', _pbDepositAmount=0;
+// Affecté par _showPbPayUI() depuis son 5e paramètre (voir payDevisProposal) quand ce paiement
+// vient d'une demande de devis signée (partner_requests.json) plutôt que d'une prestation du
+// catalogue — _pbEnsureOrderId() l'envoie à /api/orders/create pour router vers le FORMAT DEVIS
+// SIGNÉ côté serveur au lieu du format prestation catalogue habituel.
+var _pbRequestId = null;
 
 // Ouvre la modal en mode "demande" : le client décrit son besoin, sans payer (le partenaire doit d'abord accepter).
 function openPartnerRequest(partnerId, serviceId){
@@ -16332,10 +16380,13 @@ function openPartnerBooking(partnerId, serviceId){
   closeDetail();
 }
 // Affiche l'écran de paiement de l'acompte (commun à la fiche partenaire et à "Mes demandes")
-function _showPbPayUI(partner, service, existingOrderId){
+function _showPbPayUI(partner, service, existingOrderId, skipContract, requestId){
   _pbPartner = partner; _pbService = service; _pbMode = 'pay';
   _pbSelectedInstallments = 1;
   _pbExistingOrderId = existingOrderId || null;
+  // Toujours réaffecté (jamais seulement sur le chemin devis) pour ne pas fuiter sur l'appel
+  // suivant si une autre modal de paiement (prestation catalogue) s'ouvre ensuite sans le fournir.
+  _pbRequestId = requestId || null;
   // Nouvelle session de paiement : autoriser un nouveau rendu du bouton PayPal.
   _pbPaypalRendered = false;
   var _pbPpContainer = document.getElementById('pb-paypal-container'); if(_pbPpContainer){ _pbPpContainer.innerHTML=''; _pbPpContainer.style.display='block'; }
@@ -16385,8 +16436,10 @@ function _showPbPayUI(partner, service, existingOrderId){
     ? 'Paiement sécurisé ! Votre argent est retenu par GENESIS SAFE™ et sera versé au prestataire après livraison.'
     : 'Acompte payé ! Le partenaire a été notifié et votre commande apparaît dans "Mes réservations".';
 
-  // Commande existante → contrat déjà signé lors de la demande initiale, passer au paiement
-  if(existingOrderId){
+  // Commande existante (Projet GENESIS) OU contrat déjà signé ailleurs (devis signé via
+  // signRequestContract, voir payDevisProposal) → passer directement au paiement, sans faire
+  // signer un second contrat redondant.
+  if(existingOrderId || skipContract){
     _pbContractId = 'existing-order';
     if(fm) fm.style.display='block';
     _pbRenderPayPalButton();
@@ -16882,9 +16935,16 @@ function _pbPayDepositStripeDirect(){
 function _pbEnsureOrderId(){
   if(_pbExistingOrderId) return Promise.resolve(_pbExistingOrderId);
   var clientInfo={firstName:USER.prenom||'',lastName:USER.nom||'',email:USER.email||'',phone:USER.telephone||'',clientType:'particulier'};
+  // _pbRequestId présent → ce paiement vient d'une demande de devis signée (payDevisProposal),
+  // pas d'une prestation du catalogue : requestId route vers le FORMAT DEVIS SIGNÉ côté serveur
+  // (POST /api/orders/create), qui source le prix/mode de paiement depuis la proposition du
+  // prestataire au lieu de service.price/service.payment_mode.
+  var _pbPso = _pbRequestId
+    ? { requestId:_pbRequestId, partnerId:_pbPartner.id, requestedInstallments:_pbSelectedInstallments||1 }
+    : { partnerId:_pbPartner.id, serviceId:_pbService.id, requestedInstallments:_pbSelectedInstallments||1 };
   return fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
     method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({ clientInfo:clientInfo, partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id, requestedInstallments:_pbSelectedInstallments||1} })
+    body:JSON.stringify({ clientInfo:clientInfo, partnerServiceOrder:_pbPso })
   }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
   .then(function(res){
     if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
@@ -18777,6 +18837,29 @@ function _ptnrRenderProposalForm(r){
   html += '<input type="number" id="prop-delay-'+r.id+'" placeholder="Délai (jours)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:16px;">';
   html += '<input type="number" id="prop-revisions-'+r.id+'" placeholder="Révisions incluses" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:16px;">';
   html += '</div>';
+  // Mode de paiement GENESIS SAFE™ pour CETTE proposition — demande explicite : avant ce
+  // correctif, tous les devis utilisaient un découpage 30/40/30 codé en dur côté serveur, sans
+  // aucun choix laissé au prestataire. Même pattern visuel que la configuration payment_mode
+  // d'une prestation du catalogue (_ptnrRenderServiceItemRow), classes CSS distinctes
+  // (prop-pay-*) pour ne pas interférer avec _ptnrSetPayMode (scopé à .ptnr-svc-card).
+  html += '<div class="prop-pay-wrap" style="margin-top:12px;">';
+  html += '<div style="font-size:11px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;">Mode de paiement GENESIS SAFE™</div>';
+  html += '<div style="display:flex;gap:4px;margin-bottom:8px;">';
+  [['single','1 fois'],['deposit_balance','Acompte + reste'],['installments','Plusieurs fois']].forEach(function(pair){
+    var m = pair[0], label = pair[1], act = m==='single';
+    html += '<button type="button" class="prop-pay-mode-btn" data-mode="'+m+'" onclick="_ptnrSetProposalPayMode(this)" style="flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:'+(act?'900':'500')+';cursor:pointer;background:'+(act?'#FFD700':'transparent')+';color:'+(act?'#000':'#888')+';border:'+(act?'none':'1px solid #333')+';">'+label+'</button>';
+  });
+  html += '</div>';
+  html += '<input type="hidden" id="prop-pay-mode-'+r.id+'" class="prop-pay-mode-input" value="single">';
+  html += '<div class="prop-pay-deposit-section" style="display:none;align-items:center;gap:8px;margin-bottom:8px;">';
+  html += '<input type="number" id="prop-deposit-pct-'+r.id+'" min="0" max="100" step="5" placeholder="30" value="30" style="width:70px;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:16px;">';
+  html += '<span style="font-size:12px;color:#888;">% versé à l\'acceptation · le reste à la livraison</span>';
+  html += '</div>';
+  html += '<div class="prop-pay-installments-section" style="display:none;margin-bottom:8px;">';
+  html += '<select id="prop-installment-count-'+r.id+'" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:16px;">';
+  html += '<option value="2">2 fois — mensualités égales</option><option value="3">3 fois</option><option value="4">4 fois</option><option value="6">6 fois</option><option value="8">8 fois</option>';
+  html += '</select></div>';
+  html += '</div>';
   html += '<textarea id="prop-notes-'+r.id+'" placeholder="Notes complémentaires (optionnel)" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid #ddd;min-height:60px;font-size:16px;"></textarea>';
   html += '<div id="prop-err-'+r.id+'" style="color:#c00;font-size:12px;margin-top:6px;"></div>';
   html += '</div>';
@@ -19242,11 +19325,23 @@ function _ptnrSubmitProposal(requestId){
   var revisionsIncluded = parseInt(document.getElementById('prop-revisions-'+requestId).value, 10) || 0;
   var notes = (document.getElementById('prop-notes-'+requestId).value || '').trim();
 
+  var paymentModeEl = document.getElementById('prop-pay-mode-'+requestId);
+  var paymentMode = paymentModeEl ? (paymentModeEl.value || 'single') : 'single';
+  var depositPct = null, installmentCount = null;
+  if(paymentMode === 'deposit_balance'){
+    var _spDp = parseInt(document.getElementById('prop-deposit-pct-'+requestId).value, 10);
+    depositPct = isNaN(_spDp) ? 30 : Math.max(0, Math.min(100, _spDp));
+  } else if(paymentMode === 'installments'){
+    var _spIc = parseInt(document.getElementById('prop-installment-count-'+requestId).value, 10);
+    installmentCount = isNaN(_spIc) ? 2 : Math.max(2, Math.min(8, _spIc));
+  }
+
   var btn = document.getElementById('prop-submit-btn-'+requestId);
   if(btn){ btn.disabled = true; btn.textContent = 'Envoi...'; }
   haptic(15);
   _ptnrFetch('/api/partner/requests/'+requestId+'/propose', 'POST', {
-    items: items, total_price: totalPrice, delay_days: delayDays, revisions_included: revisionsIncluded, notes: notes
+    items: items, total_price: totalPrice, delay_days: delayDays, revisions_included: revisionsIncluded, notes: notes,
+    payment_mode: paymentMode, deposit_pct: depositPct, installment_count: installmentCount
   }).then(function(res){
     if(res.success){
       showToast('Proposition envoyée !','Le client va recevoir le récapitulatif à signer.','success');
@@ -21345,6 +21440,28 @@ function _ptnrSetPayMode(btn){
   });
   var depSec = card.querySelector('.ptnr-svc-deposit-section');
   var instSec = card.querySelector('.ptnr-svc-installments-section');
+  if(depSec) depSec.style.display = mode === 'deposit_balance' ? 'flex' : 'none';
+  if(instSec) instSec.style.display = mode === 'installments' ? 'block' : 'none';
+}
+
+// Même principe que _ptnrSetPayMode ci-dessus, mais scopé à .prop-pay-wrap (formulaire de
+// proposition de devis, _ptnrRenderProposalForm) plutôt qu'à .ptnr-svc-card (prestation du
+// catalogue) — deux formulaires distincts, deux jeux de classes, pas de recouvrement possible.
+function _ptnrSetProposalPayMode(btn){
+  var wrap = btn.closest('.prop-pay-wrap');
+  if(!wrap) return;
+  var mode = btn.getAttribute('data-mode');
+  var modeInput = wrap.querySelector('.prop-pay-mode-input');
+  if(modeInput) modeInput.value = mode;
+  wrap.querySelectorAll('.prop-pay-mode-btn').forEach(function(b){
+    var act = b.getAttribute('data-mode') === mode;
+    b.style.background = act ? '#FFD700' : 'transparent';
+    b.style.color = act ? '#000' : '#888';
+    b.style.border = act ? 'none' : '1px solid #333';
+    b.style.fontWeight = act ? '900' : '500';
+  });
+  var depSec = wrap.querySelector('.prop-pay-deposit-section');
+  var instSec = wrap.querySelector('.prop-pay-installments-section');
   if(depSec) depSec.style.display = mode === 'deposit_balance' ? 'flex' : 'none';
   if(instSec) instSec.style.display = mode === 'installments' ? 'block' : 'none';
 }

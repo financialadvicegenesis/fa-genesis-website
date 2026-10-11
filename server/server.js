@@ -4273,6 +4273,103 @@ app.post('/api/orders/create', (req, res) => {
                 prestations: projPrestations.length
             });
 
+        // ---- FORMAT DEVIS SIGNÉ (proposition personnalisée d'un prestataire sur une demande
+        // partner_requests.json — "Demander un devis" depuis la fiche prestataire, PAS le
+        // panneau admin "Devis" retiré, ni une prestation à prix fixe). Le prestataire choisit
+        // le mode de paiement (payment_mode/deposit_pct/installment_count) au moment où il
+        // élabore sa proposition (POST /api/partner/requests/:id/propose) — même logique que
+        // service.payment_mode plus bas, mais sourcée depuis request.proposal au lieu d'une
+        // prestation du catalogue (il n'y a pas de "service" fixe pour un devis personnalisé). ----
+        } else if (partnerServiceOrder && partnerServiceOrder.requestId) {
+            var pdsRequests = loadPartnerRequests();
+            var pdsIdx = pdsRequests.findIndex(function(r) { return r.id === partnerServiceOrder.requestId; });
+            if (pdsIdx === -1) return res.status(404).json({ error: 'Demande introuvable' });
+            var pdsRequest = pdsRequests[pdsIdx];
+            if (!pdsRequest.client_email || !clientInfo.email || pdsRequest.client_email.toLowerCase() !== clientInfo.email.toLowerCase()) {
+                return res.status(403).json({ error: 'Accès non autorisé' });
+            }
+            if (pdsRequest.status !== 'signed') {
+                return res.status(409).json({ error: 'Le contrat doit être signé avant de pouvoir payer (statut actuel : ' + pdsRequest.status + ').' });
+            }
+            // Idempotence : si une commande a déjà été créée pour cette demande (ex: retry après
+            // une erreur réseau pendant l'étape Stripe/PayPal), la réutiliser au lieu d'en recréer une.
+            if (pdsRequest.order_id) {
+                var pdsExistingOrder = loadOrders().find(function(o) { return o.id === pdsRequest.order_id; });
+                if (pdsExistingOrder) {
+                    return res.json({ orderId: pdsExistingOrder.id, deposit_amount: pdsExistingOrder.deposit_amount, balance_amount: pdsExistingOrder.balance_amount, total_amount: pdsExistingOrder.total_amount });
+                }
+            }
+
+            const pdsPartner = getPartnerById(pdsRequest.partner_id);
+            if (!pdsPartner) return res.status(404).json({ error: 'Partenaire non trouve' });
+            if (pdsPartner.accountStatus !== 'active') return res.status(400).json({ error: 'Ce partenaire n\'est pas disponible actuellement' });
+
+            var pdsProposal = pdsRequest.proposal || {};
+            var pdsTotal = parseFloat(pdsProposal.total_price) || 0;
+            if (pdsTotal <= 0) return res.status(400).json({ error: 'Montant de la proposition invalide' });
+
+            // GENESIS SAFE™ — plan de paiement selon le mode choisi par le prestataire sur CETTE
+            // proposition (même logique que svcPayMode plus bas pour une prestation à prix fixe).
+            var pdsPayMode = pdsProposal.payment_mode || 'single';
+            var pdsPaymentTier, pdsInstallments;
+            if (pdsPayMode === 'deposit_balance') {
+                pdsPaymentTier = 'custom';
+                pdsInstallments = generatePartnerSplit(pdsTotal, pdsProposal.deposit_pct != null ? pdsProposal.deposit_pct : 30);
+            } else if (pdsPayMode === 'installments') {
+                pdsPaymentTier = 'partner_installments';
+                var _pdsN = Math.max(2, Math.min(8, parseInt(pdsProposal.installment_count) || 2));
+                pdsInstallments = generateUserInstallmentPlan(pdsTotal, _pdsN);
+            } else {
+                pdsPaymentTier = 'small';
+                pdsInstallments = [{ number: 1, key: 'paiement', label: 'Paiement intégral — GENESIS SAFE™', amount: pdsTotal, stage: 'deposit', paid: false, paid_at: null, due_date: null, milestone_required: null }];
+            }
+            var pdsDeposit = pdsInstallments[0].amount;
+            var pdsBalance = pdsInstallments.length > 1 ? pdsInstallments.slice(1).reduce(function(s, i) { return s + i.amount; }, 0) : 0;
+
+            order = {
+                id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
+                product_id: null,
+                product_name: pdsRequest.service_label,
+                product_type: 'partner_service',
+                payment_tier: pdsPaymentTier,
+                partner_id: pdsPartner.id,
+                partner_name: ((pdsPartner.prenom || '') + ' ' + (pdsPartner.nom || '')).trim() || pdsPartner.email || '',
+                partner_email: pdsPartner.email || '',
+                partner_service_id: pdsRequest.service_id || null,
+                request_id: pdsRequest.id,
+                client_info: {
+                    email: clientInfo.email,
+                    first_name: clientInfo.firstName,
+                    last_name: clientInfo.lastName,
+                    phone: clientInfo.phone || null,
+                    company: clientInfo.company || null,
+                    client_type: clientInfo.clientType || 'particulier'
+                },
+                total_amount: pdsTotal,
+                welcome_discount_pct: 0,
+                welcome_discount_amount: 0,
+                deposit_amount: pdsDeposit,
+                balance_amount: pdsBalance,
+                installments_count: pdsInstallments.length,
+                installments: pdsInstallments,
+                amount_paid: 0,
+                deposit_paid: false,
+                balance_paid: false,
+                delivery_confirmed: false,
+                duration_days: 0,
+                start_date: null,
+                status: 'pending_deposit',
+                checkout_id: null,
+                transaction_id: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            pdsRequests[pdsIdx].order_id = order.id;
+            savePartnerRequests(pdsRequests);
+
+            console.log(`[ORDER] Commande devis signé: ${order.id} - ${pdsRequest.service_label} (${pdsPartner.email}) - ${pdsTotal}EUR - mode: ${pdsPayMode}`);
+
         // ---- FORMAT PRESTATION PARTENAIRE (marketplace, commande directe) ----
         } else if (partnerServiceOrder && partnerServiceOrder.partnerId && partnerServiceOrder.serviceId) {
             const partner = getPartnerById(partnerServiceOrder.partnerId);
@@ -18126,12 +18223,6 @@ app.post('/api/partner/requests/:id/decline', authenticatePartner, function(req,
 //  + signature électronique simple du client (case + nom + IP)
 // ============================================================
 
-var PARTNER_REQUEST_MILESTONES = [
-    { key: 'kickoff', label: 'Acompte', pct: 30 },
-    { key: 'mid_delivery', label: 'Livrable intermédiaire', pct: 40 },
-    { key: 'final_delivery', label: 'Livraison finale', pct: 30 }
-];
-
 // GET /api/my-requests/:id — détail d'une demande (avec proposition si présente)
 app.get('/api/my-requests/:id', function(req, res) {
     try {
@@ -18169,6 +18260,21 @@ app.post('/api/partner/requests/:id/propose', authenticatePartner, function(req,
             return res.status(400).json({ error: 'Le prix total doit être supérieur à 0' });
         }
 
+        // Mode de paiement choisi par le prestataire pour CETTE proposition (demande explicite :
+        // avant ce correctif, tous les devis utilisaient un découpage 30/40/30 codé en dur, sans
+        // aucun choix laissé au prestataire — même famille de refonte que service.payment_mode
+        // pour les prestations à prix fixe, voir generatePartnerSplit/generateUserInstallmentPlan
+        // plus bas). Même validation/clamp que la configuration d'une prestation du catalogue.
+        var paymentMode = ['single', 'deposit_balance', 'installments'].indexOf(req.body.payment_mode) !== -1 ? req.body.payment_mode : 'single';
+        var depositPct = null, installmentCount = null;
+        if (paymentMode === 'deposit_balance') {
+            var _ppDp = parseInt(req.body.deposit_pct);
+            depositPct = isNaN(_ppDp) ? 30 : Math.max(0, Math.min(100, _ppDp));
+        } else if (paymentMode === 'installments') {
+            var _ppIc = parseInt(req.body.installment_count);
+            installmentCount = isNaN(_ppIc) ? 2 : Math.max(2, Math.min(8, _ppIc));
+        }
+
         var requests = loadPartnerRequests();
         var idx = requests.findIndex(function(r) { return r.id === req.params.id; });
         if (idx === -1) return res.status(404).json({ error: 'Demande introuvable' });
@@ -18179,13 +18285,28 @@ app.post('/api/partner/requests/:id/propose', authenticatePartner, function(req,
             return res.status(409).json({ error: 'Cette demande ne peut pas recevoir de proposition (statut: ' + requests[idx].status + ').' });
         }
 
+        // Échéancier réel (montants en euros, pas juste des %), pour l'affichage côté client ET
+        // comme source de vérité reprise telle quelle à la création de la commande au paiement
+        // (voir FORMAT DEVIS SIGNÉ dans POST /api/orders/create).
+        var proposalMilestones;
+        if (paymentMode === 'deposit_balance') {
+            proposalMilestones = generatePartnerSplit(totalPrice, depositPct);
+        } else if (paymentMode === 'installments') {
+            proposalMilestones = generateUserInstallmentPlan(totalPrice, installmentCount);
+        } else {
+            proposalMilestones = [{ number: 1, key: 'paiement', label: 'Paiement intégral — GENESIS SAFE™', amount: totalPrice, stage: 'deposit' }];
+        }
+
         requests[idx].proposal = {
             items: items.map(function(it) { return { label: (it.label || '').toString().substring(0, 200), amount: parseFloat(it.amount) || 0 }; }),
             total_price: totalPrice,
             delay_days: delayDays,
             revisions_included: revisionsIncluded,
             notes: notes,
-            milestones: PARTNER_REQUEST_MILESTONES,
+            payment_mode: paymentMode,
+            deposit_pct: depositPct,
+            installment_count: installmentCount,
+            milestones: proposalMilestones,
             created_at: new Date().toISOString()
         };
         requests[idx].status = 'proposed';
