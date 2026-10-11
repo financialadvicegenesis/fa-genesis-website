@@ -8817,7 +8817,13 @@ function _refreshClientQG(){
       USER.genesisPoints = d.qgPoints;
       USER.badge = d.currentBadge;
       USER.badgeProgress = d.progress;
-      if(d.currentLevel) USER.genesisLevel = d.currentLevel.label;
+      // BUG CORRIGÉ : écrasait USER.genesisLevel (objet {id,label,icon,order}, voir
+      // getGenesisLevel() côté serveur et _syncUserBadge() ci-dessous qui l'affecte
+      // correctement) par juste d.currentLevel.label (une chaîne). showGenesisPatrimoine()
+      // lit ensuite level.label/level.icon sur cette chaîne — undefined pour les deux
+      // (une chaîne n'a pas ces propriétés) — d'où "undefined" affiché à la place du nom du
+      // niveau et l'icône manquante, dès que cette fonction tournait après _syncUserBadge().
+      if(d.currentLevel) USER.genesisLevel = d.currentLevel;
       var qgEl = document.getElementById('genesis-card-qg-val');
       if(qgEl) qgEl.textContent = d.qgPoints;
       _renderHomeQGWidget();
