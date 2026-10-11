@@ -8513,10 +8513,15 @@ function showSuiviPrestations(){
       el.innerHTML = active.map(function(r){
         var ds = r.display_status || {};
         var isDone = ds.key==='completed'||ds.key==='reviewed';
+        var _photo = r.partner_photo;
+        var _pInit = (r.partner_name||'P')[0].toUpperCase();
+        var _avatarHtml = _photo
+          ? "<img src='"+_photo+"' style='width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;' alt=''>"
+          : "<div style='width:28px;height:28px;border-radius:50%;background:rgba(255,215,0,.08);border:1.5px solid rgba(255,215,0,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;color:var(--yellow);font-size:12px;'>"+_pInit+"</div>";
         return '<div class="resa-card" style="margin-bottom:14px;">'
           +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Prestation')+'</div>'
           +'<span class="resa-status '+(isDone?'s-confirmed':'s-pending')+'">'+((ds.emoji||'')+' '+(ds.label||r.status))+'</span></div>'
-          +'<div class="resa-date"><i class="fa-solid fa-user-tie"></i> '+(r.partner_name||r.partner_id||'Prestataire')+'</div>'
+          +'<div class="resa-date" style="display:flex;align-items:center;gap:7px;">'+_avatarHtml+'<span>'+(r.partner_name||r.partner_id||'Prestataire')+'</span></div>'
           +missionTimelineHtml(r.display_status)
           +'</div>';
       }).join('');
