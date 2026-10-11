@@ -7061,6 +7061,10 @@ function _computeClientWallet(clientEmail) {
                 || (_walletDisp && _walletDisp.claimed_by_name ? String(_walletDisp.claimed_by_name).trim() : null)
                 || (order.partner_name ? String(order.partner_name).trim() : null)
                 || 'Prestataire';
+            // Demande explicite : afficher la photo du prestataire ici aussi, comme déjà fait
+            // dans "Mes commandes" et "Mes paiements" — même double repli que partnerName
+            // ci-dessus (partner trouvé par ID, sinon via le dispatch).
+            var partnerPhoto = (partner && partner.photo) || (_walletDispPartner && _walletDispPartner.photo) || null;
 
             // Normalisation stricte des indicateurs booléens de la commande — trouvé à plusieurs
             // reprises cette session : ces champs peuvent finir par valoir une valeur "truthy" non
@@ -7206,6 +7210,7 @@ function _computeClientWallet(clientEmail) {
                 order_id: order.id,
                 service_label: order.product_name || 'Prestation',
                 partner_name: partnerName,
+                partner_photo: partnerPhoto,
                 payment_tier: order.payment_tier || 'small',
                 // Si client_validated=true mais held=0 (race condition dans le calcul),
                 // forcer held_amount depuis deposit_amount pour que le bouton remboursement reste visible
