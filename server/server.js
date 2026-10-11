@@ -8303,6 +8303,12 @@ app.get('/api/client/payments-list', function(req, res) {
                 var _isSmallPmt = order.payment_tier === 'small' || Number(order.total_amount) <= 300;
                 var _catLabel = order.product_type === 'partner_service' ? 'Prestation partenaire' : cat;
                 var _partnerName = order.partner_name || '';
+                // Demande explicite : afficher la photo du prestataire ici aussi, comme déjà fait
+                // dans "Mes commandes" (voir r.partner_photo, _fetchAndRenderCommandes côté
+                // client). order.partner_name est un instantané figé à la commande, mais la photo
+                // n'est jamais stockée sur l'order (même convention que les autres endpoints de ce
+                // fichier, ex: ligne ~6797) — résolue à la volée via le partenaire courant.
+                var _partnerPhoto = order.partner_id ? ((getPartnerById(order.partner_id) || {}).photo || null) : null;
                 var _installs = Array.isArray(order.installments) && order.installments.length > 2 ? order.installments : null;
                 if (_isSmallPmt) {
                     var _isRefunded = order.status === 'refunded';
@@ -8311,6 +8317,7 @@ app.get('/api/client/payments-list', function(req, res) {
                         order_id: order.id,
                         label: orderName,
                         partner_name: _partnerName,
+                        partner_photo: _partnerPhoto,
                         category: _catLabel,
                         type_label: 'Paiement intégral',
                         amount: Number(order.total_amount) || 0,
@@ -8325,6 +8332,7 @@ app.get('/api/client/payments-list', function(req, res) {
                             order_id: order.id,
                             label: orderName,
                             partner_name: _partnerName,
+                            partner_photo: _partnerPhoto,
                             category: _catLabel,
                             type_label: 'Mensualité ' + (idx + 1) + '/' + _installs.length,
                             amount: Number(inst.amount) || 0,
@@ -8340,6 +8348,7 @@ app.get('/api/client/payments-list', function(req, res) {
                         order_id: order.id,
                         label: orderName,
                         partner_name: _partnerName,
+                        partner_photo: _partnerPhoto,
                         category: _catLabel,
                         type_label: 'Acompte (30%)',
                         amount: Number(order.deposit_amount) || 0,
@@ -8353,6 +8362,7 @@ app.get('/api/client/payments-list', function(req, res) {
                             order_id: order.id,
                             label: orderName,
                             partner_name: _partnerName,
+                            partner_photo: _partnerPhoto,
                             category: _catLabel,
                             type_label: 'Solde (70%)',
                             amount: Number(order.balance_amount) || 0,
