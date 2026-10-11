@@ -3315,11 +3315,6 @@ function _genesisVersionFooter(){
                 <i class="pni fa-solid fa-house"></i><span>Accueil</span>
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
               </button>
-              <button class="ptnr-snbtn" id="ptnr-sn-devis" onclick="_ptnrNav('devis')">
-                <i class="pni fa-solid fa-file-lines"></i><span>Devis</span>
-                <span class="ptnr-badge" id="ptnr-badge-devis"></span>
-                <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
-              </button>
               <button class="ptnr-snbtn" id="ptnr-sn-seances" onclick="_ptnrNav('seances')">
                 <i class="pni fa-solid fa-calendar-days"></i><span>Séances</span>
                 <span class="ptnr-badge" id="ptnr-badge-seances"></span>
@@ -3424,12 +3419,6 @@ function _genesisVersionFooter(){
         </div>
 
         <!-- Sub-screen: Projets -->
-
-        <!-- Sub-screen: Devis -->
-        <div class="ptnr-screen" id="ptnr-screen-devis">
-          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes devis</span></div>
-          <div id="ptnr-devis-list"></div>
-        </div>
 
         <!-- Sub-screen: Séances -->
         <div class="ptnr-screen" id="ptnr-screen-seances">
@@ -8463,48 +8452,6 @@ function showFavoris(){
     });
 }
 
-var QUOTE_STATUS_META = {
-  DRAFT_REQUESTED:  { label: 'Brief reçu, en cours d\'étude', cls: 's-pending' },
-  ADMIN_REVIEW:     { label: 'En cours de chiffrage',         cls: 's-pending' },
-  PARTNER_PROPOSED: { label: 'En cours de chiffrage',         cls: 's-pending' },
-  SENT_TO_CLIENT:   { label: 'Devis prêt — à accepter',       cls: 's-confirmed' },
-  ACCEPTED:         { label: 'Accepté',                        cls: 's-confirmed' },
-  DEPOSIT_PAID:     { label: 'Accepté — acompte payé',         cls: 's-confirmed' },
-  CANCELLED:        { label: 'Annulé',                         cls: 's-refused' }
-};
-function showMesDevis(){
-  var c = document.getElementById('profilContent'); if(!c) return;
-  _saveProfilScroll('showMesDevis');
-  c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes devis</div></div>'
-    +'<div id="devis-client-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'+_skeletonRows(2)+'</div>'
-    +'</div>';
-  if(!USER || GUEST || !USER._token){ document.getElementById('devis-client-list').innerHTML = '<div class="espace-empty">Connectez-vous pour voir vos devis.</div>'; return; }
-  fetch(API+'/api/my-quotes', {headers:{'Authorization':'Bearer '+USER._token}})
-    .then(function(r){return r.json();})
-    .then(function(data){
-      var el = document.getElementById('devis-client-list'); if(!el) return;
-      var quotes = (data && data.quotes) || [];
-      if(!quotes.length){ el.innerHTML = '<div class="espace-empty">Aucun devis pour le moment. Demandez un devis personnalisé depuis le formulaire de contact.</div>'; return; }
-      el.innerHTML = quotes.map(function(q){
-        var meta = QUOTE_STATUS_META[q.status] || { label: q.status, cls: 's-pending' };
-        var priceHtml = (q.pricing && q.pricing.total) ? '<div class="resa-price">'+q.pricing.total+' €</div>' : '';
-        var acceptHtml = q.acceptance_token
-          ? '<div class="resa-actions"><a class="resa-action-btn rab-primary" href="quote-accept.html?token='+q.acceptance_token+'" style="text-decoration:none;text-align:center;">Voir et accepter le devis</a></div>'
-          : '';
-        return '<div class="resa-card">'
-          +'<div class="resa-top"><div class="resa-name">Devis '+(q.quote_number||'')+'</div>'
-          +'<span class="resa-status '+meta.cls+'">'+meta.label+'</span></div>'
-          +(q.brief?'<div class="resa-date"><i class="fa-solid fa-pen"></i> '+q.brief.substring(0,120)+(q.brief.length>120?'…':'')+'</div>':'')
-          +priceHtml
-          +acceptHtml
-          +'</div>';
-      }).join('');
-    }).catch(function(){
-      var el = document.getElementById('devis-client-list'); if(el) el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
-    });
-}
-
 function showSuiviPrestations(){
   var c = document.getElementById('profilContent'); if(!c) return;
   _saveProfilScroll('showSuiviPrestations');
@@ -8870,7 +8817,6 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-calendar-check"></i>','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
       +pli('<i class="fa-solid fa-file-contract"></i>','#0a1a12','Mes contrats',null,'nav(\'mes-contrats\')')
       +pli('<i class="fa-solid fa-route"></i>','#0a1200','Suivi des prestations',null,'showSuiviPrestations()')
-      +pli('<i class="fa-solid fa-file-invoice"></i>','#0a0a14','Mes devis',null,'showMesDevis()')
       +pli('<i class="fa-solid fa-box-open"></i>','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('<i class="fa-solid fa-heart"></i>','#1a0014','Mes favoris',null,'showFavoris()')
       +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions GENESIS',null,'showGenesisMissions()')
@@ -14862,7 +14808,7 @@ function _ptnrNav(screen){
   _ptnrCloseDrawer();
   // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
   var _cEl = document.getElementById('content');
-  var _ptnrSubScreens = ['collegues','reputation','palmares','devis','seances','promotions','portfolio','livrables'];
+  var _ptnrSubScreens = ['collegues','reputation','palmares','seances','promotions','portfolio','livrables'];
   if(_ptnrSubScreens.indexOf(screen) !== -1 && _cEl){
     _ptnrProfilScrollPos = _cEl.scrollTop;
     _cEl.scrollTop = 0;
@@ -14880,7 +14826,6 @@ function _ptnrNav(screen){
   if(btn) btn.className = 'ptnr-snbtn on';
   if(scr) scr.className = 'ptnr-screen on';
   if(screen==='home') _ptnrLoadHome();
-  if(screen==='devis') _ptnrLoadDevis();
   if(screen==='seances') _ptnrLoadSeances();
   if(screen==='messages'){
     console.log('[GENESIS_NOTIFICATION] navigate_messages');
@@ -14930,14 +14875,11 @@ function _ptnrLoadHome(){
   if(typeof _ptnrRenderServicesSection==='function') _ptnrRenderServicesSection();
   Promise.all([
     _ptnrFetch('/api/partner/projects').catch(function(){return [];}),
-    _ptnrFetch('/api/partner/quotes').catch(function(){return [];}),
     _ptnrFetch('/api/partner/inbox').catch(function(){return [];})
   ]).then(function(results){
     var projets = Array.isArray(results[0]) ? results[0] : (results[0].projects||[]);
-    var devis = Array.isArray(results[1]) ? results[1] : (results[1].quotes||[]);
-    var inbox = Array.isArray(results[2]) ? results[2] : (results[2].messages||results[2].inbox||[]);
+    var inbox = Array.isArray(results[1]) ? results[1] : (results[1].messages||results[1].inbox||[]);
 
-    var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open';}).length;
     // Nombre de CONVERSATIONS distinctes ayant au moins un message client non lu — même calcul
     // que _ptnrRefreshBadges (badge de la barre de nav). Avant : inbox.length (nombre BRUT de
     // messages, tous fils confondus, ex: 6 messages échangés avec 1 seul client) était affiché
@@ -14953,10 +14895,9 @@ function _ptnrLoadHome(){
     var html = '';
 
     // ── Alertes ──
-    if(pendingDevis>0) html += '<div class="ptnr-card" style="border-left:3px solid #FFD700;cursor:pointer;" onclick="_ptnrNav(\'devis\')"><div class="ptnr-card-title">'+pendingDevis+' devis en attente</div><div class="ptnr-card-sub">Appuyez pour traiter les devis</div></div>';
     if(unreadConvCount>0) html += '<div class="ptnr-card" style="border-left:3px solid #3b82f6;cursor:pointer;" onclick="_ptnrNav(\'messages\')"><div class="ptnr-card-title">'+unreadConvCount+' conversation(s) client non lue(s)</div><div class="ptnr-card-sub">Appuyez pour voir les messages</div></div>';
     if(projets.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #22c55e;cursor:pointer;" onclick="_ptnrNav(\'missions\')"><div class="ptnr-card-title">'+projets.length+' projet(s) assigné(s)</div><div class="ptnr-card-sub">Appuyez pour voir vos missions</div></div>';
-    if(!pendingDevis && !unreadConvCount && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
+    if(!unreadConvCount && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
     if(list) list.innerHTML = html;
     // Afficher l'alerte uniquement quand le client a payé+signé (dispatch pending_acceptance)
     _ptnrFetch('/api/partner/dispatches/pending').then(function(r){
@@ -15107,54 +15048,6 @@ function _ptnrRenderProjetsList(items){
     html += '</div>';
   });
   el.innerHTML = html;
-}
-
-// ── DEVIS ──
-function _ptnrLoadDevis(){
-  var el = document.getElementById('ptnr-devis-list');
-  if(el) el.innerHTML = _skeletonRows(3);
-  _ptnrFetch('/api/partner/quotes').then(function(data){
-    var items = Array.isArray(data) ? data : (data.quotes||[]);
-    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-inbox"></i></div><div class="ptnr-empty-txt">Aucun devis en attente</div></div>'; return; }
-    var html = '';
-    items.forEach(function(q){
-      var isPending = q.status==='pending'||q.status==='open'||!q.status;
-      var statusClass = q.status==='accepted'||q.status==='confirmed'?'confirmed':(q.status==='cancelled'||q.status==='rejected'?'cancelled':'pending');
-      html += '<div class="ptnr-card" id="ptnr-devis-'+q.id+'">';
-      html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
-      html += '<div><div class="ptnr-card-title">'+(q.client_name||q.clientName||q.title||'Demande de devis')+'</div>';
-      html += '<div class="ptnr-card-sub">'+(q.service||q.product_name||'')+(q.date?' · '+_ptnrFmt(q.date):'')+'</div></div>';
-      html += '<span class="ptnr-status '+statusClass+'">'+(q.status||'En attente')+'</span></div>';
-      if(q.description||q.notes) html += '<div style="font-size:12px;color:#aaa;margin-top:8px;line-height:1.5;">'+(q.description||q.notes)+'</div>';
-      if(q.client_message||q.message) html += '<div style="font-size:12px;color:#ccc;background:#1a1a1a;border-radius:8px;padding:10px;margin-top:8px;line-height:1.5;">'+'"'+(q.client_message||q.message)+'"'+'</div>';
-      if(isPending){
-        html += '<div class="ptnr-row-btns">';
-        html += '<button class="ptnr-btn-yes" onclick="_ptnrAcceptDevis(\''+q.id+'\')">✓ Accepter</button>';
-        html += '<button class="ptnr-btn-no" onclick="_ptnrCancelDevis(\''+q.id+'\')">✕ Refuser</button>';
-        html += '</div>';
-      }
-      html += '</div>';
-    });
-    if(el) el.innerHTML = html;
-  }).catch(function(){ if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
-}
-
-function _ptnrAcceptDevis(id){
-  var card = document.getElementById('ptnr-devis-'+id);
-  var btns = card ? card.querySelectorAll('button') : [];
-  btns.forEach(function(b){b.disabled=true;});
-  _ptnrFetch('/api/partner/quotes/'+id+'/propose','POST',{status:'accepted'}).then(function(){
-    _ptnrLoadDevis(); _ptnrRefreshBadges();
-  }).catch(function(){ btns.forEach(function(b){b.disabled=false;}); });
-}
-
-function _ptnrCancelDevis(id){
-  var card = document.getElementById('ptnr-devis-'+id);
-  var btns = card ? card.querySelectorAll('button') : [];
-  btns.forEach(function(b){b.disabled=true;});
-  _ptnrFetch('/api/partner/quotes/'+id+'/cancel','POST',{}).then(function(){
-    _ptnrLoadDevis(); _ptnrRefreshBadges();
-  }).catch(function(){ btns.forEach(function(b){b.disabled=false;}); });
 }
 
 // ── SÉANCES ──
@@ -15889,16 +15782,13 @@ function _ptnrSaveProfile(){
 function _ptnrRefreshBadges(){
   if(!_ptnrToken) return;
   Promise.all([
-    _ptnrFetch('/api/partner/quotes').catch(function(){return [];}),
     _ptnrFetch('/api/partner/inbox').catch(function(){return [];}),
     _ptnrFetch('/api/partner/sessions').catch(function(){return [];}),
     _ptnrFetch('/api/partner/requests').catch(function(){return {requests:[]};})
   ]).then(function(results){
-    var devis = Array.isArray(results[0]) ? results[0] : (results[0].quotes||[]);
-    var inbox = Array.isArray(results[1]) ? results[1] : (results[1].messages||results[1].inbox||[]);
-    var sessions = Array.isArray(results[2]) ? results[2] : (results[2].sessions||[]);
-    var missionCount = (results[3] && results[3].requests && results[3].requests.length) || 0;
-    var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open'||!q.status;}).length;
+    var inbox = Array.isArray(results[0]) ? results[0] : (results[0].messages||results[0].inbox||[]);
+    var sessions = Array.isArray(results[1]) ? results[1] : (results[1].sessions||[]);
+    var missionCount = (results[2] && results[2].requests && results[2].requests.length) || 0;
     var pendingSeances = sessions.filter(function(s){return s.status==='pending'||s.status==='proposed';}).length;
     // Nombre BRUT de messages client non lus — demandé explicitement (2 messages reçus →
     // badge "2", 3 messages → "3"), pas le nombre d'interlocuteurs distincts. `inbox` ne
@@ -15915,12 +15805,11 @@ function _ptnrRefreshBadges(){
       if(count>0){ el.textContent=count; el.className='nav-msg-badge on'; }
       else { el.className='nav-msg-badge'; }
     }
-    _setBadge('ptnr-badge-devis', pendingDevis);
     _setBadge('ptnr-badge-seances', pendingSeances);
     _setBadge('ptnr-badge-messages', unreadMsg);
     _setNavMsgBadge('pnb-msg-badge', unreadMsg);
     _setBadgeMissions(missionCount);
-    var hasAny = pendingDevis > 0 || pendingSeances > 0 || unreadMsg > 0 || missionCount > 0;
+    var hasAny = pendingSeances > 0 || unreadMsg > 0 || missionCount > 0;
     var dot = document.getElementById('dot-partner'); if(dot) dot.style.display = hasAny ? '' : 'none';
     if(dot && hasAny) dot.className = 'nav-dot on'; else if(dot) dot.className = 'nav-dot';
     // Rafraîchit aussi le badge NATIF de l'icône Android (comme WhatsApp/Messenger) — sans ça,
@@ -20478,7 +20367,6 @@ function _ptnrLoadProfil(){
   var activite = '<div class="plus-section">'
     +'<div class="plus-section-title">MON ACTIVITÉ</div>'
     +'<div class="plus-group">'
-    +pli('<i class="fa-solid fa-file-invoice"></i>',      '#0a0a1a','Mes devis',            null,"_ptnrNav('devis')")
     +pli('<i class="fa-solid fa-calendar-days"></i>',     '#0a1a0a','Mes séances',          null,"_ptnrNav('seances')")
     +pli('<i class="fa-solid fa-comment-dots"></i>',      '#0d1a1a','Messages clients',     null,"_ptnrNav('messages')")
     +pli('<i class="fa-solid fa-bolt"></i>',              '#1a0a00','Mes missions',         null,"_ptnrNav('missions')")

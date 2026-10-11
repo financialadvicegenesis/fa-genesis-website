@@ -263,13 +263,11 @@
     <script>
         // Recuperer les parametres de l'URL
         var selectedOffreId = null;
-        var quoteTokenParam = null;
 
         window.addEventListener('DOMContentLoaded', function() {
             try {
                 var urlParams = new URLSearchParams(window.location.search);
                 var offreParam = urlParams.get('offre');
-                quoteTokenParam = urlParams.get('quote_token');
 
                 // Pré-remplir l'email si redirigé depuis le modal OTP
                 var emailParam = urlParams.get('email');
@@ -278,24 +276,8 @@
                     if(emailField){ emailField.value = emailParam; }
                 }
 
-                // --- Mode DEVIS : afficher bandeau + adapter liens ---
-                if (quoteTokenParam) {
-                    var offreMessage = document.getElementById('offreMessage');
-                    var offreText = document.getElementById('offreText');
-                    if (offreMessage && offreText) {
-                        offreText.innerHTML = '<i class="fas fa-file-invoice mr-2"></i>Pour accepter votre devis, veuillez vous connecter ou créer votre compte. Vous pourrez ensuite payer l\'acompte de 30%.';
-                        offreMessage.style.display = 'block';
-                    }
-                    // Mettre a jour le lien d'inscription
-                    var registerLink = document.getElementById('registerLink');
-                    if (registerLink) {
-                        registerLink.href = 'register.html?quote_token=' + encodeURIComponent(quoteTokenParam);
-                    }
-                    console.log('[LOGIN] Mode devis detecte, token:', quoteTokenParam.substring(0, 8) + '...');
-                }
-
                 // --- Mode OFFRE standard ---
-                if (offreParam && !quoteTokenParam) {
+                if (offreParam) {
                     selectedOffreId = offreParam;
                     var selectedOffer = typeof getOfferById === 'function' ? getOfferById(offreParam) : null;
 
@@ -343,12 +325,6 @@
             submitBtn.textContent = 'Se connecter';
 
             if (result.success) {
-                // Si mode devis : accepter le devis puis rediriger vers app.html pour payer
-                if (quoteTokenParam) {
-                    await handleQuoteAcceptAfterAuth(quoteTokenParam);
-                    return;
-                }
-                // Sinon redirection vers le dashboard
                 window.location.href = 'app.html';
             } else if (result.requiresOtp) {
                 // Nouvel appareil – passer à l'étape OTP
@@ -423,10 +399,6 @@
             btn.textContent = 'Vérifier le code';
 
             if (result.success) {
-                if (quoteTokenParam) {
-                    await handleQuoteAcceptAfterAuth(quoteTokenParam);
-                    return;
-                }
                 window.location.href = 'app.html';
             } else {
                 errorMessage.textContent = result.message || 'Code incorrect. Veuillez réessayer.';
@@ -551,65 +523,9 @@
             }
         }
 
-        // Fonction pour accepter un devis apres authentification
-        async function handleQuoteAcceptAfterAuth(token) {
-            try {
-                var submitBtn = document.querySelector('button[type="submit"]');
-                if (submitBtn) {
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = 'Acceptation du devis...';
-                }
-
-                var authToken = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('fa_genesis_token');
-                var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-
-                var response = await fetch(apiUrl + '/api/quotes/accept', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
-                    body: JSON.stringify({ token: token })
-                });
-
-                var result = await response.json();
-
-                if (result.success) {
-                    // Rediriger vers la page devis pour payer via Stripe
-                    window.location.href = 'quote-accept.html?token=' + encodeURIComponent(token);
-                } else {
-                    var errorMessage = document.getElementById('errorMessage');
-                    if (errorMessage) {
-                        errorMessage.textContent = result.error || 'Erreur lors de l\'acceptation du devis';
-                        errorMessage.classList.add('show');
-                    }
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Se connecter';
-                    }
-                }
-            } catch (err) {
-                console.error('[LOGIN] Erreur acceptation devis:', err);
-                var errorMessage = document.getElementById('errorMessage');
-                if (errorMessage) {
-                    errorMessage.textContent = 'Erreur de connexion au serveur. Veuillez réessayer.';
-                    errorMessage.classList.add('show');
-                }
-                var submitBtn = document.querySelector('button[type="submit"]');
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Se connecter';
-                }
-            }
-        }
-
         // Verifier si deja connecte
         if (typeof isAuthenticated === 'function' && isAuthenticated()) {
-            if (quoteTokenParam) {
-                handleQuoteAcceptAfterAuth(quoteTokenParam);
-            } else {
-                window.location.href = 'app.html';
-            }
+            window.location.href = 'app.html';
         }
 
         // Menu Mobile Toggle

@@ -29,7 +29,6 @@ var COLLECTIONS = [
     'partner-comments',
     'partner_reviews',
     'blocked-dates',
-    'quotes',
     'sessions',
     'admin_sessions',
     'projects',
