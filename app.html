@@ -7939,7 +7939,6 @@ function missionTimelineHtml(displayStatus){
     return '<div class="mission-ladder-dot'+(_isDone || i<idx?' done':(i===idx?' current':''))+'"></div>';
   }).join('');
   return '<div class="mission-status-row">'
-    +'<div class="mission-status-text">'+(displayStatus.emoji||'')+' '+(displayStatus.label||'')+'</div>'
     +'<div class="mission-ladder"><div class="mission-ladder-track"><div class="mission-ladder-fill" style="width:'+pct+'%"></div></div>'
     +'<div class="mission-ladder-dots">'+dots+'</div></div>'
     +'</div>';
