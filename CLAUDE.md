@@ -66,6 +66,16 @@ réel le 2026-09-30 : 3 commits successifs sur `mobile-bridge.js` (pont Firebase
 getToken, instrumentation diagnostique) n'ont eu strictement aucun effet observable pendant des
 heures, jusqu'à ce que ce bump manquant soit identifié comme cause racine.
 
+## Même règle pour TOUTE image/asset remplacé plusieurs fois (pas que `mobile-bridge.js`)
+
+Bug réel le 2026-10-13 : l'avatar de Jérémie (`assets/images/jeremie-avatar.png`) a été remplacé
+3 fois de suite sans jamais changer son URL — un prestataire a continué à voir l'ancienne icône/
+l'ancien bug de clignement bien après le push et la confirmation que le fichier était à jour côté
+serveur, simplement parce que son téléphone avait déjà l'ancienne image en cache HTTP. Dès qu'un
+fichier binaire (image, police...) référencé par une URL fixe est modifié, ajouter/bumper un
+`?v=DATE` sur CETTE URL précise, dans le même commit — sinon aucune confirmation serveur ne reflète
+ce que l'appareil affiche réellement.
+
 ## iOS : signature du pont push notifications Firebase
 
 Contrairement à Android (jeton FCM direct via `@capacitor/push-notifications`), iOS nécessite
