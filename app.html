@@ -12732,8 +12732,13 @@ function _renderAppLivrables(API2,token){
       var h='<div style="border-left:4px solid #fff;padding-left:12px;margin-bottom:14px;margin-top:8px;">'
         +'<div style="font-family:\'Unbounded\',cursive;font-size:11px;font-weight:900;color:#fff;text-transform:uppercase;">Documents d\'accompagnement</div>'
         +'</div>';
+      // Les livrables uploadés stockent une URL déjà absolue (data: ou https://), mais le
+      // contrat auto-généré (voir ACCEPT_MISSION côté serveur) stocke un chemin relatif à
+      // l'API ("/api/contracts/.../pdf") — sans préfixe, le viewer le résout contre l'origine
+      // GitHub Pages de l'app (404 "File not found") au lieu du serveur Render.
+      var _lvrAbs=function(u){ return (u && u.charAt(0)==='/') ? API2+u : u; };
       for(var j=0;j<list.length;j++){
-        var l=list[j];var pu=l.preview_url||l.download_url||'';var du=l.download_url||'';
+        var l=list[j];var pu=_lvrAbs(l.preview_url||l.download_url||'');var du=_lvrAbs(l.download_url||'');
         var lname=l.name||'Livrable';
         var jsPu=pu.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         var jsDu=du.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
