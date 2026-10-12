@@ -2200,7 +2200,7 @@ a{text-decoration:none;color:inherit}
 @keyframes jeremieOrbRing{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
 @keyframes jeremieBreathe{0%,100%{transform:scale(1) rotate(0deg);}50%{transform:scale(1.035) rotate(.9deg);}}
 @keyframes jeremieListenGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(255,215,0,0));}50%{filter:drop-shadow(0 0 7px rgba(255,215,0,.85));}}
-@keyframes jeremieBlink{0%,86%,100%{transform:translate(-50%,-50%) scaleY(.04);}90%,94%{transform:translate(-50%,-50%) scaleY(1);}}
+@keyframes jeremieBlink{0%,91%{transform:translate(-50%,-50%) scaleY(.04);animation-timing-function:steps(1,jump-end);}92%,95%{transform:translate(-50%,-50%) scaleY(1);animation-timing-function:steps(1,jump-end);}96%,100%{transform:translate(-50%,-50%) scaleY(.04);}}
 @keyframes jeremieBrainPulse{0%,100%{opacity:.45;transform:scale(.9);}50%{opacity:1;transform:scale(1.1);}}
 
 /* ── ESPACE CLIENT IN-APP ── */
