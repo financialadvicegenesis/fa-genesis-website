@@ -2166,7 +2166,6 @@ a{text-decoration:none;color:inherit}
 .jeremie-avatar{display:block;width:100%;height:100%;object-fit:cover;}
 .is-talking .jeremie-avatar-inner{animation:jeremieListenGlow .55s ease-in-out infinite,jeremieBreathe 4.5s ease-in-out infinite;}
 .is-listening .jeremie-avatar-inner{animation:jeremieListenGlow 1s ease-in-out infinite,jeremieBreathe 4.5s ease-in-out infinite;}
-.jeremie-eyelid{position:absolute;width:12%;height:7.6%;border-radius:50%;background:#d38c75;transform:translate(-50%,-50%) scaleY(.04);transform-origin:center;pointer-events:none;animation:jeremieBlink 5.2s ease-in-out infinite;}
 .jeremie-emotion-badge{position:absolute;top:-2px;right:-2px;font-size:13px;background:#0d0d0d;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.5);transition:opacity .25s,transform .25s;border:1.5px solid #FFD700;pointer-events:none;z-index:2;}
 .jeremie-emotion-badge.show{opacity:1;transform:scale(1);}
 #jeremie-overlay{display:none;position:fixed;inset:0;z-index:9650;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
@@ -2200,7 +2199,6 @@ a{text-decoration:none;color:inherit}
 @keyframes jeremieOrbRing{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
 @keyframes jeremieBreathe{0%,100%{transform:scale(1) rotate(0deg);}50%{transform:scale(1.035) rotate(.9deg);}}
 @keyframes jeremieListenGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(255,215,0,0));}50%{filter:drop-shadow(0 0 7px rgba(255,215,0,.85));}}
-@keyframes jeremieBlink{0%,91%{transform:translate(-50%,-50%) scaleY(.04);animation-timing-function:steps(1,jump-end);}92%,95%{transform:translate(-50%,-50%) scaleY(1);animation-timing-function:steps(1,jump-end);}96%,100%{transform:translate(-50%,-50%) scaleY(.04);}}
 @keyframes jeremieBrainPulse{0%,100%{opacity:.45;transform:scale(.9);}50%{opacity:1;transform:scale(1.1);}}
 
 /* ── ESPACE CLIENT IN-APP ── */
@@ -10529,17 +10527,43 @@ function sendChatMessage(){
 }
 
 // ── JEREMIE (CONSEILLER IA) ────────────────────────────────────
+// Clin d'œil : ce ne sont pas des paupières simulées en CSS (abandonné — un essai précédent
+// avec une pastille couleur peau superposée donnait un clignement asymétrique sur appareil
+// réel pendant la transition). ÇA, ce sont 4 vraies frames extraites du GIF officiel fourni
+// (séquence naturelle ouvert → mi-clos → fermé → réouverture, les deux yeux bougent ensemble
+// car c'est le même dessin animé à la source) : on bascule le src de l'<img> entre elles.
+var JEREMIE_AVATAR_V = '20261013d';
+var JEREMIE_BLINK_FRAMES = [
+  'assets/images/jeremie-avatar.png?v='+JEREMIE_AVATAR_V,
+  'assets/images/jeremie-avatar-blink1.png?v='+JEREMIE_AVATAR_V,
+  'assets/images/jeremie-avatar-blink2.png?v='+JEREMIE_AVATAR_V,
+  'assets/images/jeremie-avatar-blink3.png?v='+JEREMIE_AVATAR_V,
+  'assets/images/jeremie-avatar.png?v='+JEREMIE_AVATAR_V
+];
 function _jeremieAvatarMarkup(){
-  // Clin d'œil : la photo est plate (pas de calque yeux/paupière séparé comme l'ancien SVG),
-  // donc on simule le clignement avec deux pastilles couleur peau positionnées pile sur
-  // chaque œil (coordonnées mesurées sur assets/images/jeremie-avatar.png, en % pour rester
-  // justes aux 3 tailles d'affichage : FAB 58px, en-tête 38px, immersif 140px), invisibles
-  // (scaleY quasi nulle) sauf pendant le bref instant de clignement (voir @keyframes jeremieBlink).
   return '<div class="jeremie-avatar-inner">'
-    +'<img class="jeremie-avatar" src="assets/images/jeremie-avatar.png?v=20261013c" alt="Jérémie" draggable="false">'
-    +'<span class="jeremie-eyelid" style="left:46.5%;top:44.5%;"></span>'
-    +'<span class="jeremie-eyelid" style="left:60.9%;top:44.5%;"></span>'
+    +'<img class="jeremie-avatar" src="'+JEREMIE_BLINK_FRAMES[0]+'" alt="Jérémie" draggable="false">'
     +'</div>';
+}
+// Préchargées une fois pour que la bascule de src pendant le clignement soit instantanée
+// (servie depuis le cache mémoire du navigateur), jamais un rechargement réseau visible.
+function _jeremiePreloadBlinkFrames(){
+  for(var i=1;i<JEREMIE_BLINK_FRAMES.length;i++){ (new Image()).src = JEREMIE_BLINK_FRAMES[i]; }
+}
+function _jeremieApplyFrame(idx){
+  var imgs=document.querySelectorAll('.jeremie-avatar');
+  for(var i=0;i<imgs.length;i++){ imgs[i].src = JEREMIE_BLINK_FRAMES[idx]; }
+}
+function _jeremieRunBlink(){
+  var stepDelay=70, t=0;
+  for(var i=1;i<JEREMIE_BLINK_FRAMES.length;i++){
+    t+=stepDelay;
+    (function(idx,tt){ setTimeout(function(){ _jeremieApplyFrame(idx); }, tt); })(i,t);
+  }
+}
+function _jeremieStartBlinkLoop(){
+  if(window.__jeremieBlinkTimer) return;
+  window.__jeremieBlinkTimer=setInterval(_jeremieRunBlink, 5200);
 }
 function _jeremieInitAvatars(){
   var ids=['jeremie-fab-avatar','jeremie-hdr-avatar','jeremie-immersive-avatar-inner'];
@@ -10547,6 +10571,8 @@ function _jeremieInitAvatars(){
     var el=document.getElementById(ids[i]);
     if(el) el.innerHTML=_jeremieAvatarMarkup();
   }
+  _jeremiePreloadBlinkFrames();
+  _jeremieStartBlinkLoop();
   _jeremieInitVoiceOutput();
 }
 function _jeremieSetEmotion(emoji){
