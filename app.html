@@ -12708,12 +12708,6 @@ function _blobDownload(url,filename){
   }
   return fetch(url).then(function(r){return r.blob();}).then(_deliver).catch(function(e){ _fail(e); return false; });
 }
-function _loadCommonDocs(cb){
-  if(typeof COMMON_DOCUMENTS!=='undefined'){cb();return;}
-  var s=document.createElement('script');s.src='common-documents.js';
-  s.onload=cb;s.onerror=function(){cb();};document.head.appendChild(s);
-}
-
 // ── LIVRABLES IN-APP ─────────────────────────────────────────────
 function showLivrables(){
   var c=document.getElementById('profilContent');if(!c)return;
@@ -12724,40 +12718,11 @@ function showLivrables(){
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes livrables</div></div>'
     +'<div id="lvr-main" style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'+_skeletonRows(3)+'</div>'
     +'</div>';
-  _loadCommonDocs(function(){_renderAppLivrables(API2,token);});
+  _renderAppLivrables(API2,token);
 }
 function _renderAppLivrables(API2,token){
   var el=document.getElementById('lvr-main');if(!el)return;
-  var commonHtml='';
-  if(typeof COMMON_DOCUMENTS!=='undefined'&&COMMON_DOCUMENTS.length){
-    var grouped={};
-    var order=typeof CATEGORIES_ORDER!=='undefined'?CATEGORIES_ORDER:[];
-    for(var i=0;i<COMMON_DOCUMENTS.length;i++){var doc=COMMON_DOCUMENTS[i];if(!grouped[doc.category])grouped[doc.category]=[];grouped[doc.category].push(doc);}
-    var cats=order.length?order:Object.keys(grouped);
-    commonHtml='<div style="border-left:4px solid #FFD700;padding-left:12px;margin-bottom:14px;">'
-      +'<div style="font-family:\'Unbounded\',cursive;font-size:11px;font-weight:900;color:#FFD700;text-transform:uppercase;">Documents de démarrage</div>'
-      +'<div style="font-size:10px;color:#555;margin-top:2px;">Disponibles après paiement de l\'acompte</div>'
-      +'</div>';
-    for(var ci=0;ci<cats.length;ci++){
-      var cat=cats[ci];var docs=grouped[cat];if(!docs||!docs.length)continue;
-      commonHtml+='<div style="margin-bottom:14px;">'
-        +'<div style="font-size:9px;font-weight:900;color:#444;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+_escHtml(cat)+'</div>';
-      for(var di=0;di<docs.length;di++){
-        var item=docs[di];
-        var safeUrl=item.fileUrl.split('/').map(function(p){return encodeURIComponent(p);}).join('/');
-        var jsUrl=safeUrl.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        var jsTitle=item.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        var jsFile=(item.title+'.pdf').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        commonHtml+='<div class="espace-card" style="margin-bottom:8px;">'
-          +'<div class="espace-card-name" style="font-size:12px;">'+_escHtml(item.title)+'</div>'
-          +'<div class="espace-card-sub" style="font-size:10px;margin-bottom:10px;">'+_escHtml(item.description)+'</div>'
-          +'<button onclick="openDocViewer(\''+jsUrl+'\',\''+jsTitle+'\',\''+jsFile+'\')" style="width:100%;background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:10px;cursor:pointer;margin-top:8px;">Ouvrir &amp; Sauvegarder</button>'
-          +'</div>';
-      }
-      commonHtml+='</div>';
-    }
-  }
-  el.innerHTML=commonHtml+'<div id="lvr-api"></div>';
+  el.innerHTML='<div id="lvr-api"></div>';
   fetch(API2+'/api/deliverables/mine',{headers:{'Authorization':'Bearer '+token}})
     .then(function(r){return r.json();}).then(function(data){
       var apiEl=document.getElementById('lvr-api');if(!apiEl)return;
@@ -16080,6 +16045,14 @@ function _handleNotifHash(hash, _retryCount){
     if(clientOrderMatch[1]) _pendingScrollOrderId = decodeURIComponent(clientOrderMatch[1]);
     nav('profil');
     setTimeout(function(){ if(typeof showMesCommandes==='function') showMesCommandes(); }, 400);
+    return;
+  }
+  // Lien email "Voir mes livrables" (ex-livrables.html, converti en redirection) → ouvre
+  // directement l'écran "Mes livrables" de l'app au lieu de laisser l'utilisateur le chercher.
+  var clientLivrablesMatch = hash.match(/^client:livrables$/);
+  if(clientLivrablesMatch){
+    nav('profil');
+    setTimeout(function(){ if(typeof showLivrables==='function') showLivrables(); }, 400);
     return;
   }
   // Mission précise côté prestataire (nouvelle demande, livraison validée, révision demandée,

@@ -650,7 +650,7 @@ async function sendNewDocumentNotification(clientEmail, clientName, documentName
             Connectez-vous à votre espace client pour le consulter :
         </p>
         <div style="text-align: center; margin: 30px 0;">
-            <a href="${frontUrl}/livrables.html" style="display: inline-block; padding: 14px 32px; background-color: #FFD700; color: #000000; text-decoration: none; font-weight: 900; font-size: 16px; text-transform: uppercase; border: 3px solid #000000;">
+            <a href="${frontUrl}/app.html#client:livrables" style="display: inline-block; padding: 14px 32px; background-color: #FFD700; color: #000000; text-decoration: none; font-weight: 900; font-size: 16px; text-transform: uppercase; border: 3px solid #000000;">
                 Voir mes livrables
             </a>
         </div>
@@ -1199,7 +1199,7 @@ async function sendSessionCompletedEmail(clientEmail, clientName, sessionData) {
         + '<p style="margin:0;font-size:15px;color:#2e7d32;">'
         + '<strong>Vos livrables seront bientôt disponibles</strong> dans votre espace client.</p></div>'
         + '<div style="text-align:center;margin:25px 0;">'
-        + '<a href="' + frontUrl + '/livrables.html" target="_blank" '
+        + '<a href="' + frontUrl + '/app.html#client:livrables" target="_blank" '
         + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
         + 'Voir mes livrables</a></div>'
@@ -1746,7 +1746,7 @@ async function sendAccompanimentEndNotification(clientEmail, clientName, declare
         + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:900;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;margin-right:12px;">'
         + '💳 Payer le solde</a>'
-        + '<a href="' + frontUrl + '/livrables.html" target="_blank" '
+        + '<a href="' + frontUrl + '/app.html#client:livrables" target="_blank" '
         + 'style="display:inline-block;background:#000;color:#FFD700;padding:16px 32px;font-weight:900;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
         + '📁 Mes livrables</a>'
