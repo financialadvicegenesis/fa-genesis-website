@@ -16093,12 +16093,20 @@ app.get('/api/genesis/missions', function(req, res) {
 // n'est pas fourni (cf aiService.askJeremie).
 // ============================================================
 
-function buildJeremieSystemPrompt(person, personType) {
+// Doit matcher AppI18n.SUPPORTED_LANGS (app-i18n.js) — un nom en toutes lettres marche
+// bien mieux qu'un code ISO brut pour piloter la langue de reponse d'un LLM.
+var JEREMIE_LANGUAGE_NAMES = {
+    fr: 'francais', en: 'anglais', es: 'espagnol', pt: 'portugais', ar: 'arabe',
+    de: 'allemand', zh: 'mandarin', it: 'italien', ja: 'japonais', hi: 'hindi'
+};
+function buildJeremieSystemPrompt(person, personType, language) {
+    var langName = JEREMIE_LANGUAGE_NAMES[language] || 'francais';
     var lines = [];
     lines.push('Tu es Jeremie, le conseiller IA de FA GENESIS, une plateforme qui met en relation des clients ' +
         '(createurs de contenu, entrepreneurs, marques) avec des prestataires (videastes, photographes, graphistes, ' +
         'marketeurs, etc.). Tu es chaleureux, concret, jamais inventif sur les chiffres : tu utilises uniquement les ' +
-        'donnees ci-dessous, et si tu ne sais pas, tu le dis. Reponds en francais, de maniere construite : une courte ' +
+        'donnees ci-dessous, et si tu ne sais pas, tu le dis. Reponds en ' + langName + ', quelle que soit la langue ' +
+        'du message de l\'utilisateur, de maniere construite : une courte ' +
         'phrase d\'accroche, puis 2 a 4 points clairs si le sujet le demande, puis une conclusion actionnable (la ' +
         'prochaine etape concrete a faire). Reste concis, jamais de pave de texte ni de reponse a rallonge inutile. ' +
         'N\'utilise jamais de syntaxe markdown (pas de **, pas de #, pas de listes a tirets) : ecris en texte simple, ' +
@@ -16359,6 +16367,52 @@ function buildPartnerContextForJeremie(message) {
     }
 }
 
+/**
+ * PATCH /api/user/language
+ * Sauvegarde la langue choisie dans app-i18n.js sur le compte (client OU
+ * prestataire, selon le token fourni) pour qu'elle suive l'utilisateur d'un
+ * appareil a l'autre et soit disponible cote serveur (notifications push,
+ * prompt systeme Jeremie). Le choix est deja applique immediatement cote
+ * client via localStorage avant meme que cet appel ne reponde — purement
+ * best-effort, ne bloque jamais le changement de langue si elle echoue.
+ */
+app.patch('/api/user/language', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization || '';
+        if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.slice(7);
+        var language = req.body && req.body.language;
+        if (!JEREMIE_LANGUAGE_NAMES[language]) return res.status(400).json({ error: 'Langue invalide' });
+
+        var user = findUserByToken(token);
+        if (user) {
+            var users = loadUsers();
+            var uIdx = users.findIndex(function(u) { return u.id === user.id; });
+            if (uIdx !== -1) {
+                users[uIdx].language = language;
+                saveUsers(users);
+                return res.json({ ok: true });
+            }
+        }
+
+        var partner = findPartnerByToken(token);
+        if (partner) {
+            var partners = loadPartners();
+            var pIdx = partners.findIndex(function(p) { return p.id === partner.id; });
+            if (pIdx !== -1) {
+                partners[pIdx].language = language;
+                savePartners(partners);
+                return res.json({ ok: true });
+            }
+        }
+
+        res.status(401).json({ error: 'Session invalide ou expiree' });
+    } catch (err) {
+        console.error('[USER LANGUAGE] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 app.post('/api/jeremie/chat', function(req, res) {
     try {
         var authHeader = req.headers.authorization;
@@ -16374,7 +16428,8 @@ app.post('/api/jeremie/chat', function(req, res) {
             if (!checkRateLimit(jeremieClientIp, 'jeremie_guest', 15, 3600000)) {
                 return res.status(429).json({ error: 'Trop de messages. Reessayez plus tard ou creez un compte.' });
             }
-            var guestPrompt = buildJeremieSystemPrompt(null, 'guest');
+            var guestLang = (req.body && typeof req.body.language === 'string') ? req.body.language : 'fr';
+            var guestPrompt = buildJeremieSystemPrompt(null, 'guest', guestLang);
             return aiService.askJeremie(guestPrompt, [], message).then(function(result) {
                 if (!result.success) {
                     return res.status(503).json({ error: result.error || 'Jeremie est momentanement indisponible.' });
@@ -16402,7 +16457,7 @@ app.post('/api/jeremie/chat', function(req, res) {
         var memory = loadJeremieMemory();
         var entry = memory[person.id] || { messages: [] };
         var history = (entry.messages || []).slice(-20).map(function(m) { return { role: m.role, content: m.content }; });
-        var systemPrompt = buildJeremieSystemPrompt(person, personType);
+        var systemPrompt = buildJeremieSystemPrompt(person, personType, person.language || (req.body && req.body.language) || 'fr');
 
         // Suggestion de prestataires : disponible à partir du niveau Bâtisseur (argent+)
         if (personType === 'client' && detectPartnerSearchIntent(message)) {

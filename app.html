@@ -2200,6 +2200,14 @@ a{text-decoration:none;color:inherit}
 @keyframes jeremieBreathe{0%,100%{transform:scale(1) rotate(0deg);}50%{transform:scale(1.035) rotate(.9deg);}}
 @keyframes jeremieListenGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(255,215,0,0));}50%{filter:drop-shadow(0 0 7px rgba(255,215,0,.85));}}
 @keyframes jeremieBrainPulse{0%,100%{opacity:.45;transform:scale(.9);}50%{opacity:1;transform:scale(1.1);}}
+/* ── SÉLECTEUR DE LANGUE ── */
+#lang-overlay{display:none;position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
+#lang-overlay.open{display:flex;animation:regFadeIn .2s ease;}
+#lang-sheet{width:100%;max-width:480px;max-height:80vh;max-height:80dvh;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;display:flex;flex-direction:column;overflow:hidden;transform:translateY(0);}
+.lang-option{width:100%;display:flex;align-items:center;gap:14px;padding:14px 16px;background:#111;border:1.5px solid #222;border-radius:12px;margin-bottom:8px;cursor:pointer;color:#fff;font-size:14px;font-weight:700;text-align:left;font-family:inherit;}
+.lang-option.active{background:rgba(255,215,0,.08);border-color:#FFD700;}
+.lang-option-flag{font-size:22px;flex-shrink:0;}
+.lang-option-name{flex:1;}
 
 /* ── ESPACE CLIENT IN-APP ── */
 .espace-view{padding:14px 16px;}
@@ -2504,6 +2512,13 @@ a{text-decoration:none;color:inherit}
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" crossorigin="">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer crossorigin=""></script>
 <!-- Globe.gl retiré : remplacé par MapLibre + projection globe + setFog (même approche que la carte Événements) -->
+<!-- Traduction multilingue de l'app : chargé ici (synchrone, sans defer) pour être garanti
+     disponible AVANT le premier bloc <script> inline plus bas, qui appelle
+     AppI18n.initAppLanguage() tout de suite au démarrage — un defer ici reproduirait le
+     même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
+     (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
+<script src="app-i18n.js?v=20261014"></script>
+<script src="app-i18n-en.js?v=20261014"></script>
 </head>
 <body>
 
@@ -3615,9 +3630,58 @@ function _genesisVersionFooter(){
     </div>
   </div>
 
+  <!-- SÉLECTEUR DE LANGUE — overlay indépendant du rôle (client/prestataire), accessible
+       depuis les deux menus Profil. Changer de langue sauvegarde puis recharge la page
+       (voir app-i18n.js) : pas de rendu "live" à gérer ici, juste la liste + le choix. -->
+  <div id="lang-overlay" onclick="if(event.target===this)closeLanguagePicker()">
+    <div id="lang-sheet">
+      <div class="espace-back-bar"><button class="espace-back-btn" onclick="closeLanguagePicker()">&#8249;</button><div class="espace-title">Langue</div></div>
+      <!-- data-i18n-skip : chaque langue doit toujours s'afficher dans son propre nom natif
+           ("Português", "Deutsch"...), jamais traduite dans la langue actuellement active. -->
+      <div id="lang-list" data-i18n-skip="true" style="padding:14px;overflow-y:auto;flex:1;"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
+// Appliquer la langue choisie AVANT tout rendu d'écran — démarre l'observateur de
+// traduction (voir app-i18n.js) assez tôt pour attraper le tout premier innerHTML
+// injecté par l'app, pas seulement les écrans affichés après coup.
+if (typeof AppI18n !== 'undefined') AppI18n.initAppLanguage();
+
+// ── SÉLECTEUR DE LANGUE — accessible depuis Profil (client) et Mon Profil (prestataire) ──
+var APP_LANGUAGES = [
+  {code:'fr', name:'Français', flag:'🇫🇷'},
+  {code:'en', name:'English', flag:'🇬🇧'},
+  {code:'es', name:'Español', flag:'🇪🇸'},
+  {code:'pt', name:'Português', flag:'🇵🇹'},
+  {code:'ar', name:'العربية', flag:'🇸🇦'},
+  {code:'de', name:'Deutsch', flag:'🇩🇪'},
+  {code:'zh', name:'中文', flag:'🇨🇳'},
+  {code:'it', name:'Italiano', flag:'🇮🇹'},
+  {code:'ja', name:'日本語', flag:'🇯🇵'},
+  {code:'hi', name:'हिन्दी', flag:'🇮🇳'}
+];
+function showLanguagePicker(){
+  var ov = document.getElementById('lang-overlay'); var list = document.getElementById('lang-list');
+  if(!ov || !list) return;
+  var current = (typeof AppI18n!=='undefined') ? AppI18n.getAppLanguage() : 'fr';
+  list.innerHTML = APP_LANGUAGES.map(function(l){
+    var active = l.code===current;
+    return '<button class="lang-option'+(active?' active':'')+'" onclick="_selectAppLanguage(\''+l.code+'\')">'
+      +'<span class="lang-option-flag">'+l.flag+'</span><span class="lang-option-name">'+l.name+'</span>'
+      +(active?'<i class="fa-solid fa-circle-check" style="color:#FFD700;"></i>':'')
+      +'</button>';
+  }).join('');
+  ov.classList.add('open');
+}
+function closeLanguagePicker(){ var ov=document.getElementById('lang-overlay'); if(ov) ov.classList.remove('open'); }
+function _selectAppLanguage(code){
+  if(typeof AppI18n==='undefined') return;
+  if(code===AppI18n.getAppLanguage()){ closeLanguagePicker(); return; }
+  AppI18n.setAppLanguage(code); // sauvegarde + recharge la page dans la langue choisie
+}
 // Masquer roleChoice dès que JS démarre (il est visible par défaut pour le fallback CSS)
 (function(){ var r=document.getElementById('roleChoice'); if(r) r.style.display='none'; })();
 
@@ -8900,6 +8964,7 @@ function renderProfil(){
   var params = '<div class="plus-section">'
     +'<div class="plus-section-title">MES PARAMÈTRES</div>'
     +'<div class="plus-group">'
+    +pli('<i class="fa-solid fa-language"></i>','#0a0d1a','Langue',null,'showLanguagePicker()')
     +pli('<i class="fa-solid fa-folder-tree"></i>','#0d0d1a','Gestion des données personnelles',null,'showDonneesMenu()')
     +pli('<i class="fa-solid fa-cookie-bite"></i>','#1a1000','Gestion des cookies',null,'showCookiesMenu()')
     +(USER && !GUEST ? pli('<i class="fa-solid fa-bell"></i>','#1a0800','Notifications',null,'showNotifications()') : '')
@@ -10875,7 +10940,7 @@ function sendJeremieMessage(){
   fetch((window.FA_GENESIS_API||API)+'/api/jeremie/chat',{
     method:'POST',
     headers:jHeaders,
-    body:JSON.stringify({message:text})
+    body:JSON.stringify({message:text, language:(typeof AppI18n!=='undefined'?AppI18n.getAppLanguage():'fr')})
   }).then(function(r){return r.json();}).then(function(res){
     if(btn){btn.disabled=false;btn.textContent='↑';}
     var thinking=document.getElementById('jeremie-thinking'); if(thinking) thinking.remove();
@@ -20508,6 +20573,7 @@ function _ptnrLoadProfil(){
     +pli('<i class="fa-solid fa-circle-user"></i>',       '#1a1a00','Paramètres du profil', null,'_ptnrProfilEditParams()')
     +pli('<i class="fa-solid fa-building-columns"></i>',  '#001a12','Coordonnées de versement', null,'_ptnrShowPayoutDetails()')
     +pli('<i class="fa-solid fa-clock"></i>',             '#14000a','Temps de réponse',     null,'_ptnrProfilEditResponseTime()')
+    +pli('<i class="fa-solid fa-language"></i>',          '#0a0d1a','Langue',               null,'showLanguagePicker()')
     +pli('<i class="fa-solid fa-headset"></i>',           '#1a0a00','Assistance',           null,'_ptnrShowSupport()')
     +bioRowHtml
     +'</div></div>';
