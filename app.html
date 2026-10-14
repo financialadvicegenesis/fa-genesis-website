@@ -2507,6 +2507,13 @@ a{text-decoration:none;color:inherit}
 .home-card,.presta-card{transition:transform .13s cubic-bezier(.34,1.56,.64,1)!important;}
 .home-card:active{transform:scale(.96)!important;}
 .presta-card:active{transform:scale(.97)!important;}
+/* ── RTL (arabe) : miroir des éléments à position left/right fixe ── */
+[dir="rtl"] .jeremie-fab{right:auto;left:16px;}
+[dir="rtl"] #ptnr-drawer-panel{left:auto;right:0;border-right:none;border-left:1px solid #1e1e1e;transform:translateX(100%);}
+[dir="rtl"] #ptnr-drawer-overlay.on #ptnr-drawer-panel{transform:translateX(0);}
+[dir="rtl"] .ptnr-drawer-head{padding-right:0;padding-left:28px;}
+[dir="rtl"] .ptnr-drawer-close{right:auto;left:0;}
+[dir="rtl"] .plus-item-arrow{transform:scaleX(-1);}
 </style>
 <!-- MapLibre GL JS — carte Événements uniquement -->
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" crossorigin="">
