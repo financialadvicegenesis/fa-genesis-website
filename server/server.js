@@ -2089,6 +2089,57 @@ app.get('/api/notifications/badge-count', function(req, res) {
 
 // notifyUser : persiste une notification (historique consultable) ET tente un push best-effort
 // (le push best-effort existant n'est pas retire, juste complete par la persistance).
+// ── TRADUCTION DES NOTIFICATIONS PUSH NATIVES ──────────────────────────────
+// Contrairement aux toasts/erreurs affichés dans l'app (traduits côté client,
+// voir app-i18n.js), le texte d'une notification push (bannière système sur le
+// téléphone) est généré ICI, côté serveur, et n'est JAMAIS vu par le navigateur
+// avant d'apparaître — impossible à intercepter côté client. Réutilise les
+// mêmes dictionnaires que l'app (mêmes fichiers app-i18n-dict-*.js, qui sont
+// déjà au format CommonJS) en les chargeant côté serveur, en remplacement de
+// SOUS-CHAINES plutôt qu'en correspondance exacte : le titre/corps d'une
+// notification est souvent du texte statique concaténé à une variable (ex.
+// "Nouvelle mission : " + order.product_name), donc traduire le fragment
+// statique connu sans toucher à la partie dynamique est le seul moyen de
+// couvrir ça sans modifier les 113 sites d'appel de notifyUser() un par un.
+// Couverture nécessairement partielle au départ (le vocabulaire des
+// notifications diffère de celui de l'interface) — complété au fur et à
+// mesure par un dictionnaire dédié aux notifications dans une prochaine étape.
+var _serverI18nDicts = {};
+function _loadServerI18nDict(lang) {
+    if (lang === 'fr') return null;
+    if (_serverI18nDicts[lang] !== undefined) return _serverI18nDicts[lang];
+    try {
+        _serverI18nDicts[lang] = require('../app-i18n-dict-' + lang + '.js');
+    } catch (e) {
+        _serverI18nDicts[lang] = null;
+    }
+    return _serverI18nDicts[lang];
+}
+function getUserLanguage(email, role) {
+    if (!email) return 'fr';
+    try {
+        var rec = (role === 'partner')
+            ? loadPartners().find(function(p) { return p.email && p.email.toLowerCase() === email.toLowerCase(); })
+            : loadUsers().find(function(u) { return u.email && u.email.toLowerCase() === email.toLowerCase(); });
+        return (rec && rec.language) || 'fr';
+    } catch (e) {
+        return 'fr';
+    }
+}
+function translateServerText(text, lang) {
+    if (!text || lang === 'fr') return text;
+    var dict = _loadServerI18nDict(lang);
+    if (!dict) return text;
+    var keys = Object.keys(dict).sort(function(a, b) { return b.length - a.length; });
+    var result = text;
+    for (var i = 0; i < keys.length; i++) {
+        if (keys[i].length >= 3 && result.indexOf(keys[i]) !== -1) {
+            result = result.split(keys[i]).join(dict[keys[i]]);
+        }
+    }
+    return result;
+}
+
 function notifyUser(email, role, type, title, body, link) {
     try {
         var notif = {
@@ -2106,9 +2157,16 @@ function notifyUser(email, role, type, title, body, link) {
         all.push(notif);
         saveNotifications(all);
 
+        // notif.title/notif.body ci-dessus restent en français : affichés dans la liste des
+        // notifications DANS l'app, ils sont traduits automatiquement côté client comme le
+        // reste de l'interface (voir app-i18n.js). Seul le texte envoyé au système de
+        // notification natif (ci-dessous) a besoin d'être traduit ici.
+        var _pushLang = getUserLanguage(email, role);
+        var _pushTitle = translateServerText(title, _pushLang) || 'FA GENESIS';
+        var _pushBody = translateServerText(body, _pushLang) || '';
         var pushPayload = {
-            title: title || 'FA GENESIS',
-            body: body || '',
+            title: _pushTitle,
+            body: _pushBody,
             icon: '/assets/images/logo-favicon-192.png',
             badge: '/assets/images/logo-favicon-32.png',
             url: link || '/',
@@ -2136,8 +2194,8 @@ function notifyUser(email, role, type, title, body, link) {
             data: {
                 url: link || '/',
                 type: type || 'notif',
-                title: title || 'FA GENESIS',
-                body: body || '',
+                title: _pushTitle,
+                body: _pushBody,
                 channelId: _fcmChannelForType(type)
             }
         };
