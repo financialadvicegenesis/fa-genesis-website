@@ -8,9 +8,66 @@
     // Base path pour GitHub Pages (racine relative)
     var BASE = '';
 
-    // === SVG Drapeaux ===
-    var FLAG_FR = '<svg viewBox="0 0 30 20" style="width:24px;height:16px;border:1px solid #ccc;vertical-align:middle;display:inline-block;"><rect x="0" y="0" width="10" height="20" fill="#002395"/><rect x="10" y="0" width="10" height="20" fill="#FFFFFF"/><rect x="20" y="0" width="10" height="20" fill="#ED2939"/></svg>';
-    var FLAG_US = '<svg viewBox="0 0 30 20" style="width:24px;height:16px;border:1px solid #ccc;vertical-align:middle;display:inline-block;"><rect width="30" height="20" fill="#B22234"/><rect y="1.54" width="30" height="1.54" fill="#FFF"/><rect y="4.62" width="30" height="1.54" fill="#FFF"/><rect y="7.69" width="30" height="1.54" fill="#FFF"/><rect y="10.77" width="30" height="1.54" fill="#FFF"/><rect y="13.85" width="30" height="1.54" fill="#FFF"/><rect y="16.92" width="30" height="1.54" fill="#FFF"/><rect width="12" height="10.77" fill="#3C3B6E"/><circle cx="2" cy="1.5" r="0.6" fill="#FFF"/><circle cx="4" cy="1.5" r="0.6" fill="#FFF"/><circle cx="6" cy="1.5" r="0.6" fill="#FFF"/><circle cx="8" cy="1.5" r="0.6" fill="#FFF"/><circle cx="10" cy="1.5" r="0.6" fill="#FFF"/><circle cx="3" cy="3" r="0.6" fill="#FFF"/><circle cx="5" cy="3" r="0.6" fill="#FFF"/><circle cx="7" cy="3" r="0.6" fill="#FFF"/><circle cx="9" cy="3" r="0.6" fill="#FFF"/><circle cx="2" cy="4.5" r="0.6" fill="#FFF"/><circle cx="4" cy="4.5" r="0.6" fill="#FFF"/><circle cx="6" cy="4.5" r="0.6" fill="#FFF"/><circle cx="8" cy="4.5" r="0.6" fill="#FFF"/><circle cx="10" cy="4.5" r="0.6" fill="#FFF"/><circle cx="3" cy="6" r="0.6" fill="#FFF"/><circle cx="5" cy="6" r="0.6" fill="#FFF"/><circle cx="7" cy="6" r="0.6" fill="#FFF"/><circle cx="9" cy="6" r="0.6" fill="#FFF"/><circle cx="2" cy="7.5" r="0.6" fill="#FFF"/><circle cx="4" cy="7.5" r="0.6" fill="#FFF"/><circle cx="6" cy="7.5" r="0.6" fill="#FFF"/><circle cx="8" cy="7.5" r="0.6" fill="#FFF"/><circle cx="10" cy="7.5" r="0.6" fill="#FFF"/><circle cx="3" cy="9" r="0.6" fill="#FFF"/><circle cx="5" cy="9" r="0.6" fill="#FFF"/><circle cx="7" cy="9" r="0.6" fill="#FFF"/><circle cx="9" cy="9" r="0.6" fill="#FFF"/></svg>';
+    // === Langues supportees (moteur AppI18n, partage avec app.html) ===
+    // Emoji drapeaux : plus simple a maintenir que les SVG a la main precedents,
+    // et coherent avec les 10 langues du moteur (vs 2 avant: FR/EN).
+    var LANGS = [
+        { code: 'fr', flag: '🇫🇷', label: 'Français' },
+        { code: 'en', flag: '🇬🇧', label: 'English' },
+        { code: 'es', flag: '🇪🇸', label: 'Español' },
+        { code: 'pt', flag: '🇵🇹', label: 'Português' },
+        { code: 'ar', flag: '🇸🇦', label: 'العربية' },
+        { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
+        { code: 'zh', flag: '🇨🇳', label: '中文' },
+        { code: 'it', flag: '🇮🇹', label: 'Italiano' },
+        { code: 'ja', flag: '🇯🇵', label: '日本語' },
+        { code: 'hi', flag: '🇮🇳', label: 'हिन्दी' }
+    ];
+
+    function langByCode(code) {
+        for (var i = 0; i < LANGS.length; i++) {
+            if (LANGS[i].code === code) return LANGS[i];
+        }
+        return LANGS[0];
+    }
+
+    // Charge le moteur AppI18n + les 9 dictionnaires de langue dynamiquement
+    // (meme pattern que l'ancien chargement dynamique de i18n.js ci-dessous),
+    // puis initialise la langue. Defensif : si une page a deja charge ces
+    // scripts elle-meme dans son <head> (cf. app-i18n.js?v=... ajoute
+    // directement sur les 23 pages du site), on ne recharge rien.
+    function ensureAppI18nLoaded(callback) {
+        if (typeof window.AppI18n !== 'undefined') {
+            callback();
+            return;
+        }
+        var files = [
+            'app-i18n.js', 'app-i18n-en.js', 'app-i18n-es.js', 'app-i18n-pt.js',
+            'app-i18n-ar.js', 'app-i18n-de.js', 'app-i18n-zh.js', 'app-i18n-it.js',
+            'app-i18n-ja.js', 'app-i18n-hi.js'
+        ];
+        function loadNext(i) {
+            if (i >= files.length) {
+                waitForAppI18n(callback, 0);
+                return;
+            }
+            var s = document.createElement('script');
+            s.src = BASE + files[i] + '?v=20261014';
+            s.onload = function() { loadNext(i + 1); };
+            s.onerror = function() { loadNext(i + 1); }; // un fichier manquant ne doit pas tout bloquer
+            document.head.appendChild(s);
+        }
+        loadNext(0);
+    }
+
+    function waitForAppI18n(callback, attempts) {
+        if (typeof window.AppI18n !== 'undefined') {
+            callback();
+            return;
+        }
+        if (attempts > 40) return; // ~2s, abandon silencieux
+        setTimeout(function() { waitForAppI18n(callback, attempts + 1); }, 50);
+    }
 
     // Injecter le CSS du footer
     var style = document.createElement('style');
@@ -66,7 +123,7 @@
         '.fg-footer__lang-btn { display: flex; align-items: center; gap: 8px; background: none; border: 2px solid #000; padding: 6px 14px; cursor: pointer; font-family: "Space Grotesk", sans-serif; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #000; transition: all 0.2s; }',
         '.fg-footer__lang-btn:hover { background: #000; color: #fff; }',
         '.fg-footer__lang-btn:hover svg rect[fill="#FFFFFF"], .fg-footer__lang-btn:hover svg rect[fill="#FFF"] { fill: #FFF; }',
-        '.fg-footer__lang-dropdown { display: none; position: absolute; bottom: 100%; right: 0; background: #fff; border: 2px solid #000; box-shadow: 4px 4px 0px #000; min-width: 200px; margin-bottom: 4px; z-index: 100; }',
+        '.fg-footer__lang-dropdown { display: none; position: absolute; bottom: 100%; right: 0; background: #fff; border: 2px solid #000; box-shadow: 4px 4px 0px #000; min-width: 200px; max-height: 280px; overflow-y: auto; margin-bottom: 4px; z-index: 100; }',
         '.fg-footer__lang-dropdown.open { display: block; }',
         '.fg-footer__lang-option { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; font-size: 13px; font-weight: 700; transition: background 0.15s; }',
         '.fg-footer__lang-option:hover { background: #FFD700; }',
@@ -195,11 +252,15 @@
         var target = document.getElementById('site-footer');
         if (!target) return;
 
-        // Langue sauvegardee
+        // Langue courante : lue via AppI18n si deja initialise, sinon fr par defaut
+        // (ensureAppI18nLoaded() plus bas l'initialisera si besoin).
         var currentLang = 'fr';
-        try { currentLang = localStorage.getItem('fa_genesis_lang') || 'fr'; } catch(e) {}
-        var currentFlag = currentLang === 'en' ? FLAG_US : FLAG_FR;
-        var currentLabel = currentLang === 'en' ? 'English' : 'Fran\u00e7ais';
+        try {
+            if (typeof window.AppI18n !== 'undefined' && window.AppI18n.getAppLanguage) {
+                currentLang = window.AppI18n.getAppLanguage();
+            }
+        } catch(e) {}
+        var currentInfo = langByCode(currentLang);
 
         var html = '<footer class="fg-footer" role="contentinfo">';
         html += '<div class="fg-footer__inner">';
@@ -267,20 +328,19 @@
         html += buildLink('contact.html', 'Contact');
         html += '</div>';
 
-        // Droite : Langue avec drapeaux SVG
+        // Droite : Langue (10 langues, drapeaux emoji)
         html += '<div class="fg-footer__lang">';
         html += '<button class="fg-footer__lang-btn" id="fg-lang-btn">';
-        html += '<span id="fg-lang-flag">' + currentFlag + '</span>';
-        html += '<span id="fg-lang-label">' + currentLabel + '</span>';
+        html += '<span id="fg-lang-flag">' + currentInfo.flag + '</span>';
+        html += '<span id="fg-lang-label">' + currentInfo.label + '</span>';
         html += '<i class="fas fa-chevron-down" style="font-size:10px;margin-left:4px;"></i>';
         html += '</button>';
         html += '<div class="fg-footer__lang-dropdown" id="fg-lang-dropdown">';
-        html += '<div class="fg-footer__lang-option' + (currentLang === 'fr' ? ' active' : '') + '" data-lang="fr">';
-        html += FLAG_FR + ' <span style="margin-left:4px;">Fran\u00e7ais</span>';
-        html += '</div>';
-        html += '<div class="fg-footer__lang-option' + (currentLang === 'en' ? ' active' : '') + '" data-lang="en">';
-        html += FLAG_US + ' <span style="margin-left:4px;">English</span>';
-        html += '</div>';
+        for (var li = 0; li < LANGS.length; li++) {
+            html += '<div class="fg-footer__lang-option' + (currentLang === LANGS[li].code ? ' active' : '') + '" data-lang="' + LANGS[li].code + '">';
+            html += LANGS[li].flag + ' <span style="margin-left:4px;">' + LANGS[li].label + '</span>';
+            html += '</div>';
+        }
         html += '</div>';
         html += '</div>';
 
@@ -292,11 +352,9 @@
 
         target.innerHTML = html;
 
-        // === Langue selector logic ===
+        // === Langue selector logic (moteur AppI18n partage avec app.html) ===
         var langBtn = document.getElementById('fg-lang-btn');
         var langDropdown = document.getElementById('fg-lang-dropdown');
-        var langFlag = document.getElementById('fg-lang-flag');
-        var langLabel = document.getElementById('fg-lang-label');
 
         if (langBtn && langDropdown) {
             langBtn.addEventListener('click', function(e) {
@@ -308,32 +366,14 @@
             for (var i = 0; i < options.length; i++) {
                 options[i].addEventListener('click', function() {
                     var lang = this.getAttribute('data-lang');
-
-                    // Mettre a jour le drapeau et le label
-                    if (lang === 'en') {
-                        langFlag.innerHTML = FLAG_US;
-                        langLabel.textContent = 'English';
-                    } else {
-                        langFlag.innerHTML = FLAG_FR;
-                        langLabel.textContent = 'Fran\u00e7ais';
-                    }
-
-                    // Mettre a jour la classe active
-                    for (var j = 0; j < options.length; j++) {
-                        options[j].classList.remove('active');
-                    }
-                    this.classList.add('active');
-
-                    // Sauvegarder le choix
-                    try { localStorage.setItem('fa_genesis_lang', lang); } catch(e) {}
-
-                    // Fermer le dropdown
-                    langDropdown.classList.remove('open');
-
-                    // Traduire la page
-                    if (window.FA_i18n && window.FA_i18n.translatePage) {
-                        window.FA_i18n.translatePage(lang);
-                    }
+                    // AppI18n.setAppLanguage() sauvegarde le choix (localStorage) ET
+                    // recharge la page : pas besoin de retraduire/mettre a jour le
+                    // bouton nous-memes, le reload repart avec initAppLanguage().
+                    try {
+                        if (typeof window.AppI18n !== 'undefined' && window.AppI18n.setAppLanguage) {
+                            window.AppI18n.setAppLanguage(lang);
+                        }
+                    } catch(e) {}
                 });
             }
 
@@ -357,10 +397,12 @@
             });
         }
 
-        // Charger i18n.js dynamiquement
-        var i18nScript = document.createElement('script');
-        i18nScript.src = BASE + 'i18n.js';
-        document.body.appendChild(i18nScript);
+        // Charger le moteur AppI18n (+ dictionnaires) si pas deja present sur la
+        // page, puis initialiser la langue courante (no-op si deja fait par la
+        // page elle-meme via app-i18n.js?v=... + initAppLanguage() dans son <head>).
+        ensureAppI18nLoaded(function() {
+            try { window.AppI18n.initAppLanguage(); } catch(e) {}
+        });
 
         // Afficher la banniere cookies au premier chargement
         showCookieBanner();
