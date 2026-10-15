@@ -11020,7 +11020,7 @@ app.get('/api/auth/me', (req, res) => {
             notifyUser(user.email, 'client', 'level_up',
                 '🎉 Vous avez atteint le niveau ' + newLevel.label + ' !',
                 'Félicitations ! De nouveaux avantages sont maintenant débloqués.',
-                '/app.html#profil');
+                '/app.html#client:niveaux');
             try {
                 emailService.sendLevelUpEmail(user.email, (user.prenom || user.email), newLevel.label)
                     .catch(function(e) { console.warn('[LEVEL_UP_EMAIL]', e.message); });

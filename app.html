@@ -9934,15 +9934,31 @@ function _syncUserBadge(){
       if(d.student_status != null) USER.student_status = d.student_status;
       try{ _applyUserTheme(USER.profile_theme); }catch(e){}
       // Level-up detection: show confetti if badge improved
+      // BUG CORRIGÉ : la comparaison reposait uniquement sur USER.badge en mémoire/restauré de
+      // localStorage à CET instant précis (prevBadge), ce qui pouvait se désynchroniser (ex. appel
+      // concurrent, restauration de session) et faisait réapparaître le popup à chaque connexion
+      // au lieu d'une seule fois. On ajoute un verrou localStorage dédié, propre à chaque niveau
+      // déjà vu pour cet utilisateur, qui persiste la décision indépendamment du reste de l'état -
+      // le popup ne peut plus se redéclencher pour un badge déjà célébré, même si prevOrder/newOrder
+      // se retrouvent désynchronisés.
       try {
         var levelOrder = [null, 'bronze', 'argent', 'or', 'elite'];
         var prevOrder = levelOrder.indexOf(prevBadge);
         var newOrder = levelOrder.indexOf(d.badge);
-        if (newOrder > prevOrder && d.badge && typeof _triggerLevelUp === 'function') {
+        var _luKey = 'fa_genesis_levelup_shown_' + ((USER && (USER.id || USER.email)) || 'anon');
+        var _luAlreadyShown = null;
+        try { _luAlreadyShown = localStorage.getItem(_luKey); } catch(e) {}
+        if (newOrder > prevOrder && d.badge && _luAlreadyShown !== d.badge && typeof _triggerLevelUp === 'function') {
+          try { localStorage.setItem(_luKey, d.badge); } catch(e) {}
           var levelMeta = { bronze: { label: 'Créateur', icon: 'fa-fire' }, argent: { label: 'Bâtisseur', icon: 'fa-bolt' }, or: { label: 'Visionnaire', icon: 'fa-crown' }, elite: { label: 'Générateur', icon: 'fa-infinity' } };
           var meta = levelMeta[d.badge] || { label: d.badge, icon: 'fa-star' };
           var _luBadgeId = d.badge;
           setTimeout(function() { _triggerLevelUp(meta.label, _luBadgeId); }, 400);
+        } else if (d.badge && _luAlreadyShown !== d.badge && newOrder <= prevOrder) {
+          // Niveau déjà au courant côté serveur (ex: restauration de session) mais jamais marqué
+          // comme "célébré" localement — on marque sans afficher pour éviter un déclenchement
+          // tardif la prochaine fois que prevOrder redevient momentanément inférieur.
+          try { localStorage.setItem(_luKey, d.badge); } catch(e) {}
         }
       } catch(e) {}
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
@@ -16243,6 +16259,8 @@ function _handleNotifHash(hash, _retryCount){
     nav('reservations');
   } else if(hash === 'tab:wallet'){
     nav('profil'); setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
+  } else if(hash === 'client:niveaux'){
+    nav('profil'); setTimeout(function(){ if(typeof showClientLevels==='function') showClientLevels(); }, 600);
   } else if(hash === 'mes-contrats'){
     nav('mes-contrats');
   } else if(hash === 'open-prestataires' || hash === 'prestataires'){
