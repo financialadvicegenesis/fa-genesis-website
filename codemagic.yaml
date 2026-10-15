@@ -169,8 +169,17 @@ workflows:
           project.save
           "
       - name: Set bundle version from build number
+        # CORRIGÉ : la version 1.0.0 est déjà approuvée sur App Store Connect (voir App Store
+        # Connect, approuvée le 2026-10-06) — Apple ferme définitivement le "pre-release train"
+        # d'une version une fois approuvée, toute nouvelle tentative de build sous CE MÊME numéro
+        # échoue à la publication avec "Invalid Pre-Release Train...is closed for new build
+        # submissions" (code 90186), confirmé par un vrai échec de build Codemagic (index #25,
+        # 2026-10-16) — la phase de build/signature elle-même réussissait, seul l'upload vers App
+        # Store Connect était rejeté. Toute nouvelle soumission nécessite donc un numéro de version
+        # jamais approuvé auparavant ; 1.0.1 à incrémenter de nouveau si une future version est
+        # elle-même approuvée.
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.1" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
           # Déclare directement que l'app n'utilise que le chiffrement HTTPS standard du système
           # (aucun algorithme propriétaire/personnalisé) — évite la question de conformité export
