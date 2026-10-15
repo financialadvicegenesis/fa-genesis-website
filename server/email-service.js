@@ -1439,6 +1439,90 @@ async function sendWelcomeEmail(clientEmail, prenom) {
 }
 
 /**
+ * Email de bienvenue envoyé au partenaire dès son inscription (avant validation admin) -
+ * pendant de sendWelcomeEmail() côté client, même structure/branding, contenu adapté au
+ * parcours prestataire (profil, validation, missions, GENESIS SAFE™).
+ */
+async function sendPartnerWelcomeEmail(partner) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Email bienvenue partenaire non envoye');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    const name = partner.prenom || 'vous';
+
+    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Bienvenue sur FA GENESIS !</title></head>'
+        + '<body style="margin:0;padding:0;background:#f5f5f5;font-family:\'Helvetica Neue\',Arial,sans-serif;">'
+        + '<table role="presentation" width="100%" style="border-collapse:collapse;background:#f5f5f5;">'
+        + '<tr><td style="padding:24px 12px;">'
+        + '<table role="presentation" width="100%" style="max-width:600px;margin:0 auto;border-collapse:collapse;">'
+
+        // Header
+        + '<tr><td style="background:#000;padding:24px 32px;border-radius:12px 12px 0 0;">'
+        + '<span style="font-family:\'Arial Black\',Arial,sans-serif;font-size:22px;font-weight:900;color:#FFD700;letter-spacing:2px;">FA GENESIS</span>'
+        + '<div style="font-size:10px;color:#888;margin-top:2px;letter-spacing:1px;">Groupe FA Industries</div>'
+        + '</td></tr>'
+
+        // Hero
+        + '<tr><td style="background:#fff;padding:36px 32px 24px;border-bottom:1px solid #eee;text-align:center;">'
+        + '<div style="font-size:48px;margin-bottom:16px;">🎉</div>'
+        + '<p style="margin:0 0 10px;font-size:24px;font-weight:800;color:#1a1a1a;">Bienvenue, ' + name + ' !</p>'
+        + '<p style="margin:0;font-size:15px;color:#555;line-height:1.6;">Votre compte prestataire FA GENESIS est créé.<br>Complétez votre profil pour commencer à recevoir des missions.</p>'
+        + '</td></tr>'
+
+        // Comment ça marche
+        + '<tr><td style="background:#fff;padding:28px 32px;border-bottom:1px solid #eee;">'
+        + '<p style="margin:0 0 18px;font-size:13px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.8px;">Comment ça marche ?</p>'
+        + '<table role="presentation" width="100%" style="border-collapse:collapse;">'
+        + _deliverooStep('1', '#FFD700', 'Complétez votre profil', 'Ajoutez votre portfolio, vos prestations et votre zone d\'intervention.')
+        + _deliverooStep('2', '#00ccbc', 'Validation par notre équipe', 'Nous vérifions votre profil sous 24 à 48h pour garantir la qualité de l\'annuaire.')
+        + _deliverooStep('3', '#ff9f00', 'Recevez des missions', 'Les clients vous contactent directement : acceptez ou déclinez librement.')
+        + _deliverooStep('4', '#22cc66', 'Soyez payé en sécurité', 'GENESIS SAFE™ protège vos paiements jusqu\'à la livraison validée par le client.', true)
+        + '</table>'
+        + '</td></tr>'
+
+        // CTA
+        + '<tr><td style="background:#fff;padding:28px 32px;border-bottom:1px solid #eee;text-align:center;">'
+        + '<p style="margin:0 0 16px;font-size:15px;color:#1a1a1a;">Prêt(e) à démarrer ?</p>'
+        + '<a href="' + frontUrl + '/app.html#open-partner" style="display:inline-block;background:#FFD700;color:#000;font-weight:900;font-size:15px;text-decoration:none;padding:14px 36px;border-radius:8px;">Accéder à mon espace →</a>'
+        + '</td></tr>'
+
+        // Footer
+        + '<tr><td style="background:#f5f5f5;padding:20px 32px;border-radius:0 0 12px 12px;text-align:center;">'
+        + '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1a1a1a;">Des questions sur votre inscription ?</p>'
+        + '<p style="margin:0 0 6px;font-size:12px;color:#999;"><a href="mailto:contact@fagenesis.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email <span style="color:#FFD700;">contact@fagenesis.com</span></a></p>'
+        + '<p style="margin:0;font-size:11px;color:#bbb;">Cet email est envoyé automatiquement. Merci de ne pas y répondre directement.</p>'
+        + '</td></tr>'
+
+        + '</table>'
+        + '</td></tr></table>'
+        + '</body></html>';
+
+    var subject = `🎉 Bienvenue sur FA GENESIS, ${name} ! Votre compte prestataire est créé`;
+    var _lang = getUserLanguage(partner.email, 'partner');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
+    try {
+        const result = await transport.sendMail({
+            from: `"FA GENESIS" <${process.env.EMAIL_FROM_ADDRESS || 'contact@fagenesis.com'}>`,
+            to: partner.email,
+            subject: subject,
+            html: html
+        });
+
+        console.log(`[EMAIL] Email bienvenue partenaire envoye a ${partner.email} - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi email bienvenue partenaire:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Compte partenaire approuvé par l'admin : invite a configurer ses prestations
  */
 async function sendPartnerAccountApprovedEmail(partner) {
@@ -2476,6 +2560,7 @@ module.exports = {
     sendQuoteAdminNotification,
     sendQuotePartnerNotification,
     sendPartnerAccountApprovedEmail,
+    sendPartnerWelcomeEmail,
     sendQuoteToClient,
     sendSessionConfirmedEmail,
     sendSessionRescheduledEmail,
