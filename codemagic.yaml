@@ -107,7 +107,7 @@ workflows:
               }
           }
           EOF
-      - name: Add push notification entitlements (aps-environment)
+      - name: Add push notification + universal links entitlements
         # Cause du "No APNS token specified before fetching FCM Token" en boucle (confirmé par
         # instrumentation diagnostique) : ni Capacitor ni @capacitor-firebase/messaging ne créent
         # de fichier d'entitlements iOS — sans déclarer aps-environment, l'app ne demande jamais
@@ -115,6 +115,19 @@ workflows:
         # l'App ID Apple et que le profil récupéré l'autorise. "production" (et non "development")
         # car notre profil est de type distribution (IOS_APP_STORE) — TestFlight utilise
         # l'environnement APNs production, pas sandbox, contrairement à l'intuition courante.
+        #
+        # com.apple.developer.associated-domains (Universal Links) : fait fonctionner côté iOS ce
+        # qui existe déjà côté Android via assetlinks.json + intent-filter autoVerify (voir
+        # AndroidManifest.xml) — un lien https://fagenesis.com/... tapé dans un mail ou ailleurs
+        # ouvre directement l'app installée au lieu de Safari. Le fichier associé
+        # .well-known/apple-app-site-association (appID ZQS9LTXPSS.com.fagenesis.genesis) est servi
+        # depuis la racine du site (GitHub Pages) — à vérifier si le domaine change un jour.
+        # ⚠️ Si ce build échoue à la signature avec une erreur mentionnant "Associated Domains" ou
+        # "no profiles found" après ce commit : la capacité "Associated Domains" doit d'abord être
+        # activée manuellement sur l'App ID com.fagenesis.genesis dans Apple Developer Portal
+        # (Certificates, Identifiers & Profiles → Identifiers → com.fagenesis.genesis → cocher
+        # "Associated Domains" → Save) avant que fetch-signing-files puisse générer un profil qui
+        # l'inclut — ce n'est pas quelque chose que ce pipeline peut activer tout seul.
         script: |
           cat > ios/App/App/App.entitlements << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -123,6 +136,10 @@ workflows:
           <dict>
           	<key>aps-environment</key>
           	<string>production</string>
+          	<key>com.apple.developer.associated-domains</key>
+          	<array>
+          		<string>applinks:fagenesis.com</string>
+          	</array>
           </dict>
           </plist>
           EOF
