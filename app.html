@@ -21115,7 +21115,8 @@ function _ptnrDownloadContract(contractId) {
   // PDF n'est pas fiable dans la WebView Android système - passe par _blobDownload (fetch +
   // blob), qui bascule sur le système de fichiers + la feuille de partage natifs sur l'app
   // Android. Endpoint public, sans authentification requise.
-  _blobDownload(_ptnrApiUrl() + '/api/contracts/' + contractId + '/pdf', 'contrat-' + contractId + '.pdf');
+  var _ctLang = (typeof AppI18n !== 'undefined') ? AppI18n.getAppLanguage() : 'fr';
+  _blobDownload(_ptnrApiUrl() + '/api/contracts/' + contractId + '/pdf?lang=' + _ctLang, 'contrat-' + contractId + '.pdf');
 }
 
 // ── MESSAGERIE COLLÈGUES (P2P même catégorie) ────────────────
@@ -22414,7 +22415,8 @@ function _downloadClientContractPdf(contractId) {
     // silencieusement ne rien faire. _blobDownload bascule automatiquement sur le système de
     // fichiers + la feuille de partage natifs sur l'app Android (voir mobile-bridge.js).
     // Endpoint public, sans authentification requise (vérifié côté serveur).
-    _blobDownload((window.FA_GENESIS_API || API) + '/api/contracts/' + contractId + '/pdf', 'contrat-' + contractId + '.pdf');
+    var _ctLang2 = (typeof AppI18n !== 'undefined') ? AppI18n.getAppLanguage() : 'fr';
+    _blobDownload((window.FA_GENESIS_API || API) + '/api/contracts/' + contractId + '/pdf?lang=' + _ctLang2, 'contrat-' + contractId + '.pdf');
 }
 </script>
 <!-- ── PAIEMENT SOLDE GENESIS SAFE™ ────────────────────────────── -->

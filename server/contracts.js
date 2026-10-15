@@ -16,6 +16,40 @@ try {
     console.warn('[CONTRACT] Logo introuvable, fallback texte :', e.message);
 }
 
+// ============================================================
+// I18N SERVEUR — MÊME PATTERN QUE email-service.js / server.js (notifyUser)
+// Les contrats sont rédigés en français en dur dans ce fichier ; le texte
+// STATIQUE (titres, libellés, clauses) est traduit à la génération via les
+// dictionnaires app-i18n-dict-<lang>.js (remplacement de sous-chaînes). Le
+// texte dynamique (noms, montants, dates, conditions particulières tapées
+// par le partenaire) n'est jamais passé dans translateServerText().
+// ============================================================
+var _serverI18nDicts = {};
+function _loadServerI18nDict(lang) {
+    if (lang === 'fr') return null;
+    if (_serverI18nDicts[lang] !== undefined) return _serverI18nDicts[lang];
+    try {
+        _serverI18nDicts[lang] = require('../app-i18n-dict-' + lang + '.js');
+    } catch (e) {
+        _serverI18nDicts[lang] = null;
+    }
+    return _serverI18nDicts[lang];
+}
+
+function translateServerText(text, lang) {
+    if (!text || lang === 'fr') return text;
+    var dict = _loadServerI18nDict(lang);
+    if (!dict) return text;
+    var keys = Object.keys(dict).sort(function(a, b) { return b.length - a.length; });
+    var result = text.replace(/\s+/g, ' ');
+    for (var i = 0; i < keys.length; i++) {
+        if (keys[i].length >= 3 && result.indexOf(keys[i]) !== -1) {
+            result = result.split(keys[i]).join(dict[keys[i]]);
+        }
+    }
+    return result;
+}
+
 // ── Fuseau horaire par pays ───────────────────────────────────────────────────
 var _COUNTRY_TIMEZONE = {
     'France': 'Europe/Paris',
@@ -208,35 +242,36 @@ var SERVICE_CLAUSES = [
 
 // ── Rendu HTML — Contrat de partenariat ──────────────────────────────────────
 
-function generatePartnershipContractHtml(partner, badgeTable) {
+function generatePartnershipContractHtml(partner, badgeTable, lang) {
+    lang = lang || 'fr';
     var now = new Date();
     var dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
     var contractId = 'PRTN-' + (partner.id || 'DEMO').substring(0, 8).toUpperCase();
     var partnerName = ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email;
-    var partnerType = _localizePartnerType(partner.partner_type || 'prestataire');
+    var partnerType = _localizePartnerType(partner.partner_type || 'prestataire', lang);
     var partnerCompany = partner.company ? (' — ' + partner.company) : '';
     var partnerCountry = partner.country || 'France';
     var standardRate = badgeTable[0] ? badgeTable[0].commissionPct : 5;
 
     var clausesHtml = PARTNERSHIP_CLAUSES.map(function(c) {
         return '<div class="clause">' +
-            '<h3 class="clause-title">' + c.title + '</h3>' +
-            '<p class="clause-body">' + c.body + '</p>' +
+            '<h3 class="clause-title">' + translateServerText(c.title, lang) + '</h3>' +
+            '<p class="clause-body">' + translateServerText(c.body, lang) + '</p>' +
             '</div>';
     }).join('');
 
-    return _wrapContractHtml(contractId, dateStr, 'CONTRAT DE PARTENARIAT', [
+    return _wrapContractHtml(contractId, dateStr, translateServerText('CONTRAT DE PARTENARIAT', lang), [
         '<div class="parties-block">',
-            '<div class="party"><span class="party-label">FA GENESIS</span><br><span class="party-sub">Plateforme de services créatifs et professionnels</span><br><span class="party-role">ci-après désignée <strong>« GENESIS »</strong></span></div>',
-            '<div class="party-and">ET</div>',
-            '<div class="party"><span class="party-label">' + _esc(partnerName) + '</span><br><span class="party-sub">' + _esc(partnerType) + _esc(partnerCompany) + ' — ' + _esc(partnerCountry) + '</span><br><span class="party-role">ci-après désigné(e) <strong>« le Prestataire »</strong></span></div>',
+            '<div class="party"><span class="party-label">FA GENESIS</span><br><span class="party-sub">' + translateServerText('Plateforme de services créatifs et professionnels', lang) + '</span><br><span class="party-role">' + translateServerText('ci-après désignée ', lang) + '<strong>« GENESIS »</strong></span></div>',
+            '<div class="party-and">' + translateServerText('ET', lang) + '</div>',
+            '<div class="party"><span class="party-label">' + _esc(partnerName) + '</span><br><span class="party-sub">' + _esc(partnerType) + _esc(partnerCompany) + ' — ' + _esc(partnerCountry) + '</span><br><span class="party-role">' + translateServerText('ci-après désigné(e) ', lang) + '<strong>« le Prestataire »</strong></span></div>',
         '</div>',
         '<div class="commission-block">',
-            '<h3 class="section-title"><i class="fas fa-percentage" style="color:#e74c3c;margin-right:8px;"></i>Commission GENESIS</h3>',
-            '<p style="color:#000;font-size:13px;margin:0;font-weight:600;">Taux fixe de <strong>' + standardRate + ' %</strong> prélevé sur chaque paiement reçu, identique pour tous les Prestataires quel que soit leur badge. Le Prestataire perçoit le solde, soit <strong>' + (100 - standardRate) + ' %</strong> du montant de la prestation.</p>',
+            '<h3 class="section-title"><i class="fas fa-percentage" style="color:#e74c3c;margin-right:8px;"></i>' + translateServerText('Commission GENESIS', lang) + '</h3>',
+            '<p style="color:#000;font-size:13px;margin:0;font-weight:600;">' + translateServerText('Taux fixe de ', lang) + '<strong>' + standardRate + ' %</strong> ' + translateServerText('prélevé sur chaque paiement reçu, identique pour tous les Prestataires quel que soit leur badge. Le Prestataire perçoit le solde, soit ', lang) + '<strong>' + (100 - standardRate) + ' %</strong> ' + translateServerText('du montant de la prestation.', lang) + '</p>',
         '</div>',
         clausesHtml
-    ].join('\n'));
+    ].join('\n'), lang);
 }
 
 // ── Rendu HTML — Contrat de prestation ───────────────────────────────────────
@@ -254,7 +289,9 @@ function _fmtDate(date) {
     return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
-function _buildPaymentSection(order) {
+function _buildPaymentSection(order, lang) {
+    lang = lang || 'fr';
+    var T = function(s) { return translateServerText(s, lang); };
     var totalAmount = parseFloat(order.total_amount || 0);
     var paymentTier = order.payment_tier || 'small';
     var installments = Array.isArray(order.installments) ? order.installments : [];
@@ -269,28 +306,28 @@ function _buildPaymentSection(order) {
             var due = _addMonths(baseDate, idx);
             var dueStr = _fmtDate(due);
             var label = idx === 0
-                ? 'Mensualité 1/' + n + ' — payée à la commande (' + dueStr + ')'
-                : 'Mensualité ' + (idx + 1) + '/' + n + ' — le Client a jusqu\'au ' + dueStr + ' pour régler cette mensualité';
+                ? T('Mensualité 1/') + n + T(' — payée à la commande (') + dueStr + ')'
+                : T('Mensualité ') + (idx + 1) + '/' + n + T(' — le Client a jusqu\'au ') + dueStr + T(' pour régler cette mensualité');
             return '<tr' + (idx % 2 === 1 ? ' style="background:#f5f5f5;"' : '') + '>' +
                 '<td style="padding:8px 12px;">' + label + '</td>' +
                 '<td style="text-align:right;font-weight:700;padding:8px 12px;">' + parseFloat(inst.amount).toFixed(2) + ' €</td></tr>';
         }).join('') +
-        '<tr style="border-top:2px solid #000;background:#fff8e1;"><td style="padding:8px 12px;font-weight:700;">Total TTC</td>' +
+        '<tr style="border-top:2px solid #000;background:#fff8e1;"><td style="padding:8px 12px;font-weight:700;">' + T('Total TTC') + '</td>' +
         '<td style="text-align:right;font-weight:900;padding:8px 12px;">' + totalAmount.toFixed(2) + ' €</td></tr>';
 
-        article2 = 'Le paiement est échelonné en ' + n + ' mensualités égales de ' +
-            parseFloat(installments[0].amount).toFixed(2) + ' € chacune. ' +
-            'La première mensualité est réglée à la commande. Pour chaque mensualité suivante, le Client dispose jusqu\'à la date d\'échéance indiquée dans le tableau ci-dessus pour en effectuer le règlement. ' +
-            'Les mensualités sont encaissées par FA GENESIS et versées directement au Prestataire dès réception, sans période d\'escrow. ' +
-            'Le non-paiement d\'une mensualité avant sa date d\'échéance entraîne la suspension de la prestation jusqu\'à régularisation.';
-        article4extra = 'régler chaque mensualité à la date d\'échéance figurant au présent contrat ;';
-        article5 = 'Tant que seule la première mensualité a été réglée, le Client peut annuler sa commande à tout moment ' +
-            'et en obtenir le remboursement intégral. Le Client peut à tout moment cesser de régler les mensualités suivantes, ' +
-            'ce qui entraîne la suspension de la prestation conformément à l\'article 2 ; les mensualités déjà réglées à ce moment-là ' +
-            'restent acquises au Prestataire au titre du travail déjà engagé, sauf décision contraire de l\'équipe FA GENESIS après examen de la situation. ' +
-            'Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible. ' +
-            'En cas d\'annulation par le Prestataire, les mensualités versées sont remboursées intégralement au Client. ' +
-            'En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.';
+        article2 = T('Le paiement est échelonné en ') + n + T(' mensualités égales de ') +
+            parseFloat(installments[0].amount).toFixed(2) + T(' € chacune. ') +
+            T('La première mensualité est réglée à la commande. Pour chaque mensualité suivante, le Client dispose jusqu\'à la date d\'échéance indiquée dans le tableau ci-dessus pour en effectuer le règlement. ') +
+            T('Les mensualités sont encaissées par FA GENESIS et versées directement au Prestataire dès réception, sans période d\'escrow. ') +
+            T('Le non-paiement d\'une mensualité avant sa date d\'échéance entraîne la suspension de la prestation jusqu\'à régularisation.');
+        article4extra = T('régler chaque mensualité à la date d\'échéance figurant au présent contrat ;');
+        article5 = T('Tant que seule la première mensualité a été réglée, le Client peut annuler sa commande à tout moment ') +
+            T('et en obtenir le remboursement intégral. Le Client peut à tout moment cesser de régler les mensualités suivantes, ') +
+            T('ce qui entraîne la suspension de la prestation conformément à l\'article 2 ; les mensualités déjà réglées à ce moment-là ') +
+            T('restent acquises au Prestataire au titre du travail déjà engagé, sauf décision contraire de l\'équipe FA GENESIS après examen de la situation. ') +
+            T('Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible. ') +
+            T('En cas d\'annulation par le Prestataire, les mensualités versées sont remboursées intégralement au Client. ') +
+            T('En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.');
 
     } else if (paymentTier === 'custom' && installments.length >= 2) {
         // ── Mode "Acompte + reste" ──
@@ -299,86 +336,88 @@ function _buildPaymentSection(order) {
         var acomptePct = Math.round(parseFloat(acompteInst.amount) / totalAmount * 100);
         var soldePct = 100 - acomptePct;
         paymentHtml =
-            '<tr><td style="padding:8px 12px;">Acompte (' + acomptePct + '%) — versé au Prestataire dès acceptation de la mission</td>' +
+            '<tr><td style="padding:8px 12px;">' + T('Acompte (') + acomptePct + T('%) — versé au Prestataire dès acceptation de la mission') + '</td>' +
             '<td style="text-align:right;font-weight:700;padding:8px 12px;">' + parseFloat(acompteInst.amount).toFixed(2) + ' €</td></tr>' +
-            '<tr style="background:#f5f5f5;"><td style="padding:8px 12px;">Solde (' + soldePct + '%) — GENESIS SAFE™ · libéré après confirmation de livraison par le Client (ou 7 jours auto)</td>' +
+            '<tr style="background:#f5f5f5;"><td style="padding:8px 12px;">' + T('Solde (') + soldePct + T('%) — GENESIS SAFE™ · libéré après confirmation de livraison par le Client (ou 7 jours auto)') + '</td>' +
             '<td style="text-align:right;font-weight:700;padding:8px 12px;">' + parseFloat(soldeInst.amount).toFixed(2) + ' €</td></tr>' +
-            '<tr style="border-top:2px solid #000;background:#fff8e1;"><td style="padding:8px 12px;font-weight:700;">Total TTC</td>' +
+            '<tr style="border-top:2px solid #000;background:#fff8e1;"><td style="padding:8px 12px;font-weight:700;">' + T('Total TTC') + '</td>' +
             '<td style="text-align:right;font-weight:900;padding:8px 12px;">' + totalAmount.toFixed(2) + ' €</td></tr>';
-        article2 = 'Le paiement est sécurisé par GENESIS SAFE™. ' +
-            'Un acompte de ' + acomptePct + '% (' + parseFloat(acompteInst.amount).toFixed(2) + ' €) est versé directement au Prestataire dès qu\'il accepte la mission. ' +
-            'Le solde de ' + soldePct + '% (' + parseFloat(soldeInst.amount).toFixed(2) + ' €) est conservé en escrow par GENESIS SAFE™ et libéré uniquement après confirmation de livraison par le Client, ' +
-            'ou à l\'expiration d\'un délai de 7 jours suivant la déclaration de fin de prestation par le Prestataire, si le Client ne formule aucune contestation.';
-        article4extra = 'régler le solde de la prestation conformément à l\'échéancier GENESIS SAFE™ ;';
-        article5 = 'Tant que le Client n\'a pas validé la bonne exécution de la prestation, il peut annuler sa commande à tout moment ' +
-            'et obtenir le remboursement intégral des sommes déjà versées, y compris l\'acompte déjà transmis au Prestataire. ' +
-            'Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ' +
-            'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ' +
-            'En cas d\'annulation par le Prestataire, les montants versés sont remboursés intégralement au Client. ' +
-            'En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.';
+        article2 = T('Le paiement est sécurisé par GENESIS SAFE™. ') +
+            T('Un acompte de ') + acomptePct + '% (' + parseFloat(acompteInst.amount).toFixed(2) + T(' €) est versé directement au Prestataire dès qu\'il accepte la mission. ') +
+            T('Le solde de ') + soldePct + '% (' + parseFloat(soldeInst.amount).toFixed(2) + T(' €) est conservé en escrow par GENESIS SAFE™ et libéré uniquement après confirmation de livraison par le Client, ') +
+            T('ou à l\'expiration d\'un délai de 7 jours suivant la déclaration de fin de prestation par le Prestataire, si le Client ne formule aucune contestation.');
+        article4extra = T('régler le solde de la prestation conformément à l\'échéancier GENESIS SAFE™ ;');
+        article5 = T('Tant que le Client n\'a pas validé la bonne exécution de la prestation, il peut annuler sa commande à tout moment ') +
+            T('et obtenir le remboursement intégral des sommes déjà versées, y compris l\'acompte déjà transmis au Prestataire. ') +
+            T('Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ') +
+            T('seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ') +
+            T('En cas d\'annulation par le Prestataire, les montants versés sont remboursés intégralement au Client. ') +
+            T('En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.');
 
     } else if (paymentTier === 'large' && installments.length === 3) {
         // ── Mode 30/40/30 (GENESIS classique) ──
         var i1 = installments[0]; var i2 = installments[1]; var i3 = installments[2];
         paymentHtml =
-            '<tr><td style="padding:8px 12px;">Acompte (30%) — à la commande — GENESIS SAFE™</td>' +
+            '<tr><td style="padding:8px 12px;">' + T('Acompte (30%) — à la commande — GENESIS SAFE™') + '</td>' +
             '<td style="text-align:right;font-weight:700;padding:8px 12px;">' + parseFloat(i1.amount).toFixed(2) + ' €</td></tr>' +
-            '<tr style="background:#f5f5f5;"><td style="padding:8px 12px;">Livrable intermédiaire (40%) — après validation du 1er jalon par le Client</td>' +
+            '<tr style="background:#f5f5f5;"><td style="padding:8px 12px;">' + T('Livrable intermédiaire (40%) — après validation du 1er jalon par le Client') + '</td>' +
             '<td style="text-align:right;font-weight:700;padding:8px 12px;">' + parseFloat(i2.amount).toFixed(2) + ' €</td></tr>' +
-            '<tr><td style="padding:8px 12px;">Livraison finale (30%) — après validation complète par le Client</td>' +
+            '<tr><td style="padding:8px 12px;">' + T('Livraison finale (30%) — après validation complète par le Client') + '</td>' +
             '<td style="text-align:right;font-weight:700;padding:8px 12px;">' + parseFloat(i3.amount).toFixed(2) + ' €</td></tr>' +
-            '<tr style="border-top:2px solid #000;background:#fff8e1;"><td style="padding:8px 12px;font-weight:700;">Total TTC</td>' +
+            '<tr style="border-top:2px solid #000;background:#fff8e1;"><td style="padding:8px 12px;font-weight:700;">' + T('Total TTC') + '</td>' +
             '<td style="text-align:right;font-weight:900;padding:8px 12px;">' + totalAmount.toFixed(2) + ' €</td></tr>';
-        article2 = 'Le paiement est sécurisé par GENESIS SAFE™ et réparti en trois tranches : ' +
-            'acompte (30 %) à la commande — versé directement au Prestataire dès qu\'il accepte la mission, à titre de capital de démarrage — ' +
-            'livrable intermédiaire (40 %) conservé en escrow par GENESIS SAFE™ et libéré après validation par le Client du premier jalon, ' +
-            'livraison finale (30 %) conservée en escrow et libérée à la remise et validation des livrables définitifs (ou à l\'expiration d\'un délai de 7 jours sans contestation du Client). ' +
-            'Seul l\'acompte est versé sans attendre de validation ; les deux tranches suivantes ne sont versées au Prestataire qu\'après validation de l\'étape correspondante par le Client.';
-        article4extra = 'régler les montants dus selon l\'échéancier GENESIS SAFE™ et valider chaque jalon ;';
-        article5 = 'Tant que le Client n\'a pas validé la bonne exécution de la prestation, il peut annuler sa commande à tout moment ' +
-            'et obtenir le remboursement intégral des sommes déjà versées, y compris l\'acompte (30 %) déjà transmis au Prestataire. ' +
-            'Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ' +
-            'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ' +
-            'En cas d\'annulation par le Prestataire, les montants versés sont remboursés intégralement au Client. ' +
-            'En cas de litige sur la qualité d\'un livrable, la procédure de médiation FA GENESIS s\'applique en priorité.';
+        article2 = T('Le paiement est sécurisé par GENESIS SAFE™ et réparti en trois tranches : ') +
+            T('acompte (30 %) à la commande — versé directement au Prestataire dès qu\'il accepte la mission, à titre de capital de démarrage — ') +
+            T('livrable intermédiaire (40 %) conservé en escrow par GENESIS SAFE™ et libéré après validation par le Client du premier jalon, ') +
+            T('livraison finale (30 %) conservée en escrow et libérée à la remise et validation des livrables définitifs (ou à l\'expiration d\'un délai de 7 jours sans contestation du Client). ') +
+            T('Seul l\'acompte est versé sans attendre de validation ; les deux tranches suivantes ne sont versées au Prestataire qu\'après validation de l\'étape correspondante par le Client.');
+        article4extra = T('régler les montants dus selon l\'échéancier GENESIS SAFE™ et valider chaque jalon ;');
+        article5 = T('Tant que le Client n\'a pas validé la bonne exécution de la prestation, il peut annuler sa commande à tout moment ') +
+            T('et obtenir le remboursement intégral des sommes déjà versées, y compris l\'acompte (30 %) déjà transmis au Prestataire. ') +
+            T('Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ') +
+            T('seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ') +
+            T('En cas d\'annulation par le Prestataire, les montants versés sont remboursés intégralement au Client. ') +
+            T('En cas de litige sur la qualité d\'un livrable, la procédure de médiation FA GENESIS s\'applique en priorité.');
 
     } else {
         // ── Mode "1 fois" — paiement intégral, GENESIS SAFE™ jusqu'à livraison ──
-        paymentHtml = '<tr><td style="padding:8px 12px;">Paiement intégral — GENESIS SAFE™ · versé au Prestataire après confirmation de livraison (ou 7 jours auto)</td>' +
+        paymentHtml = '<tr><td style="padding:8px 12px;">' + T('Paiement intégral — GENESIS SAFE™ · versé au Prestataire après confirmation de livraison (ou 7 jours auto)') + '</td>' +
             '<td style="text-align:right;font-weight:700;padding:8px 12px;">' + totalAmount.toFixed(2) + ' €</td></tr>';
-        article2 = 'Le paiement intégral est effectué à la commande et sécurisé par GENESIS SAFE™. ' +
-            'Les fonds sont conservés en escrow par FA GENESIS et versés au Prestataire uniquement après confirmation de livraison par le Client. ' +
-            'À défaut de confirmation ou de contestation dans un délai de 7 jours suivant la déclaration de fin de prestation par le Prestataire, ' +
-            'les fonds sont automatiquement libérés. Aucun versement au Prestataire n\'intervient avant ce délai.';
-        article4extra = 'confirmer ou contester la livraison dans un délai de 7 jours suivant la notification de fin de prestation ;';
-        article5 = 'Tant que le Client n\'a pas validé la bonne réception de la prestation, il peut annuler sa commande à tout moment ' +
-            'et obtenir le remboursement intégral du paiement déjà effectué. ' +
-            'Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ' +
-            'seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ' +
-            'En cas d\'annulation par le Prestataire, le paiement est remboursé intégralement au Client. ' +
-            'En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.';
+        article2 = T('Le paiement intégral est effectué à la commande et sécurisé par GENESIS SAFE™. ') +
+            T('Les fonds sont conservés en escrow par FA GENESIS et versés au Prestataire uniquement après confirmation de livraison par le Client. ') +
+            T('À défaut de confirmation ou de contestation dans un délai de 7 jours suivant la déclaration de fin de prestation par le Prestataire, ') +
+            T('les fonds sont automatiquement libérés. Aucun versement au Prestataire n\'intervient avant ce délai.');
+        article4extra = T('confirmer ou contester la livraison dans un délai de 7 jours suivant la notification de fin de prestation ;');
+        article5 = T('Tant que le Client n\'a pas validé la bonne réception de la prestation, il peut annuler sa commande à tout moment ') +
+            T('et obtenir le remboursement intégral du paiement déjà effectué. ') +
+            T('Une fois la prestation validée par le Client, l\'annulation en libre-service n\'est plus possible ; ') +
+            T('seule l\'équipe FA GENESIS peut alors intervenir, notamment en cas de force majeure. ') +
+            T('En cas d\'annulation par le Prestataire, le paiement est remboursé intégralement au Client. ') +
+            T('En cas de litige sur la qualité de la livraison, la procédure de médiation FA GENESIS s\'applique en priorité.');
     }
 
     return { paymentHtml: paymentHtml, article2: article2, article4extra: article4extra, article5: article5 };
 }
 
-function generateServiceContractHtml(order, partnerObj, clientUser, customConditions) {
+function generateServiceContractHtml(order, partnerObj, clientUser, customConditions, lang) {
+    lang = lang || 'fr';
     var now = new Date();
     var dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
     var contractId = 'SRVCE-' + (order.id || 'DEMO').replace('ORD-', '');
     var partnerName = ((partnerObj.prenom || '') + ' ' + (partnerObj.nom || '')).trim() || partnerObj.email;
-    var partnerType = _localizePartnerType(partnerObj.partner_type || 'prestataire');
+    var partnerType = _localizePartnerType(partnerObj.partner_type || 'prestataire', lang);
     var clientName = (clientUser
         ? ((clientUser.prenom || clientUser.firstName || '') + ' ' + (clientUser.nom || clientUser.lastName || '')).trim()
         : '') || (order.client_info ? ((order.client_info.first_name || '') + ' ' + (order.client_info.last_name || '')).trim() : 'Client');
     var clientType = _localizeClientType(
         (order.client_info && order.client_info.client_type) ||
-        (clientUser && clientUser.clientType) || 'particulier'
+        (clientUser && clientUser.clientType) || 'particulier',
+        lang
     );
     var totalAmount = parseFloat(order.total_amount || 0).toFixed(2);
     var serviceName = order.product_name || 'Prestation de service';
 
-    var paymentInfo = _buildPaymentSection(order);
+    var paymentInfo = _buildPaymentSection(order, lang);
 
     // Clauses dynamiques adaptées au mode de paiement
     var dynamicClauses = SERVICE_CLAUSES.map(function(c) {
@@ -386,7 +425,7 @@ function generateServiceContractHtml(order, partnerObj, clientUser, customCondit
             return { id: c.id, title: c.title, body: paymentInfo.article2 };
         }
         if (c.id === 'obligations_client') {
-            return { id: c.id, title: c.title, body: 'Le Client s\'engage à : (1) fournir au Prestataire les informations et éléments nécessaires à la réalisation de la prestation dans des délais raisonnables ; (2) ' + paymentInfo.article4extra + ' (3) utiliser les livrables dans le respect de la propriété intellectuelle.' };
+            return { id: c.id, title: c.title, body: translateServerText('Le Client s\'engage à : (1) fournir au Prestataire les informations et éléments nécessaires à la réalisation de la prestation dans des délais raisonnables ; (2) ', lang) + paymentInfo.article4extra + translateServerText(' (3) utiliser les livrables dans le respect de la propriété intellectuelle.', lang) };
         }
         if (c.id === 'annulation') {
             return { id: c.id, title: c.title, body: paymentInfo.article5 };
@@ -395,40 +434,42 @@ function generateServiceContractHtml(order, partnerObj, clientUser, customCondit
     });
 
     var conditionsHtml = customConditions
-        ? '<div class="clause"><h3 class="clause-title">Conditions particulières fixées par le Prestataire</h3><p class="clause-body" style="white-space:pre-line;">' + _esc(customConditions) + '</p></div>'
+        ? '<div class="clause"><h3 class="clause-title">' + translateServerText('Conditions particulières fixées par le Prestataire', lang) + '</h3><p class="clause-body" style="white-space:pre-line;">' + _esc(customConditions) + '</p></div>'
         : '';
 
     var clausesHtml = dynamicClauses.map(function(c) {
-        return '<div class="clause"><h3 class="clause-title">' + c.title + '</h3><p class="clause-body">' + c.body + '</p></div>';
+        return '<div class="clause"><h3 class="clause-title">' + translateServerText(c.title, lang) + '</h3><p class="clause-body">' + translateServerText(c.body, lang) + '</p></div>';
     }).join('');
 
-    return _wrapContractHtml(contractId, dateStr, 'CONTRAT DE PRESTATION DE SERVICE', [
+    return _wrapContractHtml(contractId, dateStr, translateServerText('CONTRAT DE PRESTATION DE SERVICE', lang), [
         '<div class="parties-block">',
-            '<div class="party"><span class="party-label">' + _esc(partnerName) + '</span><br><span class="party-sub">' + _esc(partnerType) + '</span><br><span class="party-role">ci-après désigné(e) <strong>« le Prestataire »</strong></span></div>',
-            '<div class="party-and">ET</div>',
-            '<div class="party"><span class="party-label">' + _esc(clientName) + '</span><br><span class="party-sub">' + _esc(clientType) + '</span><br><span class="party-role">ci-après désigné(e) <strong>« le Client »</strong></span></div>',
+            '<div class="party"><span class="party-label">' + _esc(partnerName) + '</span><br><span class="party-sub">' + _esc(partnerType) + '</span><br><span class="party-role">' + translateServerText('ci-après désigné(e) ', lang) + '<strong>« le Prestataire »</strong></span></div>',
+            '<div class="party-and">' + translateServerText('ET', lang) + '</div>',
+            '<div class="party"><span class="party-label">' + _esc(clientName) + '</span><br><span class="party-sub">' + _esc(clientType) + '</span><br><span class="party-role">' + translateServerText('ci-après désigné(e) ', lang) + '<strong>« le Client »</strong></span></div>',
         '</div>',
         '<div class="commission-block">',
-            '<h3 class="section-title"><i class="fas fa-clipboard-list" style="color:#2980b9;margin-right:8px;"></i>Détails de la prestation</h3>',
+            '<h3 class="section-title"><i class="fas fa-clipboard-list" style="color:#2980b9;margin-right:8px;"></i>' + translateServerText('Détails de la prestation', lang) + '</h3>',
             '<table class="rate-table">',
                 '<tbody>',
-                    '<tr><td style="font-weight:700;">Référence commande</td><td style="text-align:right;">' + _esc(order.id || '') + '</td></tr>',
-                    '<tr><td style="font-weight:700;">Prestation</td><td style="text-align:right;">' + _esc(serviceName) + '</td></tr>',
-                    '<tr><td style="font-weight:700;">Type de client</td><td style="text-align:right;">' + _esc(clientType) + '</td></tr>',
-                    '<tr style="border-top:2px solid #000;"><td style="font-weight:900;font-size:15px;">Montant total TTC</td><td style="text-align:right;font-weight:900;font-size:15px;">' + totalAmount + ' €</td></tr>',
+                    '<tr><td style="font-weight:700;">' + translateServerText('Référence commande', lang) + '</td><td style="text-align:right;">' + _esc(order.id || '') + '</td></tr>',
+                    '<tr><td style="font-weight:700;">' + translateServerText('Prestation', lang) + '</td><td style="text-align:right;">' + _esc(serviceName) + '</td></tr>',
+                    '<tr><td style="font-weight:700;">' + translateServerText('Type de client', lang) + '</td><td style="text-align:right;">' + _esc(clientType) + '</td></tr>',
+                    '<tr style="border-top:2px solid #000;"><td style="font-weight:900;font-size:15px;">' + translateServerText('Montant total TTC', lang) + '</td><td style="text-align:right;font-weight:900;font-size:15px;">' + totalAmount + ' €</td></tr>',
                 '</tbody>',
             '</table>',
-            '<h3 class="section-title" style="margin-top:16px;"><i class="fas fa-shield-halved" style="color:#27ae60;margin-right:8px;"></i>Échéancier de paiement</h3>',
+            '<h3 class="section-title" style="margin-top:16px;"><i class="fas fa-shield-halved" style="color:#27ae60;margin-right:8px;"></i>' + translateServerText('Échéancier de paiement', lang) + '</h3>',
             '<table class="rate-table"><tbody>' + paymentInfo.paymentHtml + '</tbody></table>',
         '</div>',
         conditionsHtml,
         clausesHtml
-    ].join('\n'));
+    ].join('\n'), lang);
 }
 
 // ── Génération PDF (pdfkit) ───────────────────────────────────────────────────
 
-function generatePdfBuffer(contract, callback) {
+function generatePdfBuffer(contract, lang, callback) {
+    lang = lang || 'fr';
+    function T(s) { return translateServerText(s, lang); }
     try {
         var doc = new PDFDocument({ margin: 50, size: 'A4' });
         var buffers = [];
@@ -437,7 +478,7 @@ function generatePdfBuffer(contract, callback) {
         doc.on('error', function(err) { callback(err); });
 
         var isPartnership = contract.type === 'partnership';
-        var title = isPartnership ? 'CONTRAT DE PARTENARIAT FA GENESIS' : 'CONTRAT DE PRESTATION DE SERVICE';
+        var title = isPartnership ? T('CONTRAT DE PARTENARIAT FA GENESIS') : T('CONTRAT DE PRESTATION DE SERVICE');
         var contractId = contract.id || 'CTR-INCONNU';
         var signedAt = _formatSignedAt(contract.signed_at, contract.partner_country);
 
@@ -456,7 +497,7 @@ function generatePdfBuffer(contract, callback) {
         if (!_pdfLogoDrawn) {
             doc.fontSize(18).font('Helvetica-Bold').fillColor('#000').text('FA GENESIS', { align: 'center' });
         }
-        doc.fontSize(11).font('Helvetica').fillColor('#000').text('Plateforme de services créatifs et professionnels', { align: 'center' });
+        doc.fontSize(11).font('Helvetica').fillColor('#000').text(T('Plateforme de services créatifs et professionnels'), { align: 'center' });
         doc.moveDown(0.5);
         doc.strokeColor('#FFD700').lineWidth(2).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
         doc.moveDown(0.5);
@@ -464,52 +505,52 @@ function generatePdfBuffer(contract, callback) {
         doc.fontSize(14).font('Helvetica-Bold').fillColor('#000').text(title, { align: 'center' });
         doc.moveDown(0.3);
         doc.fontSize(9).font('Helvetica').fillColor('#000')
-            .text('Identifiant : ' + contractId + '  |  Version : ' + (contract.contract_version || CONTRACT_VERSION) + '  |  Date de signature : ' + signedAt, { align: 'center' });
+            .text(T('Identifiant : ') + contractId + T('  |  Version : ') + (contract.contract_version || CONTRACT_VERSION) + T('  |  Date de signature : ') + signedAt, { align: 'center' });
         doc.moveDown(1);
 
         // Parties
-        doc.fontSize(11).font('Helvetica-Bold').fillColor('#000').text('PARTIES AU CONTRAT');
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#000').text(T('PARTIES AU CONTRAT'));
         doc.strokeColor('#eee').lineWidth(1).moveTo(50, doc.y + 2).lineTo(545, doc.y + 2).stroke();
         doc.moveDown(0.5);
 
         if (isPartnership) {
             doc.fontSize(10).font('Helvetica-Bold').text('FA GENESIS', { continued: true });
-            doc.font('Helvetica').text(' (ci-après « GENESIS »)');
+            doc.font('Helvetica').text(T(' (ci-après « GENESIS »)'));
             doc.moveDown(0.3);
             doc.font('Helvetica-Bold').text((contract.partner_name || '') + (contract.partner_company ? ' — ' + contract.partner_company : ''), { continued: true });
-            doc.font('Helvetica').text(' — ' + (contract.partner_type || '') + ' (ci-après « le Prestataire »)');
+            doc.font('Helvetica').text(' — ' + (contract.partner_type || '') + T(' (ci-après « le Prestataire »)'));
         } else {
             doc.fontSize(10).font('Helvetica-Bold').text(contract.partner_name || '', { continued: true });
-            doc.font('Helvetica').text(' — ' + (contract.partner_type || '') + ' (ci-après « le Prestataire »)');
+            doc.font('Helvetica').text(' — ' + (contract.partner_type || '') + T(' (ci-après « le Prestataire »)'));
             doc.moveDown(0.3);
             doc.font('Helvetica-Bold').text(contract.client_name || '', { continued: true });
-            doc.font('Helvetica').text(' — ' + (contract.client_type || '') + ' (ci-après « le Client »)');
+            doc.font('Helvetica').text(' — ' + (contract.client_type || '') + T(' (ci-après « le Client »)'));
         }
         doc.moveDown(1);
 
         // Commission ou détails prestation
         if (isPartnership && contract.badge_table) {
             var _pdfRate = contract.badge_table[0] ? contract.badge_table[0].commissionPct : 5;
-            doc.fontSize(11).font('Helvetica-Bold').text('COMMISSION GENESIS');
+            doc.fontSize(11).font('Helvetica-Bold').text(T('COMMISSION GENESIS'));
             doc.strokeColor('#eee').lineWidth(1).moveTo(50, doc.y + 2).lineTo(545, doc.y + 2).stroke();
             doc.moveDown(0.5);
-            doc.fontSize(10).font('Helvetica').text('Taux fixe de ' + _pdfRate + ' % prélevé sur chaque paiement reçu, identique pour tous les Prestataires quel que soit leur badge. Le Prestataire perçoit le solde, soit ' + (100 - _pdfRate) + ' % du montant de la prestation.', { align: 'justify' });
+            doc.fontSize(10).font('Helvetica').text(T('Taux fixe de ') + _pdfRate + T(' % prélevé sur chaque paiement reçu, identique pour tous les Prestataires quel que soit leur badge. Le Prestataire perçoit le solde, soit ') + (100 - _pdfRate) + T(' % du montant de la prestation.'), { align: 'justify' });
             doc.moveDown(0.8);
         } else if (!isPartnership) {
-            doc.fontSize(11).font('Helvetica-Bold').text('DÉTAILS DE LA PRESTATION');
+            doc.fontSize(11).font('Helvetica-Bold').text(T('DÉTAILS DE LA PRESTATION'));
             doc.strokeColor('#eee').lineWidth(1).moveTo(50, doc.y + 2).lineTo(545, doc.y + 2).stroke();
             doc.moveDown(0.5);
             doc.fontSize(10).font('Helvetica');
-            doc.text('Prestation : ' + (contract.service_name || ''));
-            doc.text('Référence : ' + (contract.order_id || ''));
-            doc.text('Type de client : ' + (contract.client_type || ''));
-            doc.font('Helvetica-Bold').text('Montant total : ' + parseFloat(contract.service_price || 0).toFixed(2) + ' €');
+            doc.text(T('Prestation : ') + (contract.service_name || ''));
+            doc.text(T('Référence : ') + (contract.order_id || ''));
+            doc.text(T('Type de client : ') + (contract.client_type || ''));
+            doc.font('Helvetica-Bold').text(T('Montant total : ') + parseFloat(contract.service_price || 0).toFixed(2) + ' €');
             doc.moveDown(0.5);
 
             // Échéancier adapté au mode de paiement
             var _pdfOrder = { total_amount: contract.service_price, payment_tier: contract.payment_tier, installments: contract.installments, created_at: contract.created_at };
-            var _pdfPayInfo = _buildPaymentSection(_pdfOrder);
-            doc.fontSize(10).font('Helvetica-Bold').text('ÉCHÉANCIER DE PAIEMENT');
+            var _pdfPayInfo = _buildPaymentSection(_pdfOrder, lang);
+            doc.fontSize(10).font('Helvetica-Bold').text(T('ÉCHÉANCIER DE PAIEMENT'));
             doc.moveDown(0.2);
             doc.fontSize(9).font('Helvetica').text(_pdfPayInfo.article2, { align: 'justify' });
             doc.moveDown(0.8);
@@ -519,16 +560,16 @@ function generatePdfBuffer(contract, callback) {
         var clauses = isPartnership ? PARTNERSHIP_CLAUSES : SERVICE_CLAUSES;
         clauses.forEach(function(c) {
             if (doc.y > 700) doc.addPage();
-            doc.fontSize(10).font('Helvetica-Bold').fillColor('#000').text(c.title);
+            doc.fontSize(10).font('Helvetica-Bold').fillColor('#000').text(T(c.title));
             doc.moveDown(0.2);
-            doc.fontSize(9).font('Helvetica').fillColor('#000').text(c.body, { align: 'justify' });
+            doc.fontSize(9).font('Helvetica').fillColor('#000').text(T(c.body), { align: 'justify' });
             doc.moveDown(0.8);
         });
 
         // Conditions particulières (service contract)
         if (!isPartnership && contract.custom_conditions) {
             if (doc.y > 700) doc.addPage();
-            doc.fontSize(10).font('Helvetica-Bold').fillColor('#000').text('CONDITIONS PARTICULIÈRES');
+            doc.fontSize(10).font('Helvetica-Bold').fillColor('#000').text(T('CONDITIONS PARTICULIÈRES'));
             doc.moveDown(0.2);
             doc.fontSize(9).font('Helvetica').fillColor('#000').text(contract.custom_conditions, { align: 'justify' });
             doc.moveDown(0.8);
@@ -539,16 +580,16 @@ function generatePdfBuffer(contract, callback) {
         doc.moveDown(0.5);
         doc.strokeColor('#000').lineWidth(1).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
         doc.moveDown(0.5);
-        doc.fontSize(10).font('Helvetica-Bold').text('SIGNATURE ÉLECTRONIQUE', { align: 'center' });
+        doc.fontSize(10).font('Helvetica-Bold').text(T('SIGNATURE ÉLECTRONIQUE'), { align: 'center' });
         doc.moveDown(0.4);
         doc.fontSize(9).font('Helvetica').fillColor('#000');
-        doc.text('Signataire : ' + (contract.signature_name || '(non signé)'), { align: 'center' });
-        doc.text('Date et heure : ' + signedAt, { align: 'center' });
-        if (contract.signed_ip) doc.text('Adresse IP : ' + contract.signed_ip, { align: 'center' });
-        doc.text('Identifiant contrat : ' + contractId, { align: 'center' });
+        doc.text(T('Signataire : ') + (contract.signature_name || T('(non signé)')), { align: 'center' });
+        doc.text(T('Date et heure : ') + signedAt, { align: 'center' });
+        if (contract.signed_ip) doc.text(T('Adresse IP : ') + contract.signed_ip, { align: 'center' });
+        doc.text(T('Identifiant contrat : ') + contractId, { align: 'center' });
         doc.moveDown(0.5);
         doc.fillColor('#000').fontSize(8).text(
-            'Document généré par FA GENESIS — Ce document électronique tient lieu de contrat conformément aux dispositions applicables en matière de signature électronique.',
+            T('Document généré par FA GENESIS — Ce document électronique tient lieu de contrat conformément aux dispositions applicables en matière de signature électronique.'),
             { align: 'center' }
         );
 
@@ -564,22 +605,27 @@ function _esc(str) {
     return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function _localizePartnerType(type) {
+function _localizePartnerType(type, lang) {
+    lang = lang || 'fr';
     var map = {
         photographer: 'Photographe', videographer: 'Vidéaste', marketer: 'Marketeur',
         media: 'Média', graphic_designer: 'Graphiste', developer: 'Développeur',
         coach: 'Coach', consultant: 'Consultant', event_planner: 'Organisateur d\'événements',
         writer: 'Rédacteur', translator: 'Traducteur', other: 'Prestataire'
     };
-    return map[type] || (type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Prestataire');
+    var label = map[type] || (type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Prestataire');
+    return translateServerText(label, lang);
 }
 
-function _localizeClientType(type) {
+function _localizeClientType(type, lang) {
+    lang = lang || 'fr';
     var map = { etudiant: 'Étudiant(e)', particulier: 'Particulier', entreprise: 'Entreprise / Professionnel' };
-    return map[type] || type || 'Particulier';
+    var label = map[type] || type || 'Particulier';
+    return translateServerText(label, lang);
 }
 
-function _wrapContractHtml(contractId, dateStr, title, sectionsHtml) {
+function _wrapContractHtml(contractId, dateStr, title, sectionsHtml, lang) {
+    lang = lang || 'fr';
     return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">' +
         '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">' +
         '<style>' +
@@ -621,7 +667,7 @@ function _wrapContractHtml(contractId, dateStr, title, sectionsHtml) {
             (_LOGO_DATA_URI
                 ? '<img src="' + _LOGO_DATA_URI + '" alt="FA GENESIS" class="logo-img">'
                 : '<div class="org">FA GENESIS</div>') +
-            '<div class="sub">Plateforme de services créatifs et professionnels</div>' +
+            '<div class="sub">' + translateServerText('Plateforme de services créatifs et professionnels', lang) + '</div>' +
             '<h1>' + title + '</h1>' +
             '<div class="contract-meta">' +
                 '<span><i class="fas fa-hashtag"></i> ' + _esc(contractId) + '</span>' +

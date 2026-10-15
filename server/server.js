@@ -20310,7 +20310,8 @@ function _contractBadgeTable() {
 app.get('/api/partner/contract/partnership', authenticatePartner, function(req, res) {
     try {
         var partner = req.partner;
-        var html = contractService.generatePartnershipContractHtml(partner, _contractBadgeTable());
+        var lang = getUserLanguage(req.partner.email, 'partner');
+        var html = contractService.generatePartnershipContractHtml(partner, _contractBadgeTable(), lang);
         res.json({ html: html, already_signed: partner.contract_signed === true, contract_version: contractService.CONTRACT_VERSION });
     } catch(e) {
         console.error('[CONTRACT] Erreur génération contrat partenariat:', e);
@@ -20396,7 +20397,7 @@ app.get('/api/contracts/:id/pdf', function(req, res) {
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename="contrat-' + contract.id + '.pdf"');
-        contractService.generatePdfBuffer(contract, function(err, buf) {
+        contractService.generatePdfBuffer(contract, (req.query.lang || 'fr'), function(err, buf) {
             if (err) { console.error('[CONTRACT] Erreur PDF:', err); return res.status(500).end(); }
             res.end(buf);
         });
@@ -20507,7 +20508,8 @@ app.get('/api/contracts/service/preview/:orderId', function(req, res) {
         var users = loadUsers();
         var clientUser = users.find(function(u) { return u.email === user.email; });
         var _ctOrder = order || { id: contract.order_id, product_name: contract.service_name, total_amount: contract.service_price, payment_tier: contract.payment_tier || 'small', installments: contract.installments || [], created_at: contract.created_at, client_info: { client_type: contract.client_type } };
-        var html = contractService.generateServiceContractHtml(_ctOrder, partner || {}, clientUser, contract.custom_conditions);
+        var lang = getUserLanguage(user.email, 'client');
+        var html = contractService.generateServiceContractHtml(_ctOrder, partner || {}, clientUser, contract.custom_conditions, lang);
         res.json({ html: html, contract: contract });
     } catch(e) {
         console.error('[CONTRACT] Erreur preview:', e);
