@@ -5,6 +5,81 @@
 
 const nodemailer = require('nodemailer');
 const fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
+
+// ============================================================
+// I18N SERVEUR — MÊME PATTERN QUE server.js (notifyUser) / app-i18n-dict-*.js
+// Les emails transactionnels sont rédigés en français en dur dans ce fichier ;
+// on traduit le sujet/html juste avant l'envoi en remplaçant les fragments
+// français connus par leur équivalent dans la langue du destinataire, via les
+// mêmes dictionnaires app-i18n-dict-<lang>.js (remplacement de sous-chaînes,
+// pas de correspondance exacte, car le texte est construit par concaténation
+// avec des variables dynamiques).
+// ============================================================
+const DATA_DIR = path.join(__dirname, 'data');
+
+function _loadJsonArray(file) {
+    try {
+        var p = path.join(DATA_DIR, file);
+        if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+    } catch (e) {}
+    return [];
+}
+
+var _serverI18nDicts = {};
+function _loadServerI18nDict(lang) {
+    if (lang === 'fr') return null;
+    if (_serverI18nDicts[lang] !== undefined) return _serverI18nDicts[lang];
+    try {
+        _serverI18nDicts[lang] = require('../app-i18n-dict-' + lang + '.js');
+    } catch (e) {
+        _serverI18nDicts[lang] = null;
+    }
+    return _serverI18nDicts[lang];
+}
+
+function getUserLanguage(email, role) {
+    if (!email) return 'fr';
+    try {
+        var list = _loadJsonArray(role === 'partner' ? 'partners.json' : 'users.json');
+        var rec = list.find(function(r) { return r.email && r.email.toLowerCase() === email.toLowerCase(); });
+        return (rec && rec.language) || 'fr';
+    } catch (e) {
+        return 'fr';
+    }
+}
+
+// Pour les flux où le destinataire peut être un client OU un partenaire
+// (auth partagée, ou notification dont le rôle du destinataire n'est pas fiable) :
+// on cherche d'abord côté client, puis côté partenaire.
+function getUserLanguageAnyRole(email) {
+    if (!email) return 'fr';
+    var lang = getUserLanguage(email, 'client');
+    if (lang !== 'fr') return lang;
+    return getUserLanguage(email, 'partner');
+}
+
+function translateServerText(text, lang) {
+    if (!text || lang === 'fr') return text;
+    var dict = _loadServerI18nDict(lang);
+    if (!dict) return text;
+    // Les templates email sont des blocs HTML indentés en dur (concaténation de
+    // chaînes) : les fragments extraits pour le dictionnaire ont été normalisés
+    // (espaces/retours à la ligne multiples réduits à un seul espace, trim) pour
+    // rester lisibles et réutilisables entre templates. On applique la même
+    // normalisation ici avant la recherche de sous-chaîne, sinon aucune clé ne
+    // matcherait jamais le HTML brut. Sans impact visuel : un navigateur/client
+    // mail collapse déjà ces espaces blancs hors balise <pre>.
+    var keys = Object.keys(dict).sort(function(a, b) { return b.length - a.length; });
+    var result = text.replace(/\s+/g, ' ');
+    for (var i = 0; i < keys.length; i++) {
+        if (keys[i].length >= 3 && result.indexOf(keys[i]) !== -1) {
+            result = result.split(keys[i]).join(dict[keys[i]]);
+        }
+    }
+    return result;
+}
 
 // ============================================================
 // CONFIGURATION DU TRANSPORTEUR EMAIL
@@ -269,12 +344,18 @@ async function sendContactConfirmation(clientEmail, clientName, subject) {
         </p>
     `;
 
+    var subject = `[FA GENESIS] Confirmation de réception de votre message`;
+    var html = getEmailTemplate(content, 'Confirmation de réception');
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         const result = await transport.sendMail({
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
             to: clientEmail,
-            subject: `[FA GENESIS] Confirmation de réception de votre message`,
-            html: getEmailTemplate(content, 'Confirmation de réception'),
+            subject: subject,
+            html: html,
             replyTo: process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS
         });
 
@@ -511,12 +592,18 @@ async function sendPaymentConfirmation(clientEmail, clientName, orderData) {
         </p>
     `;
 
+    var subject = `[FA GENESIS] Confirmation de paiement - ${paymentType}`;
+    var html = getEmailTemplate(content, 'Confirmation de paiement');
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         const result = await transport.sendMail({
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
             to: clientEmail,
-            subject: `[FA GENESIS] Confirmation de paiement - ${paymentType}`,
-            html: getEmailTemplate(content, 'Confirmation de paiement')
+            subject: subject,
+            html: html
         });
 
         console.log(`[EMAIL] Confirmation paiement envoyée à ${clientEmail} - ID: ${result.messageId}`);
@@ -587,12 +674,18 @@ async function sendAdminReply(clientEmail, clientName, originalSubject, replyMes
     const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER;
     const fromName = process.env.EMAIL_FROM_NAME || 'FA GENESIS';
 
+    var subject = `[FA GENESIS] Re: ${originalSubject}`;
+    var html = getEmailTemplate(content, 'Réponse FA GENESIS');
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         const result = await transport.sendMail({
             from: `"${fromName}" <${fromAddress}>`,
             to: clientEmail,
-            subject: `[FA GENESIS] Re: ${originalSubject}`,
-            html: getEmailTemplate(content, 'Réponse FA GENESIS'),
+            subject: subject,
+            html: html,
             replyTo: fromAddress
         });
 
@@ -659,12 +752,18 @@ async function sendNewDocumentNotification(clientEmail, clientName, documentName
         </p>
     `;
 
+    var emailSubject = `[FA GENESIS] ${subject}`;
+    var html = getEmailTemplate(content, subject);
+    var _lang = getUserLanguage(clientEmail, 'client');
+    emailSubject = translateServerText(emailSubject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         const result = await transport.sendMail({
             from: `"${fromName}" <${fromAddress}>`,
             to: clientEmail,
-            subject: `[FA GENESIS] ${subject}`,
-            html: getEmailTemplate(content, subject)
+            subject: emailSubject,
+            html: html
         });
 
         console.log(`[EMAIL] Notification nouveau document envoyée à ${clientEmail} - ID: ${result.messageId}`);
@@ -790,11 +889,15 @@ async function sendQuotePartnerNotification(quote, partner) {
         `;
 
         var html = getEmailTemplate(content, 'Devis assigné - FA GENESIS');
+        var subject = '[FA GENESIS] Devis assigné - ' + quote.quote_number;
+        var _lang = getUserLanguage(partner.email, 'partner');
+        subject = translateServerText(subject, _lang);
+        html = translateServerText(html, _lang);
 
         var mailOptions = {
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: partner.email,
-            subject: '[FA GENESIS] Devis assigné - ' + quote.quote_number,
+            subject: subject,
             html: html
         };
 
@@ -917,11 +1020,15 @@ async function sendQuoteToClient(quote) {
         `;
 
         var html = getEmailTemplate(content, 'Devis ' + quote.quote_number + ' - FA GENESIS');
+        var subject = '[FA GENESIS] Votre devis personnalisé ' + quote.quote_number;
+        var _lang = getUserLanguage(quote.client_email, 'client');
+        subject = translateServerText(subject, _lang);
+        html = translateServerText(html, _lang);
 
         var mailOptions = {
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: quote.client_email,
-            subject: '[FA GENESIS] Votre devis personnalisé ' + quote.quote_number,
+            subject: subject,
             html: html
         };
 
@@ -986,12 +1093,18 @@ async function sendSessionConfirmedEmail(clientEmail, clientName, sessionData) {
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
         + '<strong style="color:#000;">L\'équipe FA GENESIS</strong></p>';
 
+    var subject = '[FA GENESIS] Séance confirmée - ' + escapeHtml(dateStr);
+    var html = getEmailTemplate(content, 'Séance confirmée');
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         var result = await transport.sendMail({
             from: '"' + process.env.EMAIL_FROM_NAME + '" <' + process.env.EMAIL_FROM_ADDRESS + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Séance confirmée - ' + escapeHtml(dateStr),
-            html: getEmailTemplate(content, 'Séance confirmée')
+            subject: subject,
+            html: html
         });
         console.log('[EMAIL] Confirmation seance envoyee a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1035,12 +1148,18 @@ async function sendSessionRescheduledEmail(clientEmail, clientName, sessionData)
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
         + '<strong style="color:#000;">L\'équipe FA GENESIS</strong></p>';
 
+    var subject = '[FA GENESIS] Nouveau créneau proposé pour votre séance';
+    var html = getEmailTemplate(content, 'Nouveau créneau');
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         var result = await transport.sendMail({
             from: '"' + process.env.EMAIL_FROM_NAME + '" <' + process.env.EMAIL_FROM_ADDRESS + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Nouveau créneau proposé pour votre séance',
-            html: getEmailTemplate(content, 'Nouveau créneau')
+            subject: subject,
+            html: html
         });
         console.log('[EMAIL] Email reprogrammation envoye a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1158,12 +1277,18 @@ async function sendSessionProposedEmail(clientEmail, clientName, sessionData) {
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
         + '<strong style="color:#000;">L\'équipe FA GENESIS</strong></p>';
 
+    var subject = '[FA GENESIS] Un créneau vous a été proposé pour votre séance';
+    var html = getEmailTemplate(content, 'Créneau proposé');
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Un créneau vous a été proposé pour votre séance',
-            html: getEmailTemplate(content, 'Créneau proposé')
+            subject: subject,
+            html: html
         });
         console.log('[EMAIL] Email creneau propose envoye a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1206,12 +1331,18 @@ async function sendSessionCompletedEmail(clientEmail, clientName, sessionData) {
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
         + '<strong style="color:#000;">L\'équipe FA GENESIS</strong></p>';
 
+    var subject = '[FA GENESIS] Votre séance est terminée';
+    var html = getEmailTemplate(content, 'Séance terminée');
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Votre séance est terminée',
-            html: getEmailTemplate(content, 'Séance terminée')
+            subject: subject,
+            html: html
         });
         console.log('[EMAIL] Email seance terminee envoye a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1238,7 +1369,7 @@ async function sendWelcomeEmail(clientEmail, prenom) {
     const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
     const name = prenom || 'vous';
 
-    const html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Bienvenue sur FA GENESIS !</title></head>'
+    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Bienvenue sur FA GENESIS !</title></head>'
         + '<body style="margin:0;padding:0;background:#f5f5f5;font-family:\'Helvetica Neue\',Arial,sans-serif;">'
         + '<table role="presentation" width="100%" style="border-collapse:collapse;background:#f5f5f5;">'
         + '<tr><td style="padding:24px 12px;">'
@@ -1285,11 +1416,16 @@ async function sendWelcomeEmail(clientEmail, prenom) {
         + '</td></tr></table>'
         + '</body></html>';
 
+    var subject = `🎉 Bienvenue sur FA GENESIS, ${name} ! Votre compte est prêt`;
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         const result = await transport.sendMail({
             from: `"FA GENESIS" <${process.env.EMAIL_FROM_ADDRESS || 'contact@fagenesis.com'}>`,
             to: clientEmail,
-            subject: `🎉 Bienvenue sur FA GENESIS, ${name} ! Votre compte est prêt`,
+            subject: subject,
             html: html
         });
 
@@ -1355,12 +1491,18 @@ async function sendPartnerAccountApprovedEmail(partner) {
         </p>
     `;
 
+    var subject = `[FA GENESIS] Votre compte partenaire est approuvé`;
+    var html = getEmailTemplate(content, 'Compte partenaire approuvé');
+    var _lang = getUserLanguage(partner.email, 'partner');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         const result = await transport.sendMail({
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
             to: partner.email,
-            subject: `[FA GENESIS] Votre compte partenaire est approuvé`,
-            html: getEmailTemplate(content, 'Compte partenaire approuvé')
+            subject: subject,
+            html: html
         });
 
         console.log(`[EMAIL] Email approbation partenaire envoye a ${partner.email} - ID: ${result.messageId}`);
@@ -1416,12 +1558,18 @@ async function sendScheduleProposedNotification(recipientEmail, clientName, prop
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Cordialement,<br>'
         + '<strong style="color:#000;">FA GENESIS</strong></p>';
 
+    var subject = '[FA GENESIS] Nouvelle demande de date - ' + escapeHtml(clientName);
+    var html = getEmailTemplate(content, 'Nouvelle demande de date');
+    var _lang = getUserLanguageAnyRole(recipientEmail);
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: recipientEmail,
-            subject: '[FA GENESIS] Nouvelle demande de date - ' + escapeHtml(clientName),
-            html: getEmailTemplate(content, 'Nouvelle demande de date')
+            subject: subject,
+            html: html
         });
         console.log('[EMAIL] Notification planning envoyee a ' + recipientEmail);
         return { success: true, messageId: result.messageId };
@@ -1470,12 +1618,18 @@ async function sendScheduleConfirmedToClient(clientEmail, clientName, confirmedD
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
         + '<strong style="color:#000;">L\'equipe FA GENESIS</strong></p>';
 
+    var subject = '[FA GENESIS] Votre date de démarrage est confirmée !';
+    var html = getEmailTemplate(content, 'Date confirmée');
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Votre date de démarrage est confirmée !',
-            html: getEmailTemplate(content, 'Date confirmée')
+            subject: subject,
+            html: html
         });
         console.log('[EMAIL] Confirmation date envoyee a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1531,12 +1685,18 @@ async function sendScheduleReproposedToClient(clientEmail, clientName, repropose
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
         + '<strong style="color:#000;">L\'equipe FA GENESIS</strong></p>';
 
+    var subject = '[FA GENESIS] Une nouvelle date de démarrage vous est proposée';
+    var html = getEmailTemplate(content, 'Nouvelle date proposée');
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Une nouvelle date de démarrage vous est proposée',
-            html: getEmailTemplate(content, 'Nouvelle date proposée')
+            subject: subject,
+            html: html
         });
         console.log('[EMAIL] Contre-proposition date envoyee a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1609,12 +1769,18 @@ async function sendScheduleCancelledNotification(recipientEmail, recipientName, 
 
     var subjectSuffix = isClientCancelling ? (clientName + ' - ' + escapeHtml(orderName || '')) : 'Commande ' + escapeHtml(orderName || '');
 
+    var subject = '[FA GENESIS] Annulation de date - ' + subjectSuffix;
+    var html = getEmailTemplate(content, 'Annulation de date de démarrage');
+    var _lang = getUserLanguageAnyRole(recipientEmail);
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: recipientEmail,
-            subject: '[FA GENESIS] Annulation de date - ' + subjectSuffix,
-            html: getEmailTemplate(content, 'Annulation de date de démarrage')
+            subject: subject,
+            html: html
         });
         console.log('[EMAIL] Notification annulation date envoyee a ' + recipientEmail);
         return { success: true, messageId: result.messageId };
@@ -1650,16 +1816,19 @@ async function sendQuoteCancelledNotification(quote, cancelledBy) {
             '<p style="color: #555; font-size: 14px;">Rendez-vous dans l\'espace administration pour plus de détails.</p>';
 
         var html = getEmailTemplate(content, 'Devis annulé - FA GENESIS');
+        var baseSubject = '[FA GENESIS] Devis annulé - ' + (quote.quote_number || '');
         var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || 'contact@fagenesis.com';
 
         var results = [];
 
-        // Notification admin
+        // Notification admin (reste en français dans la quasi-totalité des cas :
+        // l'adresse admin n'a pas d'entrée users.json/partners.json donc 'fr' par défaut)
+        var _langAdmin = getUserLanguageAnyRole(adminEmail);
         var mailAdmin = {
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: adminEmail,
-            subject: '[FA GENESIS] Devis annulé - ' + (quote.quote_number || ''),
-            html: html
+            subject: translateServerText(baseSubject, _langAdmin),
+            html: translateServerText(html, _langAdmin)
         };
         try {
             var r = await transporter.sendMail(mailAdmin);
@@ -1671,11 +1840,12 @@ async function sendQuoteCancelledNotification(quote, cancelledBy) {
 
         // Notification partenaire si assigné
         if (quote.partner_email) {
+            var _langPartner = getUserLanguage(quote.partner_email, 'partner');
             var mailPartner = {
                 from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
                 to: quote.partner_email,
-                subject: '[FA GENESIS] Devis annulé - ' + (quote.quote_number || ''),
-                html: html
+                subject: translateServerText(baseSubject, _langPartner),
+                html: translateServerText(html, _langPartner)
             };
             try {
                 var rp = await transporter.sendMail(mailPartner);
@@ -1754,12 +1924,18 @@ async function sendAccompanimentEndNotification(clientEmail, clientName, declare
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
         + '<strong style="color:#000;">L\'équipe FA GENESIS</strong></p>';
 
+    var subject = '[FA GENESIS] Votre accompagnement est terminé — Téléchargez vos livrables';
+    var html = getEmailTemplate(content, 'Fin d\'accompagnement');
+    var _lang = getUserLanguage(clientEmail, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+
     try {
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Votre accompagnement est terminé — Téléchargez vos livrables',
-            html: getEmailTemplate(content, 'Fin d\'accompagnement')
+            subject: subject,
+            html: html
         });
         console.log('[EMAIL] Fin accompagnement envoyee a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1822,12 +1998,16 @@ async function sendCwDevisToClient(devis) {
         + '<p style="color:#666;font-size:12px;font-weight:700;margin:0;">En acceptant, vous serez invité à vous connecter à votre espace client pour procéder au paiement.</p>';
 
     var html = getEmailTemplate(content, 'Devis Coworking — FA GENESIS');
+    var subject = '[FA GENESIS] Votre devis — ' + (devis.service_label || 'Coworking');
+    var _lang = getUserLanguage(devis.client_email, 'client');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
 
     try {
         await transport.sendMail({
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: devis.client_email,
-            subject: '[FA GENESIS] Votre devis — ' + (devis.service_label || 'Coworking'),
+            subject: subject,
             html: html
         });
         console.log('[EMAIL] CW Devis envoye a ' + devis.client_email);
@@ -1891,12 +2071,16 @@ async function sendCwReservationToPartner(reservation, order) {
         + '<p style="color:#666;font-size:12px;font-weight:700;margin:0;">Vous pouvez également gérer cette réservation depuis votre <a href="https://fagenesis.com/app.html" style="color:#b81a6e;">espace partenaire</a>.</p>';
 
     var html = getEmailTemplate(content, 'Nouvelle Réservation — COM VISA');
+    var subject = '[COM VISA] Nouvelle réservation — ' + (reservation.product_name || 'Coworking');
+    var _lang = getUserLanguage(partnerEmail, 'partner');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
 
     try {
         await transport.sendMail({
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: partnerEmail,
-            subject: '[COM VISA] Nouvelle réservation — ' + (reservation.product_name || 'Coworking'),
+            subject: subject,
             html: html
         });
         console.log('[EMAIL] CW Reservation envoyee au partenaire: ' + partnerEmail);
@@ -1935,12 +2119,16 @@ async function sendPasswordResetEmail(email, prenom, resetLink) {
         + '<span style="color:#666;word-break:break-all;">' + resetLink + '</span></p>';
 
     var html = getEmailTemplate(content, 'Réinitialisation mot de passe — FA GENESIS');
+    var subject = 'Réinitialisation de votre mot de passe FA GENESIS';
+    var _lang = getUserLanguageAnyRole(email);
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
 
     try {
         await transport.sendMail({
             from: '"FA GENESIS" <noreply@fagenesis.com>',
             to: email,
-            subject: 'Réinitialisation de votre mot de passe FA GENESIS',
+            subject: subject,
             html: html
         });
         console.log('[EMAIL] Reset password envoyé à: ' + email);
@@ -1962,11 +2150,15 @@ async function sendOtpEmail(email, prenom, otpCode) {
         + otpCode + '</div></div>'
         + '<p style="color:#888;font-size:13px;line-height:1.6;margin:24px 0 0;">Ce code est valable <strong>10 minutes</strong>. Ne le partagez jamais.</p>';
     var html = getEmailTemplate(content, 'Code de vérification — FA GENESIS');
+    var subject = 'Votre code FA GENESIS : ' + otpCode;
+    var _lang = getUserLanguageAnyRole(email);
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
     try {
         await transport.sendMail({
             from: '"FA GENESIS" <noreply@fagenesis.com>',
             to: email,
-            subject: 'Votre code FA GENESIS : ' + otpCode,
+            subject: subject,
             html: html
         });
         console.log('[OTP EMAIL] Envoyé à ' + email);
@@ -2039,11 +2231,15 @@ async function sendLevelUpEmail(clientEmail, prenom, levelLabel) {
             + '<p style="color:#ccc;font-size:15px;line-height:1.7;margin:0 0 16px;">De nouveaux avantages exclusifs sont maintenant débloqués pour vous. Connectez-vous à l\'application pour les découvrir.</p>'
             + '<a href="https://fagenesis.com/app.html" style="display:inline-block;background:#FFD700;color:#000;font-weight:800;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;margin-top:8px;">Voir mes avantages →</a>';
         var html = getEmailTemplate(content, 'Nouveau niveau GENESIS atteint !');
+        var subject = '🎉 Vous êtes maintenant ' + levelLabel + ' sur FA GENESIS !';
+        var _lang = getUserLanguage(clientEmail, 'client');
+        subject = translateServerText(subject, _lang);
+        html = translateServerText(html, _lang);
         var mailOptions = {
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
             replyTo: adminEmail,
-            subject: '🎉 Vous êtes maintenant ' + levelLabel + ' sur FA GENESIS !',
+            subject: subject,
             html: html
         };
         var result = await transporter.sendMail(mailOptions);
@@ -2067,11 +2263,15 @@ async function sendCapacityLimitedEventEmail(clientEmail, prenom, eventTitle, ev
             + '<p style="color:#ccc;font-size:14px;line-height:1.7;margin:0 0 20px;">Les places sont limitées — réservez rapidement depuis la section <strong style="color:#fff;">Événements</strong> de l\'application.</p>'
             + '<a href="' + link + '" style="display:inline-block;background:#FFD700;color:#000;font-weight:800;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;margin-top:8px;">Voir l\'événement →</a>';
         var html = getEmailTemplate(content, 'Événement à capacité limitée');
+        var subject = '🎫 Événement exclusif : ' + safeTitle + ' — Places limitées !';
+        var _lang = getUserLanguage(clientEmail, 'client');
+        subject = translateServerText(subject, _lang);
+        html = translateServerText(html, _lang);
         var mailOptions = {
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
             replyTo: adminEmail,
-            subject: '🎫 Événement exclusif : ' + safeTitle + ' — Places limitées !',
+            subject: subject,
             html: html
         };
         var result = await transporter.sendMail(mailOptions);
@@ -2127,11 +2327,15 @@ async function sendPayoutDestinationChangedEmail(partnerEmail, partnerPrenom, me
                 + '<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 16px;color:#991b1b;font-size:14px;line-height:1.6;margin:0 0 16px;"><strong>Ce n\'est pas vous ?</strong> Votre compte est peut-être compromis. Changez immédiatement votre mot de passe et contactez-nous à ' + adminEmail + '.</p>';
         }
         var html = getEmailTemplate(content, isFirstTime ? 'Coordonnées de versement enregistrées' : 'Alerte sécurité — coordonnées de versement modifiées');
+        var subject = isFirstTime ? '✅ Coordonnées de versement enregistrées — FA GENESIS' : '⚠️ Coordonnées de versement modifiées — FA GENESIS';
+        var _lang = getUserLanguage(partnerEmail, 'partner');
+        subject = translateServerText(subject, _lang);
+        html = translateServerText(html, _lang);
         var mailOptions = {
             from: '"FA GENESIS Sécurité" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: partnerEmail,
             replyTo: adminEmail,
-            subject: isFirstTime ? '✅ Coordonnées de versement enregistrées — FA GENESIS' : '⚠️ Coordonnées de versement modifiées — FA GENESIS',
+            subject: subject,
             html: html
         };
         var result = await transporter.sendMail(mailOptions);
@@ -2185,10 +2389,14 @@ async function sendContractSignedToPartnerEmail(partnerEmail, partnerPrenom, cli
         + '</table></td></tr></table></body></html>';
 
     try {
+        var subject = '✍️ Contrat signé — ' + (serviceName || 'Prestation');
+        var _lang = getUserLanguage(partnerEmail, 'partner');
+        subject = translateServerText(subject, _lang);
+        html = translateServerText(html, _lang);
         var mailOptions = {
             from: '"FA GENESIS" <' + (process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@fagenesis.com') + '>',
             to: partnerEmail,
-            subject: '✍️ Contrat signé — ' + (serviceName || 'Prestation'),
+            subject: subject,
             html: html
         };
         var result = await transport.sendMail(mailOptions);
@@ -2239,10 +2447,14 @@ async function sendWithdrawalSentToPartnerEmail(partnerEmail, partnerPrenom, amo
         + '</table></td></tr></table></body></html>';
 
     try {
+        var subject = '💸 Virement envoyé — ' + amountStr + ' €';
+        var _lang = getUserLanguage(partnerEmail, 'partner');
+        subject = translateServerText(subject, _lang);
+        html = translateServerText(html, _lang);
         var mailOptions = {
             from: '"FA GENESIS" <' + (process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@fagenesis.com') + '>',
             to: partnerEmail,
-            subject: '💸 Virement envoyé — ' + amountStr + ' €',
+            subject: subject,
             html: html
         };
         var result = await transport.sendMail(mailOptions);
@@ -2486,10 +2698,14 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         + '</body></html>';
 
     try {
+        var subject = '🎉 Commande réussie !';
+        var _lang = getUserLanguage(clientEmail, 'client');
+        subject = translateServerText(subject, _lang);
+        html = translateServerText(html, _lang);
         var result = await transport.sendMail({
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || 'contact@fagenesis.com') + '>',
             to: clientEmail,
-            subject: '🎉 Commande réussie !',
+            subject: subject,
             html: html
         });
         console.log('[EMAIL] Confirmation commande partenaire envoyée à ' + clientEmail);
@@ -2614,10 +2830,14 @@ async function sendInstallmentReminderEmail(clientEmail, clientFirstName, order,
             + '<p style="color:#555;font-size:12px;text-align:center;margin:0;">Rendez-vous dans votre espace <strong>Réservations</strong>.</p>',
             headline + ' — FA GENESIS'
         );
+        var subject = (isOD ? '⚠️ ' : '📅 ') + headline + ' — ' + (installment.amount || '') + ' € (' + (installment.label || '') + ')';
+        var _lang = getUserLanguage(clientEmail, 'client');
+        subject = translateServerText(subject, _lang);
+        html = translateServerText(html, _lang);
         await transport.sendMail({
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || 'contact@fagenesis.com') + '>',
             to: clientEmail,
-            subject: (isOD ? '⚠️ ' : '📅 ') + headline + ' — ' + (installment.amount || '') + ' € (' + (installment.label || '') + ')',
+            subject: subject,
             html: html
         });
         console.log('[EMAIL] Rappel mensualité envoyé à', clientEmail, '(' + (isOD ? 'retard' : 'à venir') + ')');
