@@ -52,7 +52,7 @@
                 return;
             }
             var s = document.createElement('script');
-            s.src = BASE + files[i] + '?v=20261015';
+            s.src = BASE + files[i] + '?v=20261016b';
             s.onload = function() { loadNext(i + 1); };
             s.onerror = function() { loadNext(i + 1); }; // un fichier manquant ne doit pas tout bloquer
             document.head.appendChild(s);
