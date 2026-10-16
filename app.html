@@ -102,12 +102,14 @@ a{text-decoration:none;color:inherit}
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    WELCOME
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-#welcome,#roleChoice{
+#welcome,#roleChoice,#langGate{
   display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
   position:fixed;inset:0;z-index:100;overflow-y:auto;
   background:transparent;
   padding:0 24px calc(40px + var(--safe));
 }
+#langGate{z-index:110}
+.lang-gate-list{width:100%;max-width:360px;display:flex;flex-direction:column;overflow-y:auto;max-height:44vh}
 .w-hero{width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;padding-top:60px;flex:1;justify-content:center}
 .w-logo{width:72px;height:72px;border-radius:20px;object-fit:cover;margin-bottom:28px;box-shadow:0 0 40px rgba(255,215,0,.2)}
 .w-title{font-size:26px;font-weight:900;color:var(--yellow);text-align:center;line-height:1.2;margin-bottom:12px;
@@ -169,7 +171,7 @@ a{text-decoration:none;color:inherit}
 #goldFlash.on{animation:goldBurst 1s cubic-bezier(.2,0,.3,1) forwards}
 
 /* Welcome : éléments cachés initialement puis en cascade spring */
-#welcome.entering,#roleChoice.entering{opacity:1!important}
+#welcome.entering,#roleChoice.entering,#langGate.entering{opacity:1!important}
 @keyframes wLogoIn{
   from{opacity:0;transform:scale(2) rotate(-15deg) translateY(-20px)}
   to  {opacity:1;transform:scale(1)  rotate(0deg)  translateY(0)}
@@ -182,11 +184,11 @@ a{text-decoration:none;color:inherit}
   from{opacity:0;transform:translateY(50px) scale(.94)}
   to  {opacity:1;transform:translateY(0)    scale(1)}
 }
-#welcome.entering .w-logo   ,#roleChoice.entering .w-logo   {animation:wLogoIn  .65s cubic-bezier(.34,1.56,.64,1) .05s both}
-#welcome.entering .w-title  ,#roleChoice.entering .w-title  {animation:wSlideUp .55s cubic-bezier(.34,1.56,.64,1) .22s both}
-#welcome.entering .w-desc   ,#roleChoice.entering .w-desc   {animation:wSlideUp .45s ease-out                     .36s both}
+#welcome.entering .w-logo   ,#roleChoice.entering .w-logo   ,#langGate.entering .w-logo   {animation:wLogoIn  .65s cubic-bezier(.34,1.56,.64,1) .05s both}
+#welcome.entering .w-title  ,#roleChoice.entering .w-title  ,#langGate.entering .w-title  {animation:wSlideUp .55s cubic-bezier(.34,1.56,.64,1) .22s both}
+#welcome.entering .w-desc   ,#roleChoice.entering .w-desc   ,#langGate.entering .w-desc   {animation:wSlideUp .45s ease-out                     .36s both}
 #welcome.entering .w-features{animation:wSlideUp .45s ease-out                    .46s both}
-#welcome.entering .w-btns   ,#roleChoice.entering .w-btns   {animation:wBtnsIn  .6s  cubic-bezier(.34,1.56,.64,1) .58s both}
+#welcome.entering .w-btns   ,#roleChoice.entering .w-btns   ,#langGate.entering .lang-gate-list{animation:wBtnsIn  .6s  cubic-bezier(.34,1.56,.64,1) .58s both}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    REDUCED MOTION — arrêt des animations décoratives
@@ -229,7 +231,7 @@ a{text-decoration:none;color:inherit}
   #splash .s-logo{width:120px;height:120px}
   #splash .s-name{font-size:30px;letter-spacing:5px}
   #splash .s-bar{width:72px;margin-top:56px}
-  #welcome,#roleChoice{padding:0 40px calc(60px + var(--safe))}
+  #welcome,#roleChoice,#langGate{padding:0 40px calc(60px + var(--safe))}
   .w-hero{max-width:580px;padding-top:80px}
   .w-logo{width:90px;height:90px;border-radius:22px;margin-bottom:32px}
   .w-title{font-size:34px;margin-bottom:16px}
@@ -2723,6 +2725,20 @@ function _genesisVersionFooter(){
   <div class="s-bar"><div class="s-fill"></div></div>
 </div>
 
+<!-- ══════════ CHOIX DE LANGUE (premier lancement uniquement) ══════════ -->
+<!-- Affiché à la place de #roleChoice au tout premier démarrage (aucune langue encore
+     choisie en localStorage) — voir _genesisBootApp(). Une fois une langue choisie, cet
+     écran ne réapparaît plus (sélecteur accessible ensuite depuis Profil). -->
+<div id="langGate" style="display:none">
+  <div class="w-hero" style="padding-top:40px">
+    <img class="w-logo" src="assets/images/icon-app-192.png" alt="GENESIS"
+      onerror="this.style.display='none'">
+    <div class="w-title">Choisissez votre langue<br>Choose your language</div>
+    <div class="w-desc">Sélectionnez la langue d'utilisation de l'application.</div>
+  </div>
+  <div class="lang-gate-list" id="lang-gate-list" data-i18n-skip="true"></div>
+</div>
+
 <!-- ══════════ CHOIX DE RÔLE ══════════ -->
 <div id="roleChoice">
   <div class="w-hero">
@@ -3697,6 +3713,43 @@ function _selectAppLanguage(code){
   if(code===AppI18n.getAppLanguage()){ closeLanguagePicker(); return; }
   AppI18n.setAppLanguage(code); // sauvegarde + recharge la page dans la langue choisie
 }
+
+// ── CHOIX DE LANGUE AU TOUT PREMIER LANCEMENT (voir #langGate + _genesisBootApp()) ──
+// Distinct du sélecteur ci-dessus (Profil) : ici on bloque l'entrée dans l'app tant
+// qu'aucune langue n'a jamais été choisie sur cet appareil, AVANT même d'afficher les
+// boutons "Je recherche un prestataire" / "Je propose mes services" / "Invité".
+function _hasChosenAppLanguage(){
+  try{ return localStorage.getItem('fa_genesis_app_lang') !== null; }catch(e){ return true; } // localStorage indisponible : ne jamais bloquer l'accès à l'app pour ça
+}
+function showLangGate(){
+  var g = document.getElementById('langGate'); var list = document.getElementById('lang-gate-list');
+  if(!g || !list) return;
+  list.innerHTML = APP_LANGUAGES.map(function(l){
+    return '<button class="lang-option" onclick="_selectFirstAppLanguage(\''+l.code+'\')">'
+      +'<span class="lang-option-flag">'+l.flag+'</span><span class="lang-option-name">'+l.name+'</span>'
+      +'</button>';
+  }).join('');
+  g.style.opacity = '0';
+  g.style.display = 'flex';
+  setTimeout(function(){
+    g.style.transition = 'opacity .35s ease';
+    g.style.opacity = '1';
+    g.className = 'entering';
+  }, 30);
+}
+function _selectFirstAppLanguage(code){
+  var g = document.getElementById('langGate');
+  if(code === 'fr' || typeof AppI18n === 'undefined'){
+    // Déjà en français par défaut — pas besoin de recharger la page, juste marquer le choix.
+    try{ localStorage.setItem('fa_genesis_app_lang', 'fr'); }catch(e){}
+    if(g) g.style.display = 'none';
+    showRoleChoice();
+    return;
+  }
+  // sauvegarde + recharge la page ; au retour, _genesisBootApp() voit la langue déjà
+  // choisie et affiche directement roleChoice, déjà traduit par AppI18n.initAppLanguage().
+  AppI18n.setAppLanguage(code);
+}
 // Masquer roleChoice dès que JS démarre (il est visible par défaut pour le fallback CSS)
 (function(){ var r=document.getElementById('roleChoice'); if(r) r.style.display='none'; })();
 
@@ -3935,7 +3988,7 @@ function _genesisBootApp(){
       }
     } catch(e){}
   }
-  if(!_bootHandled){ _exitSplash(showRoleChoice); }
+  if(!_bootHandled){ _exitSplash(_hasChosenAppLanguage() ? showRoleChoice : showLangGate); }
 }
 
 function _exitSplash(callback){
