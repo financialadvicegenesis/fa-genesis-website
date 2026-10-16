@@ -274,10 +274,12 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
-        # L'app est déjà live sur l'App Store (v1.0.0, approuvée le 2026-10-06) : on peut donc
-        # soumettre directement une mise à jour (v1.0.1) à la review Apple standard au lieu
-        # d'attendre que les infos de test TestFlight externe (jamais remplies) soient
-        # renseignées - cette dernière étape ne concerne que les testeurs EXTERNES TestFlight,
-        # pas une soumission App Store classique, qui n'en a pas besoin.
+        # BUG CORRIGÉ (build #27 et #28) : avec submit_to_testflight:true ET
+        # submit_to_app_store:true ensemble, Codemagic tente TestFlight EN PREMIER - son échec
+        # ("Beta App Information" jamais remplie, infos de contact testeurs externes) arrête tout
+        # le reste du post-processing, donc submit_to_app_store n'était JAMAIS atteint malgré sa
+        # valeur à true. L'app est déjà live sur l'App Store (v1.0.0, approuvée le 2026-10-06) :
+        # TestFlight désactivé, on soumet uniquement à la review Apple standard pour la mise à
+        # jour (v1.0.1), qui elle n'a besoin d'aucune de ces infos de contact testeurs.
+        submit_to_testflight: false
         submit_to_app_store: true
