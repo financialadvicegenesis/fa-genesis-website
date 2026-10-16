@@ -1394,7 +1394,7 @@ async function sendWelcomeEmail(clientEmail, prenom) {
         + '<table role="presentation" width="100%" style="border-collapse:collapse;">'
         + _deliverooStep('1', '#FFD700', 'Explorez les prestataires', 'Parcourez notre annuaire de professionnels vérifiés et consultez leurs portfolios.')
         + _deliverooStep('2', '#00ccbc', 'Faites une demande', 'Choisissez un prestataire, décrivez votre besoin — c\'est gratuit et sans engagement.')
-        + _deliverooStep('3', '#ff9f00', 'Payez après acceptation', 'Votre prestataire confirme sous 24h. L\'acompte n\'est prélevé qu\'à ce moment-là.')
+        + _deliverooStep('3', '#ff9f00', 'Payez après acceptation', 'Votre prestataire confirme sous 24h. Le paiement n\'est prélevé qu\'à ce moment-là.')
         + _deliverooStep('4', '#22cc66', 'Suivez en temps réel', 'Suivez l\'avancement de votre mission et recevez vos livrables.', true)
         + '</table>'
         + '</td></tr>'
@@ -1402,7 +1402,7 @@ async function sendWelcomeEmail(clientEmail, prenom) {
         // CTA
         + '<tr><td style="background:#fff;padding:28px 32px;border-bottom:1px solid #eee;text-align:center;">'
         + '<p style="margin:0 0 16px;font-size:15px;color:#1a1a1a;">Prêt(e) à commencer ?</p>'
-        + '<a href="' + frontUrl + '/app.html" style="display:inline-block;background:#FFD700;color:#000;font-weight:900;font-size:15px;text-decoration:none;padding:14px 36px;border-radius:8px;">Explorer les prestataires →</a>'
+        + '<a href="' + frontUrl + '/app.html#prestataires" style="display:inline-block;background:#FFD700;color:#000;font-weight:900;font-size:15px;text-decoration:none;padding:14px 36px;border-radius:8px;">Explorer les prestataires →</a>'
         + '</td></tr>'
 
         // Footer

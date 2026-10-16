@@ -9947,6 +9947,14 @@ function _purgeAccountData(opts) {
     if (role === 'client') {
         try {
             // Commandes : anonymiser les infos client (garder la trace financière)
+            // BUG CORRIGÉ : getClientCompletedOrders()/getClientReferralCount() et une quinzaine
+            // d'autres lectures dans ce fichier résolvent l'email d'une commande via
+            // "(o.client_info && o.client_info.email) || o.email || o.user_email" — cette purge ne
+            // nettoyait que client_info.email et clientEmail, jamais les deux champs de repli o.email
+            // / o.user_email. Un client qui supprimait son compte puis le recréait avec le même email
+            // voyait donc ses anciennes commandes terminées ressuscitées silencieusement dans son
+            // calcul de points QG (ex: 40 QG de bienvenue + anciennes commandes = bien plus que les
+            // 40 QG attendus pour un compte neuf) dès que o.email/o.user_email était le champ renseigné.
             var orders = loadOrders();
             var oc = false;
             orders.forEach(function(o) {
@@ -9956,6 +9964,12 @@ function _purgeAccountData(opts) {
                 }
                 if (o.clientEmail && o.clientEmail.toLowerCase() === email) {
                     o.clientEmail = null; oc = true;
+                }
+                if (o.email && o.email.toLowerCase() === email) {
+                    o.email = null; oc = true;
+                }
+                if (o.user_email && o.user_email.toLowerCase() === email) {
+                    o.user_email = null; oc = true;
                 }
             });
             if (oc) saveOrders(orders);
