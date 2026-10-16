@@ -275,4 +275,9 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        submit_to_app_store: false
+        # L'app est déjà live sur l'App Store (v1.0.0, approuvée le 2026-10-06) : on peut donc
+        # soumettre directement une mise à jour (v1.0.1) à la review Apple standard au lieu
+        # d'attendre que les infos de test TestFlight externe (jamais remplies) soient
+        # renseignées - cette dernière étape ne concerne que les testeurs EXTERNES TestFlight,
+        # pas une soumission App Store classique, qui n'en a pas besoin.
+        submit_to_app_store: true
