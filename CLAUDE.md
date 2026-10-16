@@ -76,6 +76,21 @@ fichier binaire (image, police...) référencé par une URL fixe est modifié, a
 `?v=DATE` sur CETTE URL précise, dans le même commit — sinon aucune confirmation serveur ne reflète
 ce que l'appareil affiche réellement.
 
+## Ne jamais appeler `location.reload()` sur `controllerchange` du Service Worker
+
+Bug réel le 2026-10-16 : `pwa-init.js` rechargeait automatiquement la page dès qu'un nouveau
+Service Worker prenait le contrôle (`navigator.serviceWorker.addEventListener('controllerchange',
+() => location.reload())`). Comme `sw.js` utilise `skipWaiting()` + `clients.claim()`, CHAQUE
+activation d'un SW (y compris sa toute première, pas seulement une mise à jour) prend
+immédiatement le contrôle de toute page déjà ouverte et déclenche ce reload — sur un projet qui
+déploie aussi souvent que celui-ci, ça veut dire qu'un visiteur peut se faire recharger sa page
+en pleine interaction (formulaire, sélecteur de langue...) à peu près n'importe quand. Confirmé
+par test réel : `login.html` se rechargeait seul ~2-3s après son chargement, sans aucune action
+utilisateur. Le SW reste actif et sert les ressources à jour sans ce reload forcé — le JS déjà en
+mémoire continue simplement de tourner jusqu'à la prochaine navigation naturelle. Ne jamais
+réintroduire ce pattern sans un garde-fou explicite (ex: ignorer le tout premier événement, ou ne
+reload que si aucune interaction n'est en cours).
+
 ## iOS : signature du pont push notifications Firebase
 
 Contrairement à Android (jeton FCM direct via `@capacitor/push-notifications`), iOS nécessite
