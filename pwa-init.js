@@ -43,9 +43,18 @@
         console.warn('[PWA] Echec SW:', err);
       });
     });
-    navigator.serviceWorker.addEventListener('controllerchange', function() {
-      window.location.reload();
-    });
+    // BUG CORRIGÉ : ce reload automatique interrompait l'utilisateur en pleine interaction
+    // (ex: sélection de langue sur le site vitrine, saisie du formulaire de connexion) chaque
+    // fois qu'un nouveau Service Worker prenait le contrôle — ce qui arrive très souvent sur ce
+    // projet vu la fréquence des déploiements, puisque sw.js appelle skipWaiting()+clients.claim()
+    // (le nouveau SW prend immédiatement le contrôle de TOUTE page déjà ouverte, y compris lors de
+    // sa toute première activation sur un navigateur/appareil). Confirmé par test réel : login.html
+    // se rechargeait seul ~2-3s après son chargement, sans aucune action de l'utilisateur, rendant
+    // impossible toute interaction (ex: changer de langue) pendant cette fenêtre. Le nouveau SW
+    // reste actif et sert les ressources mises à jour dès maintenant malgré l'absence de reload
+    // forcé ; le JS déjà chargé en mémoire continue simplement de tourner jusqu'à la prochaine
+    // navigation naturelle de l'utilisateur, au lieu de lui être arraché sans prévenir.
+    navigator.serviceWorker.addEventListener('controllerchange', function() {});
   }
 
   // L'installation PWA ne s'affiche QUE sur app.html

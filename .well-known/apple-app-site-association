@@ -4,7 +4,7 @@
     "details": [
       {
         "appID": "ZQS9LTXPSS.com.fagenesis.genesis",
-        "paths": ["*"]
+        "paths": ["/app.html", "/app.html?*", "/app.html#*"]
       }
     ]
   }
