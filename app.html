@@ -2527,16 +2527,16 @@ a{text-decoration:none;color:inherit}
      AppI18n.initAppLanguage() tout de suite au démarrage — un defer ici reproduirait le
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
-<script src="app-i18n.js?v=20261016b"></script>
-<script src="app-i18n-en.js?v=20261018b"></script>
-<script src="app-i18n-es.js?v=20261018b"></script>
-<script src="app-i18n-hi.js?v=20261018b"></script>
-<script src="app-i18n-pt.js?v=20261018b"></script>
-<script src="app-i18n-ja.js?v=20261018b"></script>
-<script src="app-i18n-zh.js?v=20261018b"></script>
-<script src="app-i18n-ar.js?v=20261018b"></script>
-<script src="app-i18n-it.js?v=20261018b"></script>
-<script src="app-i18n-de.js?v=20261018b"></script>
+<script src="app-i18n.js?v=20261018c"></script>
+<script src="app-i18n-en.js?v=20261018c"></script>
+<script src="app-i18n-es.js?v=20261018c"></script>
+<script src="app-i18n-hi.js?v=20261018c"></script>
+<script src="app-i18n-pt.js?v=20261018c"></script>
+<script src="app-i18n-ja.js?v=20261018c"></script>
+<script src="app-i18n-zh.js?v=20261018c"></script>
+<script src="app-i18n-ar.js?v=20261018c"></script>
+<script src="app-i18n-it.js?v=20261018c"></script>
+<script src="app-i18n-de.js?v=20261018c"></script>
 </head>
 <body>
 
@@ -4977,8 +4977,13 @@ function _expMatch(name){
 function verifiedBadgeHtml(p){
   return p.verified ? '<i class="fa-solid fa-circle-check p-verified-badge" title="Profil approuvé par FA GENESIS"></i>' : '';
 }
+// _tr() : comme AppI18n.t() mais défensif si app-i18n.js n'est pas encore chargé — ces
+// fonctions construisent des libellés avec un nombre variable (prix, minutes), donc le
+// MutationObserver de traduction (qui matche uniquement du texte DOM déjà assemblé) ne peut
+// jamais les traduire : il faut traduire le fragment statique AVANT de concaténer la valeur.
+function _tr(text){ return (typeof AppI18n!=='undefined' && AppI18n.t) ? AppI18n.t(text) : text; }
 function partnerPriceLabel(p){
-  return (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
+  return (p.fromPrice===null||p.fromPrice===undefined) ? _tr('Sur devis') : (_tr('à partir de')+' '+p.fromPrice+' €');
 }
 function _ptnrMinutesToLabel(m){
   return m<60 ? Math.round(m)+'min' : Math.round(m/60)+'h';
@@ -4986,8 +4991,8 @@ function _ptnrMinutesToLabel(m){
 function partnerResponseLabel(p){
   // Priorité à l'engagement déclaré par le partenaire lui-même, sinon à la moyenne
   // calculée automatiquement à partir de ses réponses passées.
-  if(typeof p.responseTimeCommitmentMinutes === 'number') return 'Sous '+_ptnrMinutesToLabel(p.responseTimeCommitmentMinutes);
-  if(typeof p.avgResponseMinutes === 'number') return 'Sous ~'+_ptnrMinutesToLabel(p.avgResponseMinutes);
+  if(typeof p.responseTimeCommitmentMinutes === 'number') return _tr('Sous')+' '+_ptnrMinutesToLabel(p.responseTimeCommitmentMinutes);
+  if(typeof p.avgResponseMinutes === 'number') return _tr('Sous')+' ~'+_ptnrMinutesToLabel(p.avgResponseMinutes);
   return '';
 }
 function partnerMetaLineHtml(p){

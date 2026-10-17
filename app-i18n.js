@@ -184,11 +184,24 @@
     return currentLang;
   }
 
+  // Traduction ponctuelle d'un fragment statique depuis du JS (ex: construire
+  // "Sous ~16min" à partir d'un nombre variable — le MutationObserver ne peut
+  // matcher que le texte FINAL déjà assemblé dans le DOM, jamais un texte
+  // contenant un nombre qui change selon les données). Renvoie le texte
+  // d'origine si aucune traduction n'est trouvée (jamais de clé manquante
+  // visible). Contrairement à translate() (usage interne DOM), ne renvoie
+  // jamais null et n'a pas besoin de préserver des espaces de bord.
+  function t(text) {
+    var hit = translate(text, currentLang);
+    return hit !== null ? hit : text;
+  }
+
   window.AppI18n = {
     registerDict: registerDict,
     initAppLanguage: initAppLanguage,
     setAppLanguage: setAppLanguage,
     getAppLanguage: getAppLanguage,
+    t: t,
     SUPPORTED_LANGS: SUPPORTED_LANGS,
     RTL_LANGS: RTL_LANGS,
   };
