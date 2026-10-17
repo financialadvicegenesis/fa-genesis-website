@@ -107,3 +107,18 @@ chaque build (`ios/` gitignored), donc injectées via des étapes `codemagic.yam
    identique à un simple problème de timing, à ne pas confondre avec lui.
 
 Voir `project_ios_push_notifications_firebase_bridge.md` pour l'historique complet du diagnostic.
+
+## AppI18n ne traduit QUE du texte statique — contenu dynamique (base de données) = mécanisme séparé
+
+Le dictionnaire `app-i18n-<lang>.js` fait un **match exact** sur des chaînes françaises connues au
+moment de la traduction manuelle. Tout texte rédigé après coup par un admin (actualités, avis,
+descriptions de profil...) et stocké en base ne peut **jamais** matcher une clé du dictionnaire —
+il reste silencieusement en français quelle que soit la langue choisie, sans erreur visible.
+
+Pour ce cas (voir `/api/actualites` et `_translateActualite()` dans `server.js`), le bon pattern est
+une traduction à la demande via l'API Anthropic (`claude-haiku-4-5`, même pattern que
+`/api/admin/linkedin/generate-message`), mise en cache dans un champ `translations[lang]` sur
+l'enregistrement et persistée (`saveActualites()`/`persistToCloud`) — traduit une seule fois par
+texte/langue, pas à chaque visite. **Piège associé** : toute route d'édition de ce contenu doit
+invalider (`translations = {}`) le cache si le texte source français change, sinon les traductions
+affichées restent désynchronisées du français indéfiniment.

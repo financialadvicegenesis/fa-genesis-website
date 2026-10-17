@@ -22068,8 +22068,63 @@ app.put('/api/admin/payout/country/:code', function(req, res) {
 });
 
 // ── ACTUALITÉS (partenariats / événements publics) ──────────────
+// Traduction à la demande (titre + description) des actualités rédigées par
+// l'admin en français — contenu dynamique de base de données, donc hors de
+// portée du dictionnaire statique AppI18n (qui ne connaît que les textes
+// figés du site au moment de la traduction manuelle). Traduit une seule fois
+// par actualité/langue via Claude (claude-haiku-4-5), puis met en cache le
+// résultat dans actu.translations[lang] (persisté par saveActualites) pour
+// que les visites suivantes soient instantanées et gratuites.
+var ACTU_LANG_NAMES = {
+    en: 'English', es: 'Spanish', pt: 'Portuguese', ar: 'Arabic', de: 'German',
+    zh: 'Simplified Chinese', it: 'Italian', ja: 'Japanese', hi: 'Hindi'
+};
+async function _translateActualite(list, actu, lang) {
+    if (!lang || lang === 'fr' || !ACTU_LANG_NAMES[lang]) return actu;
+    if (actu.translations && actu.translations[lang]) {
+        return Object.assign({}, actu, actu.translations[lang]);
+    }
+    var anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) return actu; // pas de clé configurée : on sert le français tel quel
+    try {
+        var aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': anthropicKey,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 1000,
+                system: 'You translate short news/press-release items for FA GENESIS from French into ' + ACTU_LANG_NAMES[lang] + '. Keep proper nouns, brand names and place names unchanged. Preserve line breaks and tone. Respond with ONLY a JSON object of the exact shape {"title":"...","description":"..."}, no markdown, no explanation.',
+                messages: [{ role: 'user', content: JSON.stringify({ title: actu.title || '', description: actu.description || '' }) }]
+            })
+        });
+        if (!aiResp.ok) { console.error('[ACTU AI] Erreur API:', aiResp.status, await aiResp.text()); return actu; }
+        var aiData = await aiResp.json();
+        var raw = (aiData.content && aiData.content[0] && aiData.content[0].text) || '';
+        var match = raw.match(/\{[\s\S]*\}/);
+        if (!match) return actu;
+        var parsed = JSON.parse(match[0]);
+        if (!parsed.title || !parsed.description) return actu;
+        var translation = { title: String(parsed.title).substring(0, 200), description: String(parsed.description).substring(0, 2000) };
+        var idx = list.findIndex(function(x) { return x.id === actu.id; });
+        if (idx !== -1) {
+            if (!list[idx].translations) list[idx].translations = {};
+            list[idx].translations[lang] = translation;
+            saveActualites(list);
+            actu = list[idx];
+        }
+        return Object.assign({}, actu, translation);
+    } catch(e) {
+        console.error('[ACTU AI] Erreur:', e.message);
+        return actu;
+    }
+}
+
 // GET public — lecture de toutes les actualités publiées
-app.get('/api/actualites', function(req, res) {
+app.get('/api/actualites', async function(req, res) {
     try {
         var list = loadActualites();
         var published = list.filter(function(a) { return a.published !== false; });
@@ -22078,6 +22133,10 @@ app.get('/api/actualites', function(req, res) {
             var db = new Date(b.date || b.created_at || 0).getTime() || 0;
             return da - db; // ordre chronologique croissant : le plus ancien en premier
         });
+        var lang = (req.query.lang || '').toLowerCase();
+        if (lang && lang !== 'fr') {
+            published = await Promise.all(published.map(function(a) { return _translateActualite(list, a, lang); }));
+        }
         res.json({ ok: true, actualites: published });
     } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
@@ -22085,11 +22144,13 @@ app.get('/api/actualites', function(req, res) {
 });
 
 // GET public — une actualité par ID (avec image complète, pour le modal)
-app.get('/api/actualites/:id', function(req, res) {
+app.get('/api/actualites/:id', async function(req, res) {
     try {
         var list = loadActualites();
         var a = list.find(function(x) { return x.id === req.params.id && x.published !== false; });
         if (!a) return res.status(404).json({ error: 'Actualité introuvable' });
+        var lang = (req.query.lang || '').toLowerCase();
+        if (lang && lang !== 'fr') a = await _translateActualite(list, a, lang);
         res.json({ ok: true, actualite: a });
     } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
@@ -22169,6 +22230,12 @@ app.put('/api/admin/actualites/:id', function(req, res) {
         if (idx === -1) return res.status(404).json({ error: 'Actualité introuvable' });
         var b = req.body;
         var actu = list[idx];
+        // Le texte source français change : les traductions mises en cache (translations[lang])
+        // seraient désynchronisées et jamais régénérées sinon — _translateActualite() ne retraduit
+        // que si translations[lang] est absent, donc on l'invalide explicitement ici.
+        if ((b.title !== undefined && b.title !== actu.title) || (b.description !== undefined && b.description !== actu.description)) {
+            actu.translations = {};
+        }
         if (b.title !== undefined) actu.title = (b.title || '').substring(0, 200);
         if (b.description !== undefined) actu.description = (b.description || '').substring(0, 2000);
         if (b.category !== undefined) actu.category = b.category;
