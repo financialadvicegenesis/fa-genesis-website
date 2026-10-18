@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018y"></script>
-<script src="app-i18n-es.js?v=20261018y"></script>
-<script src="app-i18n-hi.js?v=20261018y"></script>
-<script src="app-i18n-pt.js?v=20261018y"></script>
-<script src="app-i18n-ja.js?v=20261018y"></script>
-<script src="app-i18n-zh.js?v=20261018y"></script>
-<script src="app-i18n-ar.js?v=20261018y"></script>
-<script src="app-i18n-it.js?v=20261018y"></script>
-<script src="app-i18n-de.js?v=20261018y"></script>
+<script src="app-i18n-en.js?v=20261018z"></script>
+<script src="app-i18n-es.js?v=20261018z"></script>
+<script src="app-i18n-hi.js?v=20261018z"></script>
+<script src="app-i18n-pt.js?v=20261018z"></script>
+<script src="app-i18n-ja.js?v=20261018z"></script>
+<script src="app-i18n-zh.js?v=20261018z"></script>
+<script src="app-i18n-ar.js?v=20261018z"></script>
+<script src="app-i18n-it.js?v=20261018z"></script>
+<script src="app-i18n-de.js?v=20261018z"></script>
 </head>
 <body>
 
@@ -15253,7 +15253,7 @@ function _ptnrRenderProjetsList(items){
     var statusClass = status==='completed'?'confirmed':(status==='cancelled'?'cancelled':'active');
     html += '<div class="ptnr-card">';
     html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
-    html += '<div><div class="ptnr-card-title">'+(p.client_name||p.clientName||p.order_id||'Projet')+'</div>';
+    html += '<div><div class="ptnr-card-title">'+_tr(p.client_name||p.clientName||p.order_id||'Projet')+'</div>';
     html += '<div class="ptnr-card-sub">'+(p.product_name||p.productName||'')+(p.start_date?' · '+ _ptnrFmt(p.start_date):'')+'</div></div>';
     html += '<span class="ptnr-status '+statusClass+'">'+statusLabel+'</span></div>';
     if(p.display_status && p.display_status.key) html += partnerMissionTrackingHtml(p.display_status);
@@ -18849,7 +18849,7 @@ function _ptnrRenderMissionsList(){
       var orderInfo = d.order || {};
       html += '<div class="dispatch-card new-card" id="pdisp-'+d.id+'" style="margin-bottom:10px;border:none;background:#1a1a1a;">';
       html += '<div class="dispatch-badge" style="background:rgba(255,200,0,0.15);color:var(--yellow);"><span class="dispatch-badge-dot" style="background:var(--yellow);"></span>Commande payée</div>';
-      html += '<div class="dispatch-title">'+(orderInfo.client_name||'Client')+' — '+(orderInfo.product_name||'Prestation')+'</div>';
+      html += '<div class="dispatch-title">'+_tr(orderInfo.client_name||'Client')+' — '+(orderInfo.product_name||'Prestation')+'</div>';
       var _depositLabel = orderInfo.payment_tier === 'small' ? 'Acompte sécurisé (carte réservée)' : 'Acompte perçu';
       html += '<div class="dispatch-meta">'+_depositLabel+' : '+(orderInfo.deposit_amount||'?')+' €</div>';
       html += '<div style="font-size:12px;color:#aaa;margin:6px 0 12px;">Vous avez 24h pour accepter ou refuser. En cas de refus, le client est automatiquement remboursé.</div>';
@@ -18868,7 +18868,7 @@ function _ptnrRenderMissionsList(){
     if(r.status === 'proposed'){ html += _ptnrRenderProposalSentCard(r); return; }
     html += '<div class="dispatch-card new-card" id="request-'+r.id+'">';
     html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Nouvelle demande</div>';
-    html += '<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>';
+    html += '<div class="dispatch-title">'+_tr(r.client_name)+' — '+r.service_label+'</div>';
     html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(r.created_at)+'</div>';
     html += '<div class="dispatch-avail">';
     html += '<strong>Prix de la prestation :</strong> '+r.price+' €<br>';
@@ -19003,7 +19003,7 @@ function _declinePartnerRequest(id){
 function _ptnrRenderProposalForm(r){
   var html = '<div class="dispatch-card new-card" id="request-'+r.id+'">';
   html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Acceptée — proposition à envoyer</div>';
-  html += '<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>';
+  html += '<div class="dispatch-title">'+_tr(r.client_name)+' — '+r.service_label+'</div>';
   html += '<div class="dispatch-meta">Acceptée le '+_ptnrFmt(r.responded_at||r.created_at)+'</div>';
   html += '<div class="dispatch-avail" style="margin-top:10px;">';
   html += '<div id="prop-lines-'+r.id+'">';
@@ -19054,7 +19054,7 @@ function _ptnrRenderProposalForm(r){
 function _ptnrRenderProposalSentCard(r){
   return '<div class="dispatch-card" id="request-'+r.id+'">'
     +'<div class="dispatch-badge" style="background:#1a1a1a;color:#888;"><span class="dispatch-badge-dot" style="background:#888;"></span>Proposition envoyée</div>'
-    +'<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>'
+    +'<div class="dispatch-title">'+_tr(r.client_name)+' — '+r.service_label+'</div>'
     +'<div class="dispatch-meta">En attente de la signature du client…</div>'
     +'</div>';
 }
@@ -19077,7 +19077,7 @@ function _ptnrRenderEngagedMissionCard(r){
   var _ptnrCanHide = (statusKey==='completed' || statusKey==='reviewed');
   return '<div class="dispatch-card" id="request-'+r.id+'">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
-    +'<div class="dispatch-title" style="flex:1;min-width:0;">'+r.client_name+' — '+r.service_label+'</div>'
+    +'<div class="dispatch-title" style="flex:1;min-width:0;">'+_tr(r.client_name)+' — '+r.service_label+'</div>'
     +(_ptnrCanHide ? '<button onclick="_ptnrHideMission(\''+r.id+'\')" style="background:none;border:none;cursor:pointer;color:#555;flex-shrink:0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;" title="Supprimer"><i class="fa-solid fa-trash-can" style="font-size:14px;"></i></button>' : '')
     +'</div>'
     +contractDlBtn
@@ -21163,7 +21163,7 @@ function _ptnrLoadLivrables() {
           iconColor: signed ? '#22c55e' : (pending ? '#f59e0b' : '#ef4444'),
           iconBg: signed ? '#001a00' : (pending ? '#1a1400' : '#1a0000'),
           title: serviceName,
-          sub: _tr('Client :') + ' ' + clientName + ' — ' + _ptnrFmt(ct.signed_at || ct.created_at),
+          sub: _tr('Client :') + ' ' + _tr(clientName) + ' — ' + _ptnrFmt(ct.signed_at || ct.created_at),
           badge: badge,
           badgeColor: badgeColor,
           id: ct.id,
