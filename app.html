@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018l"></script>
-<script src="app-i18n-es.js?v=20261018l"></script>
-<script src="app-i18n-hi.js?v=20261018l"></script>
-<script src="app-i18n-pt.js?v=20261018l"></script>
-<script src="app-i18n-ja.js?v=20261018l"></script>
-<script src="app-i18n-zh.js?v=20261018l"></script>
-<script src="app-i18n-ar.js?v=20261018l"></script>
-<script src="app-i18n-it.js?v=20261018l"></script>
-<script src="app-i18n-de.js?v=20261018l"></script>
+<script src="app-i18n-en.js?v=20261018m"></script>
+<script src="app-i18n-es.js?v=20261018m"></script>
+<script src="app-i18n-hi.js?v=20261018m"></script>
+<script src="app-i18n-pt.js?v=20261018m"></script>
+<script src="app-i18n-ja.js?v=20261018m"></script>
+<script src="app-i18n-zh.js?v=20261018m"></script>
+<script src="app-i18n-ar.js?v=20261018m"></script>
+<script src="app-i18n-it.js?v=20261018m"></script>
+<script src="app-i18n-de.js?v=20261018m"></script>
 </head>
 <body>
 
@@ -17505,10 +17505,10 @@ function openMesLitiges(targetDisputeId){
       listEl.innerHTML = disputes.map(function(d,i){
         var lastMsg = d.messages&&d.messages.length ? d.messages[d.messages.length-1].content : '';
         var slaNote = (d.status==='open'||d.status==='jeremie_triage')
-          ? '<div style="font-size:10px;color:#FFD700;margin-top:5px;"><i class="fa-solid fa-clock" style="margin-right:4px;"></i>Traitement sous '+_slaLabel+'</div>'
+          ? '<div style="font-size:10px;color:#FFD700;margin-top:5px;"><i class="fa-solid fa-clock" style="margin-right:4px;"></i>'+_tr('Traitement sous')+' '+_tr(_slaLabel)+'</div>'
           : '';
         return '<div class="disp-list-item" onclick="_openDisputeThreadByIndex('+i+')">'
-          +'<div class="disp-list-status" style="color:'+_disputeStatusColor(d.status)+';">'+_disputeStatusLabel(d.status).toUpperCase()+' · '+(d.category||'autre').toUpperCase()+'</div>'
+          +'<div class="disp-list-status" style="color:'+_disputeStatusColor(d.status)+';">'+_tr(_disputeStatusLabel(d.status)).toUpperCase()+' · '+_tr(d.category||'autre').toUpperCase()+'</div>'
           +'<div style="font-size:12px;color:#999;line-height:1.4;">'+(lastMsg||'').replace(/</g,'&lt;').substring(0,90)+(lastMsg.length>90?'...':'')+'</div>'
           +slaNote
           +'</div>';
@@ -17523,7 +17523,7 @@ function _openDisputeThreadByIndex(i){
 }
 function _openDisputeThread(dispute){
   _currentDispute = dispute;
-  var title=document.getElementById('dispute-hdr-title'); if(title) title.textContent='LITIGE '+dispute.id;
+  var title=document.getElementById('dispute-hdr-title'); if(title) title.textContent=_tr('LITIGE')+' '+dispute.id;
   _disputeShowScreen('dispute-thread-screen');
   _openDisputeOverlay();
   _renderDisputeThread();
@@ -17532,9 +17532,9 @@ function _renderDisputeThread(){
   var d=_currentDispute; if(!d) return;
   var statusEl=document.getElementById('dispute-thread-status');
   var _slaDispHtml = (d.status==='open'||d.status==='jeremie_triage')
-    ? '&nbsp;&nbsp;<span style="font-size:10px;color:#FFD700;font-weight:600;"><i class="fa-solid fa-clock" style="margin-right:3px;"></i>Traitement sous 48h ouvrées</span>'
+    ? '&nbsp;&nbsp;<span style="font-size:10px;color:#FFD700;font-weight:600;"><i class="fa-solid fa-clock" style="margin-right:3px;"></i>'+_tr('Traitement sous')+' '+_tr('48h ouvrées')+'</span>'
     : '';
-  if(statusEl) statusEl.innerHTML='<span style="font-size:11px;font-weight:800;letter-spacing:.5px;color:'+_disputeStatusColor(d.status)+';">'+_disputeStatusLabel(d.status).toUpperCase()+'</span>'+_slaDispHtml;
+  if(statusEl) statusEl.innerHTML='<span style="font-size:11px;font-weight:800;letter-spacing:.5px;color:'+_disputeStatusColor(d.status)+';">'+_tr(_disputeStatusLabel(d.status)).toUpperCase()+'</span>'+_slaDispHtml;
   var viewerRole=_disputeViewerRole();
   var msgsEl=document.getElementById('dispute-thread-messages');
   if(msgsEl){
