@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018g"></script>
-<script src="app-i18n-es.js?v=20261018g"></script>
-<script src="app-i18n-hi.js?v=20261018g"></script>
-<script src="app-i18n-pt.js?v=20261018g"></script>
-<script src="app-i18n-ja.js?v=20261018g"></script>
-<script src="app-i18n-zh.js?v=20261018g"></script>
-<script src="app-i18n-ar.js?v=20261018g"></script>
-<script src="app-i18n-it.js?v=20261018g"></script>
-<script src="app-i18n-de.js?v=20261018g"></script>
+<script src="app-i18n-en.js?v=20261018h"></script>
+<script src="app-i18n-es.js?v=20261018h"></script>
+<script src="app-i18n-hi.js?v=20261018h"></script>
+<script src="app-i18n-pt.js?v=20261018h"></script>
+<script src="app-i18n-ja.js?v=20261018h"></script>
+<script src="app-i18n-zh.js?v=20261018h"></script>
+<script src="app-i18n-ar.js?v=20261018h"></script>
+<script src="app-i18n-it.js?v=20261018h"></script>
+<script src="app-i18n-de.js?v=20261018h"></script>
 </head>
 <body>
 
@@ -12635,7 +12635,7 @@ function showClientWallet(){
           var jsPid=(o.partner_id||'').replace(/'/g,'\\\'');
           var balBtn=o.balance_due
             ?'<button onclick="openPayBalanceSheet(\''+jsOid+'\','+o.balance_amount+',\''+jsSlabel+'\',\''+jsPid+'\')" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#1a1200,#3d2e00);border:1.5px solid #FFD700;border-radius:10px;padding:10px 14px;color:#FFD700;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:\'Unbounded\',cursive;letter-spacing:.3px;">'
-              +'<i class="fa-solid fa-lock"></i> Payer le solde — '+o.balance_amount.toFixed(2)+' €</button>'
+              +'<i class="fa-solid fa-lock"></i> '+_tr('Payer le solde —')+' '+o.balance_amount.toFixed(2)+' €</button>'
             :'';
           // Même avatar que "Mes commandes"/"Mes paiements" (photo ou initiale en repli) —
           // demande explicite de cohérence visuelle entre tous les écrans montrant un prestataire.
