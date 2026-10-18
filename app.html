@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018n"></script>
-<script src="app-i18n-es.js?v=20261018n"></script>
-<script src="app-i18n-hi.js?v=20261018n"></script>
-<script src="app-i18n-pt.js?v=20261018n"></script>
-<script src="app-i18n-ja.js?v=20261018n"></script>
-<script src="app-i18n-zh.js?v=20261018n"></script>
-<script src="app-i18n-ar.js?v=20261018n"></script>
-<script src="app-i18n-it.js?v=20261018n"></script>
-<script src="app-i18n-de.js?v=20261018n"></script>
+<script src="app-i18n-en.js?v=20261018o"></script>
+<script src="app-i18n-es.js?v=20261018o"></script>
+<script src="app-i18n-hi.js?v=20261018o"></script>
+<script src="app-i18n-pt.js?v=20261018o"></script>
+<script src="app-i18n-ja.js?v=20261018o"></script>
+<script src="app-i18n-zh.js?v=20261018o"></script>
+<script src="app-i18n-ar.js?v=20261018o"></script>
+<script src="app-i18n-it.js?v=20261018o"></script>
+<script src="app-i18n-de.js?v=20261018o"></script>
 </head>
 <body>
 
@@ -7129,7 +7129,7 @@ function renderResaTab(){
       var el = document.getElementById('resaList');
       if(!el) return;
       var proposalsHtml = proposals.length
-        ? '<div style="margin-bottom:20px;"><div class="detail-feats-title" style="margin:0 0 10px;color:var(--yellow);"><i class="fa-solid fa-file-signature"></i> Demandes en attente ('+proposals.length+')</div>'+proposals.map(renderProposalCard).join('')+'</div>'
+        ? '<div style="margin-bottom:20px;"><div class="detail-feats-title" style="margin:0 0 10px;color:var(--yellow);"><i class="fa-solid fa-file-signature"></i> '+_tr('Demandes en attente')+' ('+proposals.length+')</div>'+proposals.map(renderProposalCard).join('')+'</div>'
         : '';
       function _resaScrollToPendingProposal(){
         if(!_pendingScrollProposalId) return;
@@ -7189,10 +7189,10 @@ function renderResaTab(){
       }
 
       var cwHtml = coworking.length
-        ? '<div class="detail-feats-title" style="margin:0 0 10px;color:#60a5fa;"><i class="fa-solid fa-building"></i> Espaces Coworking ('+coworking.length+')</div>'+coworking.map(resaCard).join('')
+        ? '<div class="detail-feats-title" style="margin:0 0 10px;color:#60a5fa;"><i class="fa-solid fa-building"></i> '+_tr('Espaces Coworking')+' ('+coworking.length+')</div>'+coworking.map(resaCard).join('')
         : '';
       var evHtml = events.length
-        ? '<div class="detail-feats-title" style="margin:'+(cwHtml?'20px':'0')+' 0 10px;color:var(--yellow);"><i class="fa-solid fa-ticket"></i> Événements GENESIS ('+events.length+')</div>'+events.map(resaCard).join('')
+        ? '<div class="detail-feats-title" style="margin:'+(cwHtml?'20px':'0')+' 0 10px;color:var(--yellow);"><i class="fa-solid fa-ticket"></i> '+_tr('Événements GENESIS')+' ('+events.length+')</div>'+events.map(resaCard).join('')
         : '';
       var otherHtml = other.length ? other.map(resaCard).join('') : '';
       el.innerHTML = proposalsHtml + cwHtml + evHtml + otherHtml;
