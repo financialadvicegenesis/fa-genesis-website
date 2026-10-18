@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261019b"></script>
-<script src="app-i18n-es.js?v=20261019b"></script>
-<script src="app-i18n-hi.js?v=20261019b"></script>
-<script src="app-i18n-pt.js?v=20261019b"></script>
-<script src="app-i18n-ja.js?v=20261019b"></script>
-<script src="app-i18n-zh.js?v=20261019b"></script>
-<script src="app-i18n-ar.js?v=20261019b"></script>
-<script src="app-i18n-it.js?v=20261019b"></script>
-<script src="app-i18n-de.js?v=20261019b"></script>
+<script src="app-i18n-en.js?v=20261019c"></script>
+<script src="app-i18n-es.js?v=20261019c"></script>
+<script src="app-i18n-hi.js?v=20261019c"></script>
+<script src="app-i18n-pt.js?v=20261019c"></script>
+<script src="app-i18n-ja.js?v=20261019c"></script>
+<script src="app-i18n-zh.js?v=20261019c"></script>
+<script src="app-i18n-ar.js?v=20261019c"></script>
+<script src="app-i18n-it.js?v=20261019c"></script>
+<script src="app-i18n-de.js?v=20261019c"></script>
 </head>
 <body>
 
@@ -21284,7 +21284,7 @@ function _ptnrLoadColleguesList(){
     });
     var _badgeLbl = {bronze:'Bronze',argent:'Argent',or:'Or',elite:'Élite',fondateur:'Fondateur'};
     var _badgeClr = {bronze:'#cd7f32',argent:'#aaa',or:'#FFD700',elite:'#a78bfa',fondateur:'#FFD700'};
-    var html = '<div style="font-size:11px;color:#555;margin-bottom:10px;">'+peers.length+' collègue'+(peers.length>1?'s':'')+' actif'+(peers.length>1?'s':'')+' dans votre catégorie</div>';
+    var html = '<div style="font-size:11px;color:#555;margin-bottom:10px;">'+peers.length+' '+_tr(peers.length>1?'collègues':'collègue')+' '+_tr(peers.length>1?'actifs':'actif')+' '+_tr('dans votre catégorie')+'</div>';
     peers.forEach(function(peer){
       var nm = ((peer.prenom||'')+ ' '+(peer.nom||'')).trim() || 'Collègue';
       var ini = (nm[0]||'?').toUpperCase();
@@ -21345,7 +21345,7 @@ function _ptnrLoadEventsList(){
         var sl = ev.spots_left != null ? ev.spots_left : Math.max(0, ev.capacity - attendeeCount);
         var spotsColor = sl === 0 ? '#ef4444' : sl <= 3 ? '#ff922b' : '#4caf50';
         spotsHtml = '<div style="font-size:10px;color:'+spotsColor+';font-weight:700;margin-top:4px;">'
-          +(sl === 0 ? '<i class="fa-solid fa-circle-xmark"></i> Complet' : '<i class="fa-solid fa-ticket"></i> '+sl+' place'+(sl>1?'s':'')+' disponible'+(sl>1?'s':''))
+          +(sl === 0 ? '<i class="fa-solid fa-circle-xmark"></i> '+_tr('Complet') : '<i class="fa-solid fa-ticket"></i> '+sl+' '+_tr(sl>1?'places':'place')+' '+_tr(sl>1?'disponibles':'disponible'))
           +'</div>';
       }
       var desc = ev.description ? ev.description.slice(0,130)+(ev.description.length>130?'…':'') : '';
