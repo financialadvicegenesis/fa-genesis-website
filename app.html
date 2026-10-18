@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018k"></script>
-<script src="app-i18n-es.js?v=20261018k"></script>
-<script src="app-i18n-hi.js?v=20261018k"></script>
-<script src="app-i18n-pt.js?v=20261018k"></script>
-<script src="app-i18n-ja.js?v=20261018k"></script>
-<script src="app-i18n-zh.js?v=20261018k"></script>
-<script src="app-i18n-ar.js?v=20261018k"></script>
-<script src="app-i18n-it.js?v=20261018k"></script>
-<script src="app-i18n-de.js?v=20261018k"></script>
+<script src="app-i18n-en.js?v=20261018l"></script>
+<script src="app-i18n-es.js?v=20261018l"></script>
+<script src="app-i18n-hi.js?v=20261018l"></script>
+<script src="app-i18n-pt.js?v=20261018l"></script>
+<script src="app-i18n-ja.js?v=20261018l"></script>
+<script src="app-i18n-zh.js?v=20261018l"></script>
+<script src="app-i18n-ar.js?v=20261018l"></script>
+<script src="app-i18n-it.js?v=20261018l"></script>
+<script src="app-i18n-de.js?v=20261018l"></script>
 </head>
 <body>
 
@@ -12478,7 +12478,7 @@ function showClientLevels(scrollToLevel) {
         html += '<i class="fa-solid ' + iconForLvl + '" style="font-size:17px;color:' + titleColor + ';"></i></div>';
         html += '<div style="flex:1;">';
         html += '<div style="font-size:15px;font-weight:800;color:' + titleColor + ';">' + lvl.label + (isCurrent ? ' <span style="font-size:10px;color:var(--yellow);font-weight:700;">● actuel</span>' : '') + '</div>';
-        html += '<div style="font-size:11px;color:#555;">' + lvl.pts + ' QG minimum</div>';
+        html += '<div style="font-size:11px;color:#555;">' + lvl.pts + ' ' + _tr('QG minimum') + '</div>';
         html += '</div>';
         if (!unlocked) html += '<div style="font-size:18px;color:#2a2a2a;">&#128274;</div>';
         else html += '<i class="fa-solid fa-check-circle" style="font-size:18px;color:#4caf50;"></i>';
