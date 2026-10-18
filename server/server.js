@@ -14694,6 +14694,9 @@ app.post('/api/partner/auth/register', async (req, res) => {
         try {
             emailService.sendPartnerWelcomeEmail(partner).catch(function(e) { console.warn('[PARTNER_WELCOME_EMAIL]', e.message); });
         } catch(_) {}
+        try {
+            emailService.sendAdminPartnerRegistrationNotification(partner).catch(function(e) { console.warn('[ADMIN_PARTNER_REG_EMAIL]', e.message); });
+        } catch(_) {}
         res.json({ success: true, partner: partnerSafe, token: sessionToken });
     } catch (error) {
         console.error('[PARTNER] Erreur inscription:', error);

@@ -515,6 +515,93 @@ async function sendAdminRegistrationNotification(registrationData) {
 }
 
 /**
+ * Notification admin — nouvelle inscription PRESTATAIRE (distincte de
+ * sendAdminRegistrationNotification, réservée aux clients). Sans cet email, la seule
+ * trace d'une inscription prestataire en attente était la notification in-app
+ * (notifyUser → cloche admin.html), jamais vue si personne n'a l'onglet ouvert — demande
+ * explicite utilisateur pour recevoir une alerte par email et pouvoir approuver le compte
+ * depuis l'administration. Toujours en français (équipe admin francophone, comme
+ * sendAdminRegistrationNotification) — pas de traduction ici.
+ */
+async function sendAdminPartnerRegistrationNotification(partner) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configuré - Notification inscription prestataire non envoyée');
+        return { success: false, reason: 'SMTP non configuré' };
+    }
+
+    const typeLabel = partner.partner_type === 'other'
+        ? (partner.partner_type_other || 'Autre')
+        : (partner.partner_type || 'Non précisé');
+
+    const content = `
+        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
+            Nouvelle inscription prestataire
+        </h2>
+
+        <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 20px 0; text-align: center;">
+            <p style="margin: 0 0 5px 0; font-size: 14px; color: #888888;">Type de prestataire</p>
+            <p style="margin: 0; font-size: 20px; font-weight: 700; color: #FFD700;">${typeLabel}</p>
+        </div>
+
+        <div style="background-color: #f5f5f5; padding: 25px; border-radius: 4px; margin: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Nom complet</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${partner.prenom || ''} ${partner.nom || ''}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Email</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                        <a href="mailto:${partner.email}" style="color: #FFD700;">${partner.email}</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Téléphone</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${partner.telephone || 'Non renseigné'}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Entreprise</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${partner.company || 'Non renseigné'}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Localisation</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${partner.city || ''}${partner.city && partner.country ? ', ' : ''}${partner.country || ''}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; font-weight: 700; color: #666;">Date d'inscription</td>
+                    <td style="padding: 10px 0; color: #000;">${new Date().toLocaleString('fr-FR')}</td>
+                </tr>
+            </table>
+        </div>
+
+        <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
+            <a href="${process.env.FRONT_URL || 'https://fagenesis.com'}/admin.html#open-partners"
+               style="display: inline-block; background-color: #FFD700; color: #000; padding: 12px 25px; text-decoration: none; font-weight: 700; border-radius: 4px;">
+                Voir dans l'administration
+            </a>
+        </p>
+    `;
+
+    try {
+        const result = await transport.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            to: process.env.EMAIL_ADMIN_ADDRESS || 'contact@fagenesis.com',
+            subject: `[FA GENESIS] Nouveau prestataire à valider - ${partner.prenom || ''} ${partner.nom || ''}`,
+            html: getEmailTemplate(content, 'Nouvelle inscription prestataire'),
+            replyTo: partner.email
+        });
+
+        console.log(`[EMAIL] Notification inscription prestataire admin envoyée - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi notification inscription prestataire:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Envoyer un email de confirmation de paiement
  */
 async function sendPaymentConfirmation(clientEmail, clientName, orderData) {
@@ -2554,6 +2641,7 @@ module.exports = {
     sendContactConfirmation,
     sendAdminNotification,
     sendAdminRegistrationNotification,
+    sendAdminPartnerRegistrationNotification,
     sendPaymentConfirmation,
     sendAdminReply,
     sendNewDocumentNotification,
