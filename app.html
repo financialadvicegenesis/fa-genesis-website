@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018o"></script>
-<script src="app-i18n-es.js?v=20261018o"></script>
-<script src="app-i18n-hi.js?v=20261018o"></script>
-<script src="app-i18n-pt.js?v=20261018o"></script>
-<script src="app-i18n-ja.js?v=20261018o"></script>
-<script src="app-i18n-zh.js?v=20261018o"></script>
-<script src="app-i18n-ar.js?v=20261018o"></script>
-<script src="app-i18n-it.js?v=20261018o"></script>
-<script src="app-i18n-de.js?v=20261018o"></script>
+<script src="app-i18n-en.js?v=20261018p"></script>
+<script src="app-i18n-es.js?v=20261018p"></script>
+<script src="app-i18n-hi.js?v=20261018p"></script>
+<script src="app-i18n-pt.js?v=20261018p"></script>
+<script src="app-i18n-ja.js?v=20261018p"></script>
+<script src="app-i18n-zh.js?v=20261018p"></script>
+<script src="app-i18n-ar.js?v=20261018p"></script>
+<script src="app-i18n-it.js?v=20261018p"></script>
+<script src="app-i18n-de.js?v=20261018p"></script>
 </head>
 <body>
 
@@ -19606,6 +19606,29 @@ function _ptnrPendingRelease(estimatedReleaseAt){
 // ptnr-wtx-<id>/ptnr-wd-<id> plus bas. Accepte aussi bien l'id de la transaction/du retrait que
 // celui du dispatch/de la commande d'origine, selon ce que le point d'envoi connaissait.
 var _ptnrPendingScrollWalletId = null;
+// Les descriptions de transaction wallet viennent du serveur sous la forme
+// "Mission : <nom du service> — <étape>[ (en attente)]" — le nom du service est du
+// contenu dynamique (choisi par le prestataire), donc le dictionnaire statique AppI18n ne
+// peut jamais matcher la phrase entière. Reconstruit la traduction en ne traduisant que les
+// fragments fixes (préfixe, étape de paiement, statut) autour du nom, laissé tel quel.
+function _ptnrTranslateWalletDesc(desc){
+  if(!desc) return desc;
+  var s = String(desc);
+  var pending = / \(en attente\)$/.test(s);
+  if(pending) s = s.replace(/ \(en attente\)$/, '');
+  var suffixes = ['— Solde final','— Mensualité','— Acompte','— Paiement'];
+  var matchedSuffix = null;
+  for(var i=0;i<suffixes.length;i++){
+    var suf = ' '+suffixes[i];
+    if(s.slice(-suf.length) === suf){ matchedSuffix = suffixes[i]; s = s.slice(0, -suf.length); break; }
+  }
+  if(s.indexOf('Mission : ') !== 0) return desc; // format inattendu, on laisse tel quel
+  var name = s.slice('Mission : '.length);
+  var out = _tr('Mission :') + ' ' + name;
+  if(matchedSuffix) out += ' ' + _tr(matchedSuffix);
+  if(pending) out += ' ' + _tr('(en attente)');
+  return out;
+}
 function _ptnrLoadVersements(){
   var listEl = document.getElementById('ptnr-versements-list');
   if(!listEl) return;
@@ -19690,7 +19713,7 @@ function _ptnrLoadVersements(){
         var sc = {pending:'#f59e0b',processing:'#818cf8',sent:'#22c55e',failed:'#f87171'}[w.status]||'#888';
         var sl = {pending:'En attente',processing:'En cours',sent:'Envoyé ✓',failed:'Échec'}[w.status]||w.status;
         html += '<div id="ptnr-wd-'+w.id+'" style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
-        html += '<div><div style="font-size:12px;font-weight:700;color:#ccc;">Retrait '+(w.method||'').toUpperCase().replace('_',' ')+'</div>';
+        html += '<div><div style="font-size:12px;font-weight:700;color:#ccc;">'+_tr('Retrait')+' '+(w.method||'').toUpperCase().replace('_',' ')+'</div>';
         html += '<div style="font-size:11px;color:'+sc+';font-weight:700;margin-top:2px;">'+sl+'</div></div>';
         html += '<div style="font-size:15px;font-weight:900;color:#818cf8;">-'+fmt(w.amount)+' €</div>';
         html += '</div>';
@@ -19702,12 +19725,12 @@ function _ptnrLoadVersements(){
     var histTxns    = txns.filter(function(t){ return !(t.type==='credit' && t.status==='pending'); });
 
     if(pendingTxns.length){
-      html += '<div style="font-size:11px;font-weight:800;color:#f59e0b;letter-spacing:.8px;text-transform:uppercase;margin:14px 0 8px;"><i class="fa-solid fa-hourglass-half" style="margin-right:5px"></i>En attente de libération ('+pendingTxns.length+')</div>';
+      html += '<div style="font-size:11px;font-weight:800;color:#f59e0b;letter-spacing:.8px;text-transform:uppercase;margin:14px 0 8px;"><i class="fa-solid fa-hourglass-half" style="margin-right:5px"></i>'+_tr('En attente de libération')+' ('+pendingTxns.length+')</div>';
       pendingTxns.forEach(function(t){
         var relInfo = _ptnrPendingRelease(t.estimated_release_at);
         html += '<div id="ptnr-wtx-'+t.id+'" style="background:#111;border:1px solid #1e1e1e;border-left:3px solid #f59e0b;border-radius:12px;padding:12px 14px;margin-bottom:8px;">';
         html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
-        html += '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;color:#fff;">'+_escHtml(t.description||'Mission')+'</div>';
+        html += '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;color:#fff;">'+_escHtml(_ptnrTranslateWalletDesc(t.description)||_tr('Mission'))+'</div>';
         html += '<div style="font-size:11px;color:#888;margin-top:3px;">'+relInfo.label+'</div></div>';
         html += '<div style="text-align:right;flex-shrink:0;padding-left:10px;"><div style="font-size:16px;font-weight:900;color:#f59e0b;">+'+fmt(t.amount||0)+' €</div>';
         html += '<div style="font-size:10px;font-weight:700;margin-top:3px;color:'+relInfo.color+';">'+relInfo.badge+'</div></div>';
@@ -19724,7 +19747,7 @@ function _ptnrLoadVersements(){
         html += '<div id="ptnr-wtx-'+t.id+'" style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
         html += '<div style="display:flex;align-items:center;gap:10px;">';
         html += '<div style="width:32px;height:32px;border-radius:50%;background:rgba(34,197,94,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid '+ico+'" style="color:'+col+';font-size:13px;"></i></div>';
-        html += '<div><div style="font-size:12px;font-weight:700;color:#ccc;">'+_escHtml(t.description||'Transaction')+'</div>';
+        html += '<div><div style="font-size:12px;font-weight:700;color:#ccc;">'+_escHtml(_ptnrTranslateWalletDesc(t.description)||_tr('Transaction'))+'</div>';
         html += '<div style="font-size:10px;color:#555;margin-top:2px;">'+_ptnrFmt(t.created_at)+'</div></div></div>';
         html += '<div style="font-size:15px;font-weight:900;color:'+col+';white-space:nowrap;">'+(isC?'+':'-')+fmt(t.amount||0)+' €</div>';
         html += '</div>';
