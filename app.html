@@ -3478,25 +3478,28 @@ function _genesisVersionFooter(){
           <!-- Masqués dès qu'une conversation précise est ouverte (voir _ptnrOpenConversation) —
                remplacés par le propre en-tête de la conversation (nom + flèche retour VERS LA
                LISTE, façon WhatsApp/Messenger/Instagram), rendu directement dans #ptnr-messages-list. -->
-          <div class="ptnr-back-bar" id="ptnr-messages-header"><span class="ptnr-back-bar-title">Messages clients</span></div>
+          <!-- Flèche retour vers Profil : Messages est aussi un onglet de premier niveau (barre du
+               bas), mais le menu "Mon Profil" le présente avec un chevron '›' comme un sous-écran
+               classique — remise pour cohérence avec les 6 autres éléments de ce menu (demande
+               explicite utilisateur, 2026-10-18 ; une session précédente l'avait retirée pour la
+               raison inverse). -->
+          <div class="ptnr-back-bar" id="ptnr-messages-header"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Messages clients</span></div>
           <div id="ptnr-msg-archived-link"></div>
           <div id="ptnr-messages-list"></div>
         </div>
 
         <!-- Sub-screen: Missions (dispatch) -->
         <div class="ptnr-screen" id="ptnr-screen-missions">
-          <!-- Pas de flèche "retour" : Missions est un onglet de premier niveau (barre du bas),
-               pas un sous-écran de Profil — voir le même correctif sur Messages ci-dessus. -->
-          <div class="ptnr-back-bar"><span class="ptnr-back-bar-title">Mes missions</span></div>
+          <!-- Flèche retour vers Profil : voir le même commentaire sur Messages ci-dessus. -->
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes missions</span></div>
           <div id="ptnr-missions-filter"></div>
           <div id="ptnr-missions-list"></div>
         </div>
 
         <!-- Sub-screen: Versements / Paiements -->
         <div class="ptnr-screen" id="ptnr-screen-versements">
-          <!-- Pas de flèche "retour" : Wallet est un onglet de premier niveau (barre du bas),
-               pas un sous-écran de Profil — voir le même correctif sur Messages ci-dessus. -->
-          <div class="ptnr-back-bar"><span class="ptnr-back-bar-title">Mon Wallet GENESIS</span></div>
+          <!-- Flèche retour vers Profil : voir le même commentaire sur Messages ci-dessus. -->
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mon Wallet GENESIS</span></div>
           <div id="ptnr-versements-list"></div>
         </div>
 
