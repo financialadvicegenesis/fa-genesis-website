@@ -15105,9 +15105,27 @@ function getPartnerRatingSummary(partnerId) {
 // SYSTEME DE FIDELISATION / REPUTATION — Phase 1 (badges, classement)
 // ============================================================
 
-// Une mission est consideree "realisee" quand le versement du solde a ete cree
+// Une mission est consideree "realisee" quand le versement du solde a ete cree, OU quand elle a
+// ete payee en une seule fois a 100% (stage 'deposit' dont le montant egale le total — meme
+// condition "_isFinalStage" qu'a la creation du versement). Sans ce repli, une mission payee
+// integralement en un seul versement (pas de split acompte/solde) n'etait JAMAIS comptee ici —
+// la barre de progression du badge restait bloquee a 0% meme avec des missions reellement
+// terminees et payees en totalite, confirme par un prestataire reel (2026-10-18).
 function getPartnerMissionsCompleted(partnerId) {
-    return loadPayouts().filter(p => p.partner_id === partnerId && p.stage === 'balance').length;
+    var dispatches = null;
+    return loadPayouts().filter(function(p) {
+        if (p.partner_id !== partnerId) return false;
+        if (p.stage === 'balance') return true;
+        if (p.stage === 'deposit' && p.dispatch_id) {
+            if (!dispatches) dispatches = loadDispatches();
+            var d = dispatches.find(function(x) { return x.id === p.dispatch_id; });
+            if (d && d.partner_deposit_amount != null && d.partner_total_amount != null &&
+                Math.abs((d.partner_deposit_amount || 0) - (d.partner_total_amount || 0)) < 0.01) {
+                return true;
+            }
+        }
+        return false;
+    }).length;
 }
 
 function getPartnerSatisfactionRate(partnerId) {
