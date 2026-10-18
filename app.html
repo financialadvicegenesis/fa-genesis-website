@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018v"></script>
-<script src="app-i18n-es.js?v=20261018v"></script>
-<script src="app-i18n-hi.js?v=20261018v"></script>
-<script src="app-i18n-pt.js?v=20261018v"></script>
-<script src="app-i18n-ja.js?v=20261018v"></script>
-<script src="app-i18n-zh.js?v=20261018v"></script>
-<script src="app-i18n-ar.js?v=20261018v"></script>
-<script src="app-i18n-it.js?v=20261018v"></script>
-<script src="app-i18n-de.js?v=20261018v"></script>
+<script src="app-i18n-en.js?v=20261018w"></script>
+<script src="app-i18n-es.js?v=20261018w"></script>
+<script src="app-i18n-hi.js?v=20261018w"></script>
+<script src="app-i18n-pt.js?v=20261018w"></script>
+<script src="app-i18n-ja.js?v=20261018w"></script>
+<script src="app-i18n-zh.js?v=20261018w"></script>
+<script src="app-i18n-ar.js?v=20261018w"></script>
+<script src="app-i18n-it.js?v=20261018w"></script>
+<script src="app-i18n-de.js?v=20261018w"></script>
 </head>
 <body>
 
@@ -20137,7 +20137,7 @@ function _ptnrLoadPalmares(){
     // Classement
     var cl = data.classement || {};
     if(cl.rank && cl.total){
-      html += '<div class="ptnr-rep-rank"><div class="ptnr-rep-rank-val"><i class="fa-solid fa-ranking-star"></i> Classement #'+cl.rank+' / '+cl.total+'</div>'
+      html += '<div class="ptnr-rep-rank"><div class="ptnr-rep-rank-val"><i class="fa-solid fa-ranking-star"></i> '+_tr('Classement #')+cl.rank+' / '+cl.total+'</div>'
         + '<div class="ptnr-rep-rank-sub">Dans votre catégorie</div></div>';
     }
 
