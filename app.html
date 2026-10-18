@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018x"></script>
-<script src="app-i18n-es.js?v=20261018x"></script>
-<script src="app-i18n-hi.js?v=20261018x"></script>
-<script src="app-i18n-pt.js?v=20261018x"></script>
-<script src="app-i18n-ja.js?v=20261018x"></script>
-<script src="app-i18n-zh.js?v=20261018x"></script>
-<script src="app-i18n-ar.js?v=20261018x"></script>
-<script src="app-i18n-it.js?v=20261018x"></script>
-<script src="app-i18n-de.js?v=20261018x"></script>
+<script src="app-i18n-en.js?v=20261018y"></script>
+<script src="app-i18n-es.js?v=20261018y"></script>
+<script src="app-i18n-hi.js?v=20261018y"></script>
+<script src="app-i18n-pt.js?v=20261018y"></script>
+<script src="app-i18n-ja.js?v=20261018y"></script>
+<script src="app-i18n-zh.js?v=20261018y"></script>
+<script src="app-i18n-ar.js?v=20261018y"></script>
+<script src="app-i18n-it.js?v=20261018y"></script>
+<script src="app-i18n-de.js?v=20261018y"></script>
 </head>
 <body>
 
@@ -21163,7 +21163,7 @@ function _ptnrLoadLivrables() {
           iconColor: signed ? '#22c55e' : (pending ? '#f59e0b' : '#ef4444'),
           iconBg: signed ? '#001a00' : (pending ? '#1a1400' : '#1a0000'),
           title: serviceName,
-          sub: 'Client : ' + clientName + ' — ' + _ptnrFmt(ct.signed_at || ct.created_at),
+          sub: _tr('Client :') + ' ' + clientName + ' — ' + _ptnrFmt(ct.signed_at || ct.created_at),
           badge: badge,
           badgeColor: badgeColor,
           id: ct.id,
