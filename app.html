@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018t"></script>
-<script src="app-i18n-es.js?v=20261018t"></script>
-<script src="app-i18n-hi.js?v=20261018t"></script>
-<script src="app-i18n-pt.js?v=20261018t"></script>
-<script src="app-i18n-ja.js?v=20261018t"></script>
-<script src="app-i18n-zh.js?v=20261018t"></script>
-<script src="app-i18n-ar.js?v=20261018t"></script>
-<script src="app-i18n-it.js?v=20261018t"></script>
-<script src="app-i18n-de.js?v=20261018t"></script>
+<script src="app-i18n-en.js?v=20261018u"></script>
+<script src="app-i18n-es.js?v=20261018u"></script>
+<script src="app-i18n-hi.js?v=20261018u"></script>
+<script src="app-i18n-pt.js?v=20261018u"></script>
+<script src="app-i18n-ja.js?v=20261018u"></script>
+<script src="app-i18n-zh.js?v=20261018u"></script>
+<script src="app-i18n-ar.js?v=20261018u"></script>
+<script src="app-i18n-it.js?v=20261018u"></script>
+<script src="app-i18n-de.js?v=20261018u"></script>
 </head>
 <body>
 
@@ -19947,11 +19947,11 @@ function _ptnrLoadReputation(){
           + '<div style="display:flex;align-items:center;gap:9px;font-size:12px;padding:9px 11px;background:#0a0a0a;border-radius:9px;border:1px solid '+(_repRatingOk?'#1a3a1a':'#1a1a00')+';">'
           + '<i class="fa-solid fa-star" style="color:'+(_repRatingOk?'#4caf50':'#FFD700')+';font-size:13px;flex-shrink:0;"></i>'
           + '<div style="flex:1;"><div style="color:#ccc;font-weight:700;">Atteindre une note ≥ '+_repNext.rating.toFixed(1)+'★</div>'
-          + '<div style="color:#555;font-size:10px;margin-top:1px;">'+(_repRatingOk?'<span style="color:#4caf50;">Note suffisante !</span>':'Note actuelle : '+_repAvg.toFixed(1)+'★ — proposez un service de qualité')+'</div></div>'
+          + '<div style="color:#555;font-size:10px;margin-top:1px;">'+(_repRatingOk?'<span style="color:#4caf50;">'+_tr('Note suffisante !')+'</span>':_tr('Note actuelle :')+' '+_repAvg.toFixed(1)+'★ — '+_tr('proposez un service de qualité'))+'</div></div>'
           + (_repRatingOk?'<i class="fa-solid fa-check-circle" style="color:#4caf50;flex-shrink:0;"></i>':'')
           + '</div></div>'
           + (_repMissRem===0 && _repRatingOk
-            ? '<div style="margin-top:10px;background:rgba(76,175,80,.08);border:1px solid #1a3a1a;border-radius:9px;padding:8px 12px;font-size:11px;color:#4caf50;text-align:center;"><i class="fa-solid fa-trophy" style="margin-right:5px;"></i>Objectifs atteints — badge <strong>'+_repNext.label+'</strong> en cours de validation !</div>'
+            ? '<div style="margin-top:10px;background:rgba(76,175,80,.08);border:1px solid #1a3a1a;border-radius:9px;padding:8px 12px;font-size:11px;color:#4caf50;text-align:center;"><i class="fa-solid fa-trophy" style="margin-right:5px;"></i>'+_tr('Objectifs atteints — badge')+' <strong>'+_tr(_repNext.label)+'</strong> '+_tr('en cours de validation !')+'</div>'
             : '')
           + '</div>';
       }
@@ -19994,7 +19994,7 @@ function _ptnrLoadReputation(){
       html += '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;">'
         + '<i class="fa-solid '+bDef.icon+'" style="font-size:16px;color:'+titleClr+';width:20px;text-align:center;flex-shrink:0;"></i>'
         + '<div style="flex:1;"><span style="font-size:14px;font-weight:800;color:'+titleClr+';">'+bDef.label+'</span>'
-        + '<span style="font-size:11px;color:#444;margin-left:7px;">'+bDef.missions+' missions · '+bDef.rating.toFixed(1)+'★ min.</span>'
+        + '<span style="font-size:11px;color:#444;margin-left:7px;">'+bDef.missions+' '+_tr('missions ·')+' '+bDef.rating.toFixed(1)+_tr('★ min.')+'</span>'
         + (isCur ? '<span style="font-size:10px;color:#FFD700;font-weight:800;margin-left:8px;">● actuel</span>' : '')+'</div>'
         + (unlocked ? '<i class="fa-solid fa-check-circle" style="font-size:16px;color:#4caf50;"></i>' : '<span style="font-size:16px;color:#252525;">&#128274;</span>')
         + '</div>';
