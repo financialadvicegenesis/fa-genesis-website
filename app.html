@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018h"></script>
-<script src="app-i18n-es.js?v=20261018h"></script>
-<script src="app-i18n-hi.js?v=20261018h"></script>
-<script src="app-i18n-pt.js?v=20261018h"></script>
-<script src="app-i18n-ja.js?v=20261018h"></script>
-<script src="app-i18n-zh.js?v=20261018h"></script>
-<script src="app-i18n-ar.js?v=20261018h"></script>
-<script src="app-i18n-it.js?v=20261018h"></script>
-<script src="app-i18n-de.js?v=20261018h"></script>
+<script src="app-i18n-en.js?v=20261018i"></script>
+<script src="app-i18n-es.js?v=20261018i"></script>
+<script src="app-i18n-hi.js?v=20261018i"></script>
+<script src="app-i18n-pt.js?v=20261018i"></script>
+<script src="app-i18n-ja.js?v=20261018i"></script>
+<script src="app-i18n-zh.js?v=20261018i"></script>
+<script src="app-i18n-ar.js?v=20261018i"></script>
+<script src="app-i18n-it.js?v=20261018i"></script>
+<script src="app-i18n-de.js?v=20261018i"></script>
 </head>
 <body>
 
@@ -8816,7 +8816,7 @@ function showGenesisPatrimoine(){
   }
   var p = USER.patrimoineGenesis || {};
   var level = USER.genesisLevel || {label:'Explorateur',icon:'fa-seedling'};
-  var ancienneteLabel = (p.ancienneteJours||0) >= 30 ? Math.floor((p.ancienneteJours||0)/30)+' mois' : (p.ancienneteJours||0)+' jours';
+  var ancienneteLabel = (p.ancienneteJours||0) >= 30 ? Math.floor((p.ancienneteJours||0)/30)+' '+_tr('mois') : (p.ancienneteJours||0)+' '+_tr('jours');
   var cards = [
     {icon:'fa-chart-line', label:'Quotient Genesis', value: USER.genesisPoints||0},
     {icon:'fa-receipt', label:'Commandes effectuées', value: p.prestationsRealisees||0},
@@ -8826,7 +8826,7 @@ function showGenesisPatrimoine(){
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine GENESIS</div></div>'
     +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
-    +'<div class="genesis-patrimoine-level"><i class="fa-solid '+level.icon+'"></i> '+level.label+'<div class="genesis-patrimoine-anciennete">Membre depuis '+ancienneteLabel+'</div></div>'
+    +'<div class="genesis-patrimoine-level"><i class="fa-solid '+level.icon+'"></i> '+level.label+'<div class="genesis-patrimoine-anciennete">'+_tr('Membre depuis')+' '+ancienneteLabel+'</div></div>'
     +'<div class="genesis-patrimoine-grid">'
     +cards.map(function(card, idx){
       return '<div class="genesis-patrimoine-card"><i class="fa-solid '+card.icon+'"></i>'
