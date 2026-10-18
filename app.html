@@ -2528,15 +2528,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261018m"></script>
-<script src="app-i18n-es.js?v=20261018m"></script>
-<script src="app-i18n-hi.js?v=20261018m"></script>
-<script src="app-i18n-pt.js?v=20261018m"></script>
-<script src="app-i18n-ja.js?v=20261018m"></script>
-<script src="app-i18n-zh.js?v=20261018m"></script>
-<script src="app-i18n-ar.js?v=20261018m"></script>
-<script src="app-i18n-it.js?v=20261018m"></script>
-<script src="app-i18n-de.js?v=20261018m"></script>
+<script src="app-i18n-en.js?v=20261018n"></script>
+<script src="app-i18n-es.js?v=20261018n"></script>
+<script src="app-i18n-hi.js?v=20261018n"></script>
+<script src="app-i18n-pt.js?v=20261018n"></script>
+<script src="app-i18n-ja.js?v=20261018n"></script>
+<script src="app-i18n-zh.js?v=20261018n"></script>
+<script src="app-i18n-ar.js?v=20261018n"></script>
+<script src="app-i18n-it.js?v=20261018n"></script>
+<script src="app-i18n-de.js?v=20261018n"></script>
 </head>
 <body>
 
@@ -6604,16 +6604,16 @@ function loadHallOfFame(){
     }
     var highlights = '';
     if(hof.bestClient){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-medal" style="color:#FFD700"></i> Meilleur client du mois</div><div class="p-ref-count">'+hof.bestClient.name+' · '+hof.bestClient.count+' commande'+(hof.bestClient.count>1?'s':'')+'</div></div>';
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-medal" style="color:#FFD700"></i> Meilleur client du mois</div><div class="p-ref-count">'+hof.bestClient.name+' · '+hof.bestClient.count+' '+_tr(hof.bestClient.count>1?'commandes':'commande')+'</div></div>';
     }
     if(hof.bestReferrer){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-handshake" style="color:var(--yellow)"></i> Meilleur parrain du mois</div><div class="p-ref-count">'+hof.bestReferrer.name+' ('+(hof.bestReferrer.type==='partenaire'?'partenaire':'client')+') · '+hof.bestReferrer.count+' parrainage'+(hof.bestReferrer.count>1?'s':'')+' validé'+(hof.bestReferrer.count>1?'s':'')+'</div></div>';
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-handshake" style="color:var(--yellow)"></i> Meilleur parrain du mois</div><div class="p-ref-count">'+hof.bestReferrer.name+' ('+_tr(hof.bestReferrer.type==='partenaire'?'partenaire':'client')+') · '+hof.bestReferrer.count+' '+_tr(hof.bestReferrer.count>1?'parrainages':'parrainage')+' '+_tr(hof.bestReferrer.count>1?'validés':'validé')+'</div></div>';
     }
     if(hof.bestTopQG){
       highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-crown" style="color:var(--yellow)"></i> Top QG du mois</div><div class="p-ref-count">'+hof.bestTopQG.name+(hof.bestTopQG.company?' · '+hof.bestTopQG.company:'')+(hof.bestTopQG.constellation?' '+constellationBadgeHtml(hof.bestTopQG.constellation):'')+'</div></div>';
     }
     if(hof.bestMostProductive){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-bolt" style="color:var(--yellow)"></i> Plus productif du mois</div><div class="p-ref-count">'+hof.bestMostProductive.name+' · '+hof.bestMostProductive.count+' prestation'+(hof.bestMostProductive.count>1?'s':'')+'</div></div>';
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-bolt" style="color:var(--yellow)"></i> Plus productif du mois</div><div class="p-ref-count">'+hof.bestMostProductive.name+' · '+hof.bestMostProductive.count+' '+_tr(hof.bestMostProductive.count>1?'prestations':'prestation')+'</div></div>';
     }
     if(highlights){
       html += '<div style="display:flex;flex-direction:column;gap:8px;margin:0 16px 8px;">'+highlights+'</div>';
@@ -6798,7 +6798,7 @@ function _ptnrRenderCartBar(){
   if(!p || !selectedIds.length){ bar.innerHTML = ''; return; }
   var selectedServices = (p.services||[]).filter(function(s){ return _partnerCartSelection[s.id]; });
   var total = selectedServices.reduce(function(sum, s){ return sum + (parseFloat(s.price)||0); }, 0);
-  bar.innerHTML = '<div class="p-svc-cart-info">'+selectedServices.length+' prestation'+(selectedServices.length>1?'s':'')+' sélectionnée'+(selectedServices.length>1?'s':'')+'<br><b>'+total.toFixed(2)+' €</b></div>'
+  bar.innerHTML = '<div class="p-svc-cart-info">'+selectedServices.length+' '+_tr(selectedServices.length>1?'prestations':'prestation')+' '+_tr(selectedServices.length>1?'sélectionnées':'sélectionnée')+'<br><b>'+total.toFixed(2)+' €</b></div>'
     +'<button class="p-svc-cart-btn" onclick="openPartnerCartRequest()">Commander</button>';
 }
 function _ptnrDetailSwitchAudience(aud, el){
@@ -8496,10 +8496,10 @@ function _hofLoadMensuel(container){
         html += '<div class="p-reco-row" style="margin:0 -16px;padding:0 16px 12px;">'+hof.bestPartners.map(function(p,i){return hofPremiumCard(p,i);}).join('')+'</div>';
       }
       var items = [];
-      if(hof.bestClient) items.push({icon:'fa-medal',color:'#FFD700',label:'Meilleur client du mois',value:hof.bestClient.name+' · '+hof.bestClient.count+' commande'+(hof.bestClient.count>1?'s':'')});
-      if(hof.bestReferrer) items.push({icon:'fa-handshake',color:'#FFD700',label:'Meilleur parrain du mois',value:hof.bestReferrer.name+' · '+hof.bestReferrer.count+' parrainage'+(hof.bestReferrer.count>1?'s':'')+' validé'+(hof.bestReferrer.count>1?'s':'')});
+      if(hof.bestClient) items.push({icon:'fa-medal',color:'#FFD700',label:'Meilleur client du mois',value:hof.bestClient.name+' · '+hof.bestClient.count+' '+_tr(hof.bestClient.count>1?'commandes':'commande')});
+      if(hof.bestReferrer) items.push({icon:'fa-handshake',color:'#FFD700',label:'Meilleur parrain du mois',value:hof.bestReferrer.name+' · '+hof.bestReferrer.count+' '+_tr(hof.bestReferrer.count>1?'parrainages':'parrainage')+' '+_tr(hof.bestReferrer.count>1?'validés':'validé')});
       if(hof.bestTopQG) items.push({icon:'fa-crown',color:'#FFD700',label:'Top QG du mois',value:hof.bestTopQG.name+(hof.bestTopQG.company?' · '+hof.bestTopQG.company:'')});
-      if(hof.bestMostProductive) items.push({icon:'fa-bolt',color:'#FFD700',label:'Plus productif du mois',value:hof.bestMostProductive.name+' · '+hof.bestMostProductive.count+' prestation'+(hof.bestMostProductive.count>1?'s':'')});
+      if(hof.bestMostProductive) items.push({icon:'fa-bolt',color:'#FFD700',label:'Plus productif du mois',value:hof.bestMostProductive.name+' · '+hof.bestMostProductive.count+' '+_tr(hof.bestMostProductive.count>1?'prestations':'prestation')});
       if(items.length) html += '<div style="display:flex;flex-direction:column;gap:9px;">'+items.map(function(it){
         return '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid '+it.icon+'" style="color:'+it.color+';margin-right:7px;"></i>'+it.label+'</div><div class="p-ref-count">'+it.value+'</div></div>';
       }).join('')+'</div>';
@@ -8566,7 +8566,7 @@ function _taRenderAll(){
         +avatarHtml
         +'<div style="font-size:'+(rank===1?'12px':'11px')+';font-weight:900;color:#fff;text-align:center;line-height:1.2;">'+u.name.split(' ')[0]+'</div>'
         +(badgeMeta.label?'<div class="tier-badge '+(badgeMeta.cls||'')+'" style="font-size:9px;padding:2px 7px;">'+badgeMeta.label+'</div>':'')
-        +'<div style="font-size:11px;color:#FFD700;font-weight:800;">'+u.referralCount+' parrainage'+(u.referralCount>1?'s':'')+'</div>'
+        +'<div style="font-size:11px;color:#FFD700;font-weight:800;">'+u.referralCount+' '+_tr(u.referralCount>1?'parrainages':'parrainage')+'</div>'
         +'<div style="background:'+(rank===1?'#FFD700':rank===2?'#C0C0C0':'#cd7f32')+';width:100%;height:'+h+';border-radius:8px 8px 0 0;margin-top:4px;"></div>'
         +'</div>';
     });
@@ -8594,7 +8594,7 @@ function _taRenderAll(){
       +'</div>'
       +'<div style="text-align:right;flex-shrink:0;">'
       +'<div style="font-size:15px;font-weight:900;color:#FFD700;">'+u.referralCount+'</div>'
-      +'<div style="font-size:9px;color:#666;">parrainage'+(u.referralCount>1?'s':'')+'</div>'
+      +'<div style="font-size:9px;color:#666;">'+_tr(u.referralCount>1?'parrainages':'parrainage')+'</div>'
       +'</div></div>';
   }).join('')+'</div>';
   // Pagination
