@@ -460,6 +460,23 @@ function getPartnerByEmail(email) {
     return partners.find(p => p.email.toLowerCase() === email.toLowerCase()) || null;
 }
 
+// Pas de quota bloquant à l'inscription (décision produit, 2026-10-19) : un seuil rigide par
+// catégorie pénaliserait de bons prestataires dans une zone qui ne "semble" saturée qu'en
+// apparence (ville/catégorie mal répartie). À la place, informe l'admin de la densité déjà
+// active dans la même catégorie + ville au moment de valider une nouvelle inscription — à lui
+// de juger au cas par cas (annuaire déjà trié par badge/réputation, donc un peu plus de
+// concurrence profite surtout aux meilleurs profils).
+var PARTNER_CATEGORY_DENSITY_ALERT_THRESHOLD = 15;
+function getActivePartnerCountInCategory(partnerType, city) {
+    if (!city) return 0;
+    var cityNorm = city.trim().toLowerCase();
+    return loadPartners().filter(function(p) {
+        return p.partner_type === partnerType
+            && p.accountStatus === 'active'
+            && (p.city || '').trim().toLowerCase() === cityNorm;
+    }).length;
+}
+
 function getPartnerById(partnerId) {
     const partners = loadPartners();
     return partners.find(p => p.id === partnerId) || null;
@@ -14690,12 +14707,17 @@ app.post('/api/partner/auth/register', async (req, res) => {
         savePartners(partners);
         const { password: _, ...partnerSafe } = partner;
         console.log('[PARTNER] Inscription self-service:', email, '(' + partner_type + ')');
-        notifyUser(null, 'admin', 'partenaire-pending', 'Nouveau partenaire à valider', prenom + ' ' + nom + ' (' + (PARTNER_TYPE_VALUES.indexOf(partner_type) !== -1 ? partner_type : partner_type_other) + ') attend votre approbation pour apparaître dans l\'annuaire.', '/admin.html#open-partners');
+        var _categoryLabel = PARTNER_TYPE_VALUES.indexOf(partner_type) !== -1 ? partner_type : partner_type_other;
+        var _densityCount = getActivePartnerCountInCategory(partner_type, partner.city);
+        var _densityWarning = _densityCount >= PARTNER_CATEGORY_DENSITY_ALERT_THRESHOLD
+            ? ' ⚠️ Déjà ' + _densityCount + ' prestataires actifs en "' + _categoryLabel + '" à ' + partner.city + '.'
+            : '';
+        notifyUser(null, 'admin', 'partenaire-pending', 'Nouveau partenaire à valider', prenom + ' ' + nom + ' (' + _categoryLabel + ') attend votre approbation pour apparaître dans l\'annuaire.' + _densityWarning, '/admin.html#open-partners');
         try {
             emailService.sendPartnerWelcomeEmail(partner).catch(function(e) { console.warn('[PARTNER_WELCOME_EMAIL]', e.message); });
         } catch(_) {}
         try {
-            emailService.sendAdminPartnerRegistrationNotification(partner).catch(function(e) { console.warn('[ADMIN_PARTNER_REG_EMAIL]', e.message); });
+            emailService.sendAdminPartnerRegistrationNotification(partner, _densityCount, PARTNER_CATEGORY_DENSITY_ALERT_THRESHOLD).catch(function(e) { console.warn('[ADMIN_PARTNER_REG_EMAIL]', e.message); });
         } catch(_) {}
         res.json({ success: true, partner: partnerSafe, token: sessionToken });
     } catch (error) {

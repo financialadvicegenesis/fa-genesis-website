@@ -523,7 +523,7 @@ async function sendAdminRegistrationNotification(registrationData) {
  * depuis l'administration. Toujours en français (équipe admin francophone, comme
  * sendAdminRegistrationNotification) — pas de traduction ici.
  */
-async function sendAdminPartnerRegistrationNotification(partner) {
+async function sendAdminPartnerRegistrationNotification(partner, activeCountInCategory, densityThreshold) {
     const transport = initializeTransporter();
     if (!transport) {
         console.log('[EMAIL] Transport non configuré - Notification inscription prestataire non envoyée');
@@ -533,6 +533,14 @@ async function sendAdminPartnerRegistrationNotification(partner) {
     const typeLabel = partner.partner_type === 'other'
         ? (partner.partner_type_other || 'Autre')
         : (partner.partner_type || 'Non précisé');
+
+    // Densité informative (pas de quota bloquant, voir server.js) : aide à juger au cas par cas
+    // si cette catégorie commence à être bien fournie dans cette ville, sans empêcher l'inscription.
+    const densityHtml = (typeof activeCountInCategory === 'number' && partner.city)
+        ? `<div style="background-color: ${activeCountInCategory >= densityThreshold ? '#fff3cd' : '#f5f5f5'}; border: 1px solid ${activeCountInCategory >= densityThreshold ? '#ffeeba' : '#e0e0e0'}; padding: 14px 18px; border-radius: 4px; margin: 16px 0; font-size: 13px; color: #555;">
+            ${activeCountInCategory >= densityThreshold ? '⚠️ ' : ''}<strong>${activeCountInCategory}</strong> prestataire(s) déjà actif(s) en "${typeLabel}" à ${partner.city}.
+        </div>`
+        : '';
 
     const content = `
         <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
@@ -574,6 +582,8 @@ async function sendAdminPartnerRegistrationNotification(partner) {
                 </tr>
             </table>
         </div>
+
+        ${densityHtml}
 
         <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
             <a href="${process.env.FRONT_URL || 'https://fagenesis.com'}/admin.html#open-partners"
