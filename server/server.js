@@ -466,7 +466,7 @@ function getPartnerByEmail(email) {
 // active dans la même catégorie + ville au moment de valider une nouvelle inscription — à lui
 // de juger au cas par cas (annuaire déjà trié par badge/réputation, donc un peu plus de
 // concurrence profite surtout aux meilleurs profils).
-var PARTNER_CATEGORY_DENSITY_ALERT_THRESHOLD = 15;
+var PARTNER_CATEGORY_DENSITY_ALERT_THRESHOLD = 50;
 function getActivePartnerCountInCategory(partnerType, city) {
     if (!city) return 0;
     var cityNorm = city.trim().toLowerCase();
