@@ -3738,7 +3738,7 @@
                         '</div>' +
                         '<div class="text-center">' +
                             '<div class="text-2xl font-black text-[var(--genesis-yellow)]">' + (order.total_amount || 0) + '\u20ac</div>' +
-                            '<div class="text-xs font-bold" style="color:#aaa;">Acompte: ' + (order.deposit_amount || 0) + '\u20ac | Solde: ' + (order.balance_amount || 0) + '\u20ac</div>' +
+                            (isSplit ? '<div class="text-xs font-bold" style="color:#aaa;">Acompte: ' + (order.deposit_amount || 0) + '\u20ac | Solde: ' + (order.balance_amount || 0) + '\u20ac</div>' : '') +
                             '<div class="text-xs mt-1">' + payInfo + '</div>' +
                             missionTag +
                         '</div>' +
