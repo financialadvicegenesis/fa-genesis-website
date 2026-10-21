@@ -21695,8 +21695,16 @@ function _ptnrAddServiceItem(audience){
 }
 
 function _ptnrRemoveServiceItem(buttonEl){
+  // BUG CORRIGÉ : ce bouton ne faisait que retirer la carte du DOM, sans jamais appeler
+  // _ptnrSaveServices() — la suppression restait donc purement visuelle et temporaire. Tant que
+  // le prestataire ne cliquait pas ensuite sur "Enregistrer mes prestations", la prestation
+  // "supprimée" réapparaissait à la prochaine ouverture de l'app (_ptnrSession.services, rechargé
+  // depuis le serveur, ne l'avait jamais perdue). Un bouton de suppression doit supprimer
+  // immédiatement, pas mettre en attente d'un enregistrement séparé que rien ne signalait comme
+  // nécessaire. Sauvegarde donc tout de suite après le retrait de la carte.
   var card = buttonEl.closest('.ptnr-svc-card');
   if(card) card.remove();
+  _ptnrSaveServices();
 }
 
 function _ptnrOnServiceImageSelected(inputEl){
