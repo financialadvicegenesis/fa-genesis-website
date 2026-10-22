@@ -176,10 +176,12 @@ workflows:
         # submissions" (code 90186), confirmé par un vrai échec de build Codemagic (index #25,
         # 2026-10-16) — la phase de build/signature elle-même réussissait, seul l'upload vers App
         # Store Connect était rejeté. Toute nouvelle soumission nécessite donc un numéro de version
-        # jamais approuvé auparavant ; 1.0.1 à incrémenter de nouveau si une future version est
-        # elle-même approuvée.
+        # jamais approuvé auparavant. RÉCIDIVE (build #34, 2026-10-22) : 1.0.1 a fini lui aussi
+        # approuvé/fermé entre-temps (même erreur 90186 exacte) — passé à 1.0.2. Si ça recommence,
+        # toujours re-vérifier le statut réel de la dernière version sur App Store Connect avant de
+        # juste re-incrémenter à l'aveugle.
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.1" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.2" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
           # Déclare directement que l'app n'utilise que le chiffrement HTTPS standard du système
           # (aucun algorithme propriétaire/personnalisé) — évite la question de conformité export
