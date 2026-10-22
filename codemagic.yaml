@@ -233,6 +233,68 @@ workflows:
           target.resources_build_phase.add_file_reference(file_ref)
           project.save
           "
+      - name: Add offline launch fallback (WKWebView cache retry)
+        # Équivalent iOS de MainActivity.setupOfflineCacheFallback() côté Android (voir
+        # android/.../MainActivity.java) : app.html est chargé en direct depuis le réseau
+        # (capacitor.config server.url), jamais embarqué dans l'app — données mobiles ET wifi
+        # désactivés, la navigation initiale échouait sans aucun repli et l'app restait bloquée
+        # indéfiniment sur l'écran de démarrage (contrairement à Facebook/Instagram, qui
+        # s'ouvrent hors-ligne). CAPBridgeViewController (Capacitor) ne prévoit aucun repli
+        # cache sur échec de navigation — on le sous-classe (comme Android sous-classe
+        # BridgeWebViewClient) plutôt que remplacer son WKNavigationDelegate en entier, pour ne
+        # jamais casser l'injection du pont JS/natif ni la gestion des deep links que Capacitor
+        # gère déjà dans cette même méthode via super. Une seule tentative de rechargement avec
+        # cachePolicy .returnCacheDataDontLoad (équivalent WKWebView de LOAD_CACHE_ONLY), qui
+        # ressert la dernière version d'app.html réellement chargée avec succès si elle est
+        # encore dans le cache HTTP du WebView — totalement indépendant de tout Service Worker
+        # (aucun sur iOS natif ici). Main.storyboard pointe par défaut sur CAPBridgeViewController
+        # (généré à neuf par Capacitor à chaque build, ios/ gitignored) : patché via REXML
+        # (plutôt que sed) pour rester robuste à un ordre d'attributs XML différent selon la
+        # version de Capacitor.
+        script: |
+          cat > ios/App/App/OfflineCacheViewController.swift << 'EOF'
+          import Capacitor
+          import WebKit
+
+          class OfflineCacheViewController: CAPBridgeViewController {
+              private var cacheRetryInFlight = false
+
+              override func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+                  if !cacheRetryInFlight, let failingURL = (error as NSError).userInfo[NSURLErrorFailingURLErrorKey] as? URL {
+                      cacheRetryInFlight = true
+                      webView.load(URLRequest(url: failingURL, cachePolicy: .returnCacheDataDontLoad, timeoutInterval: 10))
+                      return
+                  }
+                  cacheRetryInFlight = false
+                  super.webView(webView, didFailProvisionalNavigation: navigation, withError: error)
+              }
+
+              override func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+                  cacheRetryInFlight = false
+                  super.webView(webView, didFinish: navigation)
+              }
+          }
+          EOF
+          ruby -e "
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('ios/App/App.xcodeproj')
+          target = project.targets.find { |t| t.name == 'App' }
+          group = project.main_group.find_subpath('App', true)
+          file_ref = group.new_reference('OfflineCacheViewController.swift')
+          target.source_build_phase.add_file_reference(file_ref)
+          project.save
+          "
+          ruby -e "
+          require 'rexml/document'
+          path = 'ios/App/App/Base.lproj/Main.storyboard'
+          doc = REXML::Document.new(File.read(path))
+          REXML::XPath.each(doc, %Q{//*[@customClass=\'CAPBridgeViewController\']}) do |el|
+            el.attributes['customClass'] = 'OfflineCacheViewController'
+            el.attributes['customModule'] = 'App'
+            el.attributes['customModuleProvider'] = 'target'
+          end
+          File.open(path, 'w') { |f| doc.write(f) }
+          "
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install

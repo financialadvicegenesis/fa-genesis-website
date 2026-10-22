@@ -1,8 +1,16 @@
-// FA GENESIS — Service Worker v22
-var CACHE_NAME = 'fa-genesis-v22';
+// FA GENESIS — Service Worker v23
+var CACHE_NAME = 'fa-genesis-v23';
 
-// Pages critiques : jamais mises en cache (toujours réseau)
-var NO_CACHE = ['/app.html', '/home.html', '/sw.js'];
+// Pages critiques : toujours réseau, MAIS avec repli sur le cache si hors-ligne (voir plus bas).
+// BUG CORRIGÉ : /app.html était ici avant, avec un fetch en cache:'no-store' et AUCUN repli vers
+// une version mise en cache de app.html lui-même (seulement vers /index.html, la page vitrine —
+// inutile pour l'app native) — données mobiles ET wifi désactivés, l'app Android/iOS restait
+// bloquée indéfiniment sur l'écran de démarrage, contrairement à Facebook/Instagram qui s'ouvrent
+// hors-ligne (juste sans données à jour). Retiré /app.html d'ici : il passe maintenant par le
+// gestionnaire générique "network-first, repli cache" plus bas, qui le met en cache à chaque
+// chargement réussi et le ressert depuis ce cache si le réseau échoue — toujours la version la
+// plus fraîche en ligne, mais ouvrable hors-ligne dès la deuxième utilisation.
+var NO_CACHE = ['/home.html', '/sw.js'];
 
 var STATIC_ASSETS = [
   '/index.html',

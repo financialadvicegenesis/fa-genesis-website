@@ -22,9 +22,16 @@
 // s'exécute qu'une fois par lancement (redirige seulement si "_cb" est absent), et
 // uniquement en natif — le web/PWA garde sa vraie protection via le Service Worker
 // (sw.js, cache:'no-store' sur /app.html).
+// CORRECTIF HORS-LIGNE : si données mobiles ET wifi désactivés, le natif (voir
+// MainActivity.java / AppDelegate.swift) répond au premier chargement raté en resservant
+// la DERNIÈRE page app.html mise en cache (sans "_cb", donc une URL déjà vue). Sans le test
+// navigator.onLine ci-dessous, ce script forçait quand même une redirection vers une URL
+// "_cb=" jamais vue avant — donc TOUJOURS un cache-miss garanti même côté natif — qui
+// échouait hors-ligne et bloquait l'app sur un écran d'erreur. Hors-ligne, on garde la page
+// telle que resservie par le cache, sans re-rediriger.
 try{
   var _isNativeBoot = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-  if(_isNativeBoot && window.location.search.indexOf('_cb=')===-1){
+  if(_isNativeBoot && window.location.search.indexOf('_cb=')===-1 && navigator.onLine!==false){
     var _cbSep = window.location.search ? '&' : '?';
     window.location.replace(window.location.pathname + window.location.search + _cbSep + '_cb=' + Date.now() + window.location.hash);
   }

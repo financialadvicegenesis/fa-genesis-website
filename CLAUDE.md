@@ -91,6 +91,35 @@ mémoire continue simplement de tourner jusqu'à la prochaine navigation naturel
 réintroduire ce pattern sans un garde-fou explicite (ex: ignorer le tout premier événement, ou ne
 reload que si aucune interaction n'est en cours).
 
+## App native hors-ligne : app.html doit s'ouvrir même sans réseau (données mobiles + wifi off)
+
+Bug réel le 2026-10-22 : données mobiles ET wifi désactivés, l'app Android/iOS restait bloquée
+indéfiniment sur l'écran de démarrage natif, contrairement à Facebook/Instagram qui s'ouvrent
+hors-ligne (juste sans données à jour). Trois faits à connaître ENSEMBLE avant de retoucher ce
+mécanisme, sinon le correctif de l'un casse l'autre :
+
+1. **Le Service Worker est désactivé en natif, par choix assumé** (`pwa-init.js`, `_isNative`) —
+   incident écran noir déjà vécu sur un appareil réel. `sw.js` ne protège donc QUE le web/PWA, jamais
+   l'app native. Ne jamais compter sur `sw.js` pour un correctif natif.
+2. **app.html ajoute un paramètre `_cb=<timestamp>` unique à chaque lancement natif** (voir le
+   script en tête de `app.html`) pour forcer un cache-miss garanti sur GitHub Pages/Fastly et éviter
+   qu'un correctif mette jusqu'à 10 min à atteindre un téléphone. Ce `_cb=` est TOUJOURS une URL
+   jamais vue — donc incompatible par nature avec un repli cache natif si on ne le neutralise pas :
+   repli cache + `_cb=` actif = l'app retente une URL qui n'a jamais pu être mise en cache, et reste
+   bloquée quand même. Le garde-fou : ce script ne redirige vers `_cb=` que si `navigator.onLine !==
+   false` — hors-ligne, il garde la page telle que resservie par le cache natif, sans re-rediriger.
+3. **Le vrai repli hors-ligne passe par le cache HTTP natif de la WebView elle-même**, pas par un
+   mécanisme JS : `MainActivity.setupOfflineCacheFallback()` (Android, sous-classe
+   `BridgeWebViewClient`, `LOAD_CACHE_ONLY`) et l'étape `codemagic.yaml` "Add offline launch fallback"
+   (iOS, sous-classe `CAPBridgeViewController` en `OfflineCacheViewController`, `cachePolicy
+   .returnCacheDataDontLoad`) — une seule tentative de rechargement depuis le cache sur échec de la
+   navigation principale. Toujours sous-classer (jamais remplacer entièrement le WebViewClient/
+   WKNavigationDelegate de Capacitor) pour ne pas casser le pont JS↔natif ni les deep links.
+
+Conséquence pratique : un changement natif Android nécessite un nouveau build+publish local
+(`android/` gitignored, jamais poussé) ; un changement iOS nécessite un nouveau build Codemagic
+(`ios/` régénéré à chaque build, jamais local) — aucun des deux n'est un simple push `app.html`.
+
 ## iOS : signature du pont push notifications Firebase
 
 Contrairement à Android (jeton FCM direct via `@capacitor/push-notifications`), iOS nécessite
