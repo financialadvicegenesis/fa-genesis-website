@@ -14194,6 +14194,59 @@ function _ptnrSaveToCache(session){
   }
 }
 
+// BUG CORRIGÉ (Android uniquement, 2026-10-22) : une prestation supprimée réapparaissait après
+// avoir quitté l'app juste après la suppression. _ptnrSaveServices() envoyait bien la requête PUT
+// au bon moment, mais Android peut tuer le processus de l'app (geste "quitter", recents, économie
+// de batterie du fabricant) bien plus vite qu'iOS ne le fait avant qu'une requête réseau en cours
+// n'ait eu le temps d'aboutir — la suppression ne partait alors jamais vraiment vers le serveur.
+// On ne peut pas garantir qu'une requête réseau survive à la fermeture du process (aucune des deux
+// plateformes ne l'offre de façon fiable pour un fetch() classique avec en-tête Authorization), donc
+// on mémorise l'INTENTION de supprimer AVANT d'envoyer la requête, et on la rejoue silencieusement
+// au prochain lancement (_ptnrResyncPendingDeletes, appelé depuis _ptnrInit) si le serveur montre
+// encore cette prestation — indépendant de l'écran "Mes prestations" et de ses cartes DOM.
+function _ptnrPendingDeletesKey(){
+  return 'fa_genesis_ptnr_pending_svc_deletes_' + ((_ptnrSession && (_ptnrSession.id || _ptnrSession.email)) || '');
+}
+function _ptnrAddPendingDelete(serviceId){
+  if(!serviceId) return;
+  try{
+    var key = _ptnrPendingDeletesKey();
+    var list = JSON.parse(localStorage.getItem(key) || '[]');
+    if(list.indexOf(serviceId) === -1){ list.push(serviceId); localStorage.setItem(key, JSON.stringify(list)); }
+  }catch(e){}
+}
+// Purge du suivi les IDs qui ne sont plus présents dans `currentServices` (donc bien supprimés
+// côté serveur) — appelé après chaque sauvegarde réussie, qu'elle vienne de l'écran ou du resync.
+function _ptnrReconcilePendingDeletes(currentServices){
+  try{
+    var key = _ptnrPendingDeletesKey();
+    var pending = JSON.parse(localStorage.getItem(key) || '[]');
+    if(!pending.length) return;
+    var presentIds = (currentServices||[]).map(function(s){ return s.id; });
+    var stillPending = pending.filter(function(id){ return presentIds.indexOf(id) !== -1; });
+    if(stillPending.length) localStorage.setItem(key, JSON.stringify(stillPending));
+    else localStorage.removeItem(key);
+  }catch(e){}
+}
+function _ptnrResyncPendingDeletes(){
+  if(!_ptnrSession) return;
+  var pending = [];
+  try{ pending = JSON.parse(localStorage.getItem(_ptnrPendingDeletesKey()) || '[]'); }catch(e){}
+  if(!pending.length) return;
+  var current = _ptnrSession.services || [];
+  var stillOnServer = current.some(function(s){ return pending.indexOf(s.id) !== -1; });
+  if(!stillOnServer){ _ptnrReconcilePendingDeletes(current); return; }
+  var corrected = current.filter(function(s){ return pending.indexOf(s.id) === -1; });
+  _ptnrFetch('/api/partner/services', 'PUT', {services: corrected}).then(function(data){
+    if(data && data.success){
+      _ptnrSession.services = data.services;
+      _ptnrSaveToCache(_ptnrSession);
+      _ptnrReconcilePendingDeletes(data.services);
+      if(typeof _ptnrRenderServicesSection==='function') _ptnrRenderServicesSection();
+    }
+  }).catch(function(){});
+}
+
 function _ptnrFetch(path, method, body){
   // Défense en profondeur : si la variable en mémoire n'a pas encore été (re)posée à ce stade
   // précis (ex: appel déclenché très tôt après une navigation venue d'une notification native),
@@ -14222,6 +14275,7 @@ function _ptnrInit(){
     if(data && data.partner){
       _ptnrSession = data.partner;
       _ptnrSaveToCache(data.partner);
+      _ptnrResyncPendingDeletes();
       _ptnrCheckContournementReminder();
       // CRITIQUE : si l'écran "Accueil" a déjà été peint avec le cache local (potentiellement
       // périmé, ex: prestations ajoutées depuis une autre session) avant que cette réponse
@@ -21709,7 +21763,12 @@ function _ptnrRemoveServiceItem(buttonEl){
   // depuis le serveur, ne l'avait jamais perdue). Un bouton de suppression doit supprimer
   // immédiatement, pas mettre en attente d'un enregistrement séparé que rien ne signalait comme
   // nécessaire. Sauvegarde donc tout de suite après le retrait de la carte.
+  // Mémorise l'intention AVANT d'envoyer la requête (voir _ptnrPendingDeletesKey) — si le process
+  // Android est tué pendant que le PUT est en vol, _ptnrResyncPendingDeletes la rejouera au
+  // prochain lancement au lieu de laisser la prestation réapparaître silencieusement.
   var card = buttonEl.closest('.ptnr-svc-card');
+  var serviceId = card ? card.getAttribute('data-service-id') : '';
+  if(serviceId) _ptnrAddPendingDelete(serviceId);
   if(card) card.remove();
   _ptnrSaveServices();
 }
@@ -21805,6 +21864,7 @@ function _ptnrSaveServices(){
     if(data && data.success){
       _ptnrSession.services = data.services;
       _ptnrSaveToCache(_ptnrSession);
+      _ptnrReconcilePendingDeletes(data.services);
       _ptnrRenderServicesSection();
       // Forcer le rechargement de l'annuaire côté client au prochain accès à l'onglet
       if(typeof _tabLoaded !== 'undefined'){ _tabLoaded['prestataires'] = false; _tabLoaded['explorer'] = false; }
