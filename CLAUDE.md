@@ -91,6 +91,33 @@ mémoire continue simplement de tourner jusqu'à la prochaine navigation naturel
 réintroduire ce pattern sans un garde-fou explicite (ex: ignorer le tout premier événement, ou ne
 reload que si aucune interaction n'est en cours).
 
+## Build local de l'AAB Android signé pour Google Play Console
+
+Le keystore de production et ses identifiants ne sont PAS dans ce repo (`android/` est
+entièrement gitignored) : ils vivent dans `GENESIS - Google Play package/` (dossier sibling de
+`fa-genesis-landing/`, un niveau au-dessus), avec `signing.keystore` + `signing-key-info.txt`
+(mot de passe magasin/clé, alias `genesis-key`) et l'archive de tous les `.aab` déjà livrés
+depuis versioncode11. Avant de rebuild :
+1. Bumper `versionCode`/`versionName` dans `android/app/build.gradle` (Play Console exige un
+   versionCode strictement croissant à chaque upload).
+2. Charger les 4 variables d'environnement (`RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`,
+   `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`) depuis `signing-key-info.txt` — ne jamais taper
+   le mot de passe en clair dans une commande (bloqué par le classificateur de sécurité de toute
+   façon), le lire par script (`grep`/`sed`) dans le même appel shell qui lance `./gradlew`
+   (l'état d'environnement ne survit pas entre deux appels shell séparés).
+3. `cd android && ./gradlew bundleRelease` → `android/app/build/outputs/bundle/release/app-release.aab`.
+
+Piège vécu le 2026-10-22 : `./gradlew bundleRelease` échouait avec "Cannot mutate the
+dependencies of configuration ':app:releaseCompileClasspath' after the configuration was
+resolved" — l'AGP pinné (`com.android.tools.build:gradle:8.2.1` dans `android/build.gradle`)
+n'est pas compatible avec Gradle 9.7.1, pourtant devenu la valeur de
+`android/gradle/wrapper/gradle-wrapper.properties` (très probablement réécrit par un `npx cap
+sync android` après une mise à jour npm de `@capacitor/android`/`@capacitor/cli` — ce fichier
+n'est pas versionné, rien dans git n'aurait montré ce changement). Remettre
+`distributionUrl=...gradle-8.2.1-all.zip` (déjà en cache local, aucun téléchargement) a
+immédiatement résolu le problème — ignorer le message d'erreur qui pointe vers google-services,
+ce n'est pas la vraie cause malgré les apparences.
+
 ## App native hors-ligne : app.html doit s'ouvrir même sans réseau (données mobiles + wifi off)
 
 Bug réel le 2026-10-22 : données mobiles ET wifi désactivés, l'app Android/iOS restait bloquée
