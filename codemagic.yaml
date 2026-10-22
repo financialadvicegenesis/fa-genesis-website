@@ -239,39 +239,65 @@ workflows:
         # (capacitor.config server.url), jamais embarqué dans l'app — données mobiles ET wifi
         # désactivés, la navigation initiale échouait sans aucun repli et l'app restait bloquée
         # indéfiniment sur l'écran de démarrage (contrairement à Facebook/Instagram, qui
-        # s'ouvrent hors-ligne). CAPBridgeViewController (Capacitor) ne prévoit aucun repli
-        # cache sur échec de navigation — on le sous-classe (comme Android sous-classe
-        # BridgeWebViewClient) plutôt que remplacer son WKNavigationDelegate en entier, pour ne
-        # jamais casser l'injection du pont JS/natif ni la gestion des deep links que Capacitor
-        # gère déjà dans cette même méthode via super. Une seule tentative de rechargement avec
-        # cachePolicy .returnCacheDataDontLoad (équivalent WKWebView de LOAD_CACHE_ONLY), qui
-        # ressert la dernière version d'app.html réellement chargée avec succès si elle est
-        # encore dans le cache HTTP du WebView — totalement indépendant de tout Service Worker
-        # (aucun sur iOS natif ici). Main.storyboard pointe par défaut sur CAPBridgeViewController
-        # (généré à neuf par Capacitor à chaque build, ios/ gitignored) : patché via REXML
-        # (plutôt que sed) pour rester robuste à un ordre d'attributs XML différent selon la
-        # version de Capacitor.
+        # s'ouvrent hors-ligne).
+        #
+        # PREMIÈRE TENTATIVE ÉCHOUÉE (build #33, 2026-10-22) : sous-classer CAPBridgeViewController
+        # et override ses méthodes WKNavigationDelegate — échec de compilation ("method does not
+        # override any method from its superclass"). Lecture du vrai code source Capacitor iOS
+        # (node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController.swift +
+        # WebViewDelegationHandler.swift) : CAPBridgeViewController N'EST PAS lui-même le
+        # WKNavigationDelegate — il délègue à un objet interne distinct, WebViewDelegationHandler,
+        # instancié dans loadView() (méthode `final`, donc non-override-able) sans aucun point
+        # d'extension officiel. Vraie solution : laisser Capacitor créer son WebViewDelegationHandler
+        # normalement (storyboard inchangé), puis juste après que l'UI soit montée, réassigner
+        # webView.navigationDelegate à un petit wrapper NSObject qui intercepte UNIQUEMENT
+        # didFailProvisionalNavigation et transfère (NSObject forwardingTarget, mécanisme Objective-C
+        # standard) TOUT le reste — decidePolicyFor, didStartProvisionalNavigation (reset du pont
+        # JS), didFinish, etc. — au VRAI WebViewDelegationHandler de Capacitor (récupéré via
+        # `bridge.webViewDelegationHandler`, exposé public par CapacitorBridge), pour ne jamais
+        # perdre une seule ligne de son comportement. webView.navigationDelegate est `weak` côté
+        # WKWebView : le wrapper est donc gardé en vie par une variable globale du fichier, pas une
+        # simple constante locale qui serait désallouée immédiatement.
         script: |
-          cat > ios/App/App/OfflineCacheViewController.swift << 'EOF'
+          cat > ios/App/App/OfflineCacheNavigationDelegate.swift << 'EOF'
           import Capacitor
           import WebKit
 
-          class OfflineCacheViewController: CAPBridgeViewController {
+          // Garde une référence forte : WKWebView.navigationDelegate est weak, une simple
+          // variable locale serait désallouée dès la fin du bloc qui l'assigne.
+          var _offlineCacheNavigationDelegateRef: OfflineCacheNavigationDelegate?
+
+          final class OfflineCacheNavigationDelegate: NSObject, WKNavigationDelegate {
+              private let realDelegate: WebViewDelegationHandler
               private var cacheRetryInFlight = false
 
-              override func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+              init(realDelegate: WebViewDelegationHandler) {
+                  self.realDelegate = realDelegate
+                  super.init()
+              }
+
+              override func responds(to aSelector: Selector!) -> Bool {
+                  if super.responds(to: aSelector) { return true }
+                  return realDelegate.responds(to: aSelector)
+              }
+
+              override func forwardingTarget(for aSelector: Selector!) -> Any? {
+                  return realDelegate
+              }
+
+              func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
                   if !cacheRetryInFlight, let failingURL = (error as NSError).userInfo[NSURLErrorFailingURLErrorKey] as? URL {
                       cacheRetryInFlight = true
                       webView.load(URLRequest(url: failingURL, cachePolicy: .returnCacheDataDontLoad, timeoutInterval: 10))
                       return
                   }
                   cacheRetryInFlight = false
-                  super.webView(webView, didFailProvisionalNavigation: navigation, withError: error)
+                  realDelegate.webView(webView, didFailProvisionalNavigation: navigation, withError: error)
               }
 
-              override func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+              func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
                   cacheRetryInFlight = false
-                  super.webView(webView, didFinish: navigation)
+                  realDelegate.webView(webView, didFinish: navigation)
               }
           }
           EOF
@@ -280,21 +306,37 @@ workflows:
           project = Xcodeproj::Project.open('ios/App/App.xcodeproj')
           target = project.targets.find { |t| t.name == 'App' }
           group = project.main_group.find_subpath('App', true)
-          file_ref = group.new_reference('OfflineCacheViewController.swift')
+          file_ref = group.new_reference('OfflineCacheNavigationDelegate.swift')
           target.source_build_phase.add_file_reference(file_ref)
           project.save
           "
-          ruby -e "
-          require 'rexml/document'
-          path = 'ios/App/App/Base.lproj/Main.storyboard'
-          doc = REXML::Document.new(File.read(path))
-          REXML::XPath.each(doc, %Q{//*[@customClass=\'CAPBridgeViewController\']}) do |el|
-            el.attributes['customClass'] = 'OfflineCacheViewController'
-            el.attributes['customModule'] = 'App'
-            el.attributes['customModuleProvider'] = 'target'
-          end
-          File.open(path, 'w') { |f| doc.write(f) }
-          "
+          ruby << 'RUBYEOF'
+          content = File.read('ios/App/App/AppDelegate.swift')
+          content = content.sub('import UserNotifications', "import UserNotifications\nimport WebKit")
+          # Accroché à applicationDidBecomeActive (déjà patché par l'étape "Clear app icon badge
+          # on foreground" plus haut, donc anchor texte connu-fiable) plutôt qu'à
+          # didFinishLaunchingWithOptions + self.window : on évite de supposer l'existence d'une
+          # propriété `window` sur AppDelegate (le template Capacitor pourrait ou non l'avoir selon
+          # la version) en passant par UIApplication.shared.windows, valide dans les deux cas.
+          # Idempotent (garde _offlineCacheNavigationDelegateRef == nil) car cette méthode est
+          # appelée à CHAQUE retour au premier plan, pas seulement au lancement.
+          hook = <<~SWIFT.chomp
+            UIApplication.shared.applicationIconBadgeNumber = 0
+                if _offlineCacheNavigationDelegateRef == nil,
+                   let rootVC = UIApplication.shared.windows.first?.rootViewController as? CAPBridgeViewController,
+                   let bridge = rootVC.bridge as? CapacitorBridge,
+                   let webView = rootVC.webView {
+                    let offlineDelegate = OfflineCacheNavigationDelegate(realDelegate: bridge.webViewDelegationHandler)
+                    _offlineCacheNavigationDelegateRef = offlineDelegate
+                    webView.navigationDelegate = offlineDelegate
+                }
+          SWIFT
+          content = content.sub(
+            "UIApplication.shared.applicationIconBadgeNumber = 0",
+            hook
+          )
+          File.write('ios/App/App/AppDelegate.swift', content)
+          RUBYEOF
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install
