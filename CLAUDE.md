@@ -138,10 +138,25 @@ mécanisme, sinon le correctif de l'un casse l'autre :
 3. **Le vrai repli hors-ligne passe par le cache HTTP natif de la WebView elle-même**, pas par un
    mécanisme JS : `MainActivity.setupOfflineCacheFallback()` (Android, sous-classe
    `BridgeWebViewClient`, `LOAD_CACHE_ONLY`) et l'étape `codemagic.yaml` "Add offline launch fallback"
-   (iOS, sous-classe `CAPBridgeViewController` en `OfflineCacheViewController`, `cachePolicy
-   .returnCacheDataDontLoad`) — une seule tentative de rechargement depuis le cache sur échec de la
-   navigation principale. Toujours sous-classer (jamais remplacer entièrement le WebViewClient/
-   WKNavigationDelegate de Capacitor) pour ne pas casser le pont JS↔natif ni les deep links.
+   (iOS). Côté iOS, `CAPBridgeViewController` n'est PAS lui-même le `WKNavigationDelegate` — il
+   délègue à un objet interne (`WebViewDelegationHandler`, voir `node_modules/@capacitor/ios`)
+   instancié dans une méthode `final`, sans aucun point d'extension officiel (première tentative de
+   sous-classer `CAPBridgeViewController` : échec de compilation, "method does not override any
+   method from its superclass"). La vraie approche : réassigner `webView.navigationDelegate` (depuis
+   `applicationDidBecomeActive`) à un wrapper `NSObject` qui n'intercepte que
+   `didFailProvisionalNavigation` et transfère tout le reste (`NSObject.forwardingTarget`) au vrai
+   `WebViewDelegationHandler` de Capacitor (`bridge.webViewDelegationHandler`, exposé public).
+4. **`WebView.loadUrl()` est ASYNCHRONE côté Android — un piège vécu en vrai** (2026-10-23, signalé
+   par un prestataire sur la 2.5.9 : le correctif ne marchait PAS malgré un code qui semblait correct
+   à la lecture et qui COMPILAIT sans erreur). `settings.setCacheMode(LOAD_CACHE_ONLY);
+   view.loadUrl(url); settings.setCacheMode(LOAD_DEFAULT);` annule la contrainte "cache uniquement"
+   AVANT qu'elle n'ait eu la moindre chance de s'appliquer, puisque `loadUrl()` ne fait que poster la
+   navigation et revient immédiatement — la requête réelle démarre plus tard, après le reset. Le mode
+   cache doit rester sur `LOAD_CACHE_ONLY` jusqu'à `onPageFinished` (succès) ou le prochain
+   `onReceivedError` (échec), jamais remis à `LOAD_DEFAULT` entre les deux. Un bug de ce type est
+   invisible à la simple lecture du code — seul un test réel hors-ligne sur un vrai appareil l'a
+   révélé ; toujours redemander une confirmation terrain après un correctif de ce genre plutôt que de
+   le déclarer résolu sur la seule base d'une compilation réussie.
 
 Conséquence pratique : un changement natif Android nécessite un nouveau build+publish local
 (`android/` gitignored, jamais poussé) ; un changement iOS nécessite un nouveau build Codemagic
