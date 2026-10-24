@@ -952,7 +952,7 @@ a{text-decoration:none;color:inherit}
   width:92px;height:92px;aspect-ratio:1/1;flex-shrink:0;overflow:hidden;
   background:#1a1a1a;display:flex;align-items:center;justify-content:center;
 }
-.p-dir-card-photo img{width:100%;height:100%;object-fit:cover}
+.p-dir-card-photo img{width:100%;height:100%;object-fit:cover;object-position:center 20%}
 .p-dir-card-initials{font-size:22px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif}
 .p-dir-card-body{padding:10px;flex:1;min-width:0;display:flex;align-items:center}
 .p-dir-card-info{min-width:0}
@@ -1385,7 +1385,7 @@ a{text-decoration:none;color:inherit}
 .p-list-row .p-fav-heart{position:absolute;top:8px;right:8px;font-size:16px;z-index:2}
 .p-list-photo{width:88px;height:88px;flex-shrink:0;border-radius:12px;background:#1a1a1a;overflow:hidden;
   display:flex;align-items:center;justify-content:center}
-.p-list-photo img{width:100%;height:100%;object-fit:cover}
+.p-list-photo img{width:100%;height:100%;object-fit:cover;object-position:center 20%}
 .p-list-body{flex:1;min-width:0}
 .p-list-meta-row{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
 .p-list-meta-row>span{font-size:10.5px;font-weight:700;color:var(--muted);white-space:nowrap}
@@ -1442,7 +1442,13 @@ a{text-decoration:none;color:inherit}
 .p-reco-card{flex-shrink:0;width:256px;background:var(--card);border:3px solid #000;border-radius:14px;
   overflow:hidden;box-shadow:4px 4px 0 var(--yellow);cursor:pointer;position:relative}
 .p-reco-photo{width:100%;height:144px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-.p-reco-photo img{width:100%;height:100%;object-fit:cover}
+/* BUG CORRIGÉ : object-position par défaut (centre) recadrait au niveau du torse sur une
+   photo de profil typique (visage dans le tiers haut de l'image, cadrage buste/portrait),
+   coupant systématiquement le haut de la tête sur cette vignette large et basse (144px de
+   haut pour 256px de large) — signalé par capture d'écran réelle (Romain Daspet, Cloé
+   Castagnetti). Recadrage biaisé vers le haut pour garder le visage dans le cadre sans
+   avoir à ouvrir la fiche complète du prestataire. */
+.p-reco-photo img{width:100%;height:100%;object-fit:cover;object-position:center 15%}
 .p-reco-initials{font-size:22px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif}
 .p-reco-body{padding:10px}
 .p-reco-name{font-size:12px;font-weight:900;color:#fff;line-height:1.2;margin-bottom:2px;
@@ -1607,7 +1613,7 @@ a{text-decoration:none;color:inherit}
 .p-big-card{flex-shrink:0;width:256px;background:var(--card);border:3px solid #000;border-radius:16px;
   overflow:hidden;box-shadow:5px 5px 0 var(--yellow);cursor:pointer;position:relative}
 .p-big-photo{width:100%;height:144px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-.p-big-photo img{width:100%;height:100%;object-fit:cover}
+.p-big-photo img{width:100%;height:100%;object-fit:cover;object-position:center 15%}
 .p-big-body{padding:12px}
 
 /* Promo pill partenaire */
