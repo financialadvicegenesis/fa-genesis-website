@@ -10706,8 +10706,13 @@ var JEREMIE_BLINK_FRAMES = [
   'assets/images/jeremie-avatar.png?v='+JEREMIE_AVATAR_V
 ];
 function _jeremieAvatarMarkup(){
+  // onerror : si cette image n'a jamais été chargée en ligne sur cet appareil ET qu'il est
+  // hors-ligne au moment où le FAB s'affiche (toute première ouverture jamais faite avec réseau),
+  // l'image échoue et affichait sinon l'icône "image cassée" du navigateur par-dessus le dégradé
+  // de fond (.jeremie-avatar-clip) — on la masque simplement, le cercle doré du bouton Jérémie
+  // reste pleinement visible et cliquable (juste sans le portrait), jamais invisible.
   return '<div class="jeremie-avatar-inner">'
-    +'<img class="jeremie-avatar" src="'+JEREMIE_BLINK_FRAMES[0]+'" alt="Jérémie" draggable="false">'
+    +'<img class="jeremie-avatar" src="'+JEREMIE_BLINK_FRAMES[0]+'" alt="Jérémie" draggable="false" onerror="this.style.display=\'none\'" onload="this.style.display=\'\'">'
     +'</div>';
 }
 // Préchargées une fois pour que la bascule de src pendant le clignement soit instantanée
