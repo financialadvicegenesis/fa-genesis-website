@@ -14292,7 +14292,17 @@ function _ptnrInit(){
       loadNotifInbox();
       if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 120000); }
     } else { _ptnrClearSession(); }
-  }).catch(function(){ _ptnrClearSession(); });
+  }).catch(function(){
+    // BUG CORRIGÉ (2026-10-24) : une erreur ICI est une erreur réseau PURE (fetch() rejette sur
+    // absence de connexion, timeout...), jamais une preuve que le token est invalide — ça n'arrive
+    // JAMAIS quand le serveur répond, même avec un token expiré/révoqué (il répondrait avec un
+    // corps JSON sans `data.partner`, géré par le `else` juste au-dessus, pas une rejection de
+    // promesse). Déconnecter le prestataire ici (_ptnrClearSession) le faisait sortir de son espace
+    // juste parce qu'il n'avait pas de réseau, à l'opposé du principe "ouvrable hors-ligne" déjà
+    // appliqué au chargement de la page — _ptnrSession reste donc tel que déjà restauré depuis le
+    // cache local en haut de cette fonction, et le prestataire continue avec ses dernières données
+    // connues au lieu d'être éjecté vers l'écran de connexion.
+  });
 }
 
 // Rappel des règles anti-contournement (partage de coordonnées personnelles en messagerie),
