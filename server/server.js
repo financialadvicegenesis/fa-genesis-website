@@ -21,6 +21,7 @@ const WebSocket = require('ws');
 
 const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments, generatePartnerSplit, generateUserInstallmentPlan, validateInstallments, CLIENT_TYPE_MAX_INSTALLMENTS } = require('./products');
 const contractService = require('./contracts');
+const invoiceService = require('./invoices');
 const emailService = require('./email-service');
 const aiService = require('./services/aiService');
 const mps = require('./services/marketplace-payment-service');
@@ -981,6 +982,27 @@ function _paymentStageSuffix(stage, order) {
 // déjà via un payout précédent pour ce dispatch+stage). false dans tous les autres cas —
 // l'appelant NE DOIT PAS considérer le paiement comme effectué si false est retourné, sous
 // peine de marquer une commande partner_paid_out=true alors qu'aucun argent n'a bougé.
+// Génère la facture du prestataire pour CETTE mission une fois qu'un versement FINAL a
+// réellement été crédité (jamais sur un simple acompte, jamais sur une mission annulée) — voir
+// invoices.js pour le détail légal. Idempotente (une seule facture par commande) et tolérante à
+// l'absence de SIRET (notifie le prestataire au lieu d'échouer silencieusement ou de générer un
+// document juridiquement invalide).
+function _maybeGenerateMissionInvoice(order, partner, dispatch) {
+    try {
+        if (!order || !partner) return;
+        var result = invoiceService.generateInvoiceForOrder(order, partner, dispatch);
+        if (result && result.pending_siret) {
+            notifyUser(partner.email, 'partner', 'invoice-pending-siret', '📄 Facture en attente',
+                'Une mission vient d\'être validée, mais votre facture ne peut pas encore être générée : complétez votre SIRET et votre adresse de facturation dans votre profil.',
+                '#partner:profil');
+        } else if (result && result.id) {
+            console.log('[INVOICE] ' + result.number + ' générée pour ' + partner.email + ' (commande ' + order.id + ')');
+        }
+    } catch (e) {
+        console.error('[INVOICE] Erreur génération facture:', e);
+    }
+}
+
 async function processDispatchPayout(dispatch, stage) {
     try {
         // claimed_by_partner_id OU partner_id : les deux champs coexistent selon le flux de
@@ -1175,6 +1197,7 @@ async function processDispatchPayout(dispatch, stage) {
             notifyUser(partner.email, 'partner', 'wallet_credited', '💰 Gains disponibles !',
                 '+' + paidAmount.toFixed(2) + '€ viennent d\'être ajoutés à votre Wallet GENESIS. Retirez-les quand vous voulez.',
                 '#partner:wallet:' + _dispId);
+            if (_isFinalStage) _maybeGenerateMissionInvoice(order, partner, dispatch);
         } else {
             console.error('[PAYOUT] ' + stage + ' → Échec crédit wallet pour ' + partner.email);
         }
@@ -1221,6 +1244,18 @@ async function releaseOnHoldPayouts(dispatchId) {
                 notifyUser(p.partner_email, 'partner', 'wallet_credited', '💰 Litige résolu — versement débloqué',
                     '+' + p.amount.toFixed(2) + '€ viennent d\'être ajoutés à votre Wallet GENESIS suite à la résolution du litige.',
                     '#partner:wallet:' + p.dispatch_id);
+                // Un versement final mis en attente par un litige (voir en-tête de fonction) n'avait
+                // jamais déclenché la génération de facture dans processDispatchPayout() — même
+                // logique de finalité ('balance' = versement qui solde la mission) rejouée ici,
+                // une fois le litige résolu et l'argent réellement crédité.
+                if (p.stage === 'balance' && p.order_id) {
+                    try {
+                        var _relOrder = loadOrders().find(function(o) { return o.id === p.order_id; });
+                        var _relPartner = loadPartners().find(function(pt) { return pt.id === p.partner_id; });
+                        var _relDispatch = loadDispatches().find(function(d) { return d.id === p.dispatch_id; });
+                        _maybeGenerateMissionInvoice(_relOrder, _relPartner, _relDispatch);
+                    } catch (eInv) { console.error('[INVOICE] Erreur génération post-litige:', eInv); }
+                }
             } else {
                 notifyUser(null, 'admin', 'refund_manual', '⚠️ Échec du crédit wallet après résolution de litige',
                     'Dispatch ' + p.dispatch_id + ' — le litige a été résolu en faveur du prestataire mais le crédit wallet a échoué. Traiter manuellement.',
@@ -18675,6 +18710,99 @@ app.post('/api/partner/profile/set-rib', authenticatePartner, async function(req
         res.json({ success: true, iban_masked: ibanMasked, bic: bic, titulaire: titulaire });
     } catch(e) {
         console.error('[RIB-SET] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/profile/set-billing-info — SIRET + adresse de facturation (auto-entrepreneur)
+// Mention légale obligatoire sur toute facture française (voir invoices.js) — sans ça, aucune
+// facture ne peut être générée pour ce prestataire quand ses missions sont validées. Pas de
+// re-confirmation de mot de passe ici (contrairement à set-paypal/set-rib) : ces champs ne
+// redirigent aucun paiement, un détournement n'a donc aucun intérêt financier pour un attaquant.
+app.post('/api/partner/profile/set-billing-info', authenticatePartner, function(req, res) {
+    try {
+        var siret = (req.body.siret || '').replace(/\s/g, '');
+        var address = (req.body.billing_address || '').trim();
+        if (!/^\d{14}$/.test(siret)) return res.status(400).json({ error: 'SIRET invalide (14 chiffres attendus)' });
+        if (!address || address.length < 5) return res.status(400).json({ error: 'Adresse de facturation requise' });
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        partners[idx].siret = siret;
+        partners[idx].billing_address = address;
+        partners[idx].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        res.json({ success: true, siret: siret, billing_address: address });
+    } catch(e) {
+        console.error('[BILLING-SET] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/partner/invoices — liste des factures émises par le partenaire connecté
+app.get('/api/partner/invoices', authenticatePartner, function(req, res) {
+    try {
+        var invoices = invoiceService.loadInvoices().filter(function(i) { return i.partner_id === req.partner.id; });
+        invoices.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json(invoices);
+    } catch(e) {
+        console.error('[INVOICE] Erreur liste factures partenaire:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/client/invoices — liste des factures reçues par le client connecté
+app.get('/api/client/invoices', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var invoices = invoiceService.loadInvoices().filter(function(i) { return i.client_email === user.email; });
+        invoices.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json(invoices);
+    } catch(e) {
+        console.error('[INVOICE] Erreur liste factures client:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/invoices/:id/pdf — téléchargement PDF (partenaire émetteur, client destinataire, ou admin)
+app.get('/api/invoices/:id/pdf', function(req, res) {
+    try {
+        var invoice = invoiceService.loadInvoices().find(function(i) { return i.id === req.params.id; });
+        if (!invoice) return res.status(404).json({ error: 'Facture introuvable' });
+
+        var isAdmin = isValidAdminKey(req);
+        var accessOk = isAdmin;
+        if (!accessOk) {
+            try {
+                var jwt = require('jsonwebtoken');
+                var tok = (req.headers['authorization'] || '').replace('Bearer ', '');
+                var decoded = jwt.verify(tok, _JWT_SECRET);
+                if (decoded && (decoded.partnerId || decoded.id)) {
+                    accessOk = invoice.partner_id === (decoded.partnerId || decoded.id);
+                } else if (decoded && decoded.email) {
+                    accessOk = invoice.client_email === decoded.email || invoice.partner_email === decoded.email;
+                }
+            } catch(e2) { /* token invalide */ }
+        }
+        if (!accessOk) {
+            try {
+                var sessions = loadSessions ? loadSessions() : [];
+                var tok2 = req.headers['x-session-token'] || (req.cookies && req.cookies['fa_session']) || '';
+                var sess = sessions.find(function(s) { return s.token === tok2 && s.active; });
+                if (sess) accessOk = invoice.client_email === sess.email || invoice.partner_email === sess.email;
+            } catch(e3) { /* sessions indisponibles */ }
+        }
+        if (!accessOk) return res.status(403).json({ error: 'Accès non autorisé' });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="facture-' + invoice.number + '.pdf"');
+        invoiceService.generateInvoicePdfBuffer(invoice, function(err, buf) {
+            if (err) { console.error('[INVOICE] Erreur PDF:', err); return res.status(500).end(); }
+            res.end(buf);
+        });
+    } catch(e) {
+        console.error('[INVOICE] Erreur PDF endpoint:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
