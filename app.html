@@ -19795,12 +19795,19 @@ function _ptnrLoadVersements(){
     html += '</div>';
 
     // ── Bouton retrait ──
+    // BUG CORRIGÉ : le seul indice du minimum de 20 € était l'attribut title="..." du bouton
+    // désactivé — une infobulle au survol, invisible sur mobile (pas de hover tactile). Un
+    // prestataire sous 20 € voyait juste un bouton grisé sans jamais comprendre pourquoi. Message
+    // désormais toujours visible, pas caché derrière un geste qui n'existe pas sur l'app native.
     html += '<button id="ptnr-wd-toggle-btn" onclick="_ptnrToggleWithdraw()" '
-      +(canWithdraw?'':'disabled title="Minimum 20 € requis"')+' style="width:100%;background:'
+      +(canWithdraw?'':'disabled')+' style="width:100%;background:'
       +(canWithdraw?'linear-gradient(135deg,#FFD700,#f59e0b)':'#1a1a1a')+';color:'
       +(canWithdraw?'#000':'#444')+';border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:'
-      +(canWithdraw?'pointer':'not-allowed')+';margin-bottom:14px;">'
+      +(canWithdraw?'pointer':'not-allowed')+';">'
       +'<i class="fa-solid fa-paper-plane" style="margin-right:6px"></i>Retirer mes gains</button>';
+    html += canWithdraw
+      ? '<div style="text-align:center;font-size:11px;color:#555;margin-top:8px;margin-bottom:14px;">Retraits possibles à partir de 20 €.</div>'
+      : '<div style="text-align:center;font-size:11px;color:#f59e0b;margin-top:8px;margin-bottom:14px;"><i class="fa-solid fa-circle-info" style="margin-right:4px;"></i>Les retraits se font à partir de 20 € — il vous manque '+fmt(20-avail)+' €.</div>';
 
     // ── Formulaire de retrait (masqué) ──
     html += '<div id="ptnr-wd-form-wrap" style="display:none;background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px;margin-bottom:14px;">';
