@@ -17867,7 +17867,12 @@ function regShowSuccess(prenom, isStudentPending){
       // comme après une connexion normale - 'profil' n'a pas lieu d'être la destination par
       // défaut ici. renderProfil() reste utile en pré-chargement silencieux de cet onglet.
       if(welcome&&welcome.style.display!=='none'){ showApp(); nav('home'); } else { if(typeof renderProfil==='function') renderProfil(); if(typeof nav==='function') nav('home'); }
-      setTimeout(_showWelcomeQGOverlay, 400);
+      // BUG CORRIGÉ : ce setTimeout(400ms) affichait l'overlay de bienvenue QG indépendamment
+      // du choix "Voulez-vous voir le tutoriel ?" déclenché, lui, par showApp() (voir son propre
+      // setTimeout(_checkTutoPrompt, 1200) à l'intérieur) — les deux pouvaient donc apparaître
+      // superposés selon le timing exact de l'appareil. L'overlay QG est maintenant déclenché
+      // UNIQUEMENT depuis _tutoDone()/_tutoChoiceNo() (voir plus bas), donc toujours APRÈS que le
+      // tutoriel soit terminé, passé ("Passer"), ou décliné dès le départ — jamais en même temps.
     }, 500);
   }, 2800);
 }
@@ -22395,6 +22400,9 @@ function _tutoChoiceNo(){
   try{ localStorage.setItem(_tutoKey('c_done'),'1'); }catch(e){}
   var el = document.getElementById('tuto-choice-overlay');
   if(el){ el.style.opacity='0'; el.style.pointerEvents='none'; setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 300); }
+  // Décliné dès le choix initial ("Explorer seul(e)") : l'overlay de bienvenue QG peut
+  // s'afficher tout de suite après, même logique que _tutoDone() ci-dessous.
+  setTimeout(function(){ if(typeof _showWelcomeQGOverlay==='function') _showWelcomeQGOverlay(); }, 400);
 }
 
 function _checkTutorial(){
@@ -22460,6 +22468,10 @@ function _tutoDone(){
     // Réinitialise le flag lazy-load pour que nav('home') recharge bien l'accueil
     try{ if(typeof _tabLoaded !== 'undefined'){ _tabLoaded['home'] = false; _tabLoaded['profil'] = false; } }catch(e){}
     if(typeof nav === 'function') nav('home');
+    // Overlay de bienvenue QG (client uniquement) — déclenché ici plutôt que par un minuteur
+    // indépendant lancé à l'inscription, pour ne JAMAIS se superposer au tutoriel : n'apparaît
+    // qu'une fois le tutoriel réellement terminé ou passé ("Passer").
+    setTimeout(function(){ if(typeof _showWelcomeQGOverlay==='function') _showWelcomeQGOverlay(); }, 400);
   }
 }
 </script>
