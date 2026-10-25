@@ -1200,8 +1200,9 @@ a{text-decoration:none;color:inherit}
 .p-dir-cercle-count{color:#fff;text-transform:none;font-weight:700;letter-spacing:0}
 /* Photo de couverture en tête de fiche détail partenaire (bord-à-bord dans la sheet) */
 /* aspect-ratio:1/1 car les photos de profil partenaire sont toujours recadrées en
-   carré à l'upload (cf. _ptnrImageFileToAvatarBase64) : l'image se dimensionne donc
-   automatiquement pour être affichée en entier, sans recadrage qui la rendrait moins visible. */
+   carré à l'upload (cf. _openCropModal, appelé depuis _ptnrHandlePhotoUpload) : l'image
+   se dimensionne donc automatiquement pour être affichée en entier, sans recadrage
+   supplémentaire qui la rendrait moins visible. */
 .p-dir-detail-hero{margin:0 -24px 16px;width:calc(100% + 48px);aspect-ratio:1/1;max-height:320px;overflow:hidden;background:#1a1a1a}
 .p-dir-detail-hero img{width:100%;height:100%;object-fit:cover;display:block}
 .p-dir-detail-hero-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
@@ -20326,32 +20327,155 @@ function _ptnrImageFileToCompressedBase64(file, maxDim, quality){
   });
 }
 
-// Recadre en carré (centre) et compresse une photo de profil, façon avatar Instagram.
-function _ptnrImageFileToAvatarBase64(file, size, quality){
-  size = size || 480;
-  quality = quality || 0.85;
-  return _ptnrFileToBase64(file).then(function(dataUri){
-    return new Promise(function(resolve, reject){
-      var img = new Image();
-      img.onload = function(){
-        try{
-          var w = img.naturalWidth, h = img.naturalHeight;
-          if(!w || !h){ reject(new Error('Image invalide')); return; }
-          var side = Math.min(w, h);
-          var sx = (w - side) / 2, sy = (h - side) / 2;
-          var canvas = document.createElement('canvas');
-          canvas.width = size; canvas.height = size;
-          var ctx = canvas.getContext('2d');
-          ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-          var out = canvas.toDataURL('image/jpeg', quality);
-          if(!out || out.length < 100){ reject(new Error('Compression impossible')); return; }
-          resolve(out);
-        }catch(e){ reject(e); }
-      };
-      img.onerror = function(){ reject(new Error('Format d\'image non supporté sur cet appareil')); };
-      img.src = dataUri;
-    });
+// ── Recadrage manuel des photos (profil, portfolio, prestations) ────────────
+// Demandé explicitement : laisser le prestataire cadrer lui-même sa photo (déplacer/zoomer dans
+// un cadre carré) avant l'envoi, plutôt que subir le recadrage automatique centré de
+// _ptnrImageFileToAvatarBase64()/_ptnrImageFileToCompressedBase64() — celui-ci coupait parfois
+// le visage selon le cadrage original de la photo (même classe de bug que les vignettes client,
+// voir les corrections object-position précédentes). Overlay unique, réutilisé par les 3 écrans.
+var _cropState = null;
+function _openCropModal(file, outSize, quality, onDone, onCancel){
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){ _cropStartSession(img, outSize, quality, onDone, onCancel); };
+    img.onerror = function(){
+      showToast('Image invalide', 'Ce fichier ne peut pas être ouvert.', 'warning');
+      if(onCancel) onCancel();
+    };
+    img.src = e.target.result;
+  };
+  reader.onerror = function(){
+    showToast('Erreur de lecture', 'Impossible de lire ce fichier.', 'warning');
+    if(onCancel) onCancel();
+  };
+  reader.readAsDataURL(file);
+}
+function _cropStartSession(img, outSize, quality, onDone, onCancel){
+  var ov = document.getElementById('crop-overlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'crop-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:99700;background:#000;display:none;flex-direction:column;';
+    ov.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top,0px));flex-shrink:0;">'
+        + '<button id="crop-cancel-btn" style="background:none;border:none;color:#aaa;font-size:14px;font-weight:700;padding:8px;cursor:pointer;">Annuler</button>'
+        + '<div style="color:#fff;font-size:14px;font-weight:800;">Recadrer la photo</div>'
+        + '<button id="crop-confirm-btn" style="background:none;border:none;color:#FFD700;font-size:14px;font-weight:900;padding:8px;cursor:pointer;">Valider</button>'
+      + '</div>'
+      + '<div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0;">'
+        + '<div id="crop-viewport" style="position:relative;overflow:hidden;border-radius:14px;border:2px solid #FFD700;touch-action:none;background:#111;">'
+          + '<img id="crop-img" style="position:absolute;top:0;left:0;transform-origin:0 0;user-select:none;-webkit-user-drag:none;" draggable="false">'
+        + '</div>'
+      + '</div>'
+      + '<div style="padding:18px 24px calc(22px + env(safe-area-inset-bottom,0px));flex-shrink:0;display:flex;align-items:center;gap:10px;">'
+        + '<i class="fa-solid fa-magnifying-glass-minus" style="color:#555;font-size:13px;"></i>'
+        + '<input id="crop-zoom-slider" type="range" min="100" max="300" value="100" style="flex:1;">'
+        + '<i class="fa-solid fa-magnifying-glass-plus" style="color:#555;font-size:13px;"></i>'
+      + '</div>';
+    document.body.appendChild(ov);
+    document.getElementById('crop-cancel-btn').onclick = _cropCancel;
+    document.getElementById('crop-confirm-btn').onclick = _cropConfirm;
+    document.getElementById('crop-zoom-slider').oninput = function(){ _cropApplyZoom(parseFloat(this.value)); };
+    _cropAttachDragHandlers(document.getElementById('crop-viewport'));
+  }
+
+  var vw = Math.min(window.innerWidth, window.innerHeight) * 0.86;
+  vw = Math.min(vw, 460);
+  var viewport = document.getElementById('crop-viewport');
+  viewport.style.width = vw + 'px';
+  viewport.style.height = vw + 'px';
+
+  var imgEl = document.getElementById('crop-img');
+  imgEl.src = img.src;
+
+  var minScale = vw / Math.min(img.naturalWidth, img.naturalHeight);
+  _cropState = {
+    img: img, imgEl: imgEl, frameSize: vw,
+    naturalW: img.naturalWidth, naturalH: img.naturalHeight,
+    minScale: minScale, scale: minScale,
+    offsetX: (vw - img.naturalWidth*minScale)/2, offsetY: (vw - img.naturalHeight*minScale)/2,
+    outSize: outSize, quality: quality, onDone: onDone, onCancel: onCancel,
+    dragging: false, lastX: 0, lastY: 0
+  };
+  _cropClampOffset();
+  _cropApplyTransform();
+  document.getElementById('crop-zoom-slider').value = 100;
+
+  ov.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function _cropClampOffset(){
+  var s = _cropState; if(!s) return;
+  var minX = s.frameSize - s.naturalW*s.scale, minY = s.frameSize - s.naturalH*s.scale;
+  s.offsetX = Math.min(0, Math.max(minX, s.offsetX));
+  s.offsetY = Math.min(0, Math.max(minY, s.offsetY));
+}
+function _cropApplyTransform(){
+  var s = _cropState; if(!s) return;
+  s.imgEl.style.width = (s.naturalW*s.scale) + 'px';
+  s.imgEl.style.height = (s.naturalH*s.scale) + 'px';
+  s.imgEl.style.transform = 'translate('+s.offsetX+'px,'+s.offsetY+'px)';
+}
+function _cropApplyZoom(sliderVal){
+  var s = _cropState; if(!s) return;
+  // Ancre le zoom sur le centre du cadre pour que l'image ne "saute" pas visuellement au toucher du curseur.
+  var c = s.frameSize/2;
+  var imgX = (c - s.offsetX) / s.scale, imgY = (c - s.offsetY) / s.scale;
+  s.scale = s.minScale * (sliderVal/100);
+  s.offsetX = c - imgX*s.scale;
+  s.offsetY = c - imgY*s.scale;
+  _cropClampOffset();
+  _cropApplyTransform();
+}
+function _cropAttachDragHandlers(viewport){
+  viewport.addEventListener('pointerdown', function(e){
+    var s = _cropState; if(!s) return;
+    s.dragging = true; s.lastX = e.clientX; s.lastY = e.clientY;
+    try{ viewport.setPointerCapture(e.pointerId); }catch(err){}
   });
+  viewport.addEventListener('pointermove', function(e){
+    var s = _cropState; if(!s || !s.dragging) return;
+    var dx = e.clientX - s.lastX, dy = e.clientY - s.lastY;
+    s.lastX = e.clientX; s.lastY = e.clientY;
+    s.offsetX += dx; s.offsetY += dy;
+    _cropClampOffset();
+    _cropApplyTransform();
+  });
+  function endDrag(){ var s=_cropState; if(s) s.dragging=false; }
+  viewport.addEventListener('pointerup', endDrag);
+  viewport.addEventListener('pointercancel', endDrag);
+  viewport.addEventListener('pointerleave', endDrag);
+}
+function _cropCancel(){
+  var s = _cropState;
+  _cropCloseOverlay();
+  _cropState = null;
+  if(s && s.onCancel) s.onCancel();
+}
+function _cropConfirm(){
+  var s = _cropState; if(!s) return;
+  try{
+    var canvas = document.createElement('canvas');
+    canvas.width = s.outSize; canvas.height = s.outSize;
+    var ctx = canvas.getContext('2d');
+    var sx = -s.offsetX / s.scale, sy = -s.offsetY / s.scale;
+    var sSize = s.frameSize / s.scale;
+    ctx.drawImage(s.img, sx, sy, sSize, sSize, 0, 0, s.outSize, s.outSize);
+    var out = canvas.toDataURL('image/jpeg', s.quality);
+    _cropCloseOverlay();
+    var onDone = s.onDone;
+    _cropState = null;
+    if(onDone) onDone(out);
+  }catch(e){
+    console.error('[CROP] Erreur export:', e);
+    showToast('Erreur', 'Impossible de recadrer cette image.', 'warning');
+    _cropCancel();
+  }
+}
+function _cropCloseOverlay(){
+  var ov = document.getElementById('crop-overlay');
+  if(ov) ov.style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 // ── PROMOTIONS PARTENAIRE ──────────────────────────────────────────────────
@@ -20539,37 +20663,51 @@ function _ptnrPfRender(){
   }).join('');
 }
 function _ptnrPfOnPhotosSelected(input){
-  var files = input.files;
-  if(!files || !files.length) return;
-  var promises = [];
-  for(var i=0;i<files.length;i++){
-    (function(file){
-      var isVideo = file.type.indexOf('video/') === 0;
-      if(isVideo){
-        if(file.size > 50*1024*1024){
-          showToast('Fichier trop lourd','La vidéo "'+file.name+'" dépasse 50 Mo et ne peut pas être uploadée.','warning');
-          return;
-        }
-        promises.push(new Promise(function(resolve){
-          var reader = new FileReader();
-          reader.onload = function(e){ resolve({ type:'video_upload', dataUri: e.target.result }); };
-          reader.readAsDataURL(file);
-        }));
-      } else {
-        promises.push(_ptnrImageFileToCompressedBase64(file, 1200, 0.82).then(function(uri){ return { type:'photo', dataUri: uri }; }));
-      }
-    })(files[i]);
-  }
+  var files = Array.prototype.slice.call(input.files || []);
+  if(!files.length) return;
   var isVideoInput = input.id === 'ptnr-pf-video-file-input';
   if(isVideoInput) _ptnrPfCloseVideoPopup();
-  Promise.all(promises).then(function(results){
+  input.value = '';
+  // Les photos passent UNE PAR UNE par la liseuse de recadrage (_openCropModal) — on ne peut pas
+  // cadrer plusieurs images en même temps dans un seul geste, donc file sélectionnée une à une
+  // plutôt qu'en parallèle comme avant (Promise.all). Les vidéos ne sont jamais recadrées, lues
+  // directement comme auparavant.
+  _ptnrPfProcessFilesQueue(files, 0, []);
+}
+function _ptnrPfProcessFilesQueue(files, idx, results){
+  if(idx >= files.length){
     results.forEach(function(r){
       if(!r) return;
       _ptnrPfItems.push({ id: 'PF-' + Math.random().toString(36).slice(2,8), type: r.type, url: r.dataUri, caption: '' });
     });
     _ptnrPfRender();
-  }).catch(function(e){ console.error('[PTNR-PF] Erreur upload:', e); });
-  input.value = '';
+    return;
+  }
+  var file = files[idx];
+  var isVideo = file.type.indexOf('video/') === 0;
+  if(isVideo){
+    if(file.size > 50*1024*1024){
+      showToast('Fichier trop lourd','La vidéo "'+file.name+'" dépasse 50 Mo et ne peut pas être uploadée.','warning');
+      _ptnrPfProcessFilesQueue(files, idx+1, results);
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(e){
+      results.push({ type:'video_upload', dataUri: e.target.result });
+      _ptnrPfProcessFilesQueue(files, idx+1, results);
+    };
+    reader.onerror = function(){ _ptnrPfProcessFilesQueue(files, idx+1, results); };
+    reader.readAsDataURL(file);
+  } else {
+    _openCropModal(file, 1200, 0.82, function(dataUri){
+      results.push({ type:'photo', dataUri: dataUri });
+      _ptnrPfProcessFilesQueue(files, idx+1, results);
+    }, function(){
+      // Annulé pour cette photo précise : on passe simplement à la suivante sans la perdre pour
+      // les autres, ni bloquer le reste de la sélection.
+      _ptnrPfProcessFilesQueue(files, idx+1, results);
+    });
+  }
 }
 function _ptnrPfOpenVideoPopup(){
   var p = document.getElementById('ptnr-pf-video-popup');
@@ -21924,8 +22062,9 @@ function _ptnrOnServiceImageSelected(inputEl){
   var file = inputEl.files && inputEl.files[0];
   if(!file) return;
   var card = inputEl.closest('.ptnr-svc-card');
-  if(!card) return;
-  _ptnrImageFileToCompressedBase64(file, 800, 0.8).then(function(dataUri){
+  if(!card){ inputEl.value=''; return; }
+  _openCropModal(file, 800, 0.8, function(dataUri){
+    inputEl.value='';
     card.setAttribute('data-service-image', encodeURIComponent(dataUri));
     var photoWrap = card.querySelector('.ptnr-svc-card-photo');
     if(photoWrap){
@@ -21938,9 +22077,7 @@ function _ptnrOnServiceImageSelected(inputEl){
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
       photoWrap.insertBefore(img, photoWrap.firstChild);
     }
-  }).catch(function(err){
-    console.error('[PTNR] Erreur upload photo prestation:', err);
-  }).finally(function(){ inputEl.value=''; });
+  }, function(){ inputEl.value=''; });
 }
 
 function _ptnrCollectServiceItems(audience){
@@ -22036,28 +22173,28 @@ function _ptnrHandlePhotoUpload(input){
     if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Cette photo est trop lourde. Choisissez-en une autre.'; msgEl.className='ptnr-login-err on'; }
     input.value=''; return;
   }
-  if(btnEl){ btnEl.disabled=true; btnEl.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Envoi...'; }
   if(msgEl){ msgEl.className='ptnr-login-err'; msgEl.textContent=''; }
-  _ptnrImageFileToAvatarBase64(file, 480, 0.85).then(function(dataUri){
-    if(preview) preview.innerHTML = '<img src="'+dataUri+'" alt="" style="width:100%;height:100%;object-fit:cover;">';
-    return _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {photo: dataUri});
-  }).then(function(data){
-    if(data && data.success){
-      _ptnrSession.photo = data.partner.photo;
-      _ptnrSaveToCache(_ptnrSession);
-      showToast('Photo mise à jour', '', 'success');
-      setTimeout(_ptnrProfilBack, 900);
-    } else if(msgEl){
-      msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'envoi de la photo'; msgEl.className='ptnr-login-err on';
-    }
-  }).catch(function(err){
-    console.error('[PTNR] Erreur upload photo profil:', err);
-    var msg = (err && err.message && err.message !== 'Erreur serveur') ? err.message : 'Erreur de connexion au serveur. Réessayez.';
-    if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=msg; msgEl.className='ptnr-login-err on'; }
-  }).finally(function(){
-    if(btnEl){ btnEl.disabled=false; btnEl.innerHTML='<i class="fa-solid fa-camera"></i> Changer ma photo'; }
+  _openCropModal(file, 480, 0.85, function(dataUri){
     input.value='';
-  });
+    if(btnEl){ btnEl.disabled=true; btnEl.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Envoi...'; }
+    if(preview) preview.innerHTML = '<img src="'+dataUri+'" alt="" style="width:100%;height:100%;object-fit:cover;">';
+    _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {photo: dataUri}).then(function(data){
+      if(data && data.success){
+        _ptnrSession.photo = data.partner.photo;
+        _ptnrSaveToCache(_ptnrSession);
+        showToast('Photo mise à jour', '', 'success');
+        setTimeout(_ptnrProfilBack, 900);
+      } else if(msgEl){
+        msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'envoi de la photo'; msgEl.className='ptnr-login-err on';
+      }
+    }).catch(function(err){
+      console.error('[PTNR] Erreur upload photo profil:', err);
+      var msg = (err && err.message && err.message !== 'Erreur serveur') ? err.message : 'Erreur de connexion au serveur. Réessayez.';
+      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=msg; msgEl.className='ptnr-login-err on'; }
+    }).finally(function(){
+      if(btnEl){ btnEl.disabled=false; btnEl.innerHTML='<i class="fa-solid fa-camera"></i> Changer ma photo'; }
+    });
+  }, function(){ input.value=''; });
 }
 
 /* ══════════════════════════════════════════════════
