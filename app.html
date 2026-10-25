@@ -1269,7 +1269,7 @@ a{text-decoration:none;color:inherit}
 .p-dir-pf-bento{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:10px}
 .p-dir-pf-item{position:relative;overflow:hidden;border-radius:12px;background:#0d0d0d;aspect-ratio:1/1;cursor:pointer;border:1px solid #1e1e1e;transition:transform .18s,box-shadow .18s}
 .p-dir-pf-item:active{transform:scale(.97)}
-.p-dir-pf-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+.p-dir-pf-item img{width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block;transition:transform .35s ease}
 .p-dir-pf-item:hover img{transform:scale(1.04)}
 .p-dir-pf-hero{grid-column:span 2;aspect-ratio:16/9}
 .p-dir-pf-video{background:linear-gradient(135deg,#0a0a0a 0%,#1a0d00 100%);border-color:rgba(255,215,0,.18)}
@@ -6710,6 +6710,41 @@ function partnerTypeLabel(p){
   return PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
 }
 
+// ── Liseuse plein écran du portfolio prestataire (fiche client) ──────────────
+// Demandé explicitement : voir le visage/la photo en intégralité sans devoir deviner depuis la
+// vignette recadrée, fermeture via une croix, retour à la fiche sans navigation/rechargement.
+var _pfLightboxItems = [];
+function _pfOpenLightbox(idx){
+  var item = _pfLightboxItems[idx];
+  if(!item || !item.url) return;
+  var ov = document.getElementById('pf-lightbox-overlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'pf-lightbox-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:99500;background:rgba(0,0,0,.96);display:none;align-items:center;justify-content:center;flex-direction:column;';
+    ov.onclick = function(e){ if(e.target===ov) _pfCloseLightbox(); };
+    document.body.appendChild(ov);
+  }
+  var isVideo = item.type === 'video_upload';
+  var mediaHtml = isVideo
+    ? '<video src="'+item.url+'" controls autoplay playsinline style="max-width:94vw;max-height:80vh;border-radius:8px;"></video>'
+    : '<img src="'+item.url+'" alt="" style="max-width:94vw;max-height:80vh;border-radius:8px;object-fit:contain;">';
+  ov.innerHTML = '<button onclick="_pfCloseLightbox()" aria-label="Fermer" style="position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:18px;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center;">&#10005;</button>'
+    + mediaHtml
+    + (item.caption ? '<div style="margin-top:14px;max-width:88vw;text-align:center;color:#ccc;font-size:13px;">'+item.caption+'</div>' : '');
+  ov.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function _pfCloseLightbox(){
+  var ov = document.getElementById('pf-lightbox-overlay');
+  if(ov){
+    var v = ov.querySelector('video');
+    if(v){ try{ v.pause(); }catch(e){} }
+    ov.style.display = 'none';
+  }
+  document.body.style.overflow = '';
+}
+
 function directoryCard(p){
   var label = partnerTypeLabel(p);
   var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('dès '+p.fromPrice+' €');
@@ -6901,13 +6936,17 @@ function openPartnerDetail(partnerId){
       var portfolio = p.portfolio || [];
       var portfolioHtml = '';
       if(portfolio.length){
+        // Les items propres au prestataire (photo / vidéo uploadée) s'ouvrent dans la liseuse
+        // plein écran (_pfOpenLightbox) — un lien 'video' (Instagram/YouTube externe) reste un
+        // lien classique, rien à afficher en plein écran dans l'app pour ça.
+        _pfLightboxItems = portfolio;
         portfolioHtml = '<div class="pf-sec"><i class="fa-solid fa-images"></i> Portfolio</div>'
           + '<div class="p-dir-pf-bento">'
           + portfolio.map(function(item, i){
               var isHero = (i === 0);
               var extraCls = (isHero ? ' p-dir-pf-hero' : '');
               if(item.type === 'video_upload'){
-                return '<div class="p-dir-pf-item p-dir-pf-video-upload'+extraCls+'">'
+                return '<div class="p-dir-pf-item p-dir-pf-video-upload'+extraCls+'" onclick="_pfOpenLightbox('+i+')">'
                   + '<video src="'+item.url+'" autoplay muted loop playsinline></video>'
                   + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
                 + '</div>';
@@ -6922,7 +6961,7 @@ function openPartnerDetail(partnerId){
                   + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
                 + '</a>';
               }
-              return '<div class="p-dir-pf-item'+extraCls+'">'
+              return '<div class="p-dir-pf-item'+extraCls+'" onclick="_pfOpenLightbox('+i+')">'
                 + '<img src="'+item.url+'" alt="'+(item.caption||'')+'" loading="lazy">'
                 + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
               + '</div>';
