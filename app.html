@@ -14967,7 +14967,7 @@ function _ptnrEnterDashboard(profileId){
   _ptnrCheckPushStatus();
   // Tutoriel : uniquement à la première vraie connexion, jamais en mode invité
   setTimeout(function(){
-    if(typeof _TUTO_P!=='undefined' && !localStorage.getItem(_ptnrTutoKey())){
+    if(typeof _TUTO_P!=='undefined' && _ptnrShouldAutoShowTutorial()){
       _tutoIsPartner=true; _tutoSteps=_TUTO_P; _tutoIdx=0; _tutoRender();
       var ov=document.getElementById('tuto-overlay');
       if(ov){ov.classList.add('open');if(typeof haptic==='function')haptic(40);}
@@ -15081,7 +15081,7 @@ function _ptnrSignPartnershipContract() {
       _ptnrRefreshBadges();
       _ptnrCheckPushStatus();
       setTimeout(function(){
-        if(typeof _TUTO_P!=='undefined' && !localStorage.getItem(_ptnrTutoKey())){
+        if(typeof _TUTO_P!=='undefined' && _ptnrShouldAutoShowTutorial()){
           _tutoIsPartner=true; _tutoSteps=_TUTO_P; _tutoIdx=0; _tutoRender();
           var ov=document.getElementById('tuto-overlay');
           if(ov){ov.classList.add('open');if(typeof haptic==='function')haptic(40);}
@@ -22615,6 +22615,22 @@ function _tutoKey(type){
 function _ptnrTutoKey(){
   var pid = (_ptnrSession && (_ptnrSession.id || _ptnrSession.email)) || 'anon';
   return 'fa_tuto_p_done_' + pid;
+}
+
+// BUG CORRIGÉ : le tutoriel d'accueil prestataire ne se fiait qu'à localStorage, effacé à la
+// réinstallation — un prestataire expérimenté (missions réalisées, badges) se voyait imposer tout
+// le tutoriel "Bienvenue, prestataire GENESIS !" à sa reconnexion. Le serveur renvoie désormais
+// missionsCompleted (login + /auth/me) : un prestataire ayant déjà au moins une mission réalisée
+// n'est plus considéré comme nouveau, et la décision est mémorisée pour ne plus se reposer.
+function _ptnrShouldAutoShowTutorial(){
+  try{
+    if(localStorage.getItem(_ptnrTutoKey())) return false;
+    if(_ptnrSession && (_ptnrSession.missionsCompleted > 0 || _ptnrSession.first_mission_completed_at)){
+      localStorage.setItem(_ptnrTutoKey(), '1');
+      return false;
+    }
+  }catch(e){}
+  return true;
 }
 
 // ── PANNEAU DE CHOIX TUTORIEL (première connexion) ───────────────

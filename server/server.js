@@ -14640,6 +14640,9 @@ app.post('/api/partner/auth/login', async (req, res) => {
         }
         const { password: _, ...partnerSafe } = partner;
         partnerSafe.sessionToken = sessionToken;
+        // Permet à l'app de reconnaître un prestataire déjà actif (ex. après réinstallation, quand
+        // la mémoire locale du tutoriel a été effacée) — voir _ptnrShouldAutoShowTutorial (app.html).
+        partnerSafe.missionsCompleted = getPartnerMissionsCompleted(partner.id);
         console.log('[PARTNER] Connexion:', email);
         res.json({ success: true, partner: partnerSafe, token: sessionToken });
     } catch (error) {
@@ -14885,6 +14888,7 @@ app.post('/api/partner/subprofiles/:id/verify-pin', authenticatePartner, async (
 app.get('/api/partner/auth/me', authenticatePartner, (req, res) => {
     try {
         const { password, ...partnerSafe } = req.partner;
+        partnerSafe.missionsCompleted = getPartnerMissionsCompleted(req.partner.id);
         res.json({ success: true, partner: partnerSafe });
     } catch (error) {
         console.error('[PARTNER] Erreur me:', error);
