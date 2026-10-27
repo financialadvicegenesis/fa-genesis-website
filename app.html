@@ -10055,7 +10055,6 @@ function _syncUserBadge(){
     .then(function(r){ if(r.status===401){_handleStaleSession();return null;} return r.json(); })
     .then(function(d){
       if(!d || !d.success) return;
-      var prevBadge = USER.badge || null;
       USER.badge = d.badge;
       USER.badgeProgress = d.badgeProgress;
       USER.genesisPoints = d.genesisPoints;
@@ -10077,33 +10076,26 @@ function _syncUserBadge(){
       var _prevStudentStatus = USER.student_status;
       if(d.student_status != null) USER.student_status = d.student_status;
       try{ _applyUserTheme(USER.profile_theme); }catch(e){}
-      // Level-up detection: show confetti if badge improved
-      // BUG CORRIGÉ : la comparaison reposait uniquement sur USER.badge en mémoire/restauré de
-      // localStorage à CET instant précis (prevBadge), ce qui pouvait se désynchroniser (ex. appel
-      // concurrent, restauration de session) et faisait réapparaître le popup à chaque connexion
-      // au lieu d'une seule fois. On ajoute un verrou localStorage dédié, propre à chaque niveau
-      // déjà vu pour cet utilisateur, qui persiste la décision indépendamment du reste de l'état -
-      // le popup ne peut plus se redéclencher pour un badge déjà célébré, même si prevOrder/newOrder
-      // se retrouvent désynchronisés.
+      // Détection de passage de niveau : popup + confettis UNIQUEMENT pour une vraie progression
+      // observée sur CET appareil. Le dernier niveau connu est mémorisé localement ('none' = aucun
+      // niveau). BUG CORRIGÉ : une désinstallation/réinstallation (ou un nouveau téléphone) effaçait
+      // cette mémoire, et un client déjà Créateur depuis longtemps revoyait "Nouveau niveau !
+      // Créateur" à sa reconnexion, par-dessus le tutoriel. Sans mémoire locale, le niveau actuel
+      // sert désormais de point de départ, en silence. Un nouvel inscrit enregistre 'none' dès sa
+      // première synchronisation, son vrai premier niveau est donc toujours célébré.
       try {
-        var levelOrder = [null, 'bronze', 'argent', 'or', 'elite'];
-        var prevOrder = levelOrder.indexOf(prevBadge);
-        var newOrder = levelOrder.indexOf(d.badge);
+        var levelOrder = ['none', 'bronze', 'argent', 'or', 'elite'];
         var _luKey = 'fa_genesis_levelup_shown_' + ((USER && (USER.id || USER.email)) || 'anon');
-        var _luAlreadyShown = null;
-        try { _luAlreadyShown = localStorage.getItem(_luKey); } catch(e) {}
-        if (newOrder > prevOrder && d.badge && _luAlreadyShown !== d.badge && typeof _triggerLevelUp === 'function') {
-          try { localStorage.setItem(_luKey, d.badge); } catch(e) {}
+        var _luCurrent = d.badge || 'none';
+        var _luKnown = null;
+        try { _luKnown = localStorage.getItem(_luKey); } catch(e) {}
+        if (_luKnown && levelOrder.indexOf(_luCurrent) > levelOrder.indexOf(_luKnown) && d.badge && typeof _triggerLevelUp === 'function') {
           var levelMeta = { bronze: { label: 'Créateur', icon: 'fa-fire' }, argent: { label: 'Bâtisseur', icon: 'fa-bolt' }, or: { label: 'Visionnaire', icon: 'fa-crown' }, elite: { label: 'Générateur', icon: 'fa-infinity' } };
           var meta = levelMeta[d.badge] || { label: d.badge, icon: 'fa-star' };
           var _luBadgeId = d.badge;
           setTimeout(function() { _triggerLevelUp(meta.label, _luBadgeId); }, 400);
-        } else if (d.badge && _luAlreadyShown !== d.badge && newOrder <= prevOrder) {
-          // Niveau déjà au courant côté serveur (ex: restauration de session) mais jamais marqué
-          // comme "célébré" localement — on marque sans afficher pour éviter un déclenchement
-          // tardif la prochaine fois que prevOrder redevient momentanément inférieur.
-          try { localStorage.setItem(_luKey, d.badge); } catch(e) {}
         }
+        if (_luKnown !== _luCurrent) { try { localStorage.setItem(_luKey, _luCurrent); } catch(e) {} }
       } catch(e) {}
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
       _renderHomeQGWidget();
@@ -11521,8 +11513,14 @@ function _triggerLevelUp(levelLabel, levelIcon) {
 }
 
 // ── ONBOARDING QG — overlay affiché une seule fois après inscription ──
+// Vrai uniquement juste après une inscription réussie sur cet appareil (posé par regShowSuccess).
+// BUG CORRIGÉ : l'overlay ne se fiait qu'à fa_genesis_welcome_shown, effacé à la réinstallation —
+// un client déjà à 100 QG revoyait "Bonus de bienvenue +40 QG, 40/100 QG" (valeurs codées en dur,
+// fausses pour lui) en se reconnectant après avoir réinstallé l'app.
+var _justRegistered = false;
 function _showWelcomeQGOverlay() {
   try {
+    if (!_justRegistered) return;
     if (localStorage.getItem('fa_genesis_welcome_shown')) return;
     localStorage.setItem('fa_genesis_welcome_shown', '1');
 
@@ -12503,10 +12501,20 @@ function _ppSave() {
 // mes avantages" du popup de félicitations (_triggerLevelUp) pour amener directement le client
 // sur SON niveau fraîchement atteint, au lieu de le laisser défiler manuellement depuis le haut
 // de l'écran (intro + explications QG) parmi les 4 niveaux pour le retrouver.
-function showClientLevels(scrollToLevel) {
+function showClientLevels(scrollToLevel, _afterNav) {
   var c = document.getElementById('profilContent');
   if (!c) return;
   if (!USER || GUEST) { renderProfil(); return; }
+  // BUG CORRIGÉ : appelé hors de l'onglet Profil (ex. bouton "Voir mes avantages" du popup de
+  // nouveau niveau, affiché sur l'Accueil), l'écran se dessinait dans l'onglet Profil caché et
+  // le bouton semblait ne rien faire. On bascule d'abord sur Profil, comme le fait le routeur de
+  // notifications pour #client:niveaux (même délai, le temps que nav('profil') ait rendu l'onglet).
+  var _tabProfil = document.getElementById('tab-profil');
+  if (!_afterNav && _tabProfil && !_tabProfil.classList.contains('on') && typeof nav === 'function') {
+    nav('profil');
+    setTimeout(function(){ showClientLevels(scrollToLevel, true); }, 600);
+    return;
+  }
   _saveProfilScroll('showClientLevels');
   c.innerHTML = '<div class="espace-view">'
     + '<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes Niveaux GENESIS</div></div>'
@@ -17952,6 +17960,7 @@ function regStepIdentity(){
 }
 
 function regShowSuccess(prenom, isStudentPending){
+  _justRegistered = true; // seule porte d'entrée de l'overlay de bienvenue QG (_showWelcomeQGOverlay)
   // Toujours vider le panier à l'inscription : un ancien compte supprimé ne doit
   // pas laisser ses articles dans le navigateur pour un nouvel inscrit.
   try{ APP_CART=[]; localStorage.removeItem('fa_app_cart'); updateCartBadge(); }catch(e){}
