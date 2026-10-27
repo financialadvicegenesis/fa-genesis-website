@@ -187,6 +187,12 @@ workflows:
           # (aucun algorithme propriétaire/personnalisé) — évite la question de conformité export
           # posée manuellement à chaque build (déjà répondue identiquement plusieurs fois ce jour).
           /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
+          # Face ID : sans cette clé, @aparajita/capacitor-biometric-auth répond volontairement
+          # isAvailable=false sur tout iPhone à Face ID (iOS ferait planter l'app à l'appel de
+          # evaluatePolicy sinon) — le verrouillage biométrique client/prestataire, pourtant déjà
+          # codé pour les deux plateformes dans app.html, n'était donc jamais proposé sur iOS.
+          # Texte affiché par iOS dans la demande d'autorisation Face ID.
+          /usr/libexec/PlistBuddy -c "Add :NSFaceIDUsageDescription string GENESIS utilise Face ID pour déverrouiller votre compte en toute sécurité." ios/App/App/Info.plist
       - name: Apply GENESIS branding (icon + splash screen)
         # Parité avec Android : sans ceci, l'app iOS affiche l'icône et l'écran de démarrage
         # génériques par défaut de Capacitor (jamais remplacés jusqu'ici) au lieu du logo GENESIS.
