@@ -11558,7 +11558,7 @@ function _showWelcomeQGOverlay() {
       + '<div style="font-size:12px;color:#fff;font-weight:700;">Avis déposé</div>'
       + '<div style="font-size:10px;color:#555;">Notez un prestataire après votre commande</div>'
       + '</div>'
-      + '<div style="font-size:12px;font-weight:900;color:var(--yellow);white-space:nowrap;">+5 QG</div>'
+      + '<div style="font-size:12px;font-weight:900;color:var(--yellow);white-space:nowrap;">+30 QG</div>'
       + '</div>'
       + '</div>'
       + '</div>'
@@ -11658,8 +11658,9 @@ function showResumeMensuel() {
       html += '<div style="font-size:11px;font-weight:800;color:#555;letter-spacing:.8px;margin-bottom:10px;">COMMENT GAGNER DES QG</div>';
       var qgActions = [
         {icon:'fa-briefcase',label:'Prestation réalisée',pts:20},
-        {icon:'fa-star',label:'Avis laissé',pts:5},
-        {icon:'fa-star',label:'Avis 5 étoiles',pts:30,extra:true},
+        // Le serveur crédite +30 QG pour tout avis laissé par un client (GENESIS_POINT_VALUES.avisLaisse,
+        // getClientGenesisPoints) — il n'existe pas de bonus séparé "avis 5 étoiles" côté client.
+        {icon:'fa-star',label:'Avis laissé',pts:30},
         {icon:'fa-chalkboard-teacher',label:'Atelier ou formation',pts:50},
         {icon:'fa-calendar-check',label:'Participation événement',pts:75},
         {icon:'fa-user-plus',label:'Parrainage validé',pts:100}
