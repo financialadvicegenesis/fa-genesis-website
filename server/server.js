@@ -1776,10 +1776,13 @@ app.use((req, res, next) => {
 //  n'importe qui pouvait appeler /api/admin/partners et recuperer les
 //  IBAN/BIC en clair de tous les prestataires)
 // ============================================================
+// SÉCURITÉ : plus aucun mot de passe de secours écrit ici (dépôt GitHub public). Sans la variable
+// Render ADMIN_PASSWORD, ces comptes sont simplement désactivés au lieu de retomber sur un mot de
+// passe que tout le monde peut lire.
 var ADMIN_ACCOUNTS = [
-    { email: 'admin@fagenesis.com', password: process.env.ADMIN_PASSWORD || 'FAGenesis2024!' },
-    { email: 'tiffenndjambou3@gmail.com', password: process.env.ADMIN_PASSWORD || 'FAGenesis2024!' }
-];
+    { email: 'admin@fagenesis.com', password: process.env.ADMIN_PASSWORD },
+    { email: 'tiffenndjambou3@gmail.com', password: process.env.ADMIN_PASSWORD }
+].filter(function(a) { return typeof a.password === 'string' && a.password.length > 0; });
 
 function loadAdminSessions() {
     try {
