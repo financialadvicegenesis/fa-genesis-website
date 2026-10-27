@@ -91,6 +91,17 @@ mémoire continue simplement de tourner jusqu'à la prochaine navigation naturel
 réintroduire ce pattern sans un garde-fou explicite (ex: ignorer le tout premier événement, ou ne
 reload que si aucune interaction n'est en cours).
 
+## Ce dépôt GitHub est PUBLIC — aucun identifiant, mot de passe ou clé dans le code
+
+Incident réel le 2026-10-27 : l'e-mail et le mot de passe admin étaient écrits en clair dans
+`server/server.js` (connexion admin via `/api/partner/auth/login`, et mot de passe de secours de
+`ADMIN_ACCOUNTS` pour `admin.html`), lisibles par n'importe qui sur GitHub. Retirés ; les accès
+admin passent uniquement par les variables d'environnement Render (`ADMIN_PARTNER_EMAIL` /
+`ADMIN_PARTNER_PASSWORD` pour l'admin dans l'app, `ADMIN_PASSWORD` pour `admin.html`). Jamais de
+valeur de repli écrite en dur (`process.env.X || 'motdepasse'`) : sans la variable, l'accès doit
+être refusé, pas retomber sur un secret public. L'ancien mot de passe reste dans l'historique git
+et ne doit plus jamais être réutilisé.
+
 ## Build local de l'AAB Android signé pour Google Play Console
 
 Le keystore de production et ses identifiants ne sont PAS dans ce repo (`android/` est
