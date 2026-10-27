@@ -6110,12 +6110,35 @@ function _loadExpPartners(mode, cityFilter){
 
     if(!_expHeatVisible) return;
 
-    // Créer des marqueurs HTML circulaires avec photo (style WeCheers)
-    var shown = 0;
+    // Le serveur renvoie les coordonnées de la VILLE (jamais l'adresse du prestataire) : tous les
+    // prestataires d'une même ville tombaient exactement au même point, leurs photos empilées n'en
+    // montrant qu'une seule (8 prestataires de Montpellier = 1 pastille visible). On les répartit en
+    // spirale (angle d'or) autour du centre-ville, ~1 km d'écart, ordre stable par identifiant.
+    var _byPoint = {};
     partners.forEach(function(p){
-      if(shown >= 40) return;
+      var la = parseFloat(p.lat), ln = parseFloat(p.lng);
+      if(isNaN(la)||isNaN(ln)) return;
+      var k = la.toFixed(4)+','+ln.toFixed(4);
+      (_byPoint[k] = _byPoint[k] || []).push(p);
+    });
+    var _spread = {};
+    Object.keys(_byPoint).forEach(function(k){
+      var group = _byPoint[k].slice().sort(function(a,b){ return String(a.id).localeCompare(String(b.id)); });
+      if(group.length < 2) return;
+      group.forEach(function(p, i){
+        var r = 0.009 * Math.sqrt(i + 1), a = i * 2.39996;
+        var la = parseFloat(p.lat);
+        _spread[p.id] = [la + r*Math.sin(a), parseFloat(p.lng) + r*Math.cos(a)/Math.cos(la*Math.PI/180)];
+      });
+    });
+
+    // Créer des marqueurs HTML circulaires avec photo (style WeCheers)
+    // (plus de plafond à 40 marqueurs : l'annuaire renvoie déjà tous les prestataires actifs, et
+    // ce plafond aurait fait disparaître silencieusement ceux au-delà du 40e)
+    partners.forEach(function(p){
       var lat = parseFloat(p.lat), lng = parseFloat(p.lng);
       if(isNaN(lat)||isNaN(lng)) return;
+      if(_spread[p.id]){ lat = _spread[p.id][0]; lng = _spread[p.id][1]; }
 
       var el = document.createElement('div');
       el.className = 'gen-map-marker';
@@ -6132,7 +6155,6 @@ function _loadExpPartners(mode, cityFilter){
         .setLngLat([lng, lat])
         .addTo(_expMap);
       _expPhotoMarkers.push(marker);
-      shown++;
     });
     _expPartnerFeatures = partners; // conserver pour d'autres usages
   }).catch(function(){});

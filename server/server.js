@@ -15604,9 +15604,97 @@ function getCityCoords(cityRaw) {
     const key = _normalizeCityKey(cityRaw);
     if (!key) return null;
     if (CITY_COORDS[key]) return CITY_COORDS[key];
-    const found = Object.keys(CITY_COORDS).find(function(k) { return key.indexOf(k) >= 0 || k.indexOf(key) >= 0; });
+    // Nom de ville en MOT ENTIER uniquement ("Paris 15e", "Montpellier (34)") : l'ancienne recherche
+    // par sous-chaîne dans les deux sens épinglait "Saint-Paul" à Pau ou une saisie partielle "Ly" à
+    // Lyon. Une ville absente du dictionnaire passe maintenant par getPartnerCoords() (géocodage).
+    const found = Object.keys(CITY_COORDS).find(function(k) {
+        var i = key.indexOf(k);
+        if (i < 0) return false;
+        var before = i === 0 ? '' : key.charAt(i - 1), after = key.charAt(i + k.length);
+        return !/[a-z]/.test(before) && !/[a-z]/.test(after);
+    });
     return found ? CITY_COORDS[found] : null;
 }
+
+// ── Géocodage des villes absentes de CITY_COORDS (carte Explorer côté client) ──────────────────
+// Avant : toute ville hors des ~55 du dictionnaire (Rabat, communes autour de Montpellier...)
+// n'était jamais épinglée. Géocodage OpenStreetMap (Nominatim) en ARRIÈRE-PLAN uniquement —
+// jamais pendant une requête client, pour ne dépendre d'aucun service externe au moment d'afficher
+// l'annuaire — puis mis en cache sur la fiche du prestataire (partner.geo, persisté avec
+// partners.json, aucune nouvelle collection). Toujours à l'échelle de la VILLE : son adresse de
+// facturation (souvent son domicile d'auto-entrepreneur) n'est jamais utilisée ni affichée.
+// Politique Nominatim respectée : User-Agent identifié, 1 requête/seconde max, résultats en cache,
+// un échec n'est retenté qu'après 7 jours.
+var _geoQueue = [], _geoQueued = {}, _geoRunning = false;
+function _partnerGeoKey(p) {
+    return _normalizeCityKey(p.city) + '|' + ((p.country || '').toString().toUpperCase());
+}
+function getPartnerCoords(p) {
+    if (!p || !p.city) return null;
+    var dict = getCityCoords(p.city);
+    if (dict) return dict;
+    var key = _partnerGeoKey(p);
+    if (p.geo && p.geo.key === key) {
+        if (typeof p.geo.lat === 'number' && typeof p.geo.lng === 'number') return [p.geo.lat, p.geo.lng];
+        if (p.geo.failed && Date.now() - new Date(p.geo.at || 0).getTime() < 7 * 24 * 3600 * 1000) return null;
+    }
+    _enqueuePartnerGeocode(p.id);
+    return null;
+}
+function _enqueuePartnerGeocode(partnerId) {
+    if (!partnerId || _geoQueued[partnerId]) return;
+    _geoQueued[partnerId] = true;
+    _geoQueue.push(partnerId);
+    if (!_geoRunning) _runGeoQueue();
+}
+function _runGeoQueue() {
+    var partnerId = _geoQueue.shift();
+    if (!partnerId) { _geoRunning = false; return; }
+    _geoRunning = true;
+    var p = loadPartners().find(function(x) { return x.id === partnerId; });
+    if (!p || !p.city) { delete _geoQueued[partnerId]; return setTimeout(_runGeoQueue, 0); }
+    var key = _partnerGeoKey(p);
+    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&city=' + encodeURIComponent(p.city.trim()) +
+        (p.country && p.country.length === 2 ? '&countrycodes=' + p.country.toLowerCase() : '');
+    var _doneCalled = false;
+    var done = function(lat, lng) {
+        if (_doneCalled) return;
+        _doneCalled = true;
+        try {
+            var partners = loadPartners();
+            var idx = partners.findIndex(function(x) { return x.id === partnerId; });
+            if (idx !== -1 && _partnerGeoKey(partners[idx]) === key) {
+                partners[idx].geo = (typeof lat === 'number' && typeof lng === 'number')
+                    ? { key: key, lat: lat, lng: lng, at: new Date().toISOString() }
+                    : { key: key, failed: true, at: new Date().toISOString() };
+                savePartners(partners);
+                console.log('[GEO] ' + p.city + ' -> ' + (partners[idx].geo.failed ? 'introuvable' : lat + ',' + lng));
+            }
+        } catch (e) { console.error('[GEO] Erreur sauvegarde:', e.message); }
+        delete _geoQueued[partnerId];
+        setTimeout(_runGeoQueue, 1100);
+    };
+    try {
+        var req = require('https').get(url, { headers: { 'User-Agent': 'FA-GENESIS/1.0 (contact@fagenesis.com)', 'Accept-Language': 'fr' }, timeout: 8000 }, function(r) {
+            var body = '';
+            r.on('data', function(c) { body += c; });
+            r.on('end', function() {
+                try {
+                    var arr = JSON.parse(body);
+                    if (Array.isArray(arr) && arr[0]) return done(parseFloat(arr[0].lat), parseFloat(arr[0].lon));
+                } catch (e) {}
+                done(null, null);
+            });
+        });
+        req.on('timeout', function() { req.destroy(); });
+        req.on('error', function() { done(null, null); });
+    } catch (e) { done(null, null); }
+}
+// Rattrapage au démarrage : prestataires actifs déjà inscrits dont la ville n'est pas encore géocodée.
+setTimeout(function() {
+    try { loadPartners().filter(function(p) { return p.accountStatus === 'active'; }).forEach(getPartnerCoords); }
+    catch (e) { console.error('[GEO] Erreur rattrapage:', e.message); }
+}, 15000);
 
 // ============================================================
 // HALL OF FAME — calcul automatique mensuel (Phase 4)
@@ -16724,7 +16812,7 @@ app.get('/api/hall-of-fame', function(req, res) {
             snapshot = Object.assign({}, snapshot, {
                 bestPartners: (snapshot.bestPartners || []).map(function(bp) {
                     var p = partners.find(function(pp) { return pp.id === bp.partnerId; });
-                    var coords = p ? getCityCoords(p.city) : null;
+                    var coords = p ? getPartnerCoords(p) : null;
                     return Object.assign({}, bp, {
                         id: bp.partnerId,
                         prenom: p ? p.prenom : bp.partnerName.split(' ')[0],
@@ -17216,7 +17304,7 @@ app.get('/api/partners/featured', (req, res) => {
 function partnerDirectoryShape(p, allPromos) {
     var promos = allPromos || loadPromotions();
     var ap = promos.find(function(pr) { return pr.partner_id === p.id && isPromoActive(pr); }) || null;
-    const coords = getCityCoords(p.city);
+    const coords = getPartnerCoords(p);
     var badge = getPartnerBadge(p);
     var activeDists = getPartnerActiveDistinctions(p, badge);
     return {
