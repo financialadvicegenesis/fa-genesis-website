@@ -2846,7 +2846,7 @@ function _genesisVersionFooter(){
     <div style="font-size:40px;color:#FFD700;margin:8px 0 4px;text-align:center;"><i class="fa-solid fa-lock"></i></div>
     <div class="ptnr-login-title">Espace verrouillé</div>
     <div class="ptnr-login-sub">Déverrouillez avec votre biométrie pour accéder à votre compte GENESIS.</div>
-    <button class="ptnr-login-btn" id="client-biolock-btn" onclick="_clientBiolockUnlock()"><i class="fa-solid fa-fingerprint" style="margin-right:8px;"></i>Déverrouiller<span class="bio-kind"></span></button>
+    <button class="ptnr-login-btn" id="client-biolock-btn" onclick="_clientBiolockUnlock()"><i class="fa-solid fa-fingerprint bio-ico" style="margin-right:8px;"></i>Déverrouiller<span class="bio-kind"></span></button>
     <div class="ptnr-login-err" id="client-biolock-err"></div>
     <button class="ptnr-link-btn" onclick="_showRoleChoiceAfterDelete()">Se déconnecter</button>
   </div>
@@ -2855,7 +2855,7 @@ function _genesisVersionFooter(){
 <!-- Proposition d'activation de la biométrie côté client (une fois, après connexion/inscription) -->
 <div id="client-bio-optin-overlay" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;">
   <div style="width:100%;max-width:480px;background:#111;border:1.5px solid #FFD70044;border-radius:20px 20px 0 0;padding:26px 22px calc(26px + var(--safe-bottom,0px));text-align:center;">
-    <div style="font-size:38px;color:#FFD700;margin-bottom:10px;"><i class="fa-solid fa-fingerprint"></i></div>
+    <div style="font-size:38px;color:#FFD700;margin-bottom:10px;"><i class="fa-solid fa-fingerprint bio-ico"></i></div>
     <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:8px;">Sécurisez votre compte</div>
     <div style="font-size:13px;color:#aaa;line-height:1.6;margin-bottom:20px;">Activez le déverrouillage par biométrie pour empêcher toute personne ayant accès à votre téléphone d'ouvrir votre compte GENESIS — vos commandes, vos paiements et vos messages.</div>
     <button class="ptnr-login-btn" style="margin-bottom:8px;" onclick="_clientBioOptinAccept()">Activer<span class="bio-kind"></span></button>
@@ -3125,7 +3125,7 @@ function _genesisVersionFooter(){
           <div style="font-size:40px;color:#FFD700;margin:8px 0 4px;text-align:center;"><i class="fa-solid fa-lock"></i></div>
           <div class="ptnr-login-title">Espace verrouillé</div>
           <div class="ptnr-login-sub" id="ptnr-biolock-sub">Déverrouillez avec votre biométrie pour accéder à votre espace prestataire.</div>
-          <button class="ptnr-login-btn" id="ptnr-biolock-btn" onclick="_ptnrBiolockUnlock()"><i class="fa-solid fa-fingerprint" style="margin-right:8px;"></i>Déverrouiller<span class="bio-kind"></span></button>
+          <button class="ptnr-login-btn" id="ptnr-biolock-btn" onclick="_ptnrBiolockUnlock()"><i class="fa-solid fa-fingerprint bio-ico" style="margin-right:8px;"></i>Déverrouiller<span class="bio-kind"></span></button>
           <div class="ptnr-login-err" id="ptnr-biolock-err"></div>
           <button class="ptnr-link-btn" onclick="_ptnrLogout()">Se déconnecter</button>
         </div>
@@ -3134,7 +3134,7 @@ function _genesisVersionFooter(){
       <!-- Proposition d'activation de la biométrie (une fois, après connexion/inscription) -->
       <div id="ptnr-bio-optin-overlay" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;">
         <div style="width:100%;max-width:480px;background:#111;border:1.5px solid #FFD70044;border-radius:20px 20px 0 0;padding:26px 22px calc(26px + var(--safe-bottom,0px));text-align:center;">
-          <div style="font-size:38px;color:#FFD700;margin-bottom:10px;"><i class="fa-solid fa-fingerprint"></i></div>
+          <div style="font-size:38px;color:#FFD700;margin-bottom:10px;"><i class="fa-solid fa-fingerprint bio-ico"></i></div>
           <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:8px;">Sécurisez votre espace prestataire</div>
           <div style="font-size:13px;color:#aaa;line-height:1.6;margin-bottom:20px;">Activez le déverrouillage par biométrie pour empêcher toute personne ayant accès à votre téléphone d'ouvrir votre espace GENESIS — vos missions, votre wallet et vos coordonnées de versement.</div>
           <button class="ptnr-login-btn" style="margin-bottom:8px;" onclick="_ptnrBioOptinAccept()">Activer<span class="bio-kind"></span></button>
@@ -9093,7 +9093,7 @@ function renderProfil(){
   if(typeof _ptnrIsNative==='function' && _ptnrIsNative() && USER && !GUEST){
     var bioCheckedClient = _clientBiometricEnabled() ? ' checked' : '';
     bioRowClient = '<div class="plus-item">'
-      +'<div class="plus-item-ico" style="background:#0a1a1a"><i class="fa-solid fa-fingerprint"></i></div>'
+      +'<div class="plus-item-ico" style="background:#0a1a1a">'+(typeof _bioIconHtml==='function'?_bioIconHtml():'<i class="fa-solid fa-fingerprint"></i>')+'</div>'
       +'<div class="plus-item-label">Déverrouillage biométrique<span class="bio-kind">'+(typeof _bioKindSuffix==='function'?_bioKindSuffix():'')+'</span></div>'
       +'<label class="tgl"><input type="checkbox" id="client-biometric-toggle"'+bioCheckedClient+' onchange="_clientToggleBiometric(this.checked)"><span class="tgl-slider"></span></label>'
       +'</div>';
@@ -13493,6 +13493,17 @@ function _loOnLoginSuccess(res){
 // les langues. Vide sur Android (empreinte/visage génériques) : rien ne change là-bas.
 var _bioKindLabel = '';
 function _bioKindSuffix(){ return _bioKindLabel ? ' · ' + _bioKindLabel : ''; }
+// Font Awesome 6 (gratuit) n'a pas de glyphe Face ID : reproduction du symbole Apple (4 coins,
+// yeux, nez, sourire) en SVG, couleur héritée (currentColor) comme une icône FA.
+function _bioFaceIdSvg(style){
+  return '<svg class="bio-ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.125em;'+(style||'')+'">'
+    + '<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>'
+    + '<path d="M9 9v1.5M15 9v1.5M12 9v4.5h-1M9 16c1.7 1.3 4.3 1.3 6 0"/></svg>';
+}
+// Icône biométrique pour les lignes rendues dynamiquement (réglages du profil).
+function _bioIconHtml(){
+  return _bioKindLabel === 'Face ID' ? _bioFaceIdSvg('') : '<i class="fa-solid fa-fingerprint bio-ico"></i>';
+}
 function _bioDetectKind(){
   if(!(window.FAGMobile && window.FAGMobile.checkBiometry)) return;
   window.FAGMobile.checkBiometry().then(function(info){
@@ -13500,6 +13511,14 @@ function _bioDetectKind(){
     _bioKindLabel = t === 2 ? 'Face ID' : (t === 1 ? 'Touch ID' : '');
     var els = document.querySelectorAll('.bio-kind');
     for(var i=0;i<els.length;i++) els[i].textContent = _bioKindSuffix();
+    if(_bioKindLabel === 'Face ID'){
+      var icons = document.querySelectorAll('i.bio-ico');
+      for(var j=0;j<icons.length;j++){
+        var tmp = document.createElement('span');
+        tmp.innerHTML = _bioFaceIdSvg(icons[j].getAttribute('style') || '');
+        icons[j].parentNode.replaceChild(tmp.firstChild, icons[j]);
+      }
+    }
   }).catch(function(){});
 }
 if(window.FAGMobile && window.FAGMobile.checkBiometry) _bioDetectKind();
@@ -20985,7 +21004,7 @@ function _ptnrLoadProfil(){
   if(_ptnrIsNative()){
     var bioChecked = _ptnrBiometricEnabled() ? ' checked' : '';
     bioRowHtml = '<div class="plus-item">'
-      +'<div class="plus-item-ico" style="background:#0a1a1a"><i class="fa-solid fa-fingerprint"></i></div>'
+      +'<div class="plus-item-ico" style="background:#0a1a1a">'+(typeof _bioIconHtml==='function'?_bioIconHtml():'<i class="fa-solid fa-fingerprint"></i>')+'</div>'
       +'<div class="plus-item-label">Déverrouillage biométrique<span class="bio-kind">'+(typeof _bioKindSuffix==='function'?_bioKindSuffix():'')+'</span></div>'
       +'<label class="tgl"><input type="checkbox" id="ptnr-biometric-toggle"'+bioChecked+' onchange="_ptnrToggleBiometric(this.checked)"><span class="tgl-slider"></span></label>'
       +'</div>';
