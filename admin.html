@@ -6641,6 +6641,13 @@
                         html += '<div style="background:#111;border-radius:8px;padding:12px 14px;margin-bottom:14px;line-height:1.8;">';
                         if (w.method === 'paypal') {
                             html += '<div style="font-size:12px;color:#aaa;"><span style="color:#00B9FF;font-weight:700;">Email PayPal :</span> ' + (det.email || '—') + '</div>';
+                        } else if (det.phone) {
+                            // Mobile Money (Airtel/Moov/Orange/MTN/Wave) : s'affichait avant comme
+                            // "Titulaire — / IBAN —", sans le numéro à créditer.
+                            var _cfaCur = ['GA','CM','CG','TD','CF','GQ'].indexOf(w.country) !== -1 ? 'XAF' : (['SN','CI','BF','ML','TG','BJ','NE','GW'].indexOf(w.country) !== -1 ? 'XOF' : '');
+                            html += '<div style="font-size:13px;color:#e0e0e0;font-weight:700;letter-spacing:1px;"><span style="color:#00B9FF;font-weight:700;font-size:11px;">Numéro Mobile Money :</span> ' + det.phone + '</div>';
+                            html += '<div style="font-size:12px;color:#aaa;"><span style="color:#00B9FF;font-weight:700;">Pays :</span> ' + (w.country || '—') + (_cfaCur ? ' · <span style="color:#00B9FF;font-weight:700;">Équivalent :</span> ' + Math.round(parseFloat(w.amount || 0) * 655.957).toLocaleString('fr-FR') + ' ' + _cfaCur : '') + '</div>';
+                            html += '<div style="font-size:11px;color:#f59e0b;margin-top:4px;">Envoi manuel : transférez ce montant au numéro ci-dessus, puis cliquez « Marquer comme envoyé ».</div>';
                         } else {
                             html += '<div style="font-size:12px;color:#aaa;"><span style="color:#00B9FF;font-weight:700;">Titulaire :</span> ' + (det.holder || '—') + '</div>';
                             html += '<div style="font-size:13px;color:#e0e0e0;font-weight:700;letter-spacing:1px;"><span style="color:#00B9FF;font-weight:700;font-size:11px;">IBAN :</span> ' + (det.iban || '—') + '</div>';

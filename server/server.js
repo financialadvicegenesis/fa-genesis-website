@@ -607,12 +607,38 @@ var _CENTRAL_AFRICA = ['CM','CG','GA','CD','CF','TD','GQ','BI','RW','KE','TZ','U
 // Afrique du Nord
 var _NORTH_AFRICA = ['MA','DZ','TN','EG','LY'];
 
+// Opérateurs Mobile Money réellement présents par pays. BUG CORRIGÉ : toute l'Afrique Centrale
+// recevait Orange Money + MTN Money, or ni l'un ni l'autre n'existe au Gabon (Airtel Money et
+// Moov Money) — un prestataire gabonais ne pouvait choisir aucun portefeuille qu'il possède.
+var _MOBILE_MONEY_BY_COUNTRY = {
+    GA: ['airtel_money','moov_money'],
+    CG: ['mtn_money','airtel_money'],
+    CM: ['orange_money','mtn_money'],
+    CD: ['orange_money','airtel_money'],
+    TD: ['airtel_money','moov_money'],
+    CF: ['orange_money']
+};
+var MOBILE_MONEY_METHODS = ['wave','orange_money','mtn_money','airtel_money','moov_money'];
+var MOBILE_MONEY_LABELS = { wave: 'Wave', orange_money: 'Orange Money', mtn_money: 'MTN Mobile Money', airtel_money: 'Airtel Money', moov_money: 'Moov Money' };
+function _maskPhone(phone) { var s = (phone || '').toString(); return s.length > 4 ? s.slice(0, 4) + ' ••• ' + s.slice(-4) : s; }
+// Le franc CFA (XAF zone CEMAC, XOF zone UEMOA) a une parité FIXE avec l'euro : 1 € = 655,957 F CFA.
+var _XAF_COUNTRIES = ['GA','CM','CG','TD','CF','GQ'];
+var _XOF_COUNTRIES = ['SN','CI','BF','ML','TG','BJ','NE','GW'];
+var EUR_TO_CFA = 655.957;
+function getCfaCurrencyForCountry(country) {
+    var c = (country || '').toUpperCase();
+    if (_XAF_COUNTRIES.indexOf(c) !== -1) return 'XAF';
+    if (_XOF_COUNTRIES.indexOf(c) !== -1) return 'XOF';
+    return null;
+}
+
 function getWithdrawalMethodsForCountry(country) {
     if (!country) return ['paypal','wise','payoneer'];
     var c = (country || '').toUpperCase();
     if (_SEPA_COUNTRIES.indexOf(c) !== -1) return ['sepa','paypal'];
     if (c === 'GB') return ['paypal','wise'];
     if (c === 'US' || c === 'CA') return ['paypal','wise','payoneer'];
+    if (_MOBILE_MONEY_BY_COUNTRY[c]) return _MOBILE_MONEY_BY_COUNTRY[c].concat(['paypal']);
     if (_WEST_AFRICA.indexOf(c) !== -1) return ['wave','orange_money','paypal'];
     if (_CENTRAL_AFRICA.indexOf(c) !== -1) return ['orange_money','mtn_money','paypal'];
     if (_NORTH_AFRICA.indexOf(c) !== -1) return ['wise'];  // PayPal Maroc/Algérie/Tunisie ne supporte pas le retrait bancaire local
@@ -991,6 +1017,9 @@ function _maybeGenerateMissionInvoice(order, partner, dispatch) {
     try {
         if (!order || !partner) return;
         var result = invoiceService.generateInvoiceForOrder(order, partner, dispatch);
+        // Le SIRET n'existe qu'en France : ne pas réclamer un SIRET à un prestataire établi ailleurs
+        // (Gabon, etc.) — il recevrait ce rappel à chaque mission sans jamais pouvoir y répondre.
+        if (result && result.pending_siret && partner.country && partner.country !== 'FR') return;
         if (result && result.pending_siret) {
             notifyUser(partner.email, 'partner', 'invoice-pending-siret', '📄 Facture en attente',
                 'Une mission vient d\'être validée, mais votre facture ne peut pas encore être générée : complétez votre SIRET et votre adresse de facturation dans votre profil.',
@@ -7677,7 +7706,9 @@ app.get('/api/partner/wallet/methods', authenticatePartner, function(req, res) {
         payoneer:     { label: 'Payoneer',             icon: 'fa-credit-card',      fields: ['email'] },
         wave:         { label: 'Wave',                 icon: 'fa-mobile-screen',    fields: ['phone'] },
         orange_money: { label: 'Orange Money',         icon: 'fa-mobile-screen',    fields: ['phone'] },
-        mtn_money:    { label: 'MTN Mobile Money',     icon: 'fa-mobile-screen',    fields: ['phone'] }
+        mtn_money:    { label: 'MTN Mobile Money',     icon: 'fa-mobile-screen',    fields: ['phone'] },
+        airtel_money: { label: 'Airtel Money',         icon: 'fa-mobile-screen',    fields: ['phone'] },
+        moov_money:   { label: 'Moov Money',           icon: 'fa-mobile-screen',    fields: ['phone'] }
     };
     // BUG CORRIGÉ : le formulaire de retrait affichait toujours des champs IBAN/PayPal vierges,
     // même quand des coordonnées étaient déjà enregistrées — et les saisir à nouveau était
@@ -7691,7 +7722,13 @@ app.get('/api/partner/wallet/methods', authenticatePartner, function(req, res) {
         sepa: !!(me && me.wiseRecipientId), wise: !!(me && me.wiseRecipientId),
         paypal: !!(me && me.payout_paypal_email)
     };
-    res.json({ methods: methods.map(function(m){ return Object.assign({ id: m, linked: linkedByMethod[m] || false }, labels[m] || { label: m, icon: 'fa-credit-card', fields: ['detail'] }); }) });
+    var _mm = me && me.payout_mobile_money;
+    if (_mm && _mm.operator && _mm.phone) linkedByMethod[_mm.operator] = true;
+    res.json({
+        methods: methods.map(function(m){ return Object.assign({ id: m, linked: linkedByMethod[m] || false }, labels[m] || { label: m, icon: 'fa-credit-card', fields: ['detail'] }); }),
+        cfaCurrency: getCfaCurrencyForCountry(country),
+        eurToCfa: EUR_TO_CFA
+    });
 });
 
 /**
@@ -7719,6 +7756,31 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
         var validMethods = getWithdrawalMethodsForCountry(country);
         if (validMethods.indexOf(method) === -1)
             return res.status(400).json({ error: 'Méthode non disponible pour votre pays.' });
+
+        // Mobile Money : même protection anti-détournement que PayPal/IBAN. Avant, le numéro était
+        // saisi librement à CHAQUE retrait — une session volée suffisait pour vider le wallet vers
+        // n'importe quel numéro. Le numéro est enregistré au premier retrait, puis seul celui-là
+        // est utilisé ; le changer passe par Profil > Coordonnées de versement (mot de passe exigé).
+        if (MOBILE_MONEY_METHODS.indexOf(method) !== -1) {
+            var _mmPartners = loadPartners();
+            var _mmIdx = _mmPartners.findIndex(function(p) { return p.id === partnerId; });
+            var _mmSaved = _mmIdx !== -1 ? _mmPartners[_mmIdx].payout_mobile_money : null;
+            if (_mmSaved && _mmSaved.phone) {
+                if (_mmSaved.operator !== method)
+                    return res.status(400).json({ error: 'Votre numéro enregistré est un compte ' + (MOBILE_MONEY_LABELS[_mmSaved.operator] || _mmSaved.operator) + '. Pour en changer, modifiez-le dans Profil > Coordonnées de versement.' });
+                details = { phone: _mmSaved.phone, operator: method };
+            } else {
+                var _mmPhone = (details.phone || '').replace(/[\s.\-]/g, '');
+                if (!/^\+[0-9]{8,15}$/.test(_mmPhone))
+                    return res.status(400).json({ error: 'Numéro Mobile Money invalide : indiquez-le avec l\'indicatif du pays (ex. +241 77 12 34 56).' });
+                if (_mmIdx !== -1) {
+                    _mmPartners[_mmIdx].payout_mobile_money = { operator: method, phone: _mmPhone, country: country, updated_at: new Date().toISOString() };
+                    savePartners(_mmPartners);
+                    _alertPayoutDestinationChanged(_mmPartners[_mmIdx], MOBILE_MONEY_LABELS[method] || method, _maskPhone(_mmPhone), true);
+                }
+                details = { phone: _mmPhone, operator: method };
+            }
+        }
 
         // Déduire du solde disponible
         wallets[idx].balance_available = parseFloat((available - amount).toFixed(2));
@@ -7870,12 +7932,15 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
 
         // Notifier l'admin par email : montant à virer sur Wise avant l'envoi automatique
         var _wdPartnerName = ((req.partner.prenom || '') + ' ' + (req.partner.nom || '')).trim() || req.partner.email;
-        var _wdMethodLabel = method === 'sepa' ? 'Virement SEPA (Wise)' : method === 'wise' ? 'Wise' : method === 'paypal' ? 'PayPal' : method.replace('_', ' ').toUpperCase();
+        var _wdMethodLabel = method === 'sepa' ? 'Virement SEPA (Wise)' : method === 'wise' ? 'Wise' : method === 'paypal' ? 'PayPal' : (MOBILE_MONEY_LABELS[method] || method.replace('_', ' ').toUpperCase());
         var _wdDetails = '';
         if (details.iban) _wdDetails += '<br>IBAN : <strong>' + details.iban + '</strong>';
         if (details.bic)  _wdDetails += ' / BIC : ' + details.bic;
         if (details.holder) _wdDetails += '<br>Titulaire : ' + details.holder;
         if (details.email)  _wdDetails += '<br>Email : ' + details.email;
+        if (details.phone)  _wdDetails += '<br>Numéro ' + (MOBILE_MONEY_LABELS[method] || 'Mobile Money') + ' : <strong>' + details.phone + '</strong>';
+        var _wdCfa = getCfaCurrencyForCountry(country);
+        if (_wdCfa) _wdDetails += '<br>Équivalent : <strong>' + Math.round(amount * EUR_TO_CFA).toLocaleString('fr-FR') + ' ' + _wdCfa + '</strong> (parité fixe 1 € = 655,957 F CFA)';
         // Relire le partenaire à jour : l'enregistrement à la volée (IBAN/PayPal) ci-dessus a pu
         // modifier wiseRecipientId / payout_paypal_email depuis le chargement initial (req.partner).
         var _wdFreshPartner = loadPartners().find(function(p) { return p.id === partnerId; }) || req.partner;
@@ -7891,6 +7956,8 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
                     ? (_wdPaypalSent
                         ? '<p style="background:#d1fae5;padding:12px;border-radius:6px;">✅ Virement PayPal déclenché automatiquement vers ' + _wdFreshPartner.payout_paypal_email + '.</p>'
                         : '<p style="background:#fee2e2;padding:12px;border-radius:6px;"><strong>⚠️ Échec du virement PayPal automatique</strong> — vérifiez le solde PayPal Business et relancez via <code>/api/admin/withdrawals/' + withdrawal.id + '/retry</code></p>')
+                : MOBILE_MONEY_METHODS.indexOf(method) !== -1
+                    ? '<p style="background:#fef3c7;padding:12px;border-radius:6px;"><strong>⚠️ Envoi manuel requis</strong> : aucun envoi Mobile Money automatique n\'est branché. Envoyez le montant ci-dessus au numéro indiqué (service de transfert vers ' + (MOBILE_MONEY_LABELS[method] || 'Mobile Money') + '), puis cliquez sur « Marquer comme envoyé » dans le dashboard admin (Retraits prestataires) — le prestataire sera notifié.</p>'
                 : '<p>Vérifiez le traitement du retrait dans le dashboard admin.</p>';
 
         ADMIN_EMAILS.forEach(function(adminEmail) {
@@ -14928,7 +14995,7 @@ app.post('/api/partner/auth/logout', authenticatePartner, (req, res) => {
 // Modifier profil partenaire
 app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res) => {
     try {
-        const { prenom, nom, telephone, photo, logo, bio, city, country, interventionZone, social, responseTimeCommitmentMinutes, currentPassword, newPassword } = req.body;
+        const { prenom, nom, telephone, photo, logo, bio, city, country, interventionZone, serviceMode, social, responseTimeCommitmentMinutes, currentPassword, newPassword } = req.body;
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === req.partner.id);
         if (index === -1) {
@@ -14943,6 +15010,9 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         if (typeof city === 'string') partners[index].city = city.trim();
         if (typeof country === 'string' && country.length === 2) partners[index].country = country.toUpperCase();
         if (typeof interventionZone === 'string') partners[index].interventionZone = interventionZone.trim();
+        // Mode d'intervention : 'onsite' (sur place, dans sa ville), 'remote' (à distance, ex.
+        // prestataire au Gabon pour un client en France), 'both'. Absent = sur place.
+        if (['onsite', 'remote', 'both'].indexOf(serviceMode) !== -1) partners[index].serviceMode = serviceMode;
         if (responseTimeCommitmentMinutes !== undefined) {
             const allowedResponseMinutes = [30, 60, 180, 720, 1440, 2880];
             partners[index].responseTimeCommitmentMinutes = allowedResponseMinutes.indexOf(responseTimeCommitmentMinutes) !== -1
@@ -16393,12 +16463,19 @@ function buildJeremieSystemPrompt(person, personType, language) {
         'identique pour tous les prestataires quel que soit leur badge. Sur l\'accueil prestataire, "Revenus generes" = ' +
         'ce qu\'il a reellement touche, "Commissions versees" = la part revenue a GENESIS ; les deux sont suivis ' +
         'separement, la seconde n\'est jamais deduite de la premiere. Wallet GENESIS : retrait a partir de 20 EUR, vers ' +
-        'l\'IBAN ou le PayPal enregistre dans Profil > Coordonnees de versement.');
+        'l\'IBAN, le PayPal ou le numero Mobile Money enregistre dans Profil > Coordonnees de versement. Les moyens proposes ' +
+        'dependent du pays de residence : virement SEPA en Europe ; au Gabon Airtel Money et Moov Money (ou PayPal) ; ' +
+        'ailleurs en Afrique les Mobile Money locaux (Orange Money, MTN, Wave...). Les clients paient toujours en euros ; ' +
+        'pour le franc CFA la parite est fixe (1 EUR = 655,957 F CFA). PRESTATAIRES HORS DE FRANCE : un prestataire installe ' +
+        'au Gabon ou ailleurs peut travailler pour des clients en France et en Europe en indiquant "A distance" dans ' +
+        'Profil > Pays et zone d\'intervention ; il apparait alors dans le filtre "A distance" de l\'Explorer cote client.');
     lines.push('DOCUMENTS : un contrat de prestation est signe par le client pour chaque commande (onglet Mes contrats). ' +
         'Une facture est generee automatiquement a chaque mission validee, emise au nom du prestataire (GENESIS n\'est ' +
         'qu\'intermediaire de paiement, TVA non applicable art. 293 B du CGI), a condition qu\'il ait renseigne son SIRET ' +
         'et son adresse dans Coordonnees de versement > Facturation. Prestataire et client la retrouvent dans Mes contrats ' +
-        '> Mes factures, utile notamment pour la declaration URSSAF des auto-entrepreneurs.');
+        '> Mes factures, utile notamment pour la declaration URSSAF des auto-entrepreneurs. La facture automatique est ' +
+        'reservee aux prestataires immatricules en France (SIRET) ; hors de France, paiements et retraits fonctionnent ' +
+        'normalement, sans facture automatique.');
     lines.push('ESPACE PRESTATAIRE : son inscription est verifiee par l\'equipe FA GENESIS avant qu\'il apparaisse dans ' +
         'l\'annuaire. Dans Accueil > Mes tarifs & prestations, chaque prestation peut avoir un prix different selon 4 ' +
         'categories de clients : Etudiant (visible uniquement par les etudiants verifies), Particulier (tarif par defaut), ' +
@@ -16762,7 +16839,9 @@ function buildPartnerContextForJeremie(message) {
             var badge = getPartnerBadge(p);
 
             var parts = [name, type];
-            if (p.city) parts.push(p.city);
+            if (p.city) parts.push(p.city + (p.country && p.country !== 'FR' ? ' (' + p.country + ')' : ''));
+            if (p.serviceMode === 'remote') parts.push('travaille uniquement à distance');
+            else if (p.serviceMode === 'both') parts.push('sur place et à distance');
             parts.push(priceStr);
             parts.push('note : ' + ratingStr);
             parts.push('missions réalisées : ' + getPartnerMissionsCompleted(p.id));
@@ -17277,6 +17356,13 @@ app.get('/api/partners/directory', (req, res) => {
             const needleCity = city.trim().toLowerCase();
             partners = partners.filter(p => (p.city || '').toLowerCase().includes(needleCity));
         }
+        // Filtre "À distance" / "Présentiel" de l'Explorer — BUG CORRIGÉ : les deux boutons
+        // existaient dans l'app mais le choix n'était jamais envoyé ni traité ici.
+        if (req.query.avail === 'remote') {
+            partners = partners.filter(p => p.serviceMode === 'remote' || p.serviceMode === 'both');
+        } else if (req.query.avail === 'presential') {
+            partners = partners.filter(p => p.serviceMode !== 'remote');
+        }
 
         // Filtre "en promotion" : ne garder que les partenaires avec une promo active
         if (promo === 'true') {
@@ -17373,6 +17459,8 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 photo: partner.photo || null,
                 bio: partner.bio || '',
                 city: partner.city || '',
+                country: partner.country || '',
+                serviceMode: partner.serviceMode || 'onsite',
                 social: partner.social || {},
                 fromPrice: fromPrice,
                 avgResponseMinutes: typeof partner.avgResponseMinutes === 'number' ? partner.avgResponseMinutes : null,
@@ -17450,6 +17538,8 @@ function partnerDirectoryShape(p, allPromos) {
         partner_type_other: p.partner_type_other || '',
         photo: p.photo || null,
         city: p.city || '',
+        country: p.country || '',
+        serviceMode: p.serviceMode || 'onsite',
         lat: coords ? coords[0] : null,
         lng: coords ? coords[1] : null,
         fromPrice: getPartnerFromPrice(p),
@@ -18935,6 +19025,42 @@ app.post('/api/partner/profile/set-paypal', authenticatePartner, async function(
         res.json({ success: true, paypal_email: paypalEmail });
     } catch(e) {
         console.error('[PAYPAL-SET] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/profile/set-mobile-money — numéro Mobile Money de versement (Airtel/Moov au
+// Gabon, etc.). Même règle anti-détournement que set-paypal : mot de passe exigé pour REMPLACER
+// un numéro déjà enregistré.
+app.post('/api/partner/profile/set-mobile-money', authenticatePartner, async function(req, res) {
+    try {
+        var operator = (req.body.operator || '').trim();
+        var phone = (req.body.phone || '').replace(/[\s.\-]/g, '');
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        var allowed = getWithdrawalMethodsForCountry(partners[idx].country).filter(function(m) { return MOBILE_MONEY_METHODS.indexOf(m) !== -1; });
+        if (allowed.indexOf(operator) === -1) return res.status(400).json({ error: 'Opérateur non disponible pour votre pays.' });
+        if (!/^\+[0-9]{8,15}$/.test(phone)) return res.status(400).json({ error: 'Numéro invalide : indiquez-le avec l\'indicatif du pays (ex. +241 77 12 34 56).' });
+
+        var _existing = partners[idx].payout_mobile_money;
+        var _isFirstTime = !(_existing && _existing.phone);
+        if (!_isFirstTime) {
+            var _currentPw = req.body.currentPassword || '';
+            if (!_currentPw) return res.status(400).json({ error: 'Mot de passe actuel requis pour modifier vos coordonnées de versement.' });
+            var _pwValid = await bcrypt.compare(_currentPw, partners[idx].password);
+            if (!_pwValid) {
+                console.warn('[MOBILE-MONEY-SET] Mot de passe incorrect fourni pour', req.partner.email);
+                return res.status(403).json({ error: 'Mot de passe actuel incorrect.' });
+            }
+        }
+        partners[idx].payout_mobile_money = { operator: operator, phone: phone, country: partners[idx].country || '', updated_at: new Date().toISOString() };
+        partners[idx].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        _alertPayoutDestinationChanged(partners[idx], MOBILE_MONEY_LABELS[operator] || operator, _maskPhone(phone), _isFirstTime);
+        res.json({ success: true, operator: operator, phoneMasked: _maskPhone(phone) });
+    } catch(e) {
+        console.error('[MOBILE-MONEY-SET] Erreur:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -23508,7 +23634,13 @@ app.get('/api/partner/bank-details', authenticatePartner, function(req, res) {
             ? p.payout_paypal_email.slice(0, 2) + '•••' + p.payout_paypal_email.slice(_atIdx)
             : '•••' + p.payout_paypal_email.slice(p.payout_paypal_email.indexOf('@'));
     }
-    res.json({ ok: true, bankDetails: masked, wiseLinked: !!p.wiseRecipientId, paypalEmailMasked: paypalMasked, paypalLinked: !!p.payout_paypal_email });
+    var _bdMethods = getWithdrawalMethodsForCountry(p.country);
+    var _bdMm = p.payout_mobile_money && p.payout_mobile_money.phone ? p.payout_mobile_money : null;
+    res.json({ ok: true, bankDetails: masked, wiseLinked: !!p.wiseRecipientId, paypalEmailMasked: paypalMasked, paypalLinked: !!p.payout_paypal_email,
+        country: p.country || '',
+        sepaAvailable: !p.country || _bdMethods.indexOf('sepa') !== -1 || _bdMethods.indexOf('wise') !== -1,
+        mobileMoneyOperators: _bdMethods.filter(function(m) { return MOBILE_MONEY_METHODS.indexOf(m) !== -1; }).map(function(m) { return { id: m, label: MOBILE_MONEY_LABELS[m] || m }; }),
+        mobileMoney: _bdMm ? { operator: _bdMm.operator, label: MOBILE_MONEY_LABELS[_bdMm.operator] || _bdMm.operator, phoneMasked: _maskPhone(_bdMm.phone) } : null });
 });
 
 // ── Admin : vérifier le solde Wise ───────────────────────────

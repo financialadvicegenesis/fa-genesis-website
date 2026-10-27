@@ -3189,14 +3189,30 @@ function _genesisVersionFooter(){
               <option value="LI">🇱🇮 Liechtenstein</option>
             </optgroup>
             <optgroup label="── Afrique ──">
-              <option value="MA">🇲🇦 Maroc</option>
+              <option value="GA">🇬🇦 Gabon</option>
+              <option value="CM">🇨🇲 Cameroun</option>
+              <option value="CG">🇨🇬 Congo</option>
+              <option value="CD">🇨🇩 RD Congo</option>
+              <option value="TD">🇹🇩 Tchad</option>
+              <option value="CF">🇨🇫 Centrafrique</option>
+              <option value="GQ">🇬🇶 Guinée équatoriale</option>
               <option value="SN">🇸🇳 Sénégal</option>
               <option value="CI">🇨🇮 Côte d'Ivoire</option>
+              <option value="BJ">🇧🇯 Bénin</option>
+              <option value="TG">🇹🇬 Togo</option>
+              <option value="BF">🇧🇫 Burkina Faso</option>
+              <option value="ML">🇲🇱 Mali</option>
+              <option value="NE">🇳🇪 Niger</option>
+              <option value="GN">🇬🇳 Guinée</option>
+              <option value="MG">🇲🇬 Madagascar</option>
+              <option value="MA">🇲🇦 Maroc</option>
+              <option value="DZ">🇩🇿 Algérie</option>
+              <option value="TN">🇹🇳 Tunisie</option>
+              <option value="EG">🇪🇬 Égypte</option>
               <option value="GH">🇬🇭 Ghana</option>
               <option value="NG">🇳🇬 Nigeria</option>
               <option value="KE">🇰🇪 Kenya</option>
               <option value="ZA">🇿🇦 Afrique du Sud</option>
-              <option value="EG">🇪🇬 Égypte</option>
               <option value="RW">🇷🇼 Rwanda</option>
               <option value="TZ">🇹🇿 Tanzanie</option>
               <option value="UG">🇺🇬 Ouganda</option>
@@ -4870,6 +4886,8 @@ function loadExplorerDirectory(){
   if(_expCity)params.push('city='+encodeURIComponent(_expCity));
   if(_expCategory)params.push('category='+encodeURIComponent(_expCategory));
   if(_expFilters.rating)params.push('minRating='+_expFilters.rating);
+  // BUG CORRIGÉ : les boutons "À distance" / "Présentiel" du filtre ne partaient jamais au serveur.
+  if(_expFilters.avail)params.push('avail='+encodeURIComponent(_expFilters.avail));
   fetch((window.FA_GENESIS_API||API)+'/api/partners/directory?'+params.join('&'))
     .then(function(r){return r.json();})
     .then(function(data){
@@ -5000,6 +5018,20 @@ function _expMatch(name){
 // approuvé par l'admin l'affiche, dès la carte de l'annuaire (pas seulement après clic).
 function verifiedBadgeHtml(p){
   return p.verified ? '<i class="fa-solid fa-circle-check p-verified-badge" title="Profil approuvé par FA GENESIS"></i>' : '';
+}
+// Lieu affiché côté client : la ville seule pour un prestataire en France, "Ville, Pays" sinon —
+// un client à Paris doit voir d'emblée qu'un prestataire est à Libreville (et qu'il travaille à
+// distance) avant d'ouvrir sa fiche.
+var _PARTNER_COUNTRY_NAMES = {GA:'Gabon',CM:'Cameroun',CG:'Congo',CD:'RD Congo',TD:'Tchad',CF:'Centrafrique',GQ:'Guinée équatoriale',SN:'Sénégal',CI:'Côte d\'Ivoire',BJ:'Bénin',TG:'Togo',BF:'Burkina Faso',ML:'Mali',NE:'Niger',GN:'Guinée',MG:'Madagascar',MA:'Maroc',DZ:'Algérie',TN:'Tunisie',EG:'Égypte',GH:'Ghana',NG:'Nigeria',KE:'Kenya',ZA:'Afrique du Sud',RW:'Rwanda',TZ:'Tanzanie',UG:'Ouganda',BE:'Belgique',CH:'Suisse',LU:'Luxembourg',DE:'Allemagne',ES:'Espagne',IT:'Italie',PT:'Portugal',NL:'Pays-Bas',GB:'Royaume-Uni',CA:'Canada',US:'États-Unis'};
+function _partnerPlaceLabel(p){
+  var city = (p && p.city) || '';
+  var c = (p && p.country) || '';
+  var cName = (c && c !== 'FR') ? (_PARTNER_COUNTRY_NAMES[c] || c) : '';
+  var label = city && cName ? (city+', '+cName) : (city || cName);
+  return _escHtml(label);
+}
+function _partnerIsRemote(p){
+  return !!(p && (p.serviceMode === 'remote' || p.serviceMode === 'both'));
 }
 // _tr() : comme AppI18n.t() mais défensif si app-i18n.js n'est pas encore chargé — ces
 // fonctions construisent des libellés avec un nombre variable (prix, minutes), donc le
@@ -5990,7 +6022,8 @@ function _openMapQuickPreview(p){
   var priceHtml = (p.fromPrice != null && p.fromPrice !== '' && p.fromPrice !== undefined)
     ? '<span class="exp-q-chip"><i class="fa-solid fa-tag"></i> À partir de '+p.fromPrice+' €</span>'
     : '<span class="exp-q-chip"><i class="fa-solid fa-tag"></i> Sur devis</span>';
-  var cityHtml = p.city ? '<span class="exp-q-chip"><i class="fa-solid fa-location-dot"></i> '+p.city+'</span>' : '';
+  var cityHtml = (p.city ? '<span class="exp-q-chip"><i class="fa-solid fa-location-dot"></i> '+_partnerPlaceLabel(p)+'</span>' : '')
+    + (_partnerIsRemote(p) ? '<span class="exp-q-chip"><i class="fa-solid fa-laptop"></i> '+_tr('À distance')+'</span>' : '');
   content.innerHTML = '<div class="exp-q-hero">'
     +'<div class="exp-q-avatar">'+avatarHtml+'</div>'
     +'<div class="exp-q-info">'
@@ -6783,7 +6816,11 @@ function directoryCard(p){
   var photoHtml = p.photo
     ? '<img src="'+p.photo+'" alt="'+(p.prenom||'')+'">'
     : '<div class="p-dir-card-initials">'+initials+'</div>';
-  var cityHtml = p.city ? '<div class="p-dir-card-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
+  var _place = _partnerPlaceLabel(p);
+  var cityHtml = (_place || _partnerIsRemote(p))
+    ? '<div class="p-dir-card-city">'+(_place?'<i class="fas fa-location-dot"></i> '+_place:'')
+      +(_partnerIsRemote(p)?'<span style="color:#22c55e;font-weight:700;'+(_place?'margin-left:6px;':'')+'"><i class="fa-solid fa-laptop"></i> '+_tr('À distance')+'</span>':'')+'</div>'
+    : '';
   var verifiedHtml = verifiedBadgeHtml(p);
   var badgeHtml = tierBadgeHtml(p.badge);
   var constellationHtml = constellationBadgeHtml(p.constellation);
@@ -6938,7 +6975,7 @@ function openPartnerDetail(partnerId){
         + '<div class="pf-hud-sep"></div>'
         + '<div class="pf-hud-cell"><div class="pf-hud-ico"><i class="fa-solid fa-clock"></i></div><div class="pf-hud-val">'+(responseLabel||'<span style="font-size:11px;color:#333;">—</span>')+'</div><div class="pf-hud-lbl">Réponse</div></div>'
         + '<div class="pf-hud-sep"></div>'
-        + '<div class="pf-hud-cell"><div class="pf-hud-ico"><i class="fa-solid fa-location-dot"></i></div><div class="pf-hud-val" style="font-size:11px;">'+(p.city||'<span style="color:#333;">—</span>')+'</div><div class="pf-hud-lbl">Ville</div></div>'
+        + '<div class="pf-hud-cell"><div class="pf-hud-ico"><i class="fa-solid fa-location-dot"></i></div><div class="pf-hud-val" style="font-size:11px;">'+(_partnerPlaceLabel(p)||'<span style="color:#333;">—</span>')+(_partnerIsRemote(p)?'<div style="font-size:9px;color:#22c55e;font-weight:800;margin-top:2px;">'+_tr('À distance')+'</div>':'')+'</div><div class="pf-hud-lbl">Ville</div></div>'
       + '</div>';
 
       // ── Cercle Genesis ──
@@ -19799,6 +19836,9 @@ function _submitAvailability(){
 
 // ── Wallet GENESIS (solde + retraits + historique) ──
 var _ptnrWdMethod = null;
+// Franc CFA du pays choisi (XAF/XOF, parité fixe avec l'euro) — sert à afficher au prestataire
+// africain ce qu'il recevra réellement sur son Mobile Money.
+var _ptnrWdCfa = null;
 
 // Calcule le libellé de date de libération estimée pour une entrée pending (style Fiverr)
 function _ptnrPendingRelease(estimatedReleaseAt){
@@ -19898,14 +19938,15 @@ function _ptnrLoadVersements(){
     html += '<div style="font-size:13px;font-weight:800;color:#FFD700;margin-bottom:12px;"><i class="fa-solid fa-paper-plane" style="margin-right:6px"></i>Demande de retrait</div>';
     // Montant
     html += '<div style="margin-bottom:10px;"><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;font-weight:700;text-transform:uppercase;">Montant (min. 20 €) *</label>';
-    html += '<input id="ptnr-wd-amount" type="number" min="20" max="'+avail+'" step="0.01" placeholder="Ex : 50.00" style="width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;"></div>';
+    html += '<input id="ptnr-wd-amount" type="number" min="20" max="'+avail+'" step="0.01" placeholder="Ex : 50.00" oninput="_ptnrUpdateWdCfaHint()" style="width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
+    html += '<div id="ptnr-wd-cfa-hint" style="display:none;font-size:11px;color:#22c55e;margin-top:5px;"></div></div>';
     // Pays
     html += '<div style="margin-bottom:10px;"><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;font-weight:700;text-transform:uppercase;">Pays *</label>';
     html += '<select id="ptnr-wd-country" onchange="_ptnrLoadWdMethods()" style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
     html += '<option value="">— Sélectionner —</option>';
     html += '<optgroup label="Europe"><option value="FR">🇫🇷 France</option><option value="BE">🇧🇪 Belgique</option><option value="CH">🇨🇭 Suisse</option><option value="LU">🇱🇺 Luxembourg</option><option value="DE">🇩🇪 Allemagne</option><option value="ES">🇪🇸 Espagne</option><option value="IT">🇮🇹 Italie</option><option value="PT">🇵🇹 Portugal</option><option value="NL">🇳🇱 Pays-Bas</option><option value="GB">🇬🇧 Royaume-Uni</option></optgroup>';
     html += '<optgroup label="Afrique de l\'Ouest"><option value="SN">🇸🇳 Sénégal</option><option value="CI">🇨🇮 Côte d\'Ivoire</option><option value="BF">🇧🇫 Burkina Faso</option><option value="ML">🇲🇱 Mali</option><option value="GN">🇬🇳 Guinée</option><option value="TG">🇹🇬 Togo</option><option value="BJ">🇧🇯 Bénin</option><option value="NE">🇳🇪 Niger</option><option value="GH">🇬🇭 Ghana</option></optgroup>';
-    html += '<optgroup label="Afrique Centrale"><option value="CM">🇨🇲 Cameroun</option><option value="CG">🇨🇬 Congo</option><option value="GA">🇬🇦 Gabon</option><option value="CD">🇨🇩 RD Congo</option></optgroup>';
+    html += '<optgroup label="Afrique Centrale"><option value="CM">🇨🇲 Cameroun</option><option value="CG">🇨🇬 Congo</option><option value="GA">🇬🇦 Gabon</option><option value="CD">🇨🇩 RD Congo</option><option value="TD">🇹🇩 Tchad</option><option value="CF">🇨🇫 Centrafrique</option></optgroup>';
     html += '<optgroup label="Afrique du Nord"><option value="MA">🇲🇦 Maroc</option><option value="DZ">🇩🇿 Algérie</option><option value="TN">🇹🇳 Tunisie</option><option value="EG">🇪🇬 Égypte</option></optgroup>';
     html += '<optgroup label="Amériques &amp; Autres"><option value="US">🇺🇸 États-Unis</option><option value="CA">🇨🇦 Canada</option><option value="AE">🇦🇪 Émirats arabes unis</option></optgroup>';
     html += '</select></div>';
@@ -20005,6 +20046,13 @@ function _ptnrToggleWithdraw(){
   var open = form.style.display !== 'none';
   form.style.display = open ? 'none' : 'block';
   if(btn){ btn.textContent = open ? '' : 'Annuler le retrait'; }
+  // Pré-sélectionner le pays de résidence du prestataire (évite qu'un prestataire gabonais doive
+  // le rechercher dans la liste à chaque retrait).
+  var cSel = document.getElementById('ptnr-wd-country');
+  if(!open && cSel && !cSel.value && _ptnrSession && _ptnrSession.country && cSel.querySelector('option[value="'+_ptnrSession.country+'"]')){
+    cSel.value = _ptnrSession.country;
+    _ptnrLoadWdMethods();
+  }
   if(open && btn){ btn.innerHTML = '<i class="fa-solid fa-paper-plane" style="margin-right:6px"></i>Retirer mes gains'; }
   _ptnrWdMethod = null;
 }
@@ -20017,6 +20065,8 @@ function _ptnrLoadWdMethods(){
   if(!country){ if(wrap) wrap.style.display='none'; return; }
   _ptnrFetch('/api/partner/wallet/methods?country='+encodeURIComponent(country)).then(function(data){
     var methods = (data && data.methods) || [];
+    _ptnrWdCfa = (data && data.cfaCurrency) ? {cur:data.cfaCurrency, rate:data.eurToCfa||655.957} : null;
+    _ptnrUpdateWdCfaHint();
     if(!wrap) return;
     if(!methods.length){ wrap.innerHTML='<p style="font-size:12px;color:#666;margin:0;">Aucune méthode disponible.</p>'; wrap.style.display='block'; return; }
     var h = '<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Méthode de retrait</div>';
@@ -20041,6 +20091,15 @@ function _ptnrLoadWdMethods(){
   }).catch(function(){});
 }
 
+function _ptnrUpdateWdCfaHint(){
+  var el = document.getElementById('ptnr-wd-cfa-hint');
+  if(!el) return;
+  var amount = parseFloat(((document.getElementById('ptnr-wd-amount')||{}).value)||0);
+  if(!_ptnrWdCfa || !amount){ el.style.display='none'; return; }
+  el.textContent = '≈ '+Math.round(amount*_ptnrWdCfa.rate).toLocaleString('fr-FR')+' '+(_ptnrWdCfa.cur==='XAF'?'F CFA (XAF)':'F CFA (XOF)')+' — parité fixe 1 € = 655,957 F CFA';
+  el.style.display='block';
+}
+
 function _ptnrSelectWdMethod(methodId, fields, linked){
   _ptnrWdMethod = methodId;
   var dWrap = document.getElementById('ptnr-wd-details-wrap');
@@ -20060,13 +20119,16 @@ function _ptnrSelectWdMethod(methodId, fields, linked){
     if(submitBtn){ submitBtn.disabled=false; submitBtn.style.opacity='1'; submitBtn.style.cursor='pointer'; }
     return;
   }
-  var labels = {holder:'Nom du titulaire',iban:'IBAN',bic:'BIC / SWIFT (optionnel)',email:'Adresse email',phone:'Numéro de téléphone'};
+  var labels = {holder:'Nom du titulaire',iban:'IBAN',bic:'BIC / SWIFT (optionnel)',email:'Adresse email',phone:'Numéro Mobile Money (avec indicatif)'};
   var h = '';
   (fields||[]).forEach(function(f){
     var isOpt = f==='bic';
     h += '<div style="margin-bottom:8px;"><label style="font-size:11px;color:#888;display:block;margin-bottom:3px;font-weight:700;text-transform:uppercase;">'+(labels[f]||f)+(isOpt?'':' *')+'</label>';
-    h += '<input id="ptnr-wd-f-'+f+'" type="'+(f==='email'?'email':f==='phone'?'tel':'text')+'" placeholder="'+(isOpt?'Optionnel':'')+'" style="width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:9px 12px;font-size:13px;"></div>';
+    h += '<input id="ptnr-wd-f-'+f+'" type="'+(f==='email'?'email':f==='phone'?'tel':'text')+'" placeholder="'+(isOpt?'Optionnel':(f==='phone'?'Ex : +241 77 12 34 56':''))+'" style="width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:9px 12px;font-size:13px;"></div>';
   });
+  if((fields||[]).indexOf('phone')!==-1){
+    h += '<div style="font-size:11px;color:#888;line-height:1.5;">Ce numéro sera enregistré pour vos prochains retraits. Pour le changer ensuite : Profil &gt; Coordonnées de versement.</div>';
+  }
   dWrap.innerHTML = h;
   dWrap.style.display = 'block';
   if(submitBtn){ submitBtn.disabled=false; submitBtn.style.opacity='1'; submitBtn.style.cursor='pointer'; }
@@ -21046,6 +21108,7 @@ function _ptnrLoadProfil(){
     +pli('<i class="fa-solid fa-circle-user"></i>',       '#1a1a00','Paramètres du profil', null,'_ptnrProfilEditParams()')
     +pli('<i class="fa-solid fa-building-columns"></i>',  '#001a12','Coordonnées de versement', null,'_ptnrShowPayoutDetails()')
     +pli('<i class="fa-solid fa-clock"></i>',             '#14000a','Temps de réponse',     null,'_ptnrProfilEditResponseTime()')
+    +pli('<i class="fa-solid fa-earth-africa"></i>',      '#001a1a','Pays et zone d\'intervention', null,'_ptnrProfilEditServiceMode()')
     +pli('<i class="fa-solid fa-language"></i>',          '#0a0d1a','Langue',               null,'showLanguagePicker()')
     +pli('<i class="fa-solid fa-headset"></i>',           '#1a0a00','Assistance',           null,'_ptnrShowSupport()')
     +bioRowHtml
@@ -21333,6 +21396,75 @@ function _ptnrProfilEditResponseTime(){
   if(sel && typeof current === 'number') sel.value = String(current);
 }
 
+// ── PAYS ET ZONE D'INTERVENTION ───────────────────────────────────────────────
+// Permet à un prestataire installé hors de France (ex. Gabon) d'indiquer qu'il travaille à
+// distance : il apparaît alors dans le filtre "À distance" de l'Explorer côté client, et sa fiche
+// l'affiche clairement. Le pays pilote aussi les moyens de retrait proposés (Mobile Money…).
+var _ptnrServiceModeSel = null;
+function _ptnrProfilEditServiceMode(){
+  var c = document.getElementById('ptnr-profil-content');
+  if(!c) return;
+  var cur = (_ptnrSession && _ptnrSession.serviceMode) || 'onsite';
+  _ptnrServiceModeSel = cur;
+  var regSel = document.getElementById('ptnr-reg-country');
+  var countryOpts = regSel ? regSel.innerHTML : '<option value="">Pays de résidence *</option>';
+  function opt(val, ico, title, sub){
+    return '<div class="ptnr-svcmode-opt" data-val="'+val+'" onclick="_ptnrPickServiceMode(this)" style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1.5px solid '+(cur===val?'#FFD700':'#2a2a2a')+';border-radius:12px;margin-bottom:8px;cursor:pointer;background:'+(cur===val?'rgba(255,215,0,.08)':'#141414')+';">'
+      +'<i class="fa-solid '+ico+'" style="color:#FFD700;font-size:16px;margin-top:2px;width:18px;text-align:center;"></i>'
+      +'<div><div style="font-size:13px;font-weight:800;color:#fff;">'+title+'</div><div style="font-size:11px;color:#888;margin-top:2px;line-height:1.4;">'+sub+'</div></div></div>';
+  }
+  c.innerHTML = '<div class="plus-subpage">'
+    +'<div class="plus-back-bar">'
+    +'<button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button>'
+    +'<div class="plus-sub-title">Pays et zone d\'intervention</div>'
+    +'</div>'
+    +'<div class="plus-section" style="padding-top:20px;">'
+    +'<div class="ptnr-card">'
+    +'<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Pays de résidence</div>'
+    +'<select class="ptnr-input" id="ptnr-svcmode-country">'+countryOpts+'</select>'
+    +'<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin:12px 0 6px;">Comment travaillez-vous ?</div>'
+    +opt('onsite','fa-location-dot','Sur place','Je me déplace ou je reçois mes clients dans ma ville.')
+    +opt('remote','fa-laptop','À distance uniquement','Je travaille en ligne pour des clients partout, y compris en France et en Europe (montage, graphisme, site web, rédaction…).')
+    +opt('both','fa-globe','Les deux','Sur place dans ma ville, et à distance pour les autres clients.')
+    +'<div style="font-size:11px;color:#888;line-height:1.5;margin-top:4px;">Les clients paient en euros sur GENESIS, où qu\'ils soient. Vous retirez ensuite vos gains avec les moyens disponibles dans votre pays (Mobile Money, PayPal…).</div>'
+    +'<button class="ptnr-login-btn" id="ptnr-svcmode-btn" style="margin-top:12px;" onclick="_ptnrSaveServiceMode()">Enregistrer</button>'
+    +'<div class="ptnr-login-err" id="ptnr-svcmode-msg" style="margin-top:8px;"></div>'
+    +'</div></div></div>';
+  var cSel = document.getElementById('ptnr-svcmode-country');
+  if(cSel && _ptnrSession && _ptnrSession.country) cSel.value = _ptnrSession.country;
+}
+function _ptnrPickServiceMode(el){
+  _ptnrServiceModeSel = el.getAttribute('data-val');
+  document.querySelectorAll('.ptnr-svcmode-opt').forEach(function(o){
+    var on = o === el;
+    o.style.borderColor = on ? '#FFD700' : '#2a2a2a';
+    o.style.background = on ? 'rgba(255,215,0,.08)' : '#141414';
+  });
+}
+function _ptnrSaveServiceMode(){
+  var country = (document.getElementById('ptnr-svcmode-country')||{}).value||'';
+  var msgEl = document.getElementById('ptnr-svcmode-msg');
+  var btnEl = document.getElementById('ptnr-svcmode-btn');
+  if(!country){ if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Choisissez votre pays de résidence.'; msgEl.className='ptnr-login-err on'; } return; }
+  if(btnEl){ btnEl.disabled=true; btnEl.textContent='Enregistrement...'; }
+  if(msgEl){ msgEl.className='ptnr-login-err'; msgEl.textContent=''; }
+  _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {country: country, serviceMode: _ptnrServiceModeSel || 'onsite'}).then(function(data){
+    if(data && data.success){
+      _ptnrSession.country = data.partner.country;
+      _ptnrSession.serviceMode = data.partner.serviceMode;
+      _ptnrSaveToCache(_ptnrSession);
+      showToast('Profil mis à jour', '', 'success');
+      setTimeout(_ptnrProfilBack, 600);
+    } else {
+      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'enregistrement'; msgEl.className='ptnr-login-err on'; }
+      if(btnEl){ btnEl.disabled=false; btnEl.textContent='Enregistrer'; }
+    }
+  }).catch(function(){
+    if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Erreur de connexion au serveur'; msgEl.className='ptnr-login-err on'; }
+    if(btnEl){ btnEl.disabled=false; btnEl.textContent='Enregistrer'; }
+  });
+}
+
 // ── COORDONNÉES DE VERSEMENT ─────────────────────────────────────────────────
 // Écran manquant jusqu'ici : le prestataire n'avait AUCUN moyen de voir son IBAN/PayPal déjà
 // enregistré (seul le formulaire de retrait les affichait, toujours vierge — voir
@@ -21355,6 +21487,27 @@ function _ptnrShowPayoutDetails(){
     var bd = d.bankDetails;
     var ibanSummary = bd ? (bd.iban + (bd.accountHolderName ? ' — '+_escHtml(bd.accountHolderName) : '')) : 'Non renseigné';
     var paypalSummary = d.paypalLinked ? d.paypalEmailMasked : 'Non renseigné';
+    // Mobile Money (Airtel/Moov au Gabon, etc.) : proposé seulement si le pays du prestataire en a.
+    var mmOps = d.mobileMoneyOperators || [];
+    var mm = d.mobileMoney;
+    var mmHtml = '';
+    if(mmOps.length){
+      var mmOpts = '';
+      mmOps.forEach(function(o){ mmOpts += '<option value="'+_escHtml(o.id)+'"'+(mm&&mm.operator===o.id?' selected':'')+'>'+_escHtml(o.label)+'</option>'; });
+      mmHtml = '<div class="plus-section">'
+        +'<div class="plus-section-title">MOBILE MONEY</div>'
+        +'<div class="ptnr-card">'
+        +'<div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:10px;">'+(mm ? _escHtml(mm.label+' — '+mm.phoneMasked) : 'Non renseigné')+'</div>'
+        +'<button class="ptnr-login-btn" style="margin-top:0;padding:11px;background:transparent;border:1.5px solid #FFD700;color:#FFD700;" onclick="_ptnrTogglePayoutForm(\'mm\')">'+(mm?'Modifier':'Renseigner')+'</button>'
+        +'<div id="ptnr-payout-mm-form" style="display:none;margin-top:12px;">'
+        +'<select class="ptnr-input" id="ptnr-payout-mm-operator">'+mmOpts+'</select>'
+        +'<input class="ptnr-input" id="ptnr-payout-mm-phone" type="tel" placeholder="Numéro avec indicatif (ex. +241 77 12 34 56)" autocomplete="tel">'
+        +(mm ? '<input class="ptnr-input" id="ptnr-payout-mm-pwd" type="password" placeholder="Mot de passe actuel" autocomplete="current-password">' : '')
+        +'<button class="ptnr-login-btn" id="ptnr-payout-mm-btn" style="margin-top:4px;" onclick="_ptnrSaveMobileMoney()">Enregistrer</button>'
+        +'<div class="ptnr-login-err" id="ptnr-payout-mm-msg" style="margin-top:8px;"></div>'
+        +'</div></div></div>';
+    }
+    var isFrance = !d.country || d.country === 'FR';
     c.innerHTML = '<div class="plus-subpage">'
       +'<div class="plus-back-bar">'
       +'<button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button>'
@@ -21362,7 +21515,9 @@ function _ptnrShowPayoutDetails(){
       +'</div>'
       +'<div style="font-size:12px;color:#888;padding:16px 16px 0;line-height:1.5;">C\'est ici que l\'argent de vos retraits est envoyé. Modifier une coordonnée déjà enregistrée demande votre mot de passe actuel, par sécurité.</div>'
 
-      // ── IBAN / Wise ──
+      +mmHtml
+      // ── IBAN / Wise ── (masqué hors zone SEPA : un IBAN européen n'est pas utilisable au Gabon)
+      +(d.sepaAvailable === false ? '<div style="display:none">' : '')
       +'<div class="plus-section">'
       +'<div class="plus-section-title">VIREMENT SEPA (IBAN)</div>'
       +'<div class="ptnr-card">'
@@ -21376,6 +21531,7 @@ function _ptnrShowPayoutDetails(){
       +'<button class="ptnr-login-btn" id="ptnr-payout-iban-btn" style="margin-top:4px;" onclick="_ptnrSaveBankDetails()">Enregistrer</button>'
       +'<div class="ptnr-login-err" id="ptnr-payout-iban-msg" style="margin-top:8px;"></div>'
       +'</div></div></div>'
+      +(d.sepaAvailable === false ? '</div>' : '')
 
       // ── PayPal ──
       +'<div class="plus-section">'
@@ -21394,6 +21550,7 @@ function _ptnrShowPayoutDetails(){
       +'<div class="plus-section">'
       +'<div class="plus-section-title">FACTURATION</div>'
       +'<div class="ptnr-card">'
+      +(isFrance ? '' : '<div style="font-size:11px;color:#f59e0b;margin-bottom:10px;line-height:1.5;">La facture automatique est réservée aux prestataires immatriculés en France (SIRET). Vos paiements et retraits ne sont pas concernés : ils fonctionnent normalement.</div><div style="display:none">')
       +'<div style="font-size:11px;color:#888;margin-bottom:10px;line-height:1.5;">Renseignez votre SIRET pour recevoir automatiquement une facture (utile pour votre déclaration URSSAF) à chaque mission validée. Sans ça, vos factures restent en attente.</div>'
       +'<div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:10px;">'+(_ptnrSession.siret ? ('SIRET '+_escHtml(_ptnrSession.siret)) : 'Non renseigné')+'</div>'
       +'<button class="ptnr-login-btn" style="margin-top:0;padding:11px;background:transparent;border:1.5px solid #FFD700;color:#FFD700;" onclick="_ptnrTogglePayoutForm(\'billing\')">'+(_ptnrSession.siret?'Modifier':'Renseigner')+'</button>'
@@ -21402,7 +21559,7 @@ function _ptnrShowPayoutDetails(){
       +'<input class="ptnr-input" id="ptnr-billing-address" type="text" placeholder="Adresse de facturation complète" value="'+_escHtml(_ptnrSession.billing_address||'')+'">'
       +'<button class="ptnr-login-btn" id="ptnr-billing-btn" style="margin-top:4px;" onclick="_ptnrSaveBillingInfo()">Enregistrer</button>'
       +'<div class="ptnr-login-err" id="ptnr-billing-msg" style="margin-top:8px;"></div>'
-      +'</div></div></div>'
+      +'</div>'+(isFrance ? '' : '</div>')+'</div></div>'
       +'</div>';
   }).catch(function(){
     c.innerHTML = '<div class="plus-subpage"><div class="plus-back-bar"><button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button><div class="plus-sub-title">Coordonnées de versement</div></div><div class="plus-section" style="padding-top:20px;"><div class="ptnr-card"><div style="color:#ef4444;font-size:12px;">Erreur réseau.</div></div></div></div>';
@@ -21431,6 +21588,29 @@ function _ptnrSaveBankDetails(){
   }).then(function(d){
     if(btn){ btn.disabled=false; btn.textContent='Enregistrer'; }
     if(d && d.ok){ showToast('Coordonnées mises à jour','Votre IBAN a bien été enregistré.','success'); _ptnrShowPayoutDetails(); }
+    else { if(msgEl){ msgEl.textContent=(d&&d.error)||'Erreur lors de l\'enregistrement.'; msgEl.style.display='block'; } }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='Enregistrer'; }
+    if(msgEl){ msgEl.textContent='Erreur réseau. Réessayez.'; msgEl.style.display='block'; }
+  });
+}
+
+function _ptnrSaveMobileMoney(){
+  var operator = (document.getElementById('ptnr-payout-mm-operator')||{}).value||'';
+  var phone = ((document.getElementById('ptnr-payout-mm-phone')||{}).value||'').replace(/[\s.\-]/g,'');
+  var pwdEl = document.getElementById('ptnr-payout-mm-pwd');
+  var msgEl = document.getElementById('ptnr-payout-mm-msg');
+  var btn   = document.getElementById('ptnr-payout-mm-btn');
+  if(!/^\+[0-9]{8,15}$/.test(phone)){ if(msgEl){ msgEl.textContent='Numéro invalide : indiquez-le avec l\'indicatif du pays (ex. +241 77 12 34 56).'; msgEl.style.display='block'; } return; }
+  if(pwdEl && !pwdEl.value){ if(msgEl){ msgEl.textContent='Mot de passe actuel requis.'; msgEl.style.display='block'; } return; }
+  if(msgEl) msgEl.style.display='none';
+  if(btn){ btn.disabled=true; btn.textContent='Enregistrement…'; }
+  _ptnrFetch('/api/partner/profile/set-mobile-money','POST',{
+    operator: operator, phone: phone,
+    currentPassword: pwdEl ? pwdEl.value : undefined
+  }).then(function(d){
+    if(btn){ btn.disabled=false; btn.textContent='Enregistrer'; }
+    if(d && d.success){ showToast('Coordonnées mises à jour','Votre numéro Mobile Money a bien été enregistré.','success'); _ptnrShowPayoutDetails(); }
     else { if(msgEl){ msgEl.textContent=(d&&d.error)||'Erreur lors de l\'enregistrement.'; msgEl.style.display='block'; } }
   }).catch(function(){
     if(btn){ btn.disabled=false; btn.textContent='Enregistrer'; }
