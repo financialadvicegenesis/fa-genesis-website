@@ -1779,10 +1779,16 @@ app.use((req, res, next) => {
 // SÉCURITÉ : plus aucun mot de passe de secours écrit ici (dépôt GitHub public). Sans la variable
 // Render ADMIN_PASSWORD, ces comptes sont simplement désactivés au lieu de retomber sur un mot de
 // passe que tout le monde peut lire.
+// ADMIN_PARTNER_EMAIL / ADMIN_PARTNER_PASSWORD (les identifiants admin "principaux", déjà utilisés
+// par la connexion admin dans l'app) sont aussi acceptés ici : un seul identifiant admin pour les
+// deux écrans. Espaces/retours à la ligne en trop retirés (copier-coller dans Render).
 var ADMIN_ACCOUNTS = [
     { email: 'admin@fagenesis.com', password: process.env.ADMIN_PASSWORD },
-    { email: 'tiffenndjambou3@gmail.com', password: process.env.ADMIN_PASSWORD }
-].filter(function(a) { return typeof a.password === 'string' && a.password.length > 0; });
+    { email: 'tiffenndjambou3@gmail.com', password: process.env.ADMIN_PASSWORD },
+    { email: process.env.ADMIN_PARTNER_EMAIL, password: process.env.ADMIN_PARTNER_PASSWORD }
+].map(function(a) {
+    return { email: (a.email || '').toString().toLowerCase().trim(), password: typeof a.password === 'string' ? a.password.trim() : '' };
+}).filter(function(a) { return a.email && a.password.length > 0; });
 
 function loadAdminSessions() {
     try {
@@ -1805,7 +1811,7 @@ app.post('/api/admin/login', function(req, res) {
             return res.status(429).json({ error: 'Trop de tentatives. Réessayez dans 15 minutes.' });
         }
         var email = (req.body.email || '').toLowerCase().trim();
-        var password = req.body.password || '';
+        var password = (req.body.password || '').trim();
         var match = ADMIN_ACCOUNTS.find(function(a) { return a.email === email && a.password === password; });
         if (!match) return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
         // JWT signé — valide sans admin_sessions.json, survit aux redémarrages Render
@@ -14602,7 +14608,9 @@ app.post('/api/partner/auth/login', async (req, res) => {
         // règlent dans Render > Environment. Sans ces variables, aucune connexion admin possible.
         const ADMIN_ACCOUNTS_LIST = [];
         if (process.env.ADMIN_PARTNER_EMAIL && process.env.ADMIN_PARTNER_PASSWORD) {
-            ADMIN_ACCOUNTS_LIST.push({ email: process.env.ADMIN_PARTNER_EMAIL.toLowerCase().trim(), password: process.env.ADMIN_PARTNER_PASSWORD });
+            // .trim() aussi côté Render : le mot de passe saisi est nettoyé (passwordNorm) mais pas
+            // celui de la variable, donc un espace/retour à la ligne collé dans Render refusait tout.
+            ADMIN_ACCOUNTS_LIST.push({ email: process.env.ADMIN_PARTNER_EMAIL.toLowerCase().trim(), password: process.env.ADMIN_PARTNER_PASSWORD.trim() });
         }
         const emailNorm = email.toLowerCase().trim();
         const passwordNorm = password.trim();
