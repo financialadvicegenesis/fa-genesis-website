@@ -2190,6 +2190,10 @@ a{text-decoration:none;color:inherit}
 #jeremie-sheet{width:100%;max-width:480px;height:80vh;height:80dvh;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1),height .3s ease,border-radius .3s ease;position:relative;}
 #jeremie-sheet.up{transform:translateY(0);}
 #jeremie-sheet.immersive{height:100vh;height:100dvh;border-radius:0;max-width:100%;}
+/* Plein écran = l'en-tête passe sous la barre d'état (heure, wifi, batterie) qui recouvrait les
+   boutons voix/réduire : impossible de revenir au format normal. Même marge que tous les autres
+   écrans plein écran de l'app (en-tête principal, liseuses, overlays de commande). */
+#jeremie-sheet.immersive .jeremie-hdr{padding-top:calc(16px + env(safe-area-inset-top,0px));}
 #jeremie-sheet::before{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,215,0,.35) 1px,transparent 1.5px);background-size:26px 26px;opacity:.12;pointer-events:none;}
 .jeremie-hdr{position:relative;z-index:1;display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #1a1a1a;flex-shrink:0;}
 .jeremie-hdr-ico{position:relative;width:38px;height:38px;border-radius:50%;color:#000;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 0 14px rgba(255,215,0,.5);animation:jeremieOrbPulse 3.2s ease-in-out infinite;}
@@ -11006,7 +11010,13 @@ function closeJeremieChat(){
   if(!sheet||!overlay) return;
   sheet.classList.remove('up');
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
-  setTimeout(function(){ overlay.classList.remove('open'); },460);
+  setTimeout(function(){
+    overlay.classList.remove('open');
+    // Sans ça, une fois agrandie, la conversation se rouvrait toujours en plein écran.
+    sheet.classList.remove('immersive');
+    var btn=document.getElementById('jeremie-immersive-toggle');
+    if(btn) btn.innerHTML='<i class="fa-solid fa-expand"></i>';
+  },460);
 }
 function _jeremieBubble(role,text,scrollEl){
   var isMine=(role==='user');
