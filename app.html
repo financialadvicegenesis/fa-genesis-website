@@ -2162,6 +2162,9 @@ a{text-decoration:none;color:inherit}
 .chat-conv-name{font-family:'Unbounded',cursive;font-size:12px;font-weight:900;color:#fff;flex:1;}
 .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
 .chat-bubble{max-width:78%;padding:10px 14px;font-size:13px;line-height:1.6;word-break:break-word;}
+/* Jérémie sépare ses idées par des retours à la ligne (consigne de son prompt serveur) mais la
+   bulle les écrasait en espaces : chaque réponse s'affichait en un seul gros bloc de texte. */
+#jeremie-msgs .chat-bubble{white-space:pre-wrap;}
 .chat-bubble-mine{align-self:flex-end;background:#FFD700;color:#000;font-weight:600;}
 .chat-bubble-theirs{align-self:flex-start;background:#1a1a1a;color:#ccc;border:1px solid #222;}
 .chat-bubble-subj{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;opacity:.65;}

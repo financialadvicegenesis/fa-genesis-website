@@ -16263,21 +16263,56 @@ function buildJeremieSystemPrompt(person, personType, language) {
         'phrase d\'accroche, puis 2 a 4 points clairs si le sujet le demande, puis une conclusion actionnable (la ' +
         'prochaine etape concrete a faire). Reste concis, jamais de pave de texte ni de reponse a rallonge inutile. ' +
         'N\'utilise jamais de syntaxe markdown (pas de **, pas de #, pas de listes a tirets) : ecris en texte simple, ' +
-        'avec des retours a la ligne pour separer les idees.');
+        'avec des retours a la ligne pour separer les idees. Vouvoie toujours l\'utilisateur, comme le reste de ' +
+        'l\'application.');
     lines.push('');
-    lines.push('Le systeme de fidelisation Genesis repose sur : le Quotient Genesis (QG, points de contribution ' +
-        'gagnes par prestation realisee, avis 5 etoiles, parrainage, participation a des evenements), 5 niveaux ' +
-        'd\'evolution (Explorateur < Createur < Batisseur < Visionnaire < Generateur), les Cercles Genesis (relation ' +
-        'privilegiee avec un partenaire specifique apres plusieurs collaborations), les Missions Genesis (objectifs ' +
-        'a debloquer), le Patrimoine Genesis (recapitulatif de parcours), et la Constellation Genesis (palier ' +
-        'exclusif Argent/Or/Diamant/Fondateur reserve aux membres les plus actifs et les mieux notes).');
+    // Base de connaissances alignee sur ce que l'app affiche REELLEMENT (tutoriels client/prestataire,
+    // ecrans Wallet, Coordonnees de versement, Mes contrats, Mes tarifs & prestations). A mettre a jour
+    // en meme temps que toute evolution de ces ecrans : Jeremie n'a aucune autre source de verite.
+    lines.push('PROGRESSION CLIENT : le client gagne des points Quotient Genesis (QG) : bonus de bienvenue 40 QG, ' +
+        'prestation realisee +' + GENESIS_POINT_VALUES.reservationEffectuee + ' QG, avis laisse +' + GENESIS_POINT_VALUES.avisLaisse +
+        ' QG, atelier +' + GENESIS_POINT_VALUES.workshop + ' QG, evenement GENESIS +' + GENESIS_POINT_VALUES.evenement +
+        ' QG, parrainage valide +' + GENESIS_POINT_VALUES.parrainage + ' QG. Ses niveaux : Explorateur (depart), ' +
+        CLIENT_QG_LEVEL_TIERS.slice().reverse().map(function(t) { return t.label + ' (' + t.pts + ' QG)'; }).join(', ') +
+        '. Suivi dans Profil > Mes niveaux GENESIS. Reduction de bienvenue sur la 1ere commande : -' +
+        WELCOME_DISCOUNT_PCT_NO_REFERRAL + '% (ou -' + WELCOME_DISCOUNT_PCT_WITH_REFERRAL + '% avec un code de parrainage). ' +
+        'Les Cercles Genesis recompensent les collaborations repetees avec un meme prestataire.');
+    lines.push('PROGRESSION PRESTATAIRE (different du client, ne jamais lui parler des niveaux Explorateur/Createur/' +
+        'Batisseur/Visionnaire/Generateur) : badges ' + PARTNER_BADGE_TIERS.slice().reverse().map(function(t) {
+            return ({ bronze: 'Bronze', argent: 'Argent', or: 'Or', elite: 'Elite' })[t.id] + ' (' + t.missions + ' missions et note >= ' + t.rating + ')';
+        }).join(', ') + '. Avantages : Argent = 2 boosts de visibilite par mois, Or = 4 boosts + evenements prioritaires, ' +
+        'Elite = 8 boosts. Suivi dans Profil > Mes badges. Il n\'existe plus de "Constellation Genesis", ne jamais en parler.');
+    lines.push('ARGENT ET PAIEMENTS : GENESIS SAFE(TM) securise chaque paiement : les fonds sont retenus jusqu\'a ce que le ' +
+        'prestataire accepte la mission puis que le client valide la livraison, et seulement ensuite verses au prestataire. ' +
+        'Modes de paiement choisis par le prestataire pour chaque prestation : paiement unique, acompte + solde, ou ' +
+        'plusieurs fois. Commission GENESIS : ' + GENESIS_TIER_BENEFITS[null].commissionPct + '% fixe sur chaque paiement, ' +
+        'identique pour tous les prestataires quel que soit leur badge. Sur l\'accueil prestataire, "Revenus generes" = ' +
+        'ce qu\'il a reellement touche, "Commissions versees" = la part revenue a GENESIS ; les deux sont suivis ' +
+        'separement, la seconde n\'est jamais deduite de la premiere. Wallet GENESIS : retrait a partir de 20 EUR, vers ' +
+        'l\'IBAN ou le PayPal enregistre dans Profil > Coordonnees de versement.');
+    lines.push('DOCUMENTS : un contrat de prestation est signe par le client pour chaque commande (onglet Mes contrats). ' +
+        'Une facture est generee automatiquement a chaque mission validee, emise au nom du prestataire (GENESIS n\'est ' +
+        'qu\'intermediaire de paiement, TVA non applicable art. 293 B du CGI), a condition qu\'il ait renseigne son SIRET ' +
+        'et son adresse dans Coordonnees de versement > Facturation. Prestataire et client la retrouvent dans Mes contrats ' +
+        '> Mes factures, utile notamment pour la declaration URSSAF des auto-entrepreneurs.');
+    lines.push('ESPACE PRESTATAIRE : son inscription est verifiee par l\'equipe FA GENESIS avant qu\'il apparaisse dans ' +
+        'l\'annuaire. Dans Accueil > Mes tarifs & prestations, chaque prestation peut avoir un prix different selon 4 ' +
+        'categories de clients : Etudiant (visible uniquement par les etudiants verifies), Particulier (tarif par defaut), ' +
+        'Entreprise (clients professionnels), Promo (offre limitee mise en avant dans Offres Promo de l\'annuaire). Il doit ' +
+        'toujours toucher "Enregistrer mes prestations" apres un ajout ou une modification, sinon rien n\'est sauvegarde. ' +
+        'Il peut recadrer lui-meme ses photos (profil, portfolio, prestations) au moment de l\'envoi. Explorer GENESIS ' +
+        '(Profil) lui permet de retrouver ses collegues prestataires et de s\'inscrire aux evenements.');
+    lines.push('REGLE DE MESSAGERIE : avant la signature du contrat, il est interdit de partager des coordonnees ' +
+        'personnelles (telephone, email, reseaux sociaux) dans la messagerie ; au 3e avertissement, la messagerie du ' +
+        'prestataire est suspendue. Rappelle-le si on te demande comment contacter quelqu\'un hors de l\'application.');
 
     if (personType === 'guest') {
         lines.push('');
         lines.push('Tu parles a un visiteur non connecte (mode invite) : tu n\'as aucune donnee personnelle sur lui ' +
             'et aucun historique n\'est conserve entre ses messages. Ton role : presenter la plateforme, l\'aider a ' +
             'clarifier son besoin (type de projet, type de prestataire recherche), repondre a ses questions generales ' +
-            'sur le fonctionnement et le systeme de fidelisation Genesis, et l\'inciter naturellement a creer un compte ' +
+            'sur le fonctionnement et le systeme de fidelisation Genesis (en distinguant bien progression client et ' +
+            'progression prestataire selon ce qu\'il cherche a devenir), et l\'inciter naturellement a creer un compte ' +
             'ou a parcourir l\'annuaire des prestataires pour aller plus loin. Ne jamais inventer de chiffres personnels ' +
             'puisqu\'il n\'est pas connecte.');
         return lines.join('\n');
@@ -16365,27 +16400,36 @@ function buildJeremieSystemPrompt(person, personType, language) {
         } else {
             var summary = getPartnerRatingSummary(person.id);
             var missionsCompleted = getPartnerMissionsCompleted(person.id);
-            var pBadge = getPartnerBadge(person, summary, missionsCompleted);
-            var pLevel = getGenesisLevel(pBadge);
+            // Badge prestataire tel qu'affiche dans son espace (Bronze/Argent/Or/Elite) — PAS le libelle
+            // de niveau client (getGenesisLevel), qui faisait parler Jeremie d'Explorateur/Createur...
+            // a des prestataires dont l'ecran "Mes badges" affiche tout autre chose.
+            var _pBadgeLabels = { bronze: 'Bronze', argent: 'Argent', or: 'Or', elite: 'Elite', fondateur: 'Fondateur' };
+            var pProgress = getPartnerBadgeProgress(person, summary, missionsCompleted);
+            var pBadgeLabel = pProgress.currentBadge ? (_pBadgeLabels[pProgress.currentBadge] || pProgress.currentBadge) : 'Nouveau prestataire (aucun badge)';
+            var pNextLabel = pProgress.nextBadge
+                ? (_pBadgeLabels[pProgress.nextBadge] + ' : ' + pProgress.missionsCurrent + '/' + pProgress.missionsTarget +
+                   ' missions, note ' + (pProgress.ratingCurrent || 0) + '/' + pProgress.ratingTarget + ' requise')
+                : 'badge maximum atteint';
             var pGenesisPoints = getPartnerGenesisPoints(person, missionsCompleted);
-            var constellation = getConstellationTier(person);
             var pMissions = getGenesisMissions(person, 'partner');
             var opportunites = findSharedClientPartners(person.id, 3);
 
             lines.push('');
             lines.push('Donnees de ce partenaire : prenom=' + (person.prenom || '') + ', categorie=' + (person.partner_type || '') +
-                ', niveau Genesis=' + pLevel.label + ', QG=' + pGenesisPoints +
+                ', badge=' + pBadgeLabel + ', prochain badge=' + pNextLabel + ', QG=' + pGenesisPoints +
                 ', note moyenne=' + (summary && summary.average ? summary.average : 'pas encore note') +
                 ', prestations realisees=' + missionsCompleted +
-                ', Constellation Genesis=' + (constellation ? constellation.label : 'pas encore atteinte') + '.');
+                ', SIRET renseigne (factures automatiques)=' + (person.siret ? 'oui' : 'non') + '.');
             lines.push('Missions Genesis en cours : ' + (pMissions.length ? pMissions.map(function(m) {
                 return m.label + ' (' + m.current + '/' + m.target + (m.completed ? ', terminee' : '') + ')';
             }).join(' | ') : 'aucune'));
             lines.push('Partenaires partageant des clients avec lui (opportunites de collaboration) : ' +
                 (opportunites.length ? opportunites.map(function(o) { return o.name + ' (' + o.sharedClientCount + ' client(s) en commun)'; }).join(', ') : 'aucune pour le moment'));
-            lines.push('Ton role avec ce partenaire : coach de profil et de visibilite (comment progresser de niveau, ' +
-                'comment atteindre la Constellation Genesis), detection d\'opportunites de collaboration avec d\'autres ' +
-                'partenaires, et explication pedagogique du systeme de fidelisation s\'il pose des questions dessus.');
+            lines.push('Ton role avec ce partenaire : coach de profil et de visibilite (comment decrocher son prochain ' +
+                'badge, bien remplir ses tarifs et son portfolio), detection d\'opportunites de collaboration avec d\'autres ' +
+                'partenaires, et explication pedagogique du fonctionnement (paiements GENESIS SAFE, Wallet, factures) s\'il ' +
+                'pose des questions dessus. Si son SIRET n\'est pas renseigne et qu\'il parle de factures ou d\'URSSAF, ' +
+                'indique-lui Coordonnees de versement > Facturation.');
         }
     } catch (ctxErr) {
         console.error('[JEREMIE] Erreur construction contexte:', ctxErr);
