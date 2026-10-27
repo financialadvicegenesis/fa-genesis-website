@@ -179,9 +179,11 @@ workflows:
         # jamais approuvé auparavant. RÉCIDIVE (build #34, 2026-10-22) : 1.0.1 a fini lui aussi
         # approuvé/fermé entre-temps (même erreur 90186 exacte) — passé à 1.0.2. Si ça recommence,
         # toujours re-vérifier le statut réel de la dernière version sur App Store Connect avant de
-        # juste re-incrémenter à l'aveugle.
+        # juste re-incrémenter à l'aveugle. 3e occurrence (build #36, 2026-10-27, erreur 90062 :
+        # "must contain a higher version than that of the previously approved version [1.0.2]") —
+        # passé à 1.0.3. À chaque version approuvée par Apple, incrémenter ici AVANT le push suivant.
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.2" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.3" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
           # Déclare directement que l'app n'utilise que le chiffrement HTTPS standard du système
           # (aucun algorithme propriétaire/personnalisé) — évite la question de conformité export
