@@ -16453,12 +16453,19 @@ function buildJeremieSystemPrompt(person, personType, language) {
             // Paliers Jeremie client, tels qu'annonces dans Mes niveaux GENESIS (/api/client/level-progress) :
             // Createur = suggestions personnalisees, Batisseur = IA Plus, Visionnaire = IA Pro, Generateur = IA Expert.
             var _cTier = ({ bronze: 1, argent: 2, or: 3, elite: 4 })[badge] || 0;
-            lines.push('Niveau d\'accompagnement Jeremie de ce client : ' +
-                ['Jeremie (questions generales ; les suggestions personnalisees de prestataires se debloquent au niveau Createur, 100 QG)',
-                 'Jeremie IA — suggestions personnalisees de prestataires selon ses habitudes et categories preferees',
-                 'Jeremie IA Plus', 'Jeremie IA Pro', 'Jeremie IA Expert'][_cTier] +
-                '. Ne lui propose jamais une capacite d\'un niveau qu\'il n\'a pas : dis-lui plutot quel niveau la debloque ' +
-                '(Plus = Batisseur, Pro = Visionnaire, Expert = Generateur).');
+            lines.push('Paliers Jeremie client (cumulatifs), exactement comme affiches dans Mes niveaux GENESIS : ' +
+                'Explorateur = questions generales et orientation vers l\'annuaire, sans recommander de prestataire precis ; ' +
+                'Createur (100 QG) = suggestions personnalisees de vrais prestataires correspondant a sa demande, ses habitudes ' +
+                'et ses categories preferees (presenter 2 a 4 prestataires adaptes avec leurs points forts) ; ' +
+                'Batisseur (300 QG) = Jeremie IA Plus : analyse de ses habitudes de commande et recommandations automatiques ; ' +
+                'Visionnaire (600 QG) = Jeremie IA Pro : comparaison multicriteres structuree entre prestataires et preparation ' +
+                'de projet ; Generateur (1000 QG) = Jeremie IA Expert : assistant multi-projets et conseils continus.');
+            lines.push('Ce client est au palier : ' + ['Explorateur', 'Createur', 'Batisseur', 'Visionnaire', 'Generateur'][_cTier] +
+                '. Si sa demande releve d\'un palier superieur (par exemple une analyse de ses habitudes avant Batisseur, ou ' +
+                'une comparaison detaillee point par point avant Visionnaire), dis-le clairement et chaleureusement en ' +
+                'nommant le niveau qui la debloque et les QG qui lui manquent, puis aide-le au maximum de ce que son palier ' +
+                'permet (par exemple, au niveau Createur : presenter les prestataires pertinents avec leurs atouts, sans ' +
+                'tableau comparatif critere par critere). Ses QG actuels : ' + genesisPoints + '.');
             if (_cTier === 0) {
                 lines.push('A ce niveau, ne recommande aucun prestataire nominativement : oriente-le vers l\'onglet Prestataires ' +
                     'et l\'annuaire, en l\'aidant a choisir le bon type de prestataire.');
@@ -16673,8 +16680,10 @@ function detectPartnerSearchIntent(message) {
 
 function buildPartnerContextForJeremie(message) {
     try {
+        // Mêmes prestataires que l'annuaire (accountStatus === 'active') : l'ancien filtre
+        // isActive !== false laissait passer des comptes en attente de validation ou désactivés.
         var allPartners = loadPartners().filter(function(p) {
-            return p.isActive !== false && p.partner_type;
+            return p.accountStatus === 'active' && p.partner_type;
         });
         if (!allPartners.length) return '';
 
@@ -16696,13 +16705,21 @@ function buildPartnerContextForJeremie(message) {
             }
         });
 
+        // Correspondance thème demandé -> vraies valeurs de partner_type (PARTNER_TYPES). L'ancien test
+        // par sous-chaîne ('graphisme' dans 'graphiste', 'marketing' dans 'marketer'...) ne marchait que
+        // pour photo et vidéo : un client demandant un graphiste recevait une liste au hasard.
+        var catToTypes = {
+            photo: ['photographer', 'pilote_drone'], video: ['videographer', 'pilote_drone'],
+            graphisme: ['graphiste'], marketing: ['marketer', 'community_manager', 'influencer', 'media'],
+            redaction: ['media', 'community_manager', 'marketer'], developpement: ['developpeur_web'],
+            coaching: ['consultant', 'animateur_evenementiel']
+        };
         var filtered = allPartners;
         if (detectedCats.length) {
-            var byType = allPartners.filter(function(p) {
-                var pt = (p.partner_type || '').toLowerCase();
-                return detectedCats.some(function(cat) { return pt.indexOf(cat) !== -1; });
-            });
-            if (byType.length >= 2) filtered = byType;
+            var wanted = [];
+            detectedCats.forEach(function(cat) { (catToTypes[cat] || []).forEach(function(t) { if (wanted.indexOf(t) === -1) wanted.push(t); }); });
+            var byType = allPartners.filter(function(p) { return wanted.indexOf(p.partner_type) !== -1; });
+            if (byType.length) filtered = byType;
         }
 
         // Trier par note décroissante
@@ -16723,21 +16740,40 @@ function buildPartnerContextForJeremie(message) {
             ''
         ];
 
+        // Fiche enrichie : avant, seuls nom/catégorie/ville/prix minimum/note étaient fournis, d'où des
+        // comparaisons vides ("tarifs non renseignés" pour un prestataire qui travaille en fait sur
+        // devis, aucune info sur les prestations, le portfolio ou la réactivité).
+        var _payModeLabel = { single: 'paiement en une fois', deposit_balance: 'acompte + solde', installments: 'paiement en plusieurs fois' };
         top.forEach(function(p) {
             var rating  = getPartnerRatingSummary(p.id);
             var price   = getPartnerFromPrice(p);
             var name    = ((p.prenom || '') + ' ' + (p.nom || '')).trim();
-            var type    = p.partner_type_other || p.partner_type || '';
-            var city    = p.city || '';
+            var type    = p.partner_type_other || ((PARTNER_TYPES.find(function(t) { return t.value === p.partner_type; }) || {}).label) || p.partner_type || '';
             var ratingStr = rating.count
                 ? (parseFloat(rating.average || 0).toFixed(1) + '/5 (' + rating.count + ' avis)')
                 : 'pas encore noté';
-            var priceStr = price ? ('à partir de ' + price + ' €') : '';
+            var svcs = (p.services || []).filter(function(s) { return s.active !== false; });
+            var hasQuote = svcs.some(function(s) { return s.pricing_type === 'quote'; });
+            var priceStr = price ? ('à partir de ' + price + ' €') : (hasQuote ? 'sur devis' : 'aucune prestation en ligne');
+            var modes = [];
+            svcs.forEach(function(s) { var l = _payModeLabel[s.payment_mode]; if (l && modes.indexOf(l) === -1) modes.push(l); });
+            var resp = typeof p.responseTimeCommitmentMinutes === 'number' ? p.responseTimeCommitmentMinutes
+                : (typeof p.avgResponseMinutes === 'number' ? p.avgResponseMinutes : null);
+            var badge = getPartnerBadge(p);
 
             var parts = [name, type];
-            if (city)     parts.push(city);
-            if (priceStr) parts.push(priceStr);
+            if (p.city) parts.push(p.city);
+            parts.push(priceStr);
             parts.push('note : ' + ratingStr);
+            parts.push('missions réalisées : ' + getPartnerMissionsCompleted(p.id));
+            if (badge) parts.push('badge ' + ({ bronze: 'Bronze', argent: 'Argent', or: 'Or', elite: 'Élite', fondateur: 'Fondateur' }[badge] || badge));
+            if (resp !== null) parts.push('répond en ' + (resp >= 60 ? Math.round(resp / 60) + ' h' : resp + ' min') + ' environ');
+            parts.push('portfolio : ' + (p.portfolio || []).length + ' élément(s)');
+            if (svcs.length) parts.push('prestations : ' + svcs.slice(0, 4).map(function(s) {
+                return s.label + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : s.price + ' €') + ')';
+            }).join(', '));
+            if (modes.length) parts.push('modes de paiement : ' + modes.join(', '));
+            if (p.bio) parts.push('présentation : ' + String(p.bio).replace(/\s+/g, ' ').substring(0, 160));
             lines.push('• ' + parts.join(' | '));
         });
 
