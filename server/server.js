@@ -16450,6 +16450,19 @@ function buildJeremieSystemPrompt(person, personType, language) {
                 'type de prestataire), recommandation intelligente (s\'appuyer sur ses categories preferees et son historique), ' +
                 'detection d\'opportunites (lui suggerer la prochaine mission ou le prochain palier de Cercle Genesis a portee ' +
                 'de main), et explication pedagogique du systeme de fidelisation s\'il pose des questions dessus.');
+            // Paliers Jeremie client, tels qu'annonces dans Mes niveaux GENESIS (/api/client/level-progress) :
+            // Createur = suggestions personnalisees, Batisseur = IA Plus, Visionnaire = IA Pro, Generateur = IA Expert.
+            var _cTier = ({ bronze: 1, argent: 2, or: 3, elite: 4 })[badge] || 0;
+            lines.push('Niveau d\'accompagnement Jeremie de ce client : ' +
+                ['Jeremie (questions generales ; les suggestions personnalisees de prestataires se debloquent au niveau Createur, 100 QG)',
+                 'Jeremie IA — suggestions personnalisees de prestataires selon ses habitudes et categories preferees',
+                 'Jeremie IA Plus', 'Jeremie IA Pro', 'Jeremie IA Expert'][_cTier] +
+                '. Ne lui propose jamais une capacite d\'un niveau qu\'il n\'a pas : dis-lui plutot quel niveau la debloque ' +
+                '(Plus = Batisseur, Pro = Visionnaire, Expert = Generateur).');
+            if (_cTier === 0) {
+                lines.push('A ce niveau, ne recommande aucun prestataire nominativement : oriente-le vers l\'onglet Prestataires ' +
+                    'et l\'annuaire, en l\'aidant a choisir le bon type de prestataire.');
+            }
             // Jérémie IA Plus : analyse des habitudes pour les clients Bâtisseur+ (argent/or/elite)
             if (['argent','or','elite'].indexOf(badge) !== -1) {
                 var habits = buildClientHabitAnalysis(person.email);
@@ -16466,6 +16479,11 @@ function buildJeremieSystemPrompt(person, personType, language) {
                         'est irregulier, suggere de planifier la prochaine prestation ; si le client revient souvent sur les memes ' +
                         'categories, propose de decouvrir des prestataires complementaires ou les offres Promo disponibles ; ' +
                         'si le panier est eleve, signale les offres groupees ou les partenaires avec un excellent rapport qualite/prix.');
+                } else {
+                    lines.push('');
+                    lines.push('Jeremie IA Plus (niveau Batisseur+) est actif, mais ce client n\'a encore aucune commande payee : ' +
+                        'aucune habitude a analyser pour le moment. Dis-le simplement s\'il demande une analyse, et appuie-toi sur ' +
+                        'ses categories preferees et ses missions en cours.');
                 }
             }
             // Jérémie IA Pro — comparaison multicritères & préparation de projet pour Visionnaire+ (or/elite)
@@ -16529,6 +16547,68 @@ function buildJeremieSystemPrompt(person, personType, language) {
             }).join(' | ') : 'aucune'));
             lines.push('Partenaires partageant des clients avec lui (opportunites de collaboration) : ' +
                 (opportunites.length ? opportunites.map(function(o) { return o.name + ' (' + o.sharedClientCount + ' client(s) en commun)'; }).join(', ') : 'aucune pour le moment'));
+            // Paliers Jeremie par badge, tels qu'annonces dans "Mes badges" (app.html, _ptnrBadgeDefs) :
+            // Argent = Plus (analyse des retours clients), Or = Pro (strategie de developpement),
+            // Elite = Expert (suivi de carriere, analyses avancees). AVANT : aucun palier n'etait
+            // programme, un prestataire Elite obtenait exactement le meme Jeremie qu'un nouveau.
+            var _pTier = ({ bronze: 1, argent: 2, or: 3, elite: 4, fondateur: 4 })[pProgress.currentBadge] || 0;
+            lines.push('');
+            lines.push('Niveau d\'accompagnement Jeremie de ce prestataire : ' +
+                ['Jeremie (questions et conseils generaux)', 'Jeremie (questions et conseils generaux)', 'Jeremie IA Plus', 'Jeremie IA Pro', 'Jeremie IA Expert'][_pTier] +
+                '. Ne lui propose jamais une analyse d\'un palier qu\'il n\'a pas : dis-lui plutot quel badge la debloque ' +
+                '(Plus = badge Argent, Pro = badge Or, Expert = badge Elite).');
+            try {
+                if (_pTier >= 2) {
+                    var _pReviews = loadPartnerReviews().filter(function(r) { return r.partnerId === person.id && r.status === 'published'; })
+                        .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); }).slice(0, 10);
+                    lines.push('');
+                    lines.push('Jeremie IA Plus (badge Argent+) — derniers avis clients publies (' + _pReviews.length + ') : ' +
+                        (_pReviews.length ? _pReviews.map(function(r) {
+                            return r.rating + '/5' + (r.comment ? ' "' + String(r.comment).replace(/\s+/g, ' ').substring(0, 220) + '"' : ' (sans commentaire)');
+                        }).join(' | ') : 'aucun avis publie pour le moment') + '.');
+                    lines.push('Analyse ces retours : points forts repetes, critiques recurrentes, et propose des ameliorations ' +
+                        'concretes de ses prestations, de sa communication et de ses delais.');
+                }
+                if (_pTier >= 3) {
+                    var _pReqs = loadPartnerRequests().filter(function(r) { return r.partner_id === person.id; });
+                    var _pReqWon = _pReqs.filter(function(r) { return ['proposed', 'accepted', 'signed', 'paid', 'completed'].indexOf(r.status) !== -1; }).length;
+                    var _pPayouts = loadPayouts().filter(function(p) { return p.partner_id === person.id && (p.status === 'wallet_credited' || p.status === 'sent'); });
+                    var _pRevenue = _pPayouts.reduce(function(s, p) { return s + (parseFloat(p.amount) || 0); }, 0);
+                    var _pSvcs = (person.services || []).filter(function(s) { return s.active !== false; });
+                    lines.push('');
+                    lines.push('Jeremie IA Pro (badge Or+) — activite : ' + _pReqs.length + ' demande(s) de devis recue(s), dont ' + _pReqWon +
+                        ' ayant abouti a une proposition ou plus (' + (_pReqs.length ? Math.round(_pReqWon / _pReqs.length * 100) : 0) + '%) ; ' +
+                        'revenus percus au total : ' + _pRevenue.toFixed(2) + ' EUR' +
+                        (missionsCompleted ? ', soit ' + (_pRevenue / missionsCompleted).toFixed(2) + ' EUR par mission realisee en moyenne' : '') + '. ' +
+                        'Prestations en ligne : ' + (_pSvcs.length ? _pSvcs.map(function(s) {
+                            return s.label + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : s.price + ' EUR') + ', ' + (s.audience || 'particulier') + ')';
+                        }).join(' ; ') : 'aucune') + '. Portfolio : ' + ((person.portfolio || []).length) + ' element(s).');
+                    lines.push('Donne des strategies de developpement personnalisees a partir de ces chiffres : prix et categories ' +
+                        'de clients (Etudiant/Particulier/Entreprise/Promo), offres a creer, portfolio, reactivite, et comment ' +
+                        'transformer davantage de demandes en missions.');
+                }
+                if (_pTier >= 4) {
+                    var _pByMonth = {};
+                    var _now = new Date();
+                    for (var _mi = 5; _mi >= 0; _mi--) {
+                        var _md = new Date(_now.getFullYear(), _now.getMonth() - _mi, 1);
+                        _pByMonth[_md.getFullYear() + '-' + String(_md.getMonth() + 1).padStart(2, '0')] = 0;
+                    }
+                    _pPayouts.forEach(function(p) {
+                        var k = (p.created_at || '').substring(0, 7);
+                        if (_pByMonth[k] !== undefined) _pByMonth[k] += parseFloat(p.amount) || 0;
+                    });
+                    lines.push('');
+                    lines.push('Jeremie IA Expert (badge Elite) — revenus des 6 derniers mois : ' + Object.keys(_pByMonth).map(function(k) {
+                        return k + ' : ' + _pByMonth[k].toFixed(2) + ' EUR';
+                    }).join(', ') + '. Note moyenne : ' + (summary && summary.average ? summary.average : '-') + '/5 sur ' + (summary ? summary.count : 0) + ' avis.');
+                    lines.push('Agis comme son accompagnateur de carriere : tendance et prevision d\'activite a partir de ces mois ' +
+                        '(sans jamais inventer de chiffre), priorites strategiques sur plusieurs mois, diversification, et ' +
+                        'reponses prioritaires et detaillees.');
+                }
+            } catch (tierErr) {
+                console.error('[JEREMIE] Erreur paliers prestataire:', tierErr);
+            }
             lines.push('Ton role avec ce partenaire : coach de profil et de visibilite (comment decrocher son prochain ' +
                 'badge, bien remplir ses tarifs et son portfolio), detection d\'opportunites de collaboration avec d\'autres ' +
                 'partenaires, et explication pedagogique du fonctionnement (paiements GENESIS SAFE, Wallet, factures) s\'il ' +
@@ -16760,13 +16840,16 @@ app.post('/api/jeremie/chat', function(req, res) {
         var history = (entry.messages || []).slice(-20).map(function(m) { return { role: m.role, content: m.content }; });
         var systemPrompt = buildJeremieSystemPrompt(person, personType, person.language || (req.body && req.body.language) || 'fr');
 
-        // Suggestion de prestataires : disponible à partir du niveau Bâtisseur (argent+)
+        // Suggestion de prestataires réels : à partir du niveau Créateur (bronze+). C'est l'avantage
+        // "Jérémie IA — Suggestions personnalisées selon vos habitudes" promis au niveau Créateur dans
+        // Mes niveaux GENESIS ; il n'était débloqué qu'à Bâtisseur, laissant le Créateur sans rien de plus
+        // qu'un Explorateur.
         if (personType === 'client' && detectPartnerSearchIntent(message)) {
             try {
                 var _cOrders = getClientCompletedOrders(person.email);
                 var _cPoints = getClientGenesisPoints(person, _cOrders);
                 var _cBadge  = getClientQGBadge(_cPoints);
-                if (['argent', 'or', 'elite'].indexOf(_cBadge) !== -1) {
+                if (['bronze', 'argent', 'or', 'elite'].indexOf(_cBadge) !== -1) {
                     var _pCtx = buildPartnerContextForJeremie(message);
                     if (_pCtx) systemPrompt += '\n\n' + _pCtx;
                 }
