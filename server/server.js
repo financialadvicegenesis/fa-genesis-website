@@ -14592,11 +14592,12 @@ app.post('/api/partner/auth/login', async (req, res) => {
             return res.status(429).json({ error: 'Trop de tentatives de connexion. Veuillez reessayer dans quelques minutes.' });
         }
 
-        // ── Cas admin : identifiants hardcodés (mêmes que admin.html / admin-system.js) ──
-        const ADMIN_ACCOUNTS_LIST = [
-            { email: 'admin@fagenesis.com', password: 'FAGenesis2024!' },
-        ];
-        // Accepter aussi les overrides via variables d'environnement
+        // ── Cas admin : identifiants lus UNIQUEMENT dans les variables d'environnement Render ──
+        // SÉCURITÉ : un identifiant admin était écrit en clair ici, dans un dépôt GitHub PUBLIC —
+        // lisible par n'importe qui et utilisable pour obtenir un jeton admin sur l'API. Ne JAMAIS
+        // remettre d'identifiant dans ce fichier : ADMIN_PARTNER_EMAIL / ADMIN_PARTNER_PASSWORD se
+        // règlent dans Render > Environment. Sans ces variables, aucune connexion admin possible.
+        const ADMIN_ACCOUNTS_LIST = [];
         if (process.env.ADMIN_PARTNER_EMAIL && process.env.ADMIN_PARTNER_PASSWORD) {
             ADMIN_ACCOUNTS_LIST.push({ email: process.env.ADMIN_PARTNER_EMAIL.toLowerCase().trim(), password: process.env.ADMIN_PARTNER_PASSWORD });
         }
