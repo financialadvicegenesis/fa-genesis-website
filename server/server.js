@@ -4086,6 +4086,26 @@ app.post('/api/orders/create', (req, res) => {
             return res.status(400).json({ error: 'Informations client incompletes (email, firstName, lastName requis)' });
         }
 
+        // Catégorie du client (jeton, sinon compte correspondant à l'e-mail) : une prestation
+        // réservée à une autre catégorie ne peut pas être commandée.
+        var _ordAud = clientAudienceOf(req);
+        if (!_ordAud) {
+            var _ordUser = loadUsers().find(function(u) { return (u.email || '').toLowerCase() === String(clientInfo.email).toLowerCase(); });
+            _ordAud = clientAudienceOfUser(_ordUser);
+        }
+        if (_ordAud) {
+            var _ordRefs = [];
+            if (partnerServiceOrder && partnerServiceOrder.partnerId && partnerServiceOrder.serviceId) _ordRefs.push(partnerServiceOrder);
+            if (Array.isArray(partnerServiceItems)) partnerServiceItems.forEach(function(it) { if (it && it.partnerId && it.serviceId) _ordRefs.push(it); });
+            for (var _ri = 0; _ri < _ordRefs.length; _ri++) {
+                var _rp = getPartnerById(_ordRefs[_ri].partnerId);
+                var _rs = _rp && (_rp.services || []).find(function(s) { return s.id === _ordRefs[_ri].serviceId; });
+                if (_rs && !serviceVisibleFor(_rs, _ordAud)) {
+                    return res.status(403).json({ error: 'Cette prestation est réservée à une autre catégorie de clients. Votre compte donne accès aux offres pour les ' + CLIENT_AUDIENCE_LABELS[_ordAud] + '.', code: 'audience_mismatch' });
+                }
+            }
+        }
+
         let order;
 
         // ---- FORMAT MULTI-ITEMS (depuis panier) ----
@@ -15324,6 +15344,42 @@ app.put('/api/partner/portfolio', authenticatePartner, async (req, res) => {
 // ENDPOINT PUBLIC - ANNUAIRE PARTENAIRES
 // ============================================================
 
+// ── Segmentation par type de compte client ──
+// Un client inscrit comme étudiant, particulier ou entreprise ne voit QUE les prestataires ayant
+// au moins une prestation pour sa catégorie, et sur leur fiche QUE ces prestations — les autres
+// catégories sont masquées. Les prestations « promo » restent visibles de tous. Un visiteur non
+// connecté (ou un prestataire) voit tout, comme avant. Type lu depuis le jeton (jamais depuis un
+// paramètre envoyé par l'app) ; réservation d'une autre catégorie refusée côté serveur.
+var CLIENT_AUDIENCES = ['etudiant', 'particulier', 'entreprise'];
+var CLIENT_AUDIENCE_LABELS = { etudiant: 'étudiants', particulier: 'particuliers', entreprise: 'entreprises' };
+function serviceAudiences(s) {
+    if (!s) return [];
+    if (Array.isArray(s.audience)) return s.audience;
+    return [s.audience || 'particulier'];
+}
+function serviceVisibleFor(s, aud) {
+    if (!aud) return true;
+    var a = serviceAudiences(s);
+    return a.indexOf(aud) !== -1 || a.indexOf('promo') !== -1;
+}
+function clientAudienceOfUser(user) {
+    return user && CLIENT_AUDIENCES.indexOf(user.accountType) !== -1 ? user.accountType : null;
+}
+function clientAudienceOf(req) {
+    var h = (req && req.headers && req.headers.authorization) || '';
+    if (h.toLowerCase().indexOf('bearer ') !== 0) return null;
+    try { return clientAudienceOfUser(findUserByToken(h.slice(7).trim())); } catch (e) { return null; }
+}
+// Copie du prestataire réduite aux prestations visibles pour cette catégorie (jamais sauvegardée).
+function scopePartnerForAudience(p, aud) {
+    if (!aud || !p) return p;
+    return Object.assign({}, p, { services: (p.services || []).filter(function(s) { return s && s.active !== false && serviceVisibleFor(s, aud); }) });
+}
+function scopePartnersForAudience(list, aud) {
+    if (!aud) return list;
+    return list.map(function(p) { return scopePartnerForAudience(p, aud); }).filter(function(p) { return p.services.length > 0; });
+}
+
 function getPartnerFromPrice(partner) {
     // Ne pas filtrer sur pricing_type : un service avec un prix valide > 0 est toujours affiché,
     // qu'il soit tagué 'fixed' ou 'quote' en base (données legacy). Les vrais "devis" ont price:0.
@@ -16851,13 +16907,14 @@ function detectPartnerSearchIntent(message) {
     return keywords.some(function(kw) { return lc.indexOf(kw) !== -1; });
 }
 
-function buildPartnerContextForJeremie(message) {
+function buildPartnerContextForJeremie(message, audience) {
     try {
         // Mêmes prestataires que l'annuaire (accountStatus === 'active') : l'ancien filtre
         // isActive !== false laissait passer des comptes en attente de validation ou désactivés.
-        var allPartners = loadPartners().filter(function(p) {
+        // Et, comme l'annuaire, uniquement ceux qui ont des offres pour la catégorie du client.
+        var allPartners = scopePartnersForAudience(loadPartners().filter(function(p) {
             return p.accountStatus === 'active' && p.partner_type;
-        });
+        }), audience || null);
         if (!allPartners.length) return '';
 
         var lc = (message || '').toLowerCase();
@@ -17061,7 +17118,7 @@ app.post('/api/jeremie/chat', function(req, res) {
                 var _cPoints = getClientGenesisPoints(person, _cOrders);
                 var _cBadge  = getClientQGBadge(_cPoints);
                 if (['bronze', 'argent', 'or', 'elite'].indexOf(_cBadge) !== -1) {
-                    var _pCtx = buildPartnerContextForJeremie(message);
+                    var _pCtx = buildPartnerContextForJeremie(message, clientAudienceOfUser(person));
                     if (_pCtx) systemPrompt += '\n\n' + _pCtx;
                 }
             } catch (pCtxErr) {
@@ -17424,7 +17481,7 @@ app.get('/api/partners/directory', (req, res) => {
     try {
         const { category, q, maxPrice, city, sort, promo, audience } = req.query;
         const allPromos = loadPromotions();
-        let partners = loadPartners().filter(p => p.accountStatus === 'active');
+        let partners = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req));
 
         if (category) {
             partners = partners.filter(p => p.partner_type === category);
@@ -17512,7 +17569,8 @@ app.get('/api/partners/directory', (req, res) => {
 // Detail public d'un partenaire + ses avis publies
 app.get('/api/partners/:id/reviews', (req, res) => {
     try {
-        const partner = loadPartners().find(p => p.id === req.params.id && p.accountStatus === 'active');
+        const _viewerAudience = clientAudienceOf(req);
+        const partner = scopePartnerForAudience(loadPartners().find(p => p.id === req.params.id && p.accountStatus === 'active'), _viewerAudience);
         if (!partner) {
             return res.status(404).json({ error: 'Partenaire non trouve' });
         }
@@ -17572,6 +17630,8 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 constellation: getConstellationTier(partner),
                 services: activeServices,
                 portfolio: activePortfolio,
+                // Catégorie du client connecté : seules ses prestations (et les promos) sont envoyées.
+                audienceScope: _viewerAudience,
                 verified: true,
                 cercleGenesis: cercleGenesis,
                 cercleDiscountPct: (cercleGenesis && cercleGenesis.current) ? CERCLE_ALLIANCE_DISCOUNT_PCT : 0
@@ -17590,7 +17650,7 @@ app.get('/api/partners/top', (req, res) => {
         const { category, limit } = req.query;
         if (!category) return res.status(400).json({ error: 'category requis' });
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
-        const categoryPartners = loadPartners().filter(p => p.accountStatus === 'active' && p.partner_type === category);
+        const categoryPartners = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active' && p.partner_type === category), clientAudienceOf(req));
 
         const ranked = categoryPartners
             .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }))
@@ -17610,7 +17670,7 @@ app.get('/api/partners/featured', (req, res) => {
     try {
         const { limit, category } = req.query;
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
-        let activePartners = loadPartners().filter(p => p.accountStatus === 'active');
+        let activePartners = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req));
         if (category) activePartners = activePartners.filter(p => p.partner_type === category);
 
         const ranked = activePartners
@@ -17627,7 +17687,9 @@ app.get('/api/partners/featured', (req, res) => {
 });
 
 function partnerDirectoryShape(p, allPromos) {
-    var promos = allPromos || loadPromotions();
+    // Array.isArray : appelée parfois via .map(partnerDirectoryShape), qui passe l'INDEX en 2e
+    // argument — dès le 2e prestataire, « 1.find » plantait la route (Nouveaux talents, Recommandés).
+    var promos = Array.isArray(allPromos) ? allPromos : loadPromotions();
     var ap = promos.find(function(pr) { return pr.partner_id === p.id && isPromoActive(pr); }) || null;
     const coords = getPartnerCoords(p);
     var badge = getPartnerBadge(p);
@@ -17661,12 +17723,12 @@ app.get('/api/partners/new', (req, res) => {
     try {
         const { limit, category } = req.query;
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
-        let pool = loadPartners().filter(p => p.accountStatus === 'active');
+        let pool = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req));
         if (category) pool = pool.filter(p => p.partner_type === category);
         const sorted = pool
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
             .slice(0, max)
-            .map(partnerDirectoryShape);
+            .map(p => partnerDirectoryShape(p));
         res.json({ success: true, partners: sorted });
     } catch (error) {
         console.error('[PARTNERS-NEW] Erreur:', error);
@@ -17719,8 +17781,7 @@ app.get('/api/partners/recommended', (req, res) => {
         }
         var preferredCategories = email ? getClientPreferredCategories(email) : [];
 
-        var ranked = loadPartners()
-            .filter(p => p.accountStatus === 'active')
+        var ranked = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req))
             .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }));
 
         var result = [];
@@ -17750,7 +17811,7 @@ app.get('/api/partners/recommended', (req, res) => {
         res.json({
             success: true,
             personalized: preferredCategories.length > 0,
-            partners: result.slice(0, max).map(partnerDirectoryShape)
+            partners: result.slice(0, max).map(p => partnerDirectoryShape(p))
         });
     } catch (error) {
         console.error('[PARTNERS-RECOMMENDED] Erreur:', error);
@@ -18574,6 +18635,10 @@ app.post('/api/partner-requests', function(req, res) {
         }
         var service = (partner.services || []).find(function(s) { return s.id === serviceId && s.active !== false; });
         if (!service) return res.status(404).json({ error: 'Prestation non trouvée' });
+        var _reqAud = clientAudienceOfUser(user);
+        if (!serviceVisibleFor(service, _reqAud)) {
+            return res.status(403).json({ error: 'Cette prestation est réservée à une autre catégorie de clients. Votre compte donne accès aux offres pour les ' + CLIENT_AUDIENCE_LABELS[_reqAud] + '.', code: 'audience_mismatch' });
+        }
 
         var requests = loadPartnerRequests();
         var alreadyActive = requests.some(function(r) {

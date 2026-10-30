@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261030g"></script>
-<script src="app-i18n-es.js?v=20261030g"></script>
-<script src="app-i18n-hi.js?v=20261030g"></script>
-<script src="app-i18n-pt.js?v=20261030g"></script>
-<script src="app-i18n-ja.js?v=20261030g"></script>
-<script src="app-i18n-zh.js?v=20261030g"></script>
-<script src="app-i18n-ar.js?v=20261030g"></script>
-<script src="app-i18n-it.js?v=20261030g"></script>
-<script src="app-i18n-de.js?v=20261030g"></script>
+<script src="app-i18n-en.js?v=20261030h"></script>
+<script src="app-i18n-es.js?v=20261030h"></script>
+<script src="app-i18n-hi.js?v=20261030h"></script>
+<script src="app-i18n-pt.js?v=20261030h"></script>
+<script src="app-i18n-ja.js?v=20261030h"></script>
+<script src="app-i18n-zh.js?v=20261030h"></script>
+<script src="app-i18n-ar.js?v=20261030h"></script>
+<script src="app-i18n-it.js?v=20261030h"></script>
+<script src="app-i18n-de.js?v=20261030h"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3960,6 +3960,36 @@ function showToast(title,sub,type){
 // ── DATA ─────────────────────────────────────────────────────
 var USER = null, GUEST = false;
 var API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+// Catégorie du client connecté (étudiant / particulier / entreprise) : il ne voit que les
+// prestataires et prestations de SA catégorie (+ promos). Le serveur filtre d'après le jeton —
+// ce relais l'ajoute aux ~20 appels de listes de prestataires (accueil, Explorer, Prestataires,
+// carte, fiche) qui ne l'envoyaient pas, sans toucher à chacun d'eux. Visiteur : rien ne change.
+var _CLIENT_AUDIENCES = ['etudiant', 'particulier', 'entreprise'];
+function _clientAudience(){
+  return (USER && !GUEST && USER._token && _CLIENT_AUDIENCES.indexOf(USER.accountType) !== -1) ? USER.accountType : null;
+}
+(function(){
+  if(!window.fetch || window.__faAudienceFetch) return;
+  window.__faAudienceFetch = true;
+  var _origFetch = window.fetch;
+  var _partnerListRe = /\/api\/partners\/(directory|top|featured|new|recommended|[^\/?]+\/reviews)(\?|$)/;
+  window.fetch = function(input, init){
+    try{
+      var url = typeof input === 'string' ? input : (input && input.url) || '';
+      if(_clientAudience() && _partnerListRe.test(url)){
+        init = init ? Object.assign({}, init) : {};
+        var h = init.headers || {};
+        var hasAuth = (typeof Headers !== 'undefined' && h instanceof Headers) ? h.has('Authorization') : !!(h.Authorization || h.authorization);
+        if(!hasAuth){
+          if(typeof Headers !== 'undefined' && h instanceof Headers){ h = new Headers(h); h.set('Authorization', 'Bearer '+USER._token); }
+          else { h = Object.assign({}, h, { 'Authorization': 'Bearer '+USER._token }); }
+          init.headers = h;
+        }
+      }
+    }catch(e){}
+    return _origFetch.call(this, input, init);
+  };
+})();
 
 
 // ── SPLASH → APP ─────────────────────────────────────────────
@@ -6346,9 +6376,12 @@ function renderPrestataires(){
   _loadPrstSection(base+'/api/partners/featured?limit=8',              'prst-featured-wrap',   'Professionnels à la une');
   _loadPrstSection(base+'/api/partners/directory?sort=rating&limit=8', 'prst-best-rated-wrap', 'Les mieux notés', null, function(p){ return p.rating && p.rating.count > 0; });
   _loadPrstSection(base+'/api/partners/new?limit=8',                   'prst-new-wrap',        'Nouveaux talents', 'Nouveau');
-  _loadPrstAudience('etudiant',    'prst-etudiant-wrap',    'Pour les étudiants');
-  _loadPrstAudience('particulier', 'prst-particulier-wrap', 'Pour les particuliers');
-  _loadPrstAudience('entreprise',  'prst-entreprise-wrap',  'Pour les entreprises');
+  // Client connecté : uniquement la section de SA catégorie ; visiteur : les trois.
+  var _myAud = _clientAudience();
+  [['etudiant','prst-etudiant-wrap','Pour les étudiants'],['particulier','prst-particulier-wrap','Pour les particuliers'],['entreprise','prst-entreprise-wrap','Pour les entreprises']].forEach(function(sec){
+    if(!_myAud || _myAud === sec[0]) _loadPrstAudience(sec[0], sec[1], sec[2]);
+    else { var _w = document.getElementById(sec[1]); if(_w) _w.innerHTML = ''; }
+  });
   _loadPrstNearby();
 }
 
@@ -7005,8 +7038,15 @@ function openPartnerDetail(partnerId){
           + '</div>';
       }
 
-      // ── Prestations ──
-      var services = p.services || [];
+      // ── Prestations ── Client connecté : uniquement sa catégorie (+ promos) — déjà filtré par
+      // le serveur, refiltré ici par sécurité (profil resté en cache).
+      var _viewAud = _clientAudience();
+      var services = (p.services || []).filter(function(s){
+        if(!_viewAud) return true;
+        var a = Array.isArray(s.audience) ? s.audience : [s.audience || 'particulier'];
+        return a.indexOf(_viewAud) !== -1 || a.indexOf('promo') !== -1;
+      });
+      p.services = services;
       _partnerCartSelection = {};
       var usedAudiences = ['particulier','entreprise','etudiant','promo'].filter(function(a){
         return services.some(function(s){ return (s.audience||'particulier')===a; });
@@ -7020,7 +7060,9 @@ function openPartnerDetail(partnerId){
         : '';
       var servicesHtml = services.length
         ? svcTabsHtml + '<div class="pf-svcs" id="p-svc-grid">'+_ptnrRenderProfileSvcCards(services, _partnerDetailAudience, p)+'</div>'
-        : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>';
+        : (_viewAud
+          ? '<div class="p-dir-review-empty">'+({ etudiant: 'Ce prestataire ne propose pas encore d\'offres pour les étudiants.', particulier: 'Ce prestataire ne propose pas encore d\'offres pour les particuliers.', entreprise: 'Ce prestataire ne propose pas encore d\'offres pour les entreprises.' })[_viewAud]+'</div>'
+          : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>');
 
       // ── Avis ──
       var reviewsHtml = (data.reviews||[]).map(function(r){
