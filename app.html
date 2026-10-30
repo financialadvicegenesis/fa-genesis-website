@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261030f"></script>
-<script src="app-i18n-es.js?v=20261030f"></script>
-<script src="app-i18n-hi.js?v=20261030f"></script>
-<script src="app-i18n-pt.js?v=20261030f"></script>
-<script src="app-i18n-ja.js?v=20261030f"></script>
-<script src="app-i18n-zh.js?v=20261030f"></script>
-<script src="app-i18n-ar.js?v=20261030f"></script>
-<script src="app-i18n-it.js?v=20261030f"></script>
-<script src="app-i18n-de.js?v=20261030f"></script>
+<script src="app-i18n-en.js?v=20261030g"></script>
+<script src="app-i18n-es.js?v=20261030g"></script>
+<script src="app-i18n-hi.js?v=20261030g"></script>
+<script src="app-i18n-pt.js?v=20261030g"></script>
+<script src="app-i18n-ja.js?v=20261030g"></script>
+<script src="app-i18n-zh.js?v=20261030g"></script>
+<script src="app-i18n-ar.js?v=20261030g"></script>
+<script src="app-i18n-it.js?v=20261030g"></script>
+<script src="app-i18n-de.js?v=20261030g"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -7303,6 +7303,10 @@ function renderResaTab(){
 }
 
 // ── GENESIS CONTRACT™ : récapitulatif contractuel + signature électronique ──
+// Annulation par le client tant que rien n'est payé (voir POST /api/my-requests/:id/cancel).
+function _devisCancelLink(r){
+  return '<button class="resa-action-btn rab-ghost" style="width:100%;margin-top:8px;color:#f87171;border-color:rgba(248,113,113,.35);" onclick="cancelDevisRequest(\''+r.id+'\',\''+r.status+'\')"><i class="fa-solid fa-ban mr-1"></i> '+(r.status==='signed'?'Annuler la prestation':'Annuler la demande')+'</button>';
+}
 function renderProposalCard(r){
   // Demande acceptée, proposition pas encore envoyée : rien à signer ni à payer pour l'instant
   // (avant, la carte affichait à tort « Proposition reçue » + un formulaire de signature).
@@ -7315,7 +7319,7 @@ function renderProposalCard(r){
         +(r.last_proposal_declined_at
           ? '<span>Vous avez refusé la proposition précédente. Le prestataire peut vous en envoyer une nouvelle : vous serez notifié dès qu\'elle sera prête.</span>'
           : '<span>Le prestataire a accepté votre demande et prépare sa proposition (prix, délai, modalités de paiement). Vous serez notifié dès qu\'elle sera prête.</span>')
-      +'</div></div>';
+      +'</div>'+_devisCancelLink(r)+'</div>';
   }
   var p = r.proposal || {items:[],total_price:r.price||0,delay_days:0,revisions_included:0,notes:'',milestones:[]};
   var itemsHtml = (p.items||[]).map(function(it){
@@ -7352,11 +7356,13 @@ function renderProposalCard(r){
       +'<div style="font-size:12px;color:#4ade80;margin-bottom:8px;"><i class="fa-solid fa-check-circle mr-1"></i>Contrat signé le '+_ptnrFmt(r.contract_signed_at)+'</div>'
       +'<button class="resa-action-btn rab-primary" style="width:100%;" onclick="payDevisProposal(\''+r.id+'\')"><i class="fa-solid fa-lock mr-1"></i> Payer en sécurité (GENESIS SAFE™)</button>'
       +'<button class="resa-action-btn rab-ghost" style="width:100%;margin-top:8px;" onclick="openDevisContract(\''+r.id+'\',true)"><i class="fa-solid fa-file-contract mr-1"></i> Voir le contrat signé</button>'
+      +_devisCancelLink(r)
       +'</div>'
     : '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">'
       +'<button class="resa-action-btn rab-primary" style="width:100%;" onclick="openDevisContract(\''+r.id+'\',false)"><i class="fa-solid fa-check mr-1"></i> Accepter la proposition</button>'
       +'<button class="resa-action-btn rab-ghost" style="width:100%;margin-top:8px;" onclick="declineDevisProposal(\''+r.id+'\')"><i class="fa-solid fa-xmark mr-1"></i> Refuser la proposition</button>'
       +'<div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;text-align:center;">En acceptant, vous lirez le contrat de prestation complet avant de le signer.</div>'
+      +_devisCancelLink(r)
       +'</div>';
   return '<div class="resa-card" id="prop-card-'+r.id+'">'+bodyHtml+actionHtml+'</div>';
 }
@@ -7429,6 +7435,25 @@ function openDevisContract(requestId, readOnly){
 function closeDevisContract(){
   var ov = document.getElementById('devis-contract-overlay'); if(ov) ov.remove();
   document.body.style.overflow = '';
+}
+function cancelDevisRequest(requestId, status){
+  if(!USER||GUEST) return;
+  var msg = status === 'signed'
+    ? 'Le contrat signé sera annulé. Aucun paiement n\'a été effectué : rien ne vous sera prélevé. Le prestataire sera prévenu. Vous pouvez indiquer pourquoi (facultatif).'
+    : 'Votre demande sera annulée et le prestataire sera prévenu. Vous pouvez indiquer pourquoi (facultatif).';
+  showPromptModal(msg, {
+    title: status === 'signed' ? 'Annuler la prestation ?' : 'Annuler la demande ?',
+    placeholder: 'Ex : projet reporté, besoin différent…', confirmLabel: 'Confirmer l\'annulation', cancelLabel: 'Retour'
+  }).then(function(reason){
+    if(reason === null) return;
+    fetch((window.FA_GENESIS_API||API)+'/api/my-requests/'+requestId+'/cancel',{
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+      body: JSON.stringify({ reason: reason })
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if(d && d.success){ showToast('Demande annulée','Le prestataire a été prévenu. Aucun paiement n\'a été effectué.','info'); renderResaTab(); }
+      else showToast('Annulation impossible', (d&&d.error)||'Réessayez dans un instant.', 'error');
+    }).catch(function(){ showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
+  });
 }
 function declineDevisProposal(requestId){
   if(!USER||GUEST) return;

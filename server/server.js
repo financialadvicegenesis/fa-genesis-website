@@ -18578,7 +18578,7 @@ app.post('/api/partner-requests', function(req, res) {
         var requests = loadPartnerRequests();
         var alreadyActive = requests.some(function(r) {
             return r.client_email === user.email && r.partner_id === partnerId && r.service_id === serviceId
-                && r.status !== 'declined' && r.status !== 'completed' && r.status !== 'reviewed';
+                && r.status !== 'declined' && r.status !== 'completed' && r.status !== 'reviewed' && r.status !== 'cancelled_by_client';
         });
         if (alreadyActive) {
             return res.status(409).json({ error: 'Vous avez déjà une demande ou commande active pour cette prestation auprès de ce partenaire.' });
@@ -19097,6 +19097,65 @@ app.post('/api/my-requests/:id/decline-proposal', function(req, res) {
         res.json({ success: true, request: r });
     } catch (e) {
         console.error('[PARTNER-REQUEST] Erreur refus proposition:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/my-requests/:id/cancel — le client annule sa demande de devis / prestation tant
+// qu'AUCUN paiement n'a été effectué : en attente, acceptée, proposition reçue, ou contrat signé
+// mais pas encore payé. Après paiement (acompte encaissé ou réservé sur la carte, mensualité
+// réglée), c'est l'annulation de commande avec remboursement qui s'applique, pas cette route.
+// Rien n'est supprimé : statut 'cancelled_by_client', commande non payée éventuelle annulée.
+function _requestOrderIsPaid(order) {
+    if (!order) return false;
+    if (order.deposit_paid || order.deposit_authorized || order.balance_paid || order.balance_authorized) return true;
+    if ((parseFloat(order.amount_paid) || 0) > 0) return true;
+    return Array.isArray(order.installments) && order.installments.some(function(i) { return i && i.paid; });
+}
+app.post('/api/my-requests/:id/cancel', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var requests = loadPartnerRequests();
+        var idx = requests.findIndex(function(r) { return r.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Demande introuvable' });
+        var r = requests[idx];
+        if (r.client_email !== user.email) return res.status(403).json({ error: 'Accès non autorisé' });
+        if (['pending', 'accepted', 'proposed', 'signed'].indexOf(r.status) === -1) {
+            return res.status(409).json({ error: 'Cette demande ne peut plus être annulée ici (statut : ' + r.status + ').' });
+        }
+        var orders = r.order_id ? loadOrders() : null;
+        var oIdx = orders ? orders.findIndex(function(o) { return o.id === r.order_id; }) : -1;
+        var order = oIdx !== -1 ? orders[oIdx] : null;
+        if (_requestOrderIsPaid(order)) {
+            return res.status(409).json({ error: 'Cette prestation a déjà été payée : pour l\'annuler, utilisez « Annuler la commande — être remboursé » dans le suivi de votre commande.', code: 'already_paid' });
+        }
+        var reason = (req.body && req.body.reason ? String(req.body.reason) : '').trim().substring(0, 500);
+        var wasSigned = r.status === 'signed';
+        r.cancelled_from_status = r.status;
+        r.status = 'cancelled_by_client';
+        r.cancelled_at = new Date().toISOString();
+        r.cancel_reason = reason;
+        savePartnerRequests(requests);
+        if (order) {
+            orders[oIdx].status = 'cancelled';
+            orders[oIdx].cancelled_at = r.cancelled_at;
+            orders[oIdx].cancel_reason = 'Demande annulée par le client avant paiement';
+            orders[oIdx].updated_at = r.cancelled_at;
+            saveOrders(orders);
+        }
+        var partner = getPartnerById(r.partner_id);
+        if (partner) {
+            notifyUser(partner.email, 'partner', 'partner-request', 'Demande annulée',
+                (r.client_name || 'Le client') + ' a annulé sa demande pour : ' + r.service_label + '.'
+                + (wasSigned ? ' Le contrat avait été signé, mais aucun paiement n\'avait été effectué.' : '')
+                + (reason ? ' Motif : ' + reason + (/[.!?…]$/.test(reason) ? '' : '.') : ''),
+                '#partner:missions');
+        }
+        console.log('[PARTNER-REQUEST] Demande ' + r.id + ' annulée par le client (' + r.cancelled_from_status + ')');
+        res.json({ success: true, request: r });
+    } catch (e) {
+        console.error('[PARTNER-REQUEST] Erreur annulation client:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
