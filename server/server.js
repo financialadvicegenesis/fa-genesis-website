@@ -31,6 +31,8 @@ const payoneerProvider = require('./services/payoneer-provider');
 const persistentStore = require('./persistent-store');
 // Détecteur de liens externes / coordonnées, partagé avec app.html (mêmes règles des deux côtés).
 const LinkGuard = require('./link-guard');
+// Modération automatique des images des prestataires (OCR + QR codes, 100 % sur notre serveur).
+const imageModeration = require('./image-moderation');
 const webpush = require('web-push');
 
 // Firebase Admin SDK — optionnel ; utilisé pour les push FCM vers l'app Android native.
@@ -15071,7 +15073,7 @@ app.get('/api/partner/services', authenticatePartner, (req, res) => {
 const SERVICE_AUDIENCES = ['etudiant', 'particulier', 'entreprise', 'promo'];
 
 // Remplacer la liste de mes prestations (partenaire connecté)
-app.put('/api/partner/services', authenticatePartner, (req, res) => {
+app.put('/api/partner/services', authenticatePartner, async (req, res) => {
     try {
         const { services } = req.body;
         if (!Array.isArray(services)) {
@@ -15128,6 +15130,10 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
                 deposit_pct: depositPct,
                 installment_count: installmentCount
             });
+            // Photo de la prestation : analysée si elle est nouvelle ou remplacée (voir moderateImageField).
+            const svcImg = await moderateImageField(cleaned[cleaned.length - 1].image, prevSvc.image, prevSvc.image_moderation, req.partner);
+            if (svcImg.error) return res.status(400).json(Object.assign({ field: 'service_image', serviceId: s.id || null }, svcImg.error));
+            if (svcImg.moderation) cleaned[cleaned.length - 1].image_moderation = svcImg.moderation;
         }
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === req.partner.id);
@@ -15137,10 +15143,69 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
         partners[index].services = cleaned;
         partners[index].updatedAt = new Date().toISOString();
         savePartners(partners);
+        notifyAdminPendingImages(partners[index], cleaned.filter(sv => sv.image_moderation && sv.image_moderation.status === 'pending'
+            && !(prevServices.find(ps => ps && ps.id === sv.id && ps.image === sv.image))).length);
         res.json({ success: true, services: cleaned });
     } catch (error) {
         console.error('[PARTNER] Erreur update services:', error);
         res.status(500).json({ error: 'Erreur lors de la mise a jour des prestations' });
+    }
+});
+
+// ── Modération des images (voir server/image-moderation.js) ──
+const IMAGE_FORMAT_MESSAGE = 'Format d\'image non pris en charge. Choisissez une photo depuis votre téléphone.';
+// Image publiable chez les clients : jamais analysée (ancienne image d'avant la modération) ou
+// validée. 'pending' (en vérification) et 'rejected' ne sont jamais affichées aux clients.
+function imageIsPublic(moderation) {
+    return !moderation || moderation.status === 'approved';
+}
+// Analyse un champ image (data URI) s'il est nouveau ou remplacé. Renvoie { moderation } (undefined
+// pour une image inchangée jamais analysée) ou { error: {...} } pour un refus.
+async function moderateImageField(newVal, prevVal, prevModeration, partner) {
+    if (!newVal) return { moderation: undefined };
+    if (prevVal && newVal === prevVal) return { moderation: prevModeration };
+    if (!/^data:image\//i.test(newVal)) return { error: { error: IMAGE_FORMAT_MESSAGE, code: 'invalid_media' } };
+    const r = await imageModeration.analyzeImage(newVal, partner);
+    if (r.status === 'invalid') return { error: { error: IMAGE_FORMAT_MESSAGE, code: 'invalid_media' } };
+    if (r.status === 'blocked') return { error: { error: imageModeration.MESSAGE_BLOCKED, code: 'image_blocked', reasons: r.reasons.map(x => x.code) } };
+    return { moderation: {
+        status: r.status === 'review' ? 'pending' : 'approved',
+        reasons: r.reasons,
+        text: r.status === 'review' ? (r.text || '') : '',
+        analyzedAt: r.analyzedAt
+    } };
+}
+function notifyAdminPendingImages(partner, count) {
+    if (!count || !partner) return;
+    const name = ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email;
+    notifyUser(null, 'admin', 'image_moderation', '🖼️ Image à vérifier — ' + name,
+        count + ' image(s) de ' + name + ' en attente de validation (coordonnées ou lien possible). Elles ne sont pas visibles des clients avant votre décision.',
+        '/admin.html#open-contournement');
+}
+
+// Vérification immédiate d'une image dès sa sélection dans l'app (retour instantané au
+// prestataire). L'enregistrement refait le contrôle côté serveur (cache du verdict) : sauter cet
+// appel ne permet donc pas de contourner la modération.
+var _imageCheckHits = {};
+app.post('/api/partner/media/check', authenticatePartner, async (req, res) => {
+    try {
+        const pid = req.partner.id;
+        const now = Date.now();
+        _imageCheckHits[pid] = (_imageCheckHits[pid] || []).filter(t => now - t < 10 * 60 * 1000);
+        if (_imageCheckHits[pid].length >= 40) return res.status(429).json({ error: 'Trop de vérifications d\'images. Réessayez dans quelques minutes.' });
+        _imageCheckHits[pid].push(now);
+        const image = req.body && req.body.image;
+        if (typeof image !== 'string' || !/^data:image\//i.test(image)) return res.status(400).json({ error: IMAGE_FORMAT_MESSAGE, code: 'invalid_media' });
+        const r = await imageModeration.analyzeImage(image, req.partner);
+        if (r.status === 'invalid') return res.json({ success: true, status: 'invalid', message: IMAGE_FORMAT_MESSAGE });
+        res.json({
+            success: true,
+            status: r.status === 'review' ? 'pending' : r.status,
+            message: r.status === 'blocked' ? imageModeration.MESSAGE_BLOCKED : (r.status === 'review' ? imageModeration.MESSAGE_REVIEW : '')
+        });
+    } catch (e) {
+        console.error('[IMAGE-MOD] Erreur check:', e.message);
+        res.status(500).json({ error: 'Erreur lors de la vérification de l\'image' });
     }
 });
 
@@ -15176,7 +15241,7 @@ function isPortfolioExternalLink(item) {
 }
 
 // Remplacer mon portfolio (partenaire connecté)
-app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
+app.put('/api/partner/portfolio', authenticatePartner, async (req, res) => {
     try {
         const { portfolio } = req.body;
         if (!Array.isArray(portfolio)) {
@@ -15184,6 +15249,11 @@ app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
         }
         const cleaned = [];
         const prevPortfolio = (req.partner && req.partner.portfolio) || [];
+        // Limite vérifiée AVANT l'analyse des images (inutile de faire tourner l'OCR pour rien).
+        if (portfolio.length > PORTFOLIO_MAX_ITEMS && portfolio.length > prevPortfolio.length) {
+            return res.status(400).json({ error: 'Votre portfolio est limité à ' + PORTFOLIO_MAX_ITEMS + ' médias. Supprimez-en un pour en ajouter un autre.' });
+        }
+        let newPending = 0;
         for (const item of portfolio) {
             if (!item || (item.type !== 'photo' && item.type !== 'video' && item.type !== 'video_upload')) {
                 return res.status(400).json({ error: 'Chaque element doit avoir un type "photo" ou "video_upload"' });
@@ -15198,13 +15268,28 @@ app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
                 return res.status(400).json({ error: LinkGuard.MESSAGE_LINK, code: 'external_link', field: 'portfolio_link' });
             }
             if (typeof item.caption === 'string' && rejectExternalLink(res, item.caption.trim(), prevItem ? prevItem.caption : null, 'portfolio_caption')) return;
-            cleaned.push({
+            const entry = {
                 id: item.id || ('PF-' + uuidv4().split('-')[0]),
                 type: item.type,
                 url: item.url.trim(),
                 caption: (item.caption || '').trim(),
                 thumb: (item.thumb || '').trim()
-            });
+            };
+            // Le statut de modération n'est JAMAIS lu depuis la requête : il est recopié du serveur
+            // pour un média inchangé, ou recalculé (OCR) pour un nouveau média.
+            const unchanged = prevItem && prevItem.url === entry.url;
+            if (entry.type === 'photo') {
+                const pm = await moderateImageField(entry.url, prevItem ? prevItem.url : null, prevItem ? prevItem.moderation : undefined, req.partner);
+                if (pm.error) return res.status(400).json(Object.assign({ field: 'portfolio_image', itemId: entry.id }, pm.error));
+                if (pm.moderation) entry.moderation = pm.moderation;
+                if (!unchanged && pm.moderation && pm.moderation.status === 'pending') newPending++;
+            } else if (entry.type === 'video_upload') {
+                // Vidéos : pas d'analyse automatique (images fixes uniquement), mais uniquement des
+                // vidéos réellement envoyées depuis le téléphone — pas une image ou une URL déguisée.
+                if (!unchanged && !/^data:video\//i.test(entry.url)) return res.status(400).json({ error: IMAGE_FORMAT_MESSAGE, code: 'invalid_media', field: 'portfolio_video', itemId: entry.id });
+                if (unchanged && prevItem.moderation) entry.moderation = prevItem.moderation;
+            }
+            cleaned.push(entry);
         }
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === req.partner.id);
@@ -15221,6 +15306,7 @@ app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
         partners[index].portfolio = cleaned;
         partners[index].updatedAt = new Date().toISOString();
         savePartners(partners);
+        notifyAdminPendingImages(partners[index], newPending);
         res.json({ success: true, portfolio: cleaned });
     } catch (error) {
         console.error('[PARTNER] Erreur update portfolio:', error);
@@ -16851,7 +16937,7 @@ function buildPartnerContextForJeremie(message) {
             parts.push('missions réalisées : ' + getPartnerMissionsCompleted(p.id));
             if (badge) parts.push('badge ' + ({ bronze: 'Bronze', argent: 'Argent', or: 'Or', elite: 'Élite', fondateur: 'Fondateur' }[badge] || badge));
             if (resp !== null) parts.push('répond en ' + (resp >= 60 ? Math.round(resp / 60) + ' h' : resp + ' min') + ' environ');
-            parts.push('portfolio : ' + (p.portfolio || []).slice(0, PORTFOLIO_MAX_ITEMS).filter(function(it) { return !isPortfolioExternalLink(it); }).length + ' élément(s)');
+            parts.push('portfolio : ' + (p.portfolio || []).slice(0, PORTFOLIO_MAX_ITEMS).filter(function(it) { return !isPortfolioExternalLink(it) && imageIsPublic(it.moderation); }).length + ' élément(s)');
             if (svcs.length) parts.push('prestations : ' + svcs.slice(0, 4).map(function(s) {
                 return (publicText(s.label) || 'Prestation') + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : s.price + ' €') + ')';
             }).join(', '));
@@ -17431,13 +17517,13 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 var isValidPrice = !isNaN(sPrice) && isFinite(sPrice) && sPrice > 0;
                 // pricing_type 'quote' uniquement si explicitement défini ET pas de prix valide
                 var pricingType = (s.pricing_type === 'quote' && !isValidPrice) ? 'quote' : (isValidPrice ? 'fixed' : 'quote');
-                return { id: s.id, label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: s.image || '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
+                return { id: s.id, label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: imageIsPublic(s.image_moderation) ? (s.image || '') : '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
             });
         // Liens externes masqués (photos et vidéos du prestataire uniquement) ; on garde la règle
         // « 5 premiers » sur le portfolio enregistré, pour ne pas faire remonter un 6e média.
         const activePortfolio = (partner.portfolio || [])
             .slice(0, PORTFOLIO_MAX_ITEMS)
-            .filter(item => !isPortfolioExternalLink(item))
+            .filter(item => !isPortfolioExternalLink(item) && imageIsPublic(item.moderation))
             .map(item => ({ id: item.id, type: item.type, url: item.url, thumb: item.thumb || '', caption: publicText(item.caption || '') }));
         const reviews = loadPartnerReviews()
             .filter(r => r.partnerId === partner.id && r.status === 'published')
@@ -17687,7 +17773,7 @@ app.get('/api/partners/promo-services', (req, res) => {
                             description: publicText(s.description || ''),
                             price: s.price,
                             pricing_type: s.pricing_type,
-                            image: s.image || null,
+                            image: imageIsPublic(s.image_moderation) ? (s.image || null) : null,
                             features: (s.features || []).map(publicText).filter(Boolean)
                         });
                     });
@@ -23944,6 +24030,71 @@ app.post('/api/admin/withdrawals/:id/mark-sent', function(req, res) {
 
         res.json({ ok: true, withdrawal: wdrs[idx] });
     } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * GET /api/admin/image-moderation
+ * Images de prestataires en attente de vérification humaine (cas incertains de la modération
+ * automatique : site web quelconque, QR code, texte mal lu, analyse impossible). Jamais publiées
+ * avant une décision ici.
+ */
+app.get('/api/admin/image-moderation', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var items = [];
+        loadPartners().forEach(function(p) {
+            var base = { partnerId: p.id, partnerName: ((p.prenom || '') + ' ' + (p.nom || '')).trim(), email: p.email || '' };
+            (p.portfolio || []).forEach(function(it) {
+                if (it && it.moderation && it.moderation.status === 'pending') items.push(Object.assign({ context: 'portfolio', itemId: it.id, image: it.url, moderation: it.moderation }, base));
+            });
+            (p.services || []).forEach(function(s) {
+                if (s && s.image_moderation && s.image_moderation.status === 'pending') items.push(Object.assign({ context: 'service', itemId: s.id, serviceLabel: s.label || '', image: s.image, moderation: s.image_moderation }, base));
+            });
+        });
+        items.sort(function(a, b) { return new Date(a.moderation.analyzedAt || 0) - new Date(b.moderation.analyzedAt || 0); });
+        res.json({ ok: true, count: items.length, items: items.slice(0, 30) });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * POST /api/admin/image-moderation/decide  { partnerId, context: 'portfolio'|'service', itemId, decision: 'approve'|'reject' }
+ * Valide (l'image devient visible des clients) ou refuse (elle reste masquée, le prestataire est
+ * prévenu et peut téléverser une version corrigée). L'image d'origine n'est jamais modifiée.
+ */
+app.post('/api/admin/image-moderation/decide', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var b = req.body || {};
+        if (['approve', 'reject'].indexOf(b.decision) === -1) return res.status(400).json({ error: 'Décision invalide' });
+        var partners = loadPartners();
+        var p = partners.find(function(x) { return x.id === b.partnerId; });
+        if (!p) return res.status(404).json({ error: 'Prestataire introuvable' });
+        var target = null;
+        if (b.context === 'portfolio') {
+            var it = (p.portfolio || []).find(function(x) { return x && x.id === b.itemId; });
+            if (it && it.moderation) target = it.moderation;
+        } else if (b.context === 'service') {
+            var sv = (p.services || []).find(function(x) { return x && x.id === b.itemId; });
+            if (sv && sv.image_moderation) target = sv.image_moderation;
+        }
+        if (!target) return res.status(404).json({ error: 'Image introuvable (déjà supprimée par le prestataire ?)' });
+        target.status = b.decision === 'approve' ? 'approved' : 'rejected';
+        target.reviewedAt = new Date().toISOString();
+        target.reviewedBy = (req.admin && req.admin.email) || 'admin';
+        p.updatedAt = new Date().toISOString();
+        savePartners(partners);
+        var link = b.context === 'portfolio' ? '#partner:portfolio' : '#partner:profile';
+        if (b.decision === 'approve') {
+            notifyUser(p.email, 'partner', 'image_moderation', 'Image validée', 'Votre image a été validée par l\'équipe GENESIS : elle est maintenant visible par les clients.', link);
+        } else {
+            notifyUser(p.email, 'partner', 'image_moderation', 'Image refusée', imageModeration.MESSAGE_BLOCKED, link);
+        }
+        res.json({ ok: true, status: target.status });
+    } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });

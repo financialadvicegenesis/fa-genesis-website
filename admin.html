@@ -1561,6 +1561,14 @@
                 </div>
 
                 <div style="margin-bottom:32px;">
+                    <h3 style="font-size:16px;font-weight:900;color:#e8467c;margin:0 0 10px;"><i class="fas fa-image mr-2"></i>IMAGES À VÉRIFIER</h3>
+                    <div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Photos de portfolio et de prestations que l'analyse automatique (texte + QR codes, sur notre serveur) n'a pas pu trancher : site web, QR code, texte difficile à lire… Elles ne sont <strong>pas visibles des clients</strong> tant que vous n'avez pas décidé. Les images contenant clairement des coordonnées sont refusées automatiquement et n'arrivent pas ici.</div>
+                    <div id="imageModerationList" style="color:#e0e0e0;">
+                        <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:32px;">
                     <h3 style="font-size:16px;font-weight:900;color:#f59e0b;margin:0 0 10px;"><i class="fas fa-link-slash mr-2"></i>LIENS EXTERNES DANS LES PROFILS (audit)</h3>
                     <div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Liens et coordonnées enregistrés <strong>avant</strong> la règle anti-liens (portfolio, légendes, bio, prestations, promotions, réseaux sociaux). Lecture seule : rien n'est supprimé en base. Ces contenus sont déjà <strong>masqués aux clients</strong> ; le prestataire voit ses anciens liens marqués « Lien masqué » et peut les supprimer.</div>
                     <div id="externalLinksAuditList" style="color:#e0e0e0;">
@@ -6937,7 +6945,65 @@
             _loadModerationAccounts();
             _loadModerationLog();
             _loadExternalLinksAudit();
+            _loadImageModeration();
             _loadUserReports();
+        }
+
+        // File des images en attente (GET /api/admin/image-moderation, server/image-moderation.js).
+        var _IMG_REASON_LABELS = {
+            url: 'Site web', qr: 'QR code', low_confidence: 'Texte difficile à lire', contact_unclear: 'Numéro / e-mail',
+            mention: 'Mention d\'une messagerie', ocr_unavailable: 'Analyse indisponible', ocr_error: 'Analyse impossible'
+        };
+        function _loadImageModeration() {
+            var el = document.getElementById('imageModerationList');
+            if (!el) return;
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/image-moderation', { headers: { 'Authorization': 'Bearer ' + tok } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var items = data.items || [];
+                    if (!items.length) {
+                        el.innerHTML = '<div style="padding:24px;text-align:center;color:#555;font-size:14px;border:1px solid rgba(232,70,124,.15);border-radius:10px;"><i class="fas fa-check-circle" style="color:#22c55e;font-size:24px;display:block;margin-bottom:8px;"></i>Aucune image en attente</div>';
+                        return;
+                    }
+                    var esc = function(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+                    var html = '<div style="font-size:12px;color:#e8467c;font-weight:800;margin-bottom:12px;">' + data.count + ' image(s) en attente</div>';
+                    items.forEach(function(it, i) {
+                        var m = it.moderation || {};
+                        var reasons = (m.reasons || []).map(function(r) {
+                            return '<span style="display:inline-block;margin:0 6px 6px 0;background:rgba(232,70,124,.12);color:#f9a8c4;border:1px solid rgba(232,70,124,.3);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;">'
+                                + esc(_IMG_REASON_LABELS[r.code] || r.code) + (r.value ? ' : ' + esc(String(r.value).slice(0, 80)) : '') + '</span>';
+                        }).join('');
+                        html += '<div id="imgmod-' + i + '" style="background:#0d0d0d;border:1px solid rgba(232,70,124,.25);border-radius:12px;padding:14px;margin-bottom:12px;display:flex;gap:16px;flex-wrap:wrap;">';
+                        html += '<img src="' + esc(it.image) + '" alt="" style="width:260px;max-width:100%;max-height:340px;object-fit:contain;background:#050505;border-radius:10px;border:1px solid #222;">';
+                        html += '<div style="flex:1;min-width:220px;">';
+                        html += '<div style="font-weight:900;font-size:13px;color:#e0e0e0;">' + esc(it.partnerName || it.email) + ' <span style="font-size:11px;color:#666;font-weight:600;">' + esc(it.email) + '</span></div>';
+                        html += '<div style="font-size:11px;color:#888;margin:4px 0 10px;">' + (it.context === 'service' ? 'Photo de prestation' + (it.serviceLabel ? ' « ' + esc(it.serviceLabel) + ' »' : '') : 'Portfolio') + (m.analyzedAt ? ' — ' + new Date(m.analyzedAt).toLocaleString('fr-FR') : '') + '</div>';
+                        html += '<div>' + reasons + '</div>';
+                        if (m.text) html += '<div style="font-size:11px;color:#777;background:#111;border-radius:6px;padding:8px 10px;font-family:monospace;margin:4px 0 10px;word-break:break-word;">Texte lu : ' + esc(m.text) + '</div>';
+                        html += '<button onclick="_decideImageModeration(' + i + ',\'approve\')" style="background:#16a34a;color:#fff;border:none;padding:8px 16px;font-weight:800;font-size:12px;border-radius:8px;cursor:pointer;margin-right:8px;"><i class="fas fa-check mr-1"></i>Valider (publier)</button>';
+                        html += '<button onclick="_decideImageModeration(' + i + ',\'reject\')" style="background:transparent;color:#ef4444;border:1.5px solid #ef4444;padding:8px 16px;font-weight:800;font-size:12px;border-radius:8px;cursor:pointer;"><i class="fas fa-ban mr-1"></i>Refuser</button>';
+                        html += '</div></div>';
+                    });
+                    el.innerHTML = html;
+                    window._imageModerationItems = items;
+                }).catch(function() {
+                    el.innerHTML = '<div style="color:#f03e3e;padding:12px;">Impossible de charger les images en attente.</div>';
+                });
+        }
+        function _decideImageModeration(i, decision) {
+            var it = (window._imageModerationItems || [])[i];
+            if (!it) return;
+            if (decision === 'reject' && !confirm('Refuser cette image ? Elle restera masquée et le prestataire sera invité à en envoyer une autre.')) return;
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/image-moderation/decide', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ partnerId: it.partnerId, context: it.context, itemId: it.itemId, decision: decision })
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.ok) _loadImageModeration();
+                else alert(d.error || 'Erreur');
+            }).catch(function() { alert('Erreur réseau'); });
         }
 
         // Audit en lecture seule des liens externes déjà présents dans les profils prestataires

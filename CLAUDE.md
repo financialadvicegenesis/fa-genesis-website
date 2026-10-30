@@ -220,3 +220,19 @@ chargé par `server.js` (`require('./link-guard')`) ET par `app.html` (`<script 
   renvoie bio/prestations/portfolio/promotions à un client doit passer par ces deux helpers. Audit :
   `GET /api/admin/external-links-audit` (admin.html › Modération). Tests de référence dans le
   commit qui a introduit ce fichier.
+
+## Modération des images prestataires : `server/image-moderation.js` (OCR local, fail-closed)
+
+Photos de portfolio (`type:'photo'`) et photo de prestation (`service.image`) sont analysées sur
+NOTRE serveur (tesseract.js + modèles `server/tessdata/` embarqués, jsQR, sharp) — aucun service
+tiers. Verdicts : `blocked` (refus 400 `image_blocked`), `review` → stocké `moderation.status:'pending'`
+(ou `service.image_moderation`), `approved`.
+- Toute route qui renvoie un portfolio ou une photo de prestation à un CLIENT doit filtrer avec
+  `imageIsPublic()` (une image `pending`/`rejected` ne doit jamais sortir). Absence de champ
+  `moderation` = ancienne image d'avant la modération = publique.
+- Le statut n'est JAMAIS lu depuis la requête : recopié du serveur si l'image est inchangée,
+  recalculé sinon. `/api/partner/media/check` n'est qu'un confort UX (cache du verdict).
+- Fail-closed : OCR en erreur/indisponible → `pending`, jamais `approved`. Coupe-circuit d'urgence
+  (mémoire Render saturée) : variable `IMAGE_MODERATION_DISABLED=1` → plus d'analyse.
+- File humaine : `GET /api/admin/image-moderation` + `POST .../decide` (admin.html › Modération).
+- Les vidéos (`video_upload`) ne sont PAS analysées (pas d'ffmpeg sur le serveur).

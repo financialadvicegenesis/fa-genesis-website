@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261030b"></script>
-<script src="app-i18n-es.js?v=20261030b"></script>
-<script src="app-i18n-hi.js?v=20261030b"></script>
-<script src="app-i18n-pt.js?v=20261030b"></script>
-<script src="app-i18n-ja.js?v=20261030b"></script>
-<script src="app-i18n-zh.js?v=20261030b"></script>
-<script src="app-i18n-ar.js?v=20261030b"></script>
-<script src="app-i18n-it.js?v=20261030b"></script>
-<script src="app-i18n-de.js?v=20261030b"></script>
+<script src="app-i18n-en.js?v=20261030c"></script>
+<script src="app-i18n-es.js?v=20261030c"></script>
+<script src="app-i18n-hi.js?v=20261030c"></script>
+<script src="app-i18n-pt.js?v=20261030c"></script>
+<script src="app-i18n-ja.js?v=20261030c"></script>
+<script src="app-i18n-zh.js?v=20261030c"></script>
+<script src="app-i18n-ar.js?v=20261030c"></script>
+<script src="app-i18n-it.js?v=20261030c"></script>
+<script src="app-i18n-de.js?v=20261030c"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3572,6 +3572,7 @@ function _genesisVersionFooter(){
             </button>
           </div>
           <div id="ptnr-pf-count" style="font-size:11px;color:#888;margin:-4px 0 12px;line-height:1.5;">Jusqu'à 5 médias (photos ou vidéos).</div>
+          <div style="font-size:10px;color:#555;margin:-8px 0 12px;line-height:1.5;"><i class="fa-solid fa-shield-halved" style="margin-right:5px;color:#666;"></i><span>Vos photos sont vérifiées automatiquement sur les serveurs GENESIS avant publication (aucun service externe).</span></div>
           <input type="file" id="ptnr-pf-file-input" accept="image/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
           <input type="file" id="ptnr-pf-video-file-input" accept="video/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
           <!-- Grille -->
@@ -16520,6 +16521,8 @@ function _handleNotifHash(hash, _retryCount){
     _ptnrSetPendingNotifTarget({ screen: 'messages', threadEmail: null }); nav('partner');
   } else if(hash === 'partner:livrables' || hash === 'partner:projects'){
     _ptnrSetPendingNotifTarget({ screen: 'livrables', threadEmail: null }); nav('partner');
+  } else if(hash === 'partner:portfolio'){
+    _ptnrSetPendingNotifTarget({ screen: 'portfolio', threadEmail: null }); nav('partner');
   } else if(hash === 'partner:profile'){
     _ptnrSetPendingNotifTarget({ screen: 'profil', threadEmail: null }); nav('partner');
   } else if(hash === 'partner:versements'){
@@ -20757,6 +20760,24 @@ var _ptnrPfItems = [];
 // GENESIS. Les liens enregistrés avant cette règle (type 'video') restent dans la liste du
 // prestataire, marqués « Lien masqué » (invisibles pour les clients), pour qu'il les supprime.
 var PTNR_PF_MAX = 5;
+// Modération des images (server/image-moderation.js) : vérification immédiate dès la sélection
+// pour un retour instantané. Le serveur refait le contrôle à l'enregistrement, ce n'est pas ici
+// que se joue la sécurité. cb(status) : 'approved' | 'pending' | 'blocked' | 'invalid' |
+// 'unknown' (réseau indisponible : le serveur tranchera à l'enregistrement).
+function _ptnrCheckImage(dataUri, cb){
+  _ptnrFetch('/api/partner/media/check', 'POST', { image: dataUri }).then(function(d){
+    var st = (d && d.success && d.status) || 'unknown';
+    if(st === 'blocked' || st === 'invalid') showToast('Image refusée', d.message || '', 'error');
+    else if(st === 'pending') showToast('Image en vérification', d.message || '', 'info');
+    cb(st);
+  }).catch(function(){ cb('unknown'); });
+}
+function _ptnrModerationChip(m){
+  if(!m || !m.status || m.status === 'approved') return '';
+  var pending = m.status === 'pending';
+  var color = pending ? '#f59e0b' : '#ef4444';
+  return '<span style="position:absolute;top:6px;left:6px;z-index:2;font-size:9px;font-weight:800;color:'+color+';background:rgba(0,0,0,.78);border:1px solid '+color+'66;border-radius:6px;padding:2px 6px;pointer-events:none;"><i class="fa-solid '+(pending?'fa-hourglass-half':'fa-ban')+'" style="margin-right:4px;"></i><span>'+(pending?'En vérification':'Refusée')+'</span></span>';
+}
 function _ptnrPfCanAdd(){
   if(_ptnrPfItems.length < PTNR_PF_MAX) return true;
   showToast('Portfolio complet', 'Votre portfolio est limité à '+PTNR_PF_MAX+' médias. Supprimez-en un pour en ajouter un autre.', 'warning');
@@ -20818,6 +20839,7 @@ function _ptnrPfRender(){
     }
     return '<div class="ptnr-pf-item" data-pf-idx="'+idx+'">'
       + '<img src="'+item.url+'" alt="'+(item.caption||'')+'" loading="lazy">'
+      + _ptnrModerationChip(item.moderation)
       + '<div class="ptnr-pf-overlay"><span class="ptnr-pf-type-badge"><i class="fa-solid fa-image"></i> Photo</span><button class="ptnr-pf-del" type="button" onclick="_ptnrPfDelete('+idx+')"><i class="fa-solid fa-trash-can"></i></button></div>'
     + '</div>';
   }).join('');
@@ -20842,7 +20864,9 @@ function _ptnrPfProcessFilesQueue(files, idx, results){
   if(idx >= files.length){
     results.forEach(function(r){
       if(!r || _ptnrPfItems.length >= PTNR_PF_MAX) return;
-      _ptnrPfItems.push({ id: 'PF-' + Math.random().toString(36).slice(2,8), type: r.type, url: r.dataUri, caption: '' });
+      var _pfNew = { id: 'PF-' + Math.random().toString(36).slice(2,8), type: r.type, url: r.dataUri, caption: '' };
+      if(r.moderation) _pfNew.moderation = r.moderation; // indicatif : le serveur recalcule toujours
+      _ptnrPfItems.push(_pfNew);
     });
     _ptnrPfRender();
     return;
@@ -20864,8 +20888,11 @@ function _ptnrPfProcessFilesQueue(files, idx, results){
     reader.readAsDataURL(file);
   } else {
     _openCropModal(file, 1200, 0.82, function(dataUri){
-      results.push({ type:'photo', dataUri: dataUri });
-      _ptnrPfProcessFilesQueue(files, idx+1, results);
+      // Photo refusée (coordonnées / redirection) : non ajoutée, le prestataire en choisit une autre.
+      _ptnrCheckImage(dataUri, function(st){
+        if(st !== 'blocked' && st !== 'invalid') results.push({ type:'photo', dataUri: dataUri, moderation: st === 'pending' ? { status: 'pending' } : null });
+        _ptnrPfProcessFilesQueue(files, idx+1, results);
+      });
     }, function(){
       // Annulé pour cette photo précise : on passe simplement à la suivante sans la perdre pour
       // les autres, ni bloquer le reste de la sélection.
@@ -20890,6 +20917,11 @@ function _ptnrPfSave(){
       _ptnrPfRender();
       if(msgEl){ msgEl.style.color = '#FFD700'; msgEl.textContent = 'Portfolio enregistré.'; }
     } else {
+      // Photo refusée par la modération serveur : on la signale dans la grille pour qu'il la retire.
+      if(data && data.code === 'image_blocked' && data.itemId){
+        _ptnrPfItems.forEach(function(it){ if(it.id === data.itemId) it.moderation = { status: 'rejected' }; });
+        _ptnrPfRender();
+      }
       if(msgEl){ msgEl.style.color = '#ef4444'; msgEl.textContent = (data && data.error) || 'Erreur lors de l\'enregistrement'; }
     }
   }).catch(function(){
@@ -22074,7 +22106,7 @@ function _ptnrRenderServiceItemRow(service){
     return '<button type="button" class="ptnr-svc-mode-btn" data-mode="'+m+'" onclick="_ptnrSetPayMode(this)" style="flex:1;padding:5px 3px;border-radius:7px;font-size:9px;font-weight:'+(act?'900':'500')+';cursor:pointer;border:'+(act?'none':'1px solid #333')+';background:'+(act?'#FFD700':'transparent')+';color:'+(act?'#000':'#888')+';font-family:inherit;transition:all .15s;">'+label+'</button>';
   }
   var imgInner = service.image
-    ? '<img src="'+service.image+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">'
+    ? '<img src="'+service.image+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">' + _ptnrModerationChip(service.image_moderation)
     : '<div class="ptnr-svc-card-photo-ph"><i class="fa-solid fa-image"></i></div>';
   var pricingHtml = isQuote
     ? '<span class="ptnr-svc-quote-show">Sur devis</span>'
@@ -22268,18 +22300,24 @@ function _ptnrOnServiceImageSelected(inputEl){
   if(!card){ inputEl.value=''; return; }
   _openCropModal(file, 800, 0.8, function(dataUri){
     inputEl.value='';
-    card.setAttribute('data-service-image', encodeURIComponent(dataUri));
-    var photoWrap = card.querySelector('.ptnr-svc-card-photo');
-    if(photoWrap){
-      var ph = photoWrap.querySelector('.ptnr-svc-card-photo-ph');
-      if(ph) ph.remove();
-      var existing = photoWrap.querySelector('img');
-      if(existing) existing.remove();
-      var img = document.createElement('img');
-      img.src = dataUri; img.alt = '';
-      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-      photoWrap.insertBefore(img, photoWrap.firstChild);
-    }
+    _ptnrCheckImage(dataUri, function(st){
+      if(st === 'blocked' || st === 'invalid') return; // photo précédente conservée
+      card.setAttribute('data-service-image', encodeURIComponent(dataUri));
+      var photoWrap = card.querySelector('.ptnr-svc-card-photo');
+      if(photoWrap){
+        var ph = photoWrap.querySelector('.ptnr-svc-card-photo-ph');
+        if(ph) ph.remove();
+        var existing = photoWrap.querySelector('img');
+        if(existing) existing.remove();
+        var oldChip = photoWrap.querySelector('span[style*="position:absolute"]');
+        if(oldChip) oldChip.remove();
+        var img = document.createElement('img');
+        img.src = dataUri; img.alt = '';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+        photoWrap.insertBefore(img, photoWrap.firstChild);
+        if(st === 'pending') img.insertAdjacentHTML('afterend', _ptnrModerationChip({ status: 'pending' }));
+      }
+    });
   }, function(){ inputEl.value=''; });
 }
 
