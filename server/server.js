@@ -15186,6 +15186,9 @@ app.get('/api/partner/portfolio', authenticatePartner, (req, res) => {
     res.json({ success: true, portfolio: req.partner.portfolio || [] });
 });
 
+// Portfolio limité à 5 médias (photos, vidéos, liens) par prestataire.
+const PORTFOLIO_MAX_ITEMS = 5;
+
 // Remplacer mon portfolio (partenaire connecté)
 app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
     try {
@@ -15213,6 +15216,13 @@ app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
         const index = partners.findIndex(p => p.id === req.partner.id);
         if (index === -1) {
             return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+        // Refuser tout AJOUT au-delà de 5 médias. Un prestataire qui en avait déjà plus avant la
+        // limite peut toujours enregistrer tant qu'il n'en ajoute pas (sinon il ne pourrait même
+        // plus supprimer ses médias en trop) ; seuls ses 5 premiers sont montrés aux clients.
+        const previousCount = (partners[index].portfolio || []).length;
+        if (cleaned.length > PORTFOLIO_MAX_ITEMS && cleaned.length > previousCount) {
+            return res.status(400).json({ error: 'Votre portfolio est limité à ' + PORTFOLIO_MAX_ITEMS + ' médias. Supprimez-en un pour en ajouter un autre.' });
         }
         partners[index].portfolio = cleaned;
         partners[index].updatedAt = new Date().toISOString();
@@ -16847,7 +16857,7 @@ function buildPartnerContextForJeremie(message) {
             parts.push('missions réalisées : ' + getPartnerMissionsCompleted(p.id));
             if (badge) parts.push('badge ' + ({ bronze: 'Bronze', argent: 'Argent', or: 'Or', elite: 'Élite', fondateur: 'Fondateur' }[badge] || badge));
             if (resp !== null) parts.push('répond en ' + (resp >= 60 ? Math.round(resp / 60) + ' h' : resp + ' min') + ' environ');
-            parts.push('portfolio : ' + (p.portfolio || []).length + ' élément(s)');
+            parts.push('portfolio : ' + Math.min((p.portfolio || []).length, PORTFOLIO_MAX_ITEMS) + ' élément(s)');
             if (svcs.length) parts.push('prestations : ' + svcs.slice(0, 4).map(function(s) {
                 return s.label + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : s.price + ' €') + ')';
             }).join(', '));
@@ -17430,6 +17440,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 return { id: s.id, label: s.label, description: s.description || '', price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features : [], audience: s.audience || 'particulier', image: s.image || '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
             });
         const activePortfolio = (partner.portfolio || [])
+            .slice(0, PORTFOLIO_MAX_ITEMS)
             .map(item => ({ id: item.id, type: item.type, url: item.url, thumb: item.thumb || '', caption: item.caption || '' }));
         const reviews = loadPartnerReviews()
             .filter(r => r.partnerId === partner.id && r.status === 'published')

@@ -3563,13 +3563,14 @@ function _genesisVersionFooter(){
           <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mon portfolio</span></div>
           <!-- Boutons d'ajout -->
           <div class="ptnr-pf-add-row">
-            <button type="button" class="ptnr-pf-add-btn" onclick="document.getElementById('ptnr-pf-file-input').click()">
+            <button type="button" class="ptnr-pf-add-btn" onclick="if(_ptnrPfCanAdd())document.getElementById('ptnr-pf-file-input').click()">
               <i class="fa-solid fa-camera"></i>Photos
             </button>
             <button type="button" class="ptnr-pf-add-btn" onclick="_ptnrPfOpenVideoPopup()">
               <i class="fa-solid fa-circle-play"></i>Vidéo / lien
             </button>
           </div>
+          <div id="ptnr-pf-count" style="font-size:11px;color:#888;margin:-4px 0 12px;line-height:1.5;">Jusqu'à 5 médias (photos, vidéos ou liens).</div>
           <input type="file" id="ptnr-pf-file-input" accept="image/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
           <input type="file" id="ptnr-pf-video-file-input" accept="video/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
           <!-- Grille -->
@@ -6999,8 +7000,9 @@ function openPartnerDetail(partnerId){
       if(social.website) socialLinks.push('<a href="'+social.website+'" target="_blank" rel="noopener"><i class="fas fa-globe"></i></a>');
       var socialHtml = socialLinks.length ? '<div class="pf-social">'+socialLinks.join('')+'</div>' : '';
 
-      // ── Portfolio bento ──
-      var portfolio = p.portfolio || [];
+      // ── Portfolio bento ── (5 médias max, déjà limité par le serveur ; slice défensif pour
+      // un profil resté en cache d'avant la limite)
+      var portfolio = (p.portfolio || []).slice(0, 5);
       var portfolioHtml = '';
       if(portfolio.length){
         // Les items propres au prestataire (photo / vidéo uploadée) s'ouvrent dans la liseuse
@@ -20779,6 +20781,31 @@ function _ptnrDeletePromo(promoId){
 
 // ── PORTFOLIO PARTENAIRE ──
 var _ptnrPfItems = [];
+// Limite de 5 médias (photos, vidéos, liens) — appliquée aussi côté serveur (PUT /api/partner/portfolio).
+var PTNR_PF_MAX = 5;
+function _ptnrPfCanAdd(){
+  if(_ptnrPfItems.length < PTNR_PF_MAX) return true;
+  showToast('Portfolio complet', 'Votre portfolio est limité à '+PTNR_PF_MAX+' médias. Supprimez-en un pour en ajouter un autre.', 'warning');
+  return false;
+}
+function _ptnrPfRenderCount(){
+  var el = document.getElementById('ptnr-pf-count');
+  var n = _ptnrPfItems.length;
+  var full = n >= PTNR_PF_MAX;
+  if(el){
+    if(n > PTNR_PF_MAX){
+      el.style.color = '#f59e0b';
+      el.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="margin-right:5px;"></i>'+n+' médias : seuls les '+PTNR_PF_MAX+' premiers sont visibles par les clients. Supprimez-en '+(n-PTNR_PF_MAX)+' pour choisir lesquels garder.';
+    } else {
+      el.style.color = full ? '#FFD700' : '#888';
+      el.innerHTML = '<strong>'+n+' / '+PTNR_PF_MAX+'</strong> médias'+(full ? ' — limite atteinte. Supprimez-en un pour en ajouter un autre.' : ' (photos, vidéos ou liens).');
+    }
+  }
+  document.querySelectorAll('#ptnr-screen-portfolio .ptnr-pf-add-btn').forEach(function(b){
+    b.style.opacity = full ? '.35' : '';
+    b.style.animation = full ? 'none' : '';
+  });
+}
 function _ptnrLoadPortfolio(){
   var grid = document.getElementById('ptnr-pf-grid');
   if(grid) grid.innerHTML = '<div style="color:#444;font-size:12px;padding:12px 0;">Chargement…</div>';
@@ -20788,6 +20815,7 @@ function _ptnrLoadPortfolio(){
   }).catch(function(){ _ptnrPfRender(); });
 }
 function _ptnrPfRender(){
+  _ptnrPfRenderCount();
   var grid = document.getElementById('ptnr-pf-grid');
   if(!grid) return;
   if(!_ptnrPfItems.length){
@@ -20821,6 +20849,12 @@ function _ptnrPfOnPhotosSelected(input){
   var isVideoInput = input.id === 'ptnr-pf-video-file-input';
   if(isVideoInput) _ptnrPfCloseVideoPopup();
   input.value = '';
+  var remaining = PTNR_PF_MAX - _ptnrPfItems.length;
+  if(remaining <= 0){ _ptnrPfCanAdd(); return; }
+  if(files.length > remaining){
+    showToast('Limite de '+PTNR_PF_MAX+' médias', 'Seul'+(remaining>1?'s les '+remaining+' premiers fichiers seront ajoutés':' le premier fichier sera ajouté')+'.', 'warning');
+    files = files.slice(0, remaining);
+  }
   // Les photos passent UNE PAR UNE par la liseuse de recadrage (_openCropModal) — on ne peut pas
   // cadrer plusieurs images en même temps dans un seul geste, donc file sélectionnée une à une
   // plutôt qu'en parallèle comme avant (Promise.all). Les vidéos ne sont jamais recadrées, lues
@@ -20830,7 +20864,7 @@ function _ptnrPfOnPhotosSelected(input){
 function _ptnrPfProcessFilesQueue(files, idx, results){
   if(idx >= files.length){
     results.forEach(function(r){
-      if(!r) return;
+      if(!r || _ptnrPfItems.length >= PTNR_PF_MAX) return;
       _ptnrPfItems.push({ id: 'PF-' + Math.random().toString(36).slice(2,8), type: r.type, url: r.dataUri, caption: '' });
     });
     _ptnrPfRender();
@@ -20863,6 +20897,7 @@ function _ptnrPfProcessFilesQueue(files, idx, results){
   }
 }
 function _ptnrPfOpenVideoPopup(){
+  if(!_ptnrPfCanAdd()) return;
   var p = document.getElementById('ptnr-pf-video-popup');
   var u = document.getElementById('ptnr-pf-video-url');
   var c = document.getElementById('ptnr-pf-video-caption');
@@ -20936,6 +20971,7 @@ function _ptnrPfAddVideo(){
   var capEl = document.getElementById('ptnr-pf-video-caption');
   var url = urlEl ? urlEl.value.trim() : '';
   if(!url){if(urlEl) urlEl.focus();return;}
+  if(!_ptnrPfCanAdd()){ _ptnrPfCloseVideoPopup(); return; }
   var thumb = _ptnrPfPendingThumb || _ptnrPfExtractThumbSync(url) || '';
   _ptnrPfItems.push({id:'PF-'+Math.random().toString(36).slice(2,8),type:'video',url:url,caption:capEl?capEl.value.trim():'',thumb:thumb});
   _ptnrPfRender();
