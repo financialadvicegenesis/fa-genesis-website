@@ -18865,7 +18865,9 @@ app.post('/api/partner/requests/:id/accept', authenticatePartner, function(req, 
         savePartnerRequests(requests);
 
         var partnerName = req.partner.prenom || req.partner.email;
-        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande acceptée ✅', partnerName + ' a accepté votre demande pour : ' + requests[idx].service_label + '. Vous pouvez payer l\'acompte.', '/app.html#client:proposal:' + requests[idx].id);
+        // Le prestataire n'a encore rien proposé (prix, délai, modalités) : aucun paiement n'est
+        // possible à ce stade — avant, ce message invitait à tort à « payer l'acompte ».
+        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande acceptée ✅', partnerName + ' a accepté votre demande pour : ' + requests[idx].service_label + '. Il prépare sa proposition : vous serez notifié dès qu\'elle sera prête.', '/app.html#client:proposal:' + requests[idx].id);
 
         res.json({ success: true, message: 'Demande acceptée.' });
     } catch(e) {
@@ -18891,7 +18893,7 @@ app.post('/api/partner/requests/:id/decline', authenticatePartner, function(req,
         requests[idx].responded_at = new Date().toISOString();
         savePartnerRequests(requests);
 
-        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande refusée', 'Le partenaire n\'est pas disponible pour : ' + requests[idx].service_label + '. Vous pouvez en choisir un autre dans l\'annuaire.', '/app.html#open-prestataires');
+        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande refusée', 'Le prestataire n\'est pas disponible pour : ' + requests[idx].service_label + '. Vous pouvez en choisir un autre dans l\'annuaire.', '/app.html#open-prestataires');
 
         res.json({ success: true, message: 'Demande refusée.' });
     } catch(e) {
@@ -18994,11 +18996,92 @@ app.post('/api/partner/requests/:id/propose', authenticatePartner, function(req,
         requests[idx].status = 'proposed';
         savePartnerRequests(requests);
 
-        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Proposition reçue 📋', 'Le partenaire vous a envoyé une proposition pour : ' + requests[idx].service_label + '. Merci de la consulter et de signer le contrat.', '/app.html#client:proposal:' + requests[idx].id);
+        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Proposition reçue 📋', (req.partner.prenom || 'Le prestataire') + ' vous a envoyé sa proposition pour : ' + requests[idx].service_label + '. Consultez-la pour l\'accepter ou la refuser.', '/app.html#client:proposal:' + requests[idx].id);
 
         res.json({ success: true, message: 'Proposition envoyée avec succès', request: requests[idx] });
     } catch(e) {
         console.error('[PARTNER-REQUEST] Erreur propose:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Contrat de prestation d'un devis, généré par le MÊME modèle que les contrats de commande
+// (contractService.generateServiceContractHtml) à partir de la proposition du prestataire :
+// échéancier selon le mode de paiement qu'il a choisi + délai, révisions et notes en conditions
+// particulières. Le client le lit AVANT de signer (GET .../contract-preview), et le texte exact
+// signé est conservé sur la demande (sign-contract).
+function buildRequestContract(request, clientUser, lang) {
+    var p = request.proposal || {};
+    var total = parseFloat(p.total_price) || 0;
+    var tier = 'small', installments = [{ amount: total }];
+    if (p.payment_mode === 'deposit_balance') { tier = 'custom'; installments = generatePartnerSplit(total, p.deposit_pct != null ? p.deposit_pct : 30); }
+    else if (p.payment_mode === 'installments') { tier = 'partner_installments'; installments = generateUserInstallmentPlan(total, Math.max(2, Math.min(8, parseInt(p.installment_count) || 2))); }
+    var order = {
+        id: request.id,
+        product_name: request.service_label,
+        total_amount: total,
+        payment_tier: tier,
+        installments: installments,
+        created_at: request.contract_signed_at || new Date().toISOString(),
+        client_info: { client_type: (clientUser && (clientUser.accountType || clientUser.clientType)) || 'particulier' }
+    };
+    var lines = [];
+    (p.items || []).forEach(function(it) { if (it && it.label) lines.push('• ' + it.label + ' : ' + (parseFloat(it.amount) || 0) + ' €'); });
+    if (p.delay_days) lines.push('Délai de réalisation estimé : ' + p.delay_days + ' jour(s) à compter du paiement.');
+    if (p.revisions_included) lines.push('Révisions incluses : ' + p.revisions_included + ' (demandes de modification des livrables par le Client, sans frais supplémentaires).');
+    if (p.notes) lines.push('Précisions du Prestataire : ' + p.notes);
+    var partner = getPartnerById(request.partner_id) || {};
+    return contractService.generateServiceContractHtml(order, partner, clientUser, lines.join('\n'), lang || 'fr');
+}
+
+// GET /api/my-requests/:id/contract-preview — contrat de prestation à lire avant de signer
+app.get('/api/my-requests/:id/contract-preview', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var r = loadPartnerRequests().find(function(x) { return x.id === req.params.id; });
+        if (!r) return res.status(404).json({ error: 'Demande introuvable' });
+        if (r.client_email !== user.email) return res.status(403).json({ error: 'Accès non autorisé' });
+        if (r.contract_html) return res.json({ html: r.contract_html, signed: true });
+        if (r.status !== 'proposed' || !r.proposal) return res.status(409).json({ error: 'Aucune proposition à consulter pour le moment.' });
+        var clientUser = loadUsers().find(function(u) { return u.email === user.email; }) || user;
+        res.json({ html: buildRequestContract(r, clientUser, getUserLanguage(user.email, 'client')), signed: false });
+    } catch (e) {
+        console.error('[CONTRACT] Erreur aperçu contrat devis:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/my-requests/:id/decline-proposal — le client refuse la proposition du prestataire.
+// La demande repasse à 'accepted' : le prestataire peut lui envoyer une nouvelle proposition.
+// L'ancienne proposition est conservée dans proposal_history (rien n'est effacé).
+app.post('/api/my-requests/:id/decline-proposal', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var requests = loadPartnerRequests();
+        var idx = requests.findIndex(function(r) { return r.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Demande introuvable' });
+        var r = requests[idx];
+        if (r.client_email !== user.email) return res.status(403).json({ error: 'Accès non autorisé' });
+        if (r.status !== 'proposed' || !r.proposal) return res.status(409).json({ error: 'Aucune proposition à refuser pour le moment.' });
+        var reason = (req.body && req.body.reason ? String(req.body.reason) : '').trim().substring(0, 500);
+        var declined = Object.assign({}, r.proposal, { declined_at: new Date().toISOString(), decline_reason: reason });
+        r.proposal_history = (r.proposal_history || []).concat([declined]);
+        r.proposal = null;
+        r.status = 'accepted';
+        r.last_proposal_declined_at = declined.declined_at;
+        r.last_proposal_decline_reason = reason;
+        savePartnerRequests(requests);
+        var partner = getPartnerById(r.partner_id);
+        if (partner) {
+            notifyUser(partner.email, 'partner', 'partner-request', 'Proposition refusée',
+                (r.client_name || 'Le client') + ' a refusé votre proposition pour : ' + r.service_label + '.' + (reason ? ' Motif : ' + reason + (/[.!?…]$/.test(reason) ? '' : '.') : '') + ' Vous pouvez lui envoyer une nouvelle proposition.',
+                '#partner:mission:' + r.id);
+        }
+        res.json({ success: true, request: r });
+    } catch (e) {
+        console.error('[PARTNER-REQUEST] Erreur refus proposition:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -19027,6 +19110,11 @@ app.post('/api/my-requests/:id/sign-contract', function(req, res) {
         var signIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
         requests[idx].contract_signed = true;
         requests[idx].contract_signed_at = new Date().toISOString();
+        // Texte exact du contrat signé (celui que le client a lu dans l'aperçu), conservé tel quel.
+        try {
+            var _signer = loadUsers().find(function(u) { return u.email === user.email; }) || user;
+            requests[idx].contract_html = buildRequestContract(requests[idx], _signer, getUserLanguage(user.email, 'client'));
+        } catch (e) { console.error('[CONTRACT] Snapshot contrat devis impossible:', e.message); }
         requests[idx].contract_signature_name = signatureName;
         requests[idx].contract_signature_ip = signIp;
         requests[idx].status = 'signed';

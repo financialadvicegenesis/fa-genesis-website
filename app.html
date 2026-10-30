@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261030c"></script>
-<script src="app-i18n-es.js?v=20261030c"></script>
-<script src="app-i18n-hi.js?v=20261030c"></script>
-<script src="app-i18n-pt.js?v=20261030c"></script>
-<script src="app-i18n-ja.js?v=20261030c"></script>
-<script src="app-i18n-zh.js?v=20261030c"></script>
-<script src="app-i18n-ar.js?v=20261030c"></script>
-<script src="app-i18n-it.js?v=20261030c"></script>
-<script src="app-i18n-de.js?v=20261030c"></script>
+<script src="app-i18n-en.js?v=20261030e"></script>
+<script src="app-i18n-es.js?v=20261030e"></script>
+<script src="app-i18n-hi.js?v=20261030e"></script>
+<script src="app-i18n-pt.js?v=20261030e"></script>
+<script src="app-i18n-ja.js?v=20261030e"></script>
+<script src="app-i18n-zh.js?v=20261030e"></script>
+<script src="app-i18n-ar.js?v=20261030e"></script>
+<script src="app-i18n-it.js?v=20261030e"></script>
+<script src="app-i18n-de.js?v=20261030e"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -7080,8 +7080,16 @@ function openServiceDetail(partnerId, serviceId){
   } else if(!isQuote && _sdPayMode === 'installments'){
     _sdPayBadge = '<div style="font-size:11px;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-credit-card" style="color:#FFD700;font-size:10px;"></i>Paiement en '+_sdInstCnt+' fois</div>';
   }
+  // Sur devis : modalité de paiement prévue par le prestataire (montant fixé dans sa proposition).
+  var _sdQuotePay = '';
+  if(isQuote){
+    var _sdq = '<div style="font-size:11px;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;"><i class="fa-solid fa-lock" style="color:#FFD700;font-size:10px;"></i><span>Modalité de paiement prévue :</span> ';
+    if(_sdPayMode === 'deposit_balance') _sdQuotePay = _sdq+'<span>acompte</span> <strong>'+_sdDepPct+' %</strong> <span>à la signature du devis, solde à la livraison</span></div>';
+    else if(_sdPayMode === 'installments') _sdQuotePay = _sdq+'<span>paiement en</span> <strong>'+_sdInstCnt+'</strong> <span>mensualités</span></div>';
+    else _sdQuotePay = _sdq+'<span>paiement en une fois, sécurisé jusqu\'à la livraison</span></div>';
+  }
   var priceHtml = isQuote
-    ? '<div class="svc-detail-price quote"><i class="fa-solid fa-file-lines"></i> Tarif sur devis — personnalisé selon votre besoin</div>'
+    ? '<div class="svc-detail-price quote"><i class="fa-solid fa-file-lines"></i> Tarif sur devis — personnalisé selon votre besoin</div>'+_sdQuotePay
     : '<div class="svc-detail-price">'+Number(service.price).toFixed(2)+' €</div>'+_sdPayBadge;
   var ctaHtml = isQuote
     ? '<button class="svc-detail-cta secondary" onclick="closeServiceDetail();openPartnerRequest(\''+partnerId+'\',\''+serviceId+'\')"><i class="fa-solid fa-paper-plane"></i> Demander un devis</button>'
@@ -7296,6 +7304,19 @@ function renderResaTab(){
 
 // ── GENESIS CONTRACT™ : récapitulatif contractuel + signature électronique ──
 function renderProposalCard(r){
+  // Demande acceptée, proposition pas encore envoyée : rien à signer ni à payer pour l'instant
+  // (avant, la carte affichait à tort « Proposition reçue » + un formulaire de signature).
+  if(r.status === 'accepted' || !r.proposal){
+    return '<div class="resa-card" id="prop-card-'+r.id+'">'
+      +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Demande')+'</div>'
+      +'<span class="resa-status s-pending">⏳ <span>Proposition en préparation</span></span></div>'
+      +'<div class="resa-date"><i class="fa-solid fa-user"></i> '+(r.partner_name||'')+'</div>'
+      +'<div style="font-size:13px;color:var(--muted);line-height:1.5;margin-top:8px;">'
+        +(r.last_proposal_declined_at
+          ? '<span>Vous avez refusé la proposition précédente. Le prestataire peut vous en envoyer une nouvelle : vous serez notifié dès qu\'elle sera prête.</span>'
+          : '<span>Le prestataire a accepté votre demande et prépare sa proposition (prix, délai, modalités de paiement). Vous serez notifié dès qu\'elle sera prête.</span>')
+      +'</div></div>';
+  }
   var p = r.proposal || {items:[],total_price:r.price||0,delay_days:0,revisions_included:0,notes:'',milestones:[]};
   var itemsHtml = (p.items||[]).map(function(it){
     return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;"><span>'+(it.label||'')+'</span><span>'+(it.amount||0)+' €</span></div>';
@@ -7315,23 +7336,25 @@ function renderProposalCard(r){
     +itemsHtml
     +'<div style="display:flex;justify-content:space-between;font-weight:700;padding:6px 0;border-top:1px solid var(--border);margin-top:4px;"><span>Total</span><span>'+(p.total_price||0)+' €</span></div>'
     +(p.delay_days?'<div style="font-size:13px;color:var(--muted);">Délai estimé : '+p.delay_days+' jour(s)</div>':'')
-    +(p.revisions_included?'<div style="font-size:13px;color:var(--muted);">Révisions incluses : '+p.revisions_included+'</div>':'')
+    +(p.revisions_included?'<div style="font-size:13px;color:var(--muted);"><span>Révisions incluses :</span> <strong style="color:#ddd;">'+p.revisions_included+'</strong> <span>(modifications des livrables que vous pouvez demander sans frais supplémentaires)</span></div>':'')
     +(p.notes?'<div style="font-size:13px;color:var(--muted);margin-top:4px;">'+p.notes+'</div>':'')
     +'<div class="detail-feats-title" style="margin:10px 0 4px;font-size:13px;">Échéancier de paiement sécurisé</div>'
     +milestonesHtml;
   // Demande déjà signée ("Lu et approuvé") : plus rien à signer, juste à payer — avant ce
   // correctif, aucun CTA de paiement n'existait nulle part pour cet état (voir
   // payDevisProposal). Sinon (status==='proposed'), formulaire de signature classique.
+  // Proposition reçue : le client l'ACCEPTE (→ lecture du contrat de prestation complet, puis
+  // signature) ou la REFUSE (le prestataire peut en envoyer une nouvelle). Contrat signé : paiement.
   var actionHtml = r.status==='signed'
     ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">'
       +'<div style="font-size:12px;color:#4ade80;margin-bottom:8px;"><i class="fa-solid fa-check-circle mr-1"></i>Contrat signé le '+_ptnrFmt(r.contract_signed_at)+'</div>'
       +'<button class="resa-action-btn rab-primary" style="width:100%;" onclick="payDevisProposal(\''+r.id+'\')"><i class="fa-solid fa-lock mr-1"></i> Payer en sécurité (GENESIS SAFE™)</button>'
+      +'<button class="resa-action-btn rab-ghost" style="width:100%;margin-top:8px;" onclick="openDevisContract(\''+r.id+'\',true)"><i class="fa-solid fa-file-contract mr-1"></i> Voir le contrat signé</button>'
       +'</div>'
     : '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">'
-      +'<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer;"><input type="checkbox" id="sign-accept-'+r.id+'" style="margin-top:2px;"> J\'accepte les conditions ci-dessus</label>'
-      +'<input type="text" id="sign-name-'+r.id+'" placeholder="Votre nom complet" style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:#fff;">'
-      +'<div id="sign-err-'+r.id+'" style="color:#ef4444;font-size:12px;margin-top:6px;display:none;"></div>'
-      +'<button class="resa-action-btn rab-primary" style="width:100%;margin-top:10px;" onclick="signRequestContract(\''+r.id+'\')">Signer le contrat</button>'
+      +'<button class="resa-action-btn rab-primary" style="width:100%;" onclick="openDevisContract(\''+r.id+'\',false)"><i class="fa-solid fa-check mr-1"></i> Accepter la proposition</button>'
+      +'<button class="resa-action-btn rab-ghost" style="width:100%;margin-top:8px;" onclick="declineDevisProposal(\''+r.id+'\')"><i class="fa-solid fa-xmark mr-1"></i> Refuser la proposition</button>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;text-align:center;">En acceptant, vous lirez le contrat de prestation complet avant de le signer.</div>'
       +'</div>';
   return '<div class="resa-card" id="prop-card-'+r.id+'">'+bodyHtml+actionHtml+'</div>';
 }
@@ -7361,6 +7384,65 @@ function payDevisProposal(requestId){
       _showPbPayUI(partner, service, null, true, requestId);
     }).catch(function(){ showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
 }
+// Contrat de prestation d'un devis : lecture intégrale (texte généré par le serveur, identique
+// à celui qui sera conservé à la signature) puis acceptation + nom complet + signature.
+// readOnly=true : contrat déjà signé, consultation seule.
+function openDevisContract(requestId, readOnly){
+  if(!USER||GUEST){ showLoginSheet(); return; }
+  var old = document.getElementById('devis-contract-overlay'); if(old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = 'devis-contract-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;overflow-y:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 12px 24px;';
+  var defaultName = ((USER.prenom||USER.firstName||'')+' '+(USER.nom||USER.lastName||'')).trim();
+  ov.innerHTML = '<div style="max-width:860px;margin:0 auto;background:#fff;border:3px solid #FFD700;border-radius:6px;overflow:hidden;">'
+    +'<div style="background:#1a1a1a;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;">'
+      +'<div style="color:#FFD700;font-size:12px;font-weight:900;letter-spacing:.5px;"><i class="fa-solid fa-file-contract" style="margin-right:8px;"></i>CONTRAT DE PRESTATION</div>'
+      +'<button onclick="closeDevisContract()" aria-label="Fermer" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>'
+    +'</div>'
+    +'<div id="devis-contract-body" style="padding:18px;max-height:'+(readOnly?'78vh':'52vh')+';overflow-y:auto;color:#111;font-family:Georgia,serif;font-size:13px;line-height:1.7;"><div style="text-align:center;padding:24px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:#c9a227;"></i></div></div>'
+    +(readOnly ? '' :
+      '<div style="padding:16px 18px;background:#f6f6f6;border-top:2px solid #eee;font-family:sans-serif;color:#111;">'
+        +'<label style="display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.5;cursor:pointer;"><input type="checkbox" id="sign-accept-'+requestId+'" disabled style="margin-top:3px;flex-shrink:0;"> <span>J\'ai lu le contrat de prestation ci-dessus et j\'en accepte les conditions.</span></label>'
+        +'<input type="text" id="sign-name-'+requestId+'" placeholder="Votre nom complet" value="'+_escHtml(defaultName)+'" style="width:100%;box-sizing:border-box;margin-top:10px;padding:11px;border-radius:8px;border:2px solid #1a1a1a;font-size:16px;color:#111;background:#fff;">'
+        +'<div id="sign-err-'+requestId+'" style="color:#dc2626;font-size:12px;margin-top:6px;display:none;"></div>'
+        +'<button id="sign-btn-'+requestId+'" onclick="signRequestContract(\''+requestId+'\')" style="width:100%;margin-top:12px;padding:14px;background:#FFD700;color:#000;border:none;border-radius:10px;font-weight:900;font-size:14px;cursor:pointer;"><i class="fa-solid fa-signature" style="margin-right:8px;"></i>Signer le contrat</button>'
+        +'<div style="font-size:11px;color:#666;margin-top:8px;line-height:1.5;text-align:center;">Votre signature électronique a valeur d\'engagement. Le paiement sécurisé GENESIS SAFE™ vous sera proposé ensuite.</div>'
+      +'</div>')
+    +'</div>';
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+  fetch((window.FA_GENESIS_API||API)+'/api/my-requests/'+requestId+'/contract-preview',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var body = document.getElementById('devis-contract-body');
+      if(!body) return;
+      if(!d || !d.html){ body.innerHTML = '<p style="font-family:sans-serif;color:#dc2626;">'+_escHtml((d&&d.error)||'Impossible de charger le contrat.')+'</p>'; return; }
+      body.innerHTML = d.html;
+      var chk = document.getElementById('sign-accept-'+requestId); if(chk) chk.disabled = false;
+    }).catch(function(){
+      var body = document.getElementById('devis-contract-body');
+      if(body) body.innerHTML = '<p style="font-family:sans-serif;color:#dc2626;">Erreur de connexion. Réessayez dans un instant.</p>';
+    });
+}
+function closeDevisContract(){
+  var ov = document.getElementById('devis-contract-overlay'); if(ov) ov.remove();
+  document.body.style.overflow = '';
+}
+function declineDevisProposal(requestId){
+  if(!USER||GUEST) return;
+  showPromptModal('Le prestataire sera prévenu et pourra vous envoyer une nouvelle proposition. Vous pouvez lui indiquer pourquoi (facultatif).', {
+    title: 'Refuser la proposition ?', placeholder: 'Ex : budget trop élevé, délai trop long…', confirmLabel: 'Refuser la proposition', cancelLabel: 'Annuler'
+  }).then(function(reason){
+    if(reason === null) return;
+    fetch((window.FA_GENESIS_API||API)+'/api/my-requests/'+requestId+'/decline-proposal',{
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+      body: JSON.stringify({ reason: reason })
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if(d && d.success){ showToast('Proposition refusée','Le prestataire a été prévenu.','info'); renderResaTab(); }
+      else showToast('Erreur', (d&&d.error)||'Réessayez dans un instant.', 'error');
+    }).catch(function(){ showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
+  });
+}
 function signRequestContract(requestId){
   if(!USER||GUEST) return;
   var chk = document.getElementById('sign-accept-'+requestId);
@@ -7369,7 +7451,7 @@ function signRequestContract(requestId){
   var signatureName = nameInput ? nameInput.value.trim() : '';
   if(errEl) errEl.style.display='none';
   if(!chk || !chk.checked){
-    if(errEl){ errEl.textContent='Veuillez accepter les conditions pour continuer.'; errEl.style.display=''; }
+    if(errEl){ errEl.textContent='Veuillez lire le contrat et cocher la case d\'acceptation pour continuer.'; errEl.style.display=''; }
     return;
   }
   if(!signatureName || signatureName.length<2){
@@ -7385,6 +7467,8 @@ function signRequestContract(requestId){
       if(errEl){ errEl.textContent=(data&&data.error)||'Erreur lors de la signature.'; errEl.style.display=''; }
       return;
     }
+    closeDevisContract();
+    showToast('Contrat signé','Vous pouvez maintenant payer en sécurité avec GENESIS SAFE™.','success');
     renderResaTab();
   }).catch(function(){
     if(errEl){ errEl.textContent='Erreur de connexion au serveur.'; errEl.style.display=''; }
@@ -16753,7 +16837,7 @@ function sendPartnerRequest(){
     _partnerCartSelection = {};
     var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='none';
     var sm=document.getElementById('pb-success-msg');
-    if(sm) sm.textContent = (services.length>1 ? '🟡 '+services.length+' demandes envoyées ! ' : '🟡 Demande envoyée ! ')+'Vous recevrez une notification dès que le partenaire aura répondu, dans "Mes réservations".';
+    if(sm) sm.textContent = (services.length>1 ? '🟡 '+services.length+' demandes envoyées ! ' : '🟡 Demande envoyée ! ')+'Vous recevrez une notification dès que le prestataire aura répondu, dans "Mes réservations".';
     var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
     if(typeof renderResaTab==='function') renderResaTab();
   }).catch(function(err){
@@ -19219,10 +19303,19 @@ function _declinePartnerRequest(id){
 }
 
 function _ptnrRenderProposalForm(r){
+  // Modalité de paiement pré-remplie depuis la prestation demandée (modifiable pour ce devis).
+  var _pfSvc = ((_ptnrSession && _ptnrSession.services) || []).filter(function(sv){ return sv && sv.id === r.service_id; })[0] || {};
+  var _pfMode = ['single','deposit_balance','installments'].indexOf(_pfSvc.payment_mode) !== -1 ? _pfSvc.payment_mode : 'single';
+  var _pfDep = _pfSvc.deposit_pct != null ? _pfSvc.deposit_pct : 30;
+  var _pfInst = _pfSvc.installment_count || 2;
   var html = '<div class="dispatch-card new-card" id="request-'+r.id+'">';
   html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Acceptée — proposition à envoyer</div>';
   html += '<div class="dispatch-title">'+_tr(r.client_name)+' — '+r.service_label+'</div>';
   html += '<div class="dispatch-meta">Acceptée le '+_ptnrFmt(r.responded_at||r.created_at)+'</div>';
+  if(r.last_proposal_declined_at){
+    html += '<div style="margin-top:10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px 12px;font-size:12px;color:#fca5a5;line-height:1.5;"><i class="fa-solid fa-circle-xmark" style="margin-right:6px;"></i><span>Le client a refusé votre proposition précédente. Vous pouvez lui en envoyer une nouvelle.</span>'
+      + (r.last_proposal_decline_reason ? '<div style="margin-top:4px;color:#ddd;" data-i18n-skip>« '+_escHtml(r.last_proposal_decline_reason)+' »</div>' : '') + '</div>';
+  }
   html += '<div class="dispatch-avail" style="margin-top:10px;">';
   html += '<div id="prop-lines-'+r.id+'">';
   html += '<div class="prop-line" style="display:flex;gap:8px;margin-bottom:8px;">';
@@ -19233,8 +19326,9 @@ function _ptnrRenderProposalForm(r){
   html += '<button type="button" style="background:transparent;color:#1a73e8;border:none;font-weight:700;font-size:12px;cursor:pointer;padding:4px 0;" onclick="_ptnrAddProposalLine(\''+r.id+'\')"><i class="fa-solid fa-plus"></i> Ajouter une ligne</button>';
   html += '<div style="display:flex;gap:8px;margin-top:12px;">';
   html += '<input type="number" id="prop-delay-'+r.id+'" placeholder="Délai (jours)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:16px;">';
-  html += '<input type="number" id="prop-revisions-'+r.id+'" placeholder="Révisions incluses" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:16px;">';
+  html += '<input type="number" id="prop-revisions-'+r.id+'" min="0" placeholder="Nb de révisions" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:16px;">';
   html += '</div>';
+  html += '<div style="font-size:11px;color:#888;margin-top:4px;line-height:1.4;">Révisions : nombre de fois où le client peut vous demander de modifier les livrables, sans frais supplémentaires.</div>';
   // Mode de paiement GENESIS SAFE™ pour CETTE proposition — demande explicite : avant ce
   // correctif, tous les devis utilisaient un découpage 30/40/30 codé en dur côté serveur, sans
   // aucun choix laissé au prestataire. Même pattern visuel que la configuration payment_mode
@@ -19244,18 +19338,18 @@ function _ptnrRenderProposalForm(r){
   html += '<div style="font-size:11px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;">Mode de paiement GENESIS SAFE™</div>';
   html += '<div style="display:flex;gap:4px;margin-bottom:8px;">';
   [['single','1 fois'],['deposit_balance','Acompte + reste'],['installments','Plusieurs fois']].forEach(function(pair){
-    var m = pair[0], label = pair[1], act = m==='single';
+    var m = pair[0], label = pair[1], act = m===_pfMode;
     html += '<button type="button" class="prop-pay-mode-btn" data-mode="'+m+'" onclick="_ptnrSetProposalPayMode(this)" style="flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:'+(act?'900':'500')+';cursor:pointer;background:'+(act?'#FFD700':'transparent')+';color:'+(act?'#000':'#888')+';border:'+(act?'none':'1px solid #333')+';">'+label+'</button>';
   });
   html += '</div>';
-  html += '<input type="hidden" id="prop-pay-mode-'+r.id+'" class="prop-pay-mode-input" value="single">';
-  html += '<div class="prop-pay-deposit-section" style="display:none;align-items:center;gap:8px;margin-bottom:8px;">';
-  html += '<input type="number" id="prop-deposit-pct-'+r.id+'" min="0" max="100" step="5" placeholder="30" value="30" style="width:70px;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:16px;">';
+  html += '<input type="hidden" id="prop-pay-mode-'+r.id+'" class="prop-pay-mode-input" value="'+_pfMode+'">';
+  html += '<div class="prop-pay-deposit-section" style="display:'+(_pfMode==='deposit_balance'?'flex':'none')+';align-items:center;gap:8px;margin-bottom:8px;">';
+  html += '<input type="number" id="prop-deposit-pct-'+r.id+'" min="0" max="100" step="5" placeholder="30" value="'+_pfDep+'" style="width:70px;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:16px;">';
   html += '<span style="font-size:12px;color:#888;">% versé à l\'acceptation · le reste à la livraison</span>';
   html += '</div>';
-  html += '<div class="prop-pay-installments-section" style="display:none;margin-bottom:8px;">';
+  html += '<div class="prop-pay-installments-section" style="display:'+(_pfMode==='installments'?'block':'none')+';margin-bottom:8px;">';
   html += '<select id="prop-installment-count-'+r.id+'" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:16px;">';
-  html += '<option value="2">2 fois — mensualités égales</option><option value="3">3 fois</option><option value="4">4 fois</option><option value="6">6 fois</option><option value="8">8 fois</option>';
+  html += [[2,'2 fois — mensualités égales'],[3,'3 fois'],[4,'4 fois'],[6,'6 fois'],[8,'8 fois']].map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===_pfInst?' selected':'')+'>'+o[1]+'</option>'; }).join('');
   html += '</select></div>';
   html += '</div>';
   html += '<textarea id="prop-notes-'+r.id+'" placeholder="Notes complémentaires (optionnel)" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid #ddd;min-height:60px;font-size:16px;"></textarea>';
@@ -19273,7 +19367,7 @@ function _ptnrRenderProposalSentCard(r){
   return '<div class="dispatch-card" id="request-'+r.id+'">'
     +'<div class="dispatch-badge" style="background:#1a1a1a;color:#888;"><span class="dispatch-badge-dot" style="background:#888;"></span>Proposition envoyée</div>'
     +'<div class="dispatch-title">'+_tr(r.client_name)+' — '+r.service_label+'</div>'
-    +'<div class="dispatch-meta">En attente de la signature du client…</div>'
+    +'<div class="dispatch-meta">En attente de la réponse du client (accepter ou refuser)…</div>'
     +'</div>';
 }
 
@@ -22136,9 +22230,11 @@ function _ptnrRenderServiceItemRow(service){
         + '<button type="button" class="ptnr-svc-ptg-mini" onclick="_ptnrSelectPricingMode(this,\'quote\')" style="'+(isQuote?'background:#FFD700;color:#000;border-color:#FFD700;':'')+'">Devis</button>'
         + '<input type="hidden" class="ptnr-svc-pricing-type" value="'+(isQuote?'quote':'fixed')+'">'
       + '</div>'
-      + (isQuote ? '' :
-        '<div style="margin-top:10px;">'
+      // Modalité de paiement : aussi pour une prestation « sur devis » (affichée au client sur la
+      // fiche, et pré-remplie dans chaque proposition de devis, où elle reste modifiable).
+      + ('<div style="margin-top:10px;">'
         +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#FFD700;letter-spacing:.4px;margin-bottom:6px;"><i class="fa-solid fa-lock" style="margin-right:3px;"></i>GENESIS SAFE™ — Mode de paiement</div>'
+        +'<div class="ptnr-svc-quote-pay-hint" style="display:'+(isQuote?'block':'none')+';font-size:9px;color:#888;line-height:1.4;margin:-2px 0 6px;">Modalité prévue pour vos devis : affichée au client et reprise dans chaque proposition (modifiable).</div>'
         +'<div style="display:flex;gap:4px;margin-bottom:8px;">'
         +_modeBtn('single','1 fois')
         +_modeBtn('deposit_balance','Acompte + reste')
@@ -22197,6 +22293,8 @@ function _ptnrSelectPricingMode(btn, mode){
   btn.style.background='#FFD700'; btn.style.color='#000'; btn.style.borderColor='#FFD700';
   if(typeEl) typeEl.value=mode;
   if(ctaEl) ctaEl.className='fa-solid '+(mode==='quote'?'fa-file-lines':'fa-plus');
+  var quoteHint = card.querySelector('.ptnr-svc-quote-pay-hint');
+  if(quoteHint) quoteHint.style.display = mode==='quote' ? 'block' : 'none';
   if(mode==='quote'){
     if(priceEl){ priceEl.value=''; priceEl.remove(); }
     if(!quoteEl && pricingRow){
@@ -22364,9 +22462,10 @@ function _ptnrCollectServiceItems(audience){
       description: '',
       price: isQuote ? 0 : price,
       pricing_type: isQuote ? 'quote' : 'fixed',
-      payment_mode: isQuote ? 'single' : payMode,
-      deposit_pct: isQuote ? null : depositPct,
-      installment_count: isQuote ? null : installCount,
+      // Devis compris : la modalité choisie est enregistrée (avant, forcée à « 1 fois »).
+      payment_mode: payMode,
+      deposit_pct: depositPct,
+      installment_count: installCount,
       features: features,
       active: true,
       audience: audience,
