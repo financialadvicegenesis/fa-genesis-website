@@ -17559,7 +17559,7 @@ function partnerDirectoryShape(p, allPromos) {
         distinctions: _serializeDistinctions(activeDists),
         profile_boost_active: !!(p.profile_boost_until && new Date(p.profile_boost_until) > new Date()),
         constellation: getConstellationTier(p),
-        activePromo: ap ? { id: ap.id, title: ap.title, type: ap.type, value: ap.value, end_date: ap.end_date } : null
+        activePromo: ap ? { id: ap.id, title: publicText(ap.title || '') || 'Promotion', type: ap.type, value: ap.value, end_date: ap.end_date } : null
     };
 }
 
@@ -23266,6 +23266,9 @@ app.post('/api/partner/promotions', authenticatePartner, (req, res) => {
         var title = (b.title || '').trim();
         var type  = b.type || '';
         if (!title)                             return res.status(400).json({ error: 'Titre requis' });
+        // Promotion visible des clients : aucun lien externe ni coordonnée (voir rejectExternalLink).
+        if (rejectExternalLink(res, title, null, 'promo_title')) return;
+        if (typeof b.description === 'string' && rejectExternalLink(res, b.description.trim(), null, 'promo_description')) return;
         if (!PROMO_TYPES_ALL.includes(type))    return res.status(400).json({ error: 'Type invalide' });
         if (!b.start_date || !b.end_date)       return res.status(400).json({ error: 'Dates requises' });
         if (new Date(b.end_date) <= new Date(b.start_date)) return res.status(400).json({ error: 'La date de fin doit être après la date de début' });
@@ -23315,6 +23318,9 @@ app.put('/api/partner/promotions/:id', authenticatePartner, (req, res) => {
         if (idx === -1) return res.status(404).json({ error: 'Promotion introuvable' });
         var pr = all[idx];
         var b  = req.body;
+        // Même règle qu'à la création ; un texte inchangé d'avant la règle reste accepté (masqué aux clients).
+        if (typeof b.title === 'string' && rejectExternalLink(res, b.title.trim(), pr.title, 'promo_title')) return;
+        if (typeof b.description === 'string' && rejectExternalLink(res, b.description.trim(), pr.description, 'promo_description')) return;
         if (b.title       !== undefined) pr.title       = b.title.trim();
         if (b.description !== undefined) pr.description = b.description.trim();
         if (b.type        !== undefined && PROMO_TYPES_ALL.includes(b.type)) pr.type = b.type;
@@ -23386,6 +23392,8 @@ app.get('/api/promotions', (req, res) => {
         var enriched = all.slice(0, max).map(function(pr) {
             var p = partners.find(function(x) { return x.id === pr.partner_id; });
             return Object.assign({}, pr, {
+                title: publicText(pr.title || '') || 'Promotion',
+                description: publicText(pr.description || ''),
                 partner_name: p ? ((p.prenom || '') + ' ' + (p.nom || '')).trim() : '',
                 partner_photo: p ? (p.photo || null) : null,
                 partner_type: p ? (p.partner_type || '') : ''
@@ -23944,15 +23952,21 @@ app.post('/api/admin/withdrawals/:id/mark-sent', function(req, res) {
  * GET /api/admin/external-links-audit
  * Audit en lecture seule des liens externes / coordonnées DÉJÀ enregistrés dans les profils
  * prestataires (avant la règle anti-liens) : liens du portfolio, légendes, bio, prestations,
- * réseaux sociaux. Rien n'est modifié : ces contenus sont seulement masqués aux clients
+ * promotions, réseaux sociaux. Rien n'est modifié : ces contenus sont seulement masqués aux clients
  * (publicText / isPortfolioExternalLink), et restent supprimables par le prestataire.
  */
 app.get('/api/admin/external-links-audit', function(req, res) {
     try {
         if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
         var rows = [];
+        var promos = loadPromotions();
         loadPartners().forEach(function(p) {
             var findings = [];
+            promos.forEach(function(pr) {
+                if (!pr || pr.partner_id !== p.id) return;
+                if (pr.title && LinkGuard.check(pr.title)) findings.push({ field: 'promo_title', promoId: pr.id, value: pr.title });
+                if (pr.description && LinkGuard.check(pr.description)) findings.push({ field: 'promo_description', promoId: pr.id, value: pr.description });
+            });
             (p.portfolio || []).forEach(function(it, i) {
                 if (isPortfolioExternalLink(it)) findings.push({ field: 'portfolio_link', index: i, value: it.url || '' });
                 else if (it && it.caption && LinkGuard.check(it.caption)) findings.push({ field: 'portfolio_caption', index: i, value: it.caption });

@@ -1562,7 +1562,7 @@
 
                 <div style="margin-bottom:32px;">
                     <h3 style="font-size:16px;font-weight:900;color:#f59e0b;margin:0 0 10px;"><i class="fas fa-link-slash mr-2"></i>LIENS EXTERNES DANS LES PROFILS (audit)</h3>
-                    <div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Liens et coordonnées enregistrés <strong>avant</strong> la règle anti-liens (portfolio, légendes, bio, prestations, réseaux sociaux). Lecture seule : rien n'est supprimé en base. Ces contenus sont déjà <strong>masqués aux clients</strong> ; le prestataire voit ses anciens liens marqués « Lien masqué » et peut les supprimer.</div>
+                    <div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Liens et coordonnées enregistrés <strong>avant</strong> la règle anti-liens (portfolio, légendes, bio, prestations, promotions, réseaux sociaux). Lecture seule : rien n'est supprimé en base. Ces contenus sont déjà <strong>masqués aux clients</strong> ; le prestataire voit ses anciens liens marqués « Lien masqué » et peut les supprimer.</div>
                     <div id="externalLinksAuditList" style="color:#e0e0e0;">
                         <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
                     </div>
@@ -6944,7 +6944,8 @@
         // (voir GET /api/admin/external-links-audit et server/link-guard.js).
         var _EXT_LINK_FIELD_LABELS = {
             portfolio_link: 'Lien du portfolio', portfolio_caption: 'Légende du portfolio', bio: 'Bio',
-            service_label: 'Nom de prestation', service_description: 'Description de prestation', service_feature: 'Point inclus (prestation)'
+            service_label: 'Nom de prestation', service_description: 'Description de prestation', service_feature: 'Point inclus (prestation)',
+            promo_title: 'Titre de promotion', promo_description: 'Description de promotion'
         };
         function _loadExternalLinksAudit() {
             var el = document.getElementById('externalLinksAuditList');

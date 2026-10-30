@@ -208,7 +208,7 @@ affichées restent désynchronisées du français indéfiniment.
 ## Anti-liens externes dans les profils prestataires : `server/link-guard.js` est partagé app + serveur
 
 Un seul fichier décide de ce qui est un lien de redirection / une coordonnée dans les textes
-PUBLICS des prestataires (bio, prestations, légendes du portfolio) : `server/link-guard.js`,
+PUBLICS des prestataires (bio, prestations, légendes du portfolio, promotions) : `server/link-guard.js`,
 chargé par `server.js` (`require('./link-guard')`) ET par `app.html` (`<script src="server/link-guard.js?v=...">`).
 - Le modifier = bumper son `?v=` dans `app.html` (sinon l'app garde l'ancienne règle, voir plus haut).
 - ES5 sans lookbehind : les WebView iOS < 16.4 plantent sur toute la page sinon.
@@ -217,6 +217,6 @@ chargé par `server.js` (`require('./link-guard')`) ET par `app.html` (`<script 
 - Règle des anciens contenus : un texte identique à celui déjà en base est accepté (sinon le
   prestataire ne peut plus rien enregistrer) ; il est masqué aux clients via `publicText()` et les
   liens de portfolio (`type:'video'`) via `isPortfolioExternalLink()`. Toute NOUVELLE route qui
-  renvoie bio/prestations/portfolio à un client doit passer par ces deux helpers. Audit :
+  renvoie bio/prestations/portfolio/promotions à un client doit passer par ces deux helpers. Audit :
   `GET /api/admin/external-links-audit` (admin.html › Modération). Tests de référence dans le
   commit qui a introduit ce fichier.
