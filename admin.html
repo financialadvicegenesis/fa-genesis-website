@@ -1560,6 +1560,14 @@
                     </div>
                 </div>
 
+                <div style="margin-bottom:32px;">
+                    <h3 style="font-size:16px;font-weight:900;color:#f59e0b;margin:0 0 10px;"><i class="fas fa-link-slash mr-2"></i>LIENS EXTERNES DANS LES PROFILS (audit)</h3>
+                    <div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Liens et coordonnées enregistrés <strong>avant</strong> la règle anti-liens (portfolio, légendes, bio, prestations, réseaux sociaux). Lecture seule : rien n'est supprimé en base. Ces contenus sont déjà <strong>masqués aux clients</strong> ; le prestataire voit ses anciens liens marqués « Lien masqué » et peut les supprimer.</div>
+                    <div id="externalLinksAuditList" style="color:#e0e0e0;">
+                        <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
+                    </div>
+                </div>
+
                 <div>
                     <h3 style="font-size:16px;font-weight:900;color:#FFD700;margin:0 0 14px;"><i class="fas fa-flag mr-2"></i>SIGNALEMENTS (utilisateur → utilisateur)</h3>
                     <div style="font-size:12px;color:#888;margin-bottom:14px;">Signalements envoyés par un client ou un prestataire depuis une conversation (bouton "Signaler", distinct de la détection automatique ci-dessus).</div>
@@ -6928,7 +6936,45 @@
         function loadModerationPanel() {
             _loadModerationAccounts();
             _loadModerationLog();
+            _loadExternalLinksAudit();
             _loadUserReports();
+        }
+
+        // Audit en lecture seule des liens externes déjà présents dans les profils prestataires
+        // (voir GET /api/admin/external-links-audit et server/link-guard.js).
+        var _EXT_LINK_FIELD_LABELS = {
+            portfolio_link: 'Lien du portfolio', portfolio_caption: 'Légende du portfolio', bio: 'Bio',
+            service_label: 'Nom de prestation', service_description: 'Description de prestation', service_feature: 'Point inclus (prestation)'
+        };
+        function _loadExternalLinksAudit() {
+            var el = document.getElementById('externalLinksAuditList');
+            if (!el) return;
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/external-links-audit', { headers: { 'Authorization': 'Bearer ' + tok } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var rows = data.partners || [];
+                    if (!rows.length) {
+                        el.innerHTML = '<div style="padding:24px;text-align:center;color:#555;font-size:14px;border:1px solid rgba(245,158,11,.15);border-radius:10px;"><i class="fas fa-check-circle" style="color:#22c55e;font-size:24px;display:block;margin-bottom:8px;"></i>Aucun lien externe dans les profils prestataires</div>';
+                        return;
+                    }
+                    var esc = function(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+                    var html = '<div style="font-size:12px;color:#f59e0b;font-weight:800;margin-bottom:12px;">' + data.partnersAffected + ' prestataire(s) concerné(s) — ' + data.findingsTotal + ' contenu(s) masqué(s)</div>';
+                    rows.forEach(function(p) {
+                        html += '<div style="background:#0d0d0d;border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:14px 18px;margin-bottom:10px;">';
+                        html += '<div style="font-weight:900;font-size:13px;color:#e0e0e0;">' + esc(p.name || p.email) + ' <span style="font-size:11px;color:#666;font-weight:600;">' + esc(p.email) + '</span></div>';
+                        p.findings.forEach(function(f) {
+                            var label = _EXT_LINK_FIELD_LABELS[f.field] || (f.field.indexOf('social_') === 0 ? 'Réseau social (' + f.field.slice(7) + ')' : f.field);
+                            html += '<div style="display:flex;gap:10px;margin-top:8px;font-size:11px;align-items:baseline;flex-wrap:wrap;">'
+                                + '<span style="color:#f59e0b;font-weight:800;min-width:170px;">' + esc(label) + '</span>'
+                                + '<span style="color:#aaa;font-family:monospace;word-break:break-all;flex:1;min-width:200px;">' + esc(String(f.value).slice(0, 300)) + '</span></div>';
+                        });
+                        html += '</div>';
+                    });
+                    el.innerHTML = html;
+                }).catch(function() {
+                    el.innerHTML = '<div style="color:#f03e3e;padding:12px;">Impossible de charger l\'audit des liens.</div>';
+                });
         }
 
         function _loadModerationAccounts() {

@@ -1296,9 +1296,6 @@ a{text-decoration:none;color:inherit}
 .ptnr-pf-video-card i{font-size:30px;color:#FFD700;filter:drop-shadow(0 0 10px rgba(255,215,0,.5))}
 .ptnr-pf-video-card span{font-size:8px;color:#666;text-align:center;padding:0 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 /* Video URL input popup */
-#ptnr-pf-video-popup{display:none;position:fixed;inset:0;z-index:9900;background:rgba(0,0,0,.82);align-items:flex-end;justify-content:center}
-#ptnr-pf-video-popup.on{display:flex}
-.ptnr-pf-video-popup-sheet{background:#111;border:1.5px solid #FFD700;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 36px}
 .ptnr-pf-save-msg{font-size:12px;font-weight:700;text-align:center;margin-bottom:8px;min-height:16px}
 
 /* ═══════════════════════════════════════════════════
@@ -2549,15 +2546,19 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261030a"></script>
-<script src="app-i18n-es.js?v=20261030a"></script>
-<script src="app-i18n-hi.js?v=20261030a"></script>
-<script src="app-i18n-pt.js?v=20261030a"></script>
-<script src="app-i18n-ja.js?v=20261030a"></script>
-<script src="app-i18n-zh.js?v=20261030a"></script>
-<script src="app-i18n-ar.js?v=20261030a"></script>
-<script src="app-i18n-it.js?v=20261030a"></script>
-<script src="app-i18n-de.js?v=20261030a"></script>
+<script src="app-i18n-en.js?v=20261030b"></script>
+<script src="app-i18n-es.js?v=20261030b"></script>
+<script src="app-i18n-hi.js?v=20261030b"></script>
+<script src="app-i18n-pt.js?v=20261030b"></script>
+<script src="app-i18n-ja.js?v=20261030b"></script>
+<script src="app-i18n-zh.js?v=20261030b"></script>
+<script src="app-i18n-ar.js?v=20261030b"></script>
+<script src="app-i18n-it.js?v=20261030b"></script>
+<script src="app-i18n-de.js?v=20261030b"></script>
+<!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
+     pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
+     charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
+<script src="server/link-guard.js?v=20261030a"></script>
 </head>
 <body>
 
@@ -3566,11 +3567,11 @@ function _genesisVersionFooter(){
             <button type="button" class="ptnr-pf-add-btn" onclick="if(_ptnrPfCanAdd())document.getElementById('ptnr-pf-file-input').click()">
               <i class="fa-solid fa-camera"></i>Photos
             </button>
-            <button type="button" class="ptnr-pf-add-btn" onclick="_ptnrPfOpenVideoPopup()">
-              <i class="fa-solid fa-circle-play"></i>Vidéo / lien
+            <button type="button" class="ptnr-pf-add-btn" onclick="if(_ptnrPfCanAdd())document.getElementById('ptnr-pf-video-file-input').click()">
+              <i class="fa-solid fa-circle-play"></i>Vidéo
             </button>
           </div>
-          <div id="ptnr-pf-count" style="font-size:11px;color:#888;margin:-4px 0 12px;line-height:1.5;">Jusqu'à 5 médias (photos, vidéos ou liens).</div>
+          <div id="ptnr-pf-count" style="font-size:11px;color:#888;margin:-4px 0 12px;line-height:1.5;">Jusqu'à 5 médias (photos ou vidéos).</div>
           <input type="file" id="ptnr-pf-file-input" accept="image/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
           <input type="file" id="ptnr-pf-video-file-input" accept="video/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
           <!-- Grille -->
@@ -3580,31 +3581,6 @@ function _genesisVersionFooter(){
           <button class="ptnr-login-btn" id="ptnr-pf-save-btn" onclick="_ptnrPfSave()" style="margin-top:0;">
             <i class="fa-solid fa-floppy-disk"></i> Enregistrer le portfolio
           </button>
-        </div>
-
-        <!-- Popup ajout vidéo -->
-        <div id="ptnr-pf-video-popup" onclick="if(event.target===this)_ptnrPfCloseVideoPopup()">
-          <div class="ptnr-pf-video-popup-sheet">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-              <div style="font-size:13px;font-weight:900;color:#FFD700;font-family:'Unbounded',sans-serif;"><i class="fa-solid fa-circle-play"></i> Ajouter une vidéo</div>
-              <button onclick="_ptnrPfCloseVideoPopup()" style="background:none;border:none;color:#555;font-size:18px;cursor:pointer;padding:0;"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <!-- Upload depuis la galerie -->
-            <button type="button" class="ptnr-login-btn" onclick="document.getElementById('ptnr-pf-video-file-input').click()" style="margin-top:0;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#1a1200,#0d0d0d);border-color:rgba(255,215,0,.4);">
-              <i class="fa-solid fa-photo-film" style="font-size:16px;"></i>
-              Choisir depuis ma galerie / fichiers
-            </button>
-            <!-- Séparateur -->
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-              <div style="flex:1;height:1px;background:#1e1e1e;"></div>
-              <span style="font-size:10px;color:#333;font-weight:700;letter-spacing:1px;">OU COLLER UN LIEN</span>
-              <div style="flex:1;height:1px;background:#1e1e1e;"></div>
-            </div>
-            <input type="url" class="ptnr-input" id="ptnr-pf-video-url" placeholder="Lien YouTube, Vimeo, Instagram…" style="margin-bottom:6px;" oninput="_ptnrPfOnVideoUrlInput()">
-            <div id="ptnr-pf-video-preview" style="margin-bottom:8px;"></div>
-            <input type="text" class="ptnr-input" id="ptnr-pf-video-caption" placeholder="Légende (optionnel)" style="margin-bottom:14px;">
-            <button class="ptnr-login-btn" onclick="_ptnrPfAddVideo()" style="margin-top:0;">Ajouter le lien</button>
-          </div>
         </div>
 
         <!-- Sub-screen: Profil (hub dynamique) -->
@@ -6952,7 +6928,6 @@ function openPartnerDetail(partnerId){
       var constellationHtml = constellationBadgeHtml(p.constellation);
       var distinctionHtml = _partnerDistinctionBadges(p.distinctions || []);
       var responseLabel = partnerResponseLabel(p);
-      var social = p.social || {};
 
       // ── HERO cinématographique ──
       var heroBg = p.photo ? 'background-image:url('+p.photo+')' : 'background:#111';
@@ -6999,23 +6974,16 @@ function openPartnerDetail(partnerId){
       // ── Bio ──
       var bioHtml = p.bio ? '<div class="pf-bio">'+p.bio+'</div>' : '';
 
-      // ── Social ──
-      var socialLinks = [];
-      if(social.instagram) socialLinks.push('<a href="'+social.instagram+'" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>');
-      if(social.facebook) socialLinks.push('<a href="'+social.facebook+'" target="_blank" rel="noopener"><i class="fab fa-facebook"></i></a>');
-      if(social.linkedin) socialLinks.push('<a href="'+social.linkedin+'" target="_blank" rel="noopener"><i class="fab fa-linkedin"></i></a>');
-      if(social.tiktok) socialLinks.push('<a href="'+social.tiktok+'" target="_blank" rel="noopener"><i class="fab fa-tiktok"></i></a>');
-      if(social.website) socialLinks.push('<a href="'+social.website+'" target="_blank" rel="noopener"><i class="fas fa-globe"></i></a>');
-      var socialHtml = socialLinks.length ? '<div class="pf-social">'+socialLinks.join('')+'</div>' : '';
+      // Liens réseaux sociaux / site perso : plus affichés (la mise en relation passe par la
+      // messagerie GENESIS) — le serveur ne les envoie d'ailleurs plus.
 
-      // ── Portfolio bento ── (5 médias max, déjà limité par le serveur ; slice défensif pour
-      // un profil resté en cache d'avant la limite)
-      var portfolio = (p.portfolio || []).slice(0, 5);
+      // ── Portfolio bento ── (5 médias max, déjà limité par le serveur ; filtre + slice défensifs
+      // pour un profil resté en cache d'avant ces règles). Les liens externes ('video') ne sont
+      // plus affichés : uniquement les photos et vidéos du prestataire.
+      var portfolio = (p.portfolio || []).filter(function(it){ return it && it.type !== 'video'; }).slice(0, 5);
       var portfolioHtml = '';
       if(portfolio.length){
-        // Les items propres au prestataire (photo / vidéo uploadée) s'ouvrent dans la liseuse
-        // plein écran (_pfOpenLightbox) — un lien 'video' (Instagram/YouTube externe) reste un
-        // lien classique, rien à afficher en plein écran dans l'app pour ça.
+        // Photos et vidéos s'ouvrent dans la liseuse plein écran (_pfOpenLightbox), sans quitter l'app.
         _pfLightboxItems = portfolio;
         portfolioHtml = '<div class="pf-sec"><i class="fa-solid fa-images"></i> Portfolio</div>'
           + '<div class="p-dir-pf-bento">'
@@ -7027,16 +6995,6 @@ function openPartnerDetail(partnerId){
                   + '<video src="'+item.url+'" autoplay muted loop playsinline></video>'
                   + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
                 + '</div>';
-              }
-              if(item.type === 'video'){
-                var thumbContent = item.thumb
-                  ? '<img class="p-dir-pf-link-thumb" src="'+item.thumb+'" alt="" loading="lazy">'
-                  : '';
-                return '<a class="p-dir-pf-item p-dir-pf-video'+extraCls+'" href="'+item.url+'" target="_blank" rel="noopener">'
-                  + thumbContent
-                  + '<div class="p-dir-pf-play"><i class="fa-solid fa-circle-play"></i></div>'
-                  + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
-                + '</a>';
               }
               return '<div class="p-dir-pf-item'+extraCls+'" onclick="_pfOpenLightbox('+i+')">'
                 + '<img src="'+item.url+'" alt="'+(item.caption||'')+'" loading="lazy">'
@@ -7082,7 +7040,6 @@ function openPartnerDetail(partnerId){
           + '<div class="pf-sec"><i class="fa-solid fa-bolt"></i> Prestations</div>'
           + servicesHtml
           + (bioHtml ? '<div class="pf-sec" style="margin-top:18px;"><i class="fa-solid fa-user"></i> À propos</div>' + bioHtml : '')
-          + socialHtml
           + portfolioHtml
           + '<div class="pf-sec" style="margin-top:22px;"><i class="fa-solid fa-star"></i> Avis clients</div>'
           + '<ul class="pf-reviews">'+reviewsHtml+'</ul>'
@@ -20789,7 +20746,10 @@ function _ptnrDeletePromo(promoId){
 
 // ── PORTFOLIO PARTENAIRE ──
 var _ptnrPfItems = [];
-// Limite de 5 médias (photos, vidéos, liens) — appliquée aussi côté serveur (PUT /api/partner/portfolio).
+// Limite de 5 médias (photos, vidéos) — appliquée aussi côté serveur (PUT /api/partner/portfolio).
+// Plus d'ajout de lien externe (Instagram, YouTube, site…) : les réalisations se présentent sur
+// GENESIS. Les liens enregistrés avant cette règle (type 'video') restent dans la liste du
+// prestataire, marqués « Lien masqué » (invisibles pour les clients), pour qu'il les supprime.
 var PTNR_PF_MAX = 5;
 function _ptnrPfCanAdd(){
   if(_ptnrPfItems.length < PTNR_PF_MAX) return true;
@@ -20806,7 +20766,7 @@ function _ptnrPfRenderCount(){
       el.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="margin-right:5px;"></i><strong>'+n+'</strong> <span>médias : seuls les 5 premiers sont visibles par les clients. Supprimez-en jusqu\'à n\'en garder que 5.</span>';
     } else {
       el.style.color = full ? '#FFD700' : '#888';
-      el.innerHTML = '<strong>'+n+' / '+PTNR_PF_MAX+'</strong> <span>'+(full ? 'médias — limite atteinte. Supprimez-en un pour en ajouter un autre.' : 'médias (photos, vidéos ou liens).')+'</span>';
+      el.innerHTML = '<strong>'+n+' / '+PTNR_PF_MAX+'</strong> <span>'+(full ? 'médias — limite atteinte. Supprimez-en un pour en ajouter un autre.' : 'médias (photos ou vidéos).')+'</span>';
     }
   }
   document.querySelectorAll('#ptnr-screen-portfolio .ptnr-pf-add-btn').forEach(function(b){
@@ -20830,7 +20790,11 @@ function _ptnrPfRender(){
     grid.innerHTML = '<div style="grid-column:span 2;text-align:center;color:#333;font-size:12px;padding:28px 0;border:1.5px dashed #1e1e1e;border-radius:14px;"><i class="fa-solid fa-images" style="font-size:28px;color:#2a2a2a;display:block;margin-bottom:8px;"></i>Aucun média pour le moment</div>';
     return;
   }
-  grid.innerHTML = _ptnrPfItems.map(function(item, idx){
+  var hasHiddenLinks = _ptnrPfItems.some(function(it){ return it && it.type === 'video'; });
+  var hiddenNotice = hasHiddenLinks
+    ? '<div style="grid-column:span 2;font-size:11px;line-height:1.5;color:#f59e0b;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:10px 12px;"><i class="fa-solid fa-eye-slash" style="margin-right:6px;"></i><span>Les liens externes ne sont plus visibles par les clients. Supprimez-les et ajoutez vos photos et vidéos directement sur GENESIS.</span></div>'
+    : '';
+  grid.innerHTML = hiddenNotice + _ptnrPfItems.map(function(item, idx){
     if(item.type === 'video_upload'){
       return '<div class="ptnr-pf-item" data-pf-idx="'+idx+'">'
         + '<video src="'+item.url+'" muted style="width:100%;height:100%;object-fit:cover;border-radius:10px;"></video>'
@@ -20838,11 +20802,12 @@ function _ptnrPfRender(){
       + '</div>';
     }
     if(item.type === 'video'){
-      var thumbEl = item.thumb ? '<img src="'+item.thumb+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">' : '';
+      // Lien externe enregistré avant la règle anti-liens : masqué aux clients, supprimable ici.
+      var thumbEl = item.thumb ? '<img src="'+item.thumb+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;opacity:.35;filter:grayscale(1);">' : '';
       return '<div class="ptnr-pf-item ptnr-pf-video-card" data-pf-idx="'+idx+'">'
         + thumbEl
-        + '<i class="fa-solid fa-circle-play" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:28px;color:#fff;pointer-events:none;"></i>'
-        + '<div class="ptnr-pf-overlay"><span class="ptnr-pf-type-badge"><i class="fa-solid fa-circle-play"></i> Lien vidéo</span><button class="ptnr-pf-del" type="button" onclick="event.stopPropagation();_ptnrPfDelete('+idx+')"><i class="fa-solid fa-trash-can"></i></button></div>'
+        + '<i class="fa-solid fa-eye-slash" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#f59e0b;pointer-events:none;"></i>'
+        + '<div class="ptnr-pf-overlay"><span class="ptnr-pf-type-badge" style="color:#f59e0b;"><i class="fa-solid fa-eye-slash"></i> Lien masqué</span><button class="ptnr-pf-del" type="button" onclick="event.stopPropagation();_ptnrPfDelete('+idx+')"><i class="fa-solid fa-trash-can"></i></button></div>'
       + '</div>';
     }
     return '<div class="ptnr-pf-item" data-pf-idx="'+idx+'">'
@@ -20854,8 +20819,6 @@ function _ptnrPfRender(){
 function _ptnrPfOnPhotosSelected(input){
   var files = Array.prototype.slice.call(input.files || []);
   if(!files.length) return;
-  var isVideoInput = input.id === 'ptnr-pf-video-file-input';
-  if(isVideoInput) _ptnrPfCloseVideoPopup();
   input.value = '';
   var remaining = PTNR_PF_MAX - _ptnrPfItems.length;
   if(remaining <= 0){ _ptnrPfCanAdd(); return; }
@@ -20903,87 +20866,6 @@ function _ptnrPfProcessFilesQueue(files, idx, results){
       _ptnrPfProcessFilesQueue(files, idx+1, results);
     });
   }
-}
-function _ptnrPfOpenVideoPopup(){
-  if(!_ptnrPfCanAdd()) return;
-  var p = document.getElementById('ptnr-pf-video-popup');
-  var u = document.getElementById('ptnr-pf-video-url');
-  var c = document.getElementById('ptnr-pf-video-caption');
-  var prev = document.getElementById('ptnr-pf-video-preview');
-  if(u) u.value = '';
-  if(c) c.value = '';
-  if(prev) prev.innerHTML = '';
-  if(p){ p.className = 'on'; if(u) setTimeout(function(){ u.focus(); }, 80); }
-}
-function _ptnrPfCloseVideoPopup(){
-  var p = document.getElementById('ptnr-pf-video-popup');
-  if(p) p.className = '';
-}
-var _ptnrPfPendingThumb = '';
-function _ptnrPfExtractThumbSync(url){
-  // YouTube : synchrone, URL directe
-  var ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-  if(ytMatch) return 'https://img.youtube.com/vi/'+ytMatch[1]+'/hqdefault.jpg';
-  return null;
-}
-function _ptnrPfFetchThumbAsync(url, cb){
-  // Vimeo : API publique, pas d'auth nécessaire
-  var vmMatch = url.match(/vimeo\.com\/(\d+)/);
-  if(vmMatch){
-    fetch('https://vimeo.com/api/v2/video/'+vmMatch[1]+'.json')
-      .then(function(r){return r.ok?r.json():null;})
-      .then(function(d){cb(d&&d[0]&&d[0].thumbnail_large?d[0].thumbnail_large:null);})
-      .catch(function(){cb(null);});
-    return;
-  }
-  // Dailymotion : API publique
-  var dmMatch = url.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
-  if(dmMatch){
-    fetch('https://api.dailymotion.com/video/'+dmMatch[1]+'?fields=thumbnail_720_url')
-      .then(function(r){return r.ok?r.json():null;})
-      .then(function(d){cb(d&&d.thumbnail_720_url?d.thumbnail_720_url:null);})
-      .catch(function(){cb(null);});
-    return;
-  }
-  // Tout le reste (Instagram, TikTok…) : extraction og:image côté serveur
-  _ptnrFetch('/api/partner/fetch-link-thumb','POST',{url:url})
-    .then(function(data){cb(data&&data.thumb?data.thumb:null);})
-    .catch(function(){cb(null);});
-}
-function _ptnrPfOnVideoUrlInput(){
-  var urlEl = document.getElementById('ptnr-pf-video-url');
-  var prev = document.getElementById('ptnr-pf-video-preview');
-  if(!urlEl||!prev) return;
-  var url = urlEl.value.trim();
-  _ptnrPfPendingThumb = '';
-  if(!url){prev.innerHTML='';return;}
-  // Essai synchrone (YouTube)
-  var syncThumb = _ptnrPfExtractThumbSync(url);
-  if(syncThumb){
-    _ptnrPfPendingThumb = syncThumb;
-    prev.innerHTML = '<img src="'+syncThumb+'" alt="Aperçu" style="width:100%;border-radius:10px;margin-top:10px;border:1px solid #222;">';
-    return;
-  }
-  // Chargement asynchrone pour les autres plateformes
-  prev.innerHTML = '<div style="font-size:11px;color:#666;margin-top:8px;"><i class="fa-solid fa-spinner fa-spin"></i> Chargement de l\'aperçu…</div>';
-  _ptnrPfFetchThumbAsync(url, function(thumb){
-    if(urlEl.value.trim()!==url) return; // URL changée entre-temps
-    _ptnrPfPendingThumb = thumb||'';
-    prev.innerHTML = thumb
-      ? '<img src="'+thumb+'" alt="Aperçu" style="width:100%;border-radius:10px;margin-top:10px;border:1px solid #222;">'
-      : '<div style="font-size:11px;color:#444;margin-top:8px;"><i class="fa-solid fa-circle-info"></i> Aperçu non disponible pour ce lien</div>';
-  });
-}
-function _ptnrPfAddVideo(){
-  var urlEl = document.getElementById('ptnr-pf-video-url');
-  var capEl = document.getElementById('ptnr-pf-video-caption');
-  var url = urlEl ? urlEl.value.trim() : '';
-  if(!url){if(urlEl) urlEl.focus();return;}
-  if(!_ptnrPfCanAdd()){ _ptnrPfCloseVideoPopup(); return; }
-  var thumb = _ptnrPfPendingThumb || _ptnrPfExtractThumbSync(url) || '';
-  _ptnrPfItems.push({id:'PF-'+Math.random().toString(36).slice(2,8),type:'video',url:url,caption:capEl?capEl.value.trim():'',thumb:thumb});
-  _ptnrPfRender();
-  _ptnrPfCloseVideoPopup();
 }
 function _ptnrPfDelete(idx){
   _ptnrPfItems.splice(idx, 1);
@@ -22452,6 +22334,28 @@ function _ptnrSaveServices(){
   var services = _ptnrSvcAudiences.reduce(function(acc, audience){
     return acc.concat(_ptnrCollectServiceItems(audience));
   }, []);
+  // Pas de lien externe ni de coordonnées dans la présentation publique d'une prestation (même
+  // règle que le serveur, server/link-guard.js). Un texte déjà enregistré avant cette règle et
+  // non modifié reste accepté, comme côté serveur (il est seulement masqué aux clients).
+  if(window.LinkGuard){
+    for(var _lgI=0; _lgI<services.length; _lgI++){
+      var _lgSvc = services[_lgI];
+      var _lgPrev = ((_ptnrSession && _ptnrSession.services) || []).filter(function(ps){ return ps && _lgSvc.id && ps.id === _lgSvc.id; })[0] || null;
+      var _lgTexts = [_lgSvc.label].concat(_lgSvc.features || []);
+      for(var _lgJ=0; _lgJ<_lgTexts.length; _lgJ++){
+        var _lgTxt = _lgTexts[_lgJ];
+        var _lgUnchanged = _lgPrev && (_lgPrev.label === _lgTxt || (_lgPrev.features || []).indexOf(_lgTxt) !== -1);
+        var _lgKind = _lgUnchanged ? null : LinkGuard.check(_lgTxt);
+        if(_lgKind){
+          document.querySelectorAll('.ptnr-svc-label, .ptnr-svc-feature-input').forEach(function(el){
+            if(el.value.trim() === _lgTxt){ el.style.borderBottomColor = '#ef4444'; el.addEventListener('input', function(){ el.style.borderBottomColor = ''; }, { once:true }); }
+          });
+          if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=LinkGuard.messageFor(_lgKind); msgEl.className='ptnr-login-err on'; }
+          return;
+        }
+      }
+    }
+  }
   // Guard : prévenir une sauvegarde accidentelle avec 0 prestations
   if(services.length === 0){
     if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Aucune prestation à enregistrer. Ajoutez au moins une prestation avec un prix avant de sauvegarder.'; msgEl.className='ptnr-login-err on'; }

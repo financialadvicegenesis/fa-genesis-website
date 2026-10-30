@@ -29,6 +29,8 @@ const scp = require('./services/stripe-connect-provider');
 const payoutRouting = require('./services/payout-routing-service');
 const payoneerProvider = require('./services/payoneer-provider');
 const persistentStore = require('./persistent-store');
+// Détecteur de liens externes / coordonnées, partagé avec app.html (mêmes règles des deux côtés).
+const LinkGuard = require('./link-guard');
 const webpush = require('web-push');
 
 // Firebase Admin SDK — optionnel ; utilisé pour les push FCM vers l'app Android native.
@@ -13765,7 +13767,7 @@ app.get('/api/partner/peers', authenticatePartner, function(req, res) {
                 email:             p.email || '',
                 photo:             p.photo || null,
                 city:              p.city || '',
-                bio:               (p.bio || '').slice(0, 120),
+                bio:               publicText(p.bio || '').slice(0, 120),
                 partner_type:      p.partner_type || '',
                 badge:             badge,
                 founderBadge:      p.founderBadge || false,
@@ -15004,6 +15006,16 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         if (index === -1) {
             return res.status(404).json({ error: 'Partenaire non trouve' });
         }
+        // Bio publique : aucun lien de redirection externe ni coordonnée (voir rejectExternalLink).
+        if (typeof bio === 'string' && rejectExternalLink(res, bio.trim(), partners[index].bio || '', 'bio')) return;
+        // Liens réseaux sociaux / site perso : on ne peut plus en AJOUTER ni en modifier (seulement
+        // les vider). Les liens déjà enregistrés restent en base, masqués côté client.
+        if (social && typeof social === 'object') {
+            const prevSocialCheck = partners[index].social || {};
+            const addsLink = ['instagram', 'facebook', 'linkedin', 'tiktok', 'website'].some(key =>
+                typeof social[key] === 'string' && social[key].trim() && social[key].trim() !== (prevSocialCheck[key] || ''));
+            if (addsLink) return res.status(400).json({ error: LinkGuard.MESSAGE_LINK, code: 'external_link', field: 'social' });
+        }
         if (prenom) partners[index].prenom = prenom;
         if (nom) partners[index].nom = nom;
         if (telephone) partners[index].telephone = telephone;
@@ -15066,9 +15078,22 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
             return res.status(400).json({ error: 'services doit etre un tableau' });
         }
         const cleaned = [];
+        const prevServices = (req.partner && req.partner.services) || [];
         for (const s of services) {
             if (!s || !s.label || typeof s.label !== 'string' || !s.label.trim()) {
                 return res.status(400).json({ error: 'Chaque prestation doit avoir un libelle' });
+            }
+            // Présentation publique de la prestation : aucun lien externe ni coordonnée. Un texte
+            // inchangé depuis avant cette règle reste accepté (il est masqué côté client).
+            const prevSvc = prevServices.find(ps => ps && s.id && ps.id === s.id) || {};
+            const prevFeatures = Array.isArray(prevSvc.features) ? prevSvc.features : [];
+            if (rejectExternalLink(res, s.label.trim(), prevSvc.label, 'service_label')) return;
+            if (typeof s.description === 'string' && rejectExternalLink(res, s.description.trim(), prevSvc.description, 'service_description')) return;
+            if (Array.isArray(s.features)) {
+                for (const f of s.features) {
+                    if (typeof f !== 'string' || !f.trim() || prevFeatures.indexOf(f.trim()) !== -1) continue;
+                    if (rejectExternalLink(res, f.trim(), null, 'service_feature')) return;
+                }
             }
             const isQuote = s.pricing_type === 'quote';
             const price = isQuote ? 0 : Number(s.price);
@@ -15119,78 +15144,36 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
     }
 });
 
-// Extraction de la miniature OG d'un lien externe (Instagram, TikTok, etc.)
-function fetchOgImage(rawUrl) {
-    return new Promise((resolve) => {
-        let parsed;
-        try { parsed = new URL(rawUrl); } catch { return resolve(null); }
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return resolve(null);
-        // Block private/loopback ranges (SSRF protection)
-        const h = parsed.hostname.toLowerCase();
-        if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)) return resolve(null);
-        const lib = parsed.protocol === 'https:' ? require('https') : require('http');
-        const options = {
-            hostname: parsed.hostname, port: parsed.port || undefined,
-            path: parsed.pathname + parsed.search, method: 'GET',
-            timeout: 6000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-                'Accept': 'text/html,application/xhtml+xml',
-                'Accept-Language': 'fr-FR,fr;q=0.9'
-            }
-        };
-        const req = lib.request(options, (r) => {
-            // Follow one redirect
-            if ([301,302,303,307,308].includes(r.statusCode) && r.headers.location) {
-                try {
-                    const redir = new URL(r.headers.location, rawUrl).href;
-                    return fetchOgImage(redir).then(resolve);
-                } catch { return resolve(null); }
-            }
-            if (r.statusCode !== 200) return resolve(null);
-            let body = '';
-            r.setEncoding('utf8');
-            r.on('data', chunk => { body += chunk; if (body.length > 300000) r.destroy(); });
-            r.on('end', () => {
-                const patterns = [
-                    /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i,
-                    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i,
-                    /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i,
-                    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i,
-                ];
-                for (const p of patterns) {
-                    const m = body.match(p);
-                    if (m && m[1] && m[1].startsWith('http')) return resolve(m[1]);
-                }
-                resolve(null);
-            });
-            r.on('error', () => resolve(null));
-        });
-        req.on('timeout', () => { req.destroy(); resolve(null); });
-        req.on('error', () => resolve(null));
-        req.end();
-    });
-}
-
-// Récupère la miniature OG d'un lien externe pour le portfolio
-app.post('/api/partner/fetch-link-thumb', authenticatePartner, async (req, res) => {
-    try {
-        const { url } = req.body;
-        if (!url || typeof url !== 'string' || url.length > 2000) return res.status(400).json({ error: 'url requis' });
-        const thumb = await fetchOgImage(url);
-        res.json({ success: !!thumb, thumb: thumb || '' });
-    } catch (e) {
-        res.json({ success: false, thumb: '' });
-    }
-});
-
 // Lister mon portfolio (partenaire connecté)
 app.get('/api/partner/portfolio', authenticatePartner, (req, res) => {
     res.json({ success: true, portfolio: req.partner.portfolio || [] });
 });
 
-// Portfolio limité à 5 médias (photos, vidéos, liens) par prestataire.
+// Portfolio limité à 5 médias (photos, vidéos) par prestataire.
 const PORTFOLIO_MAX_ITEMS = 5;
+
+// Textes PUBLICS des prestataires (bio, prestations, légendes du portfolio) : aucun lien de
+// redirection externe ni coordonnée, pour que la mise en relation reste sur GENESIS (voir
+// link-guard.js, mêmes règles que l'app). Un texte identique à celui déjà enregistré est accepté
+// tel quel : un prestataire qui avait un lien AVANT cette règle peut toujours enregistrer le reste
+// de son profil — ce lien est seulement masqué à l'affichage client (publicText), jamais effacé.
+function rejectExternalLink(res, value, previousValue, field) {
+    if (typeof value !== 'string' || !value) return false;
+    if (typeof previousValue === 'string' && value === previousValue.trim()) return false;
+    const kind = LinkGuard.check(value);
+    if (!kind) return false;
+    res.status(400).json({ error: LinkGuard.messageFor(kind), code: 'external_link', field: field });
+    return true;
+}
+// Version affichable aux clients : liens externes et coordonnées retirés (donnée intacte en base).
+function publicText(value) {
+    return typeof value === 'string' ? LinkGuard.redact(value) : (value || '');
+}
+// Un élément 'video' du portfolio = lien externe (YouTube, Instagram…) : type retiré, plus jamais
+// affiché aux clients. Les vidéos envoyées depuis le téléphone sont de type 'video_upload'.
+function isPortfolioExternalLink(item) {
+    return !!item && item.type === 'video';
+}
 
 // Remplacer mon portfolio (partenaire connecté)
 app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
@@ -15200,13 +15183,21 @@ app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
             return res.status(400).json({ error: 'portfolio doit etre un tableau' });
         }
         const cleaned = [];
+        const prevPortfolio = (req.partner && req.partner.portfolio) || [];
         for (const item of portfolio) {
             if (!item || (item.type !== 'photo' && item.type !== 'video' && item.type !== 'video_upload')) {
-                return res.status(400).json({ error: 'Chaque element doit avoir un type "photo", "video" ou "video_upload"' });
+                return res.status(400).json({ error: 'Chaque element doit avoir un type "photo" ou "video_upload"' });
             }
             if (!item.url || typeof item.url !== 'string' || !item.url.trim()) {
                 return res.status(400).json({ error: 'Chaque element doit avoir une url' });
             }
+            const prevItem = prevPortfolio.find(pi => pi && item.id && pi.id === item.id) || null;
+            // Plus d'ajout de lien externe. Un lien déjà enregistré (même id, même URL) est conservé
+            // tel quel pour ne rien perdre sans audit — masqué aux clients, supprimable par le prestataire.
+            if (isPortfolioExternalLink(item) && !(prevItem && isPortfolioExternalLink(prevItem) && prevItem.url === item.url.trim())) {
+                return res.status(400).json({ error: LinkGuard.MESSAGE_LINK, code: 'external_link', field: 'portfolio_link' });
+            }
+            if (typeof item.caption === 'string' && rejectExternalLink(res, item.caption.trim(), prevItem ? prevItem.caption : null, 'portfolio_caption')) return;
             cleaned.push({
                 id: item.id || ('PF-' + uuidv4().split('-')[0]),
                 type: item.type,
@@ -16860,12 +16851,12 @@ function buildPartnerContextForJeremie(message) {
             parts.push('missions réalisées : ' + getPartnerMissionsCompleted(p.id));
             if (badge) parts.push('badge ' + ({ bronze: 'Bronze', argent: 'Argent', or: 'Or', elite: 'Élite', fondateur: 'Fondateur' }[badge] || badge));
             if (resp !== null) parts.push('répond en ' + (resp >= 60 ? Math.round(resp / 60) + ' h' : resp + ' min') + ' environ');
-            parts.push('portfolio : ' + Math.min((p.portfolio || []).length, PORTFOLIO_MAX_ITEMS) + ' élément(s)');
+            parts.push('portfolio : ' + (p.portfolio || []).slice(0, PORTFOLIO_MAX_ITEMS).filter(function(it) { return !isPortfolioExternalLink(it); }).length + ' élément(s)');
             if (svcs.length) parts.push('prestations : ' + svcs.slice(0, 4).map(function(s) {
-                return s.label + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : s.price + ' €') + ')';
+                return (publicText(s.label) || 'Prestation') + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : s.price + ' €') + ')';
             }).join(', '));
             if (modes.length) parts.push('modes de paiement : ' + modes.join(', '));
-            if (p.bio) parts.push('présentation : ' + String(p.bio).replace(/\s+/g, ' ').substring(0, 160));
+            if (p.bio && publicText(p.bio)) parts.push('présentation : ' + publicText(String(p.bio)).replace(/\s+/g, ' ').substring(0, 160));
             lines.push('• ' + parts.join(' | '));
         });
 
@@ -17440,11 +17431,14 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 var isValidPrice = !isNaN(sPrice) && isFinite(sPrice) && sPrice > 0;
                 // pricing_type 'quote' uniquement si explicitement défini ET pas de prix valide
                 var pricingType = (s.pricing_type === 'quote' && !isValidPrice) ? 'quote' : (isValidPrice ? 'fixed' : 'quote');
-                return { id: s.id, label: s.label, description: s.description || '', price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features : [], audience: s.audience || 'particulier', image: s.image || '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
+                return { id: s.id, label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: s.image || '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
             });
+        // Liens externes masqués (photos et vidéos du prestataire uniquement) ; on garde la règle
+        // « 5 premiers » sur le portfolio enregistré, pour ne pas faire remonter un 6e média.
         const activePortfolio = (partner.portfolio || [])
             .slice(0, PORTFOLIO_MAX_ITEMS)
-            .map(item => ({ id: item.id, type: item.type, url: item.url, thumb: item.thumb || '', caption: item.caption || '' }));
+            .filter(item => !isPortfolioExternalLink(item))
+            .map(item => ({ id: item.id, type: item.type, url: item.url, thumb: item.thumb || '', caption: publicText(item.caption || '') }));
         const reviews = loadPartnerReviews()
             .filter(r => r.partnerId === partner.id && r.status === 'published')
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -17471,11 +17465,12 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 partner_type: partner.partner_type,
                 partner_type_other: partner.partner_type_other || '',
                 photo: partner.photo || null,
-                bio: partner.bio || '',
+                bio: publicText(partner.bio || ''),
                 city: partner.city || '',
                 country: partner.country || '',
                 serviceMode: partner.serviceMode || 'onsite',
-                social: partner.social || {},
+                // Liens réseaux sociaux / site perso : plus affichés aux clients (restent en base).
+                social: {},
                 fromPrice: fromPrice,
                 avgResponseMinutes: typeof partner.avgResponseMinutes === 'number' ? partner.avgResponseMinutes : null,
                 responseTimeCommitmentMinutes: typeof partner.responseTimeCommitmentMinutes === 'number' ? partner.responseTimeCommitmentMinutes : null,
@@ -17688,12 +17683,12 @@ app.get('/api/partners/promo-services', (req, res) => {
                             partner_type: p.type || null,
                             partner_rating: typeof p.rating === 'number' ? p.rating : null,
                             service_id: s.id,
-                            label: s.label,
-                            description: s.description || '',
+                            label: publicText(s.label) || 'Prestation',
+                            description: publicText(s.description || ''),
                             price: s.price,
                             pricing_type: s.pricing_type,
                             image: s.image || null,
-                            features: s.features || []
+                            features: (s.features || []).map(publicText).filter(Boolean)
                         });
                     });
             });
@@ -18561,7 +18556,7 @@ app.get('/api/my-requests', function(req, res) {
                 out.partner_photo = partner ? (partner.photo || null) : null;
                 out.partner_type = partner ? (partner.partner_type || null) : null;
                 out.partner_city = partner ? (partner.city || null) : null;
-                out.partner_bio = partner ? (partner.bio || null) : null;
+                out.partner_bio = partner ? (publicText(partner.bio || '') || null) : null;
                 out.partner_rating = partner ? getPartnerRatingSummary(partner.id) : null;
                 out.partner_badge = partner ? getPartnerBadge(partner) : null;
                 // Champs GENESIS SAFE™ Phase 3 : bloc de paiement différencié côté client
@@ -23941,6 +23936,58 @@ app.post('/api/admin/withdrawals/:id/mark-sent', function(req, res) {
 
         res.json({ ok: true, withdrawal: wdrs[idx] });
     } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * GET /api/admin/external-links-audit
+ * Audit en lecture seule des liens externes / coordonnées DÉJÀ enregistrés dans les profils
+ * prestataires (avant la règle anti-liens) : liens du portfolio, légendes, bio, prestations,
+ * réseaux sociaux. Rien n'est modifié : ces contenus sont seulement masqués aux clients
+ * (publicText / isPortfolioExternalLink), et restent supprimables par le prestataire.
+ */
+app.get('/api/admin/external-links-audit', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var rows = [];
+        loadPartners().forEach(function(p) {
+            var findings = [];
+            (p.portfolio || []).forEach(function(it, i) {
+                if (isPortfolioExternalLink(it)) findings.push({ field: 'portfolio_link', index: i, value: it.url || '' });
+                else if (it && it.caption && LinkGuard.check(it.caption)) findings.push({ field: 'portfolio_caption', index: i, value: it.caption });
+            });
+            if (p.bio && LinkGuard.check(p.bio)) findings.push({ field: 'bio', value: p.bio });
+            (p.services || []).forEach(function(s) {
+                if (!s) return;
+                if (s.label && LinkGuard.check(s.label)) findings.push({ field: 'service_label', serviceId: s.id, value: s.label });
+                if (s.description && LinkGuard.check(s.description)) findings.push({ field: 'service_description', serviceId: s.id, value: s.description });
+                (s.features || []).forEach(function(f) {
+                    if (typeof f === 'string' && LinkGuard.check(f)) findings.push({ field: 'service_feature', serviceId: s.id, value: f });
+                });
+            });
+            var social = p.social || {};
+            Object.keys(social).forEach(function(k) {
+                if (typeof social[k] === 'string' && social[k].trim()) findings.push({ field: 'social_' + k, value: social[k] });
+            });
+            if (findings.length) {
+                rows.push({
+                    partnerId: p.id,
+                    name: ((p.prenom || '') + ' ' + (p.nom || '')).trim(),
+                    email: p.email || '',
+                    accountStatus: p.accountStatus || '',
+                    findings: findings
+                });
+            }
+        });
+        rows.sort(function(a, b) { return b.findings.length - a.findings.length; });
+        res.json({
+            ok: true,
+            partnersAffected: rows.length,
+            findingsTotal: rows.reduce(function(n, r) { return n + r.findings.length; }, 0),
+            partners: rows
+        });
+    } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
