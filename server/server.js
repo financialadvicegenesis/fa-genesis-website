@@ -24061,6 +24061,109 @@ app.get('/api/admin/image-moderation', function(req, res) {
 });
 
 /**
+ * Analyse rétroactive des images publiées AVANT la modération automatique (pas de champ
+ * moderation / image_moderation). Lancée à la main depuis l'admin, tourne en arrière-plan une
+ * image à la fois. Règles :
+ *  - image douteuse (refus ou doute de l'analyse) → 'pending' : masquée et envoyée dans la file
+ *    humaine, JAMAIS refusée ni supprimée automatiquement (elle était en ligne jusqu'ici) ;
+ *  - image saine → 'approved' (ne sera plus réanalysée) ;
+ *  - analyse indisponible / en erreur → image laissée telle quelle (toujours publiée) : une panne
+ *    de l'OCR ne doit pas masquer tout le catalogue. 3 erreurs d'affilée → arrêt du traitement.
+ */
+var _imageRescan = { running: false, total: 0, done: 0, flagged: 0, approved: 0, errors: 0, skipped: 0, startedAt: null, finishedAt: null, aborted: null };
+function _legacyImageJobs() {
+    var jobs = [], skipped = 0;
+    loadPartners().forEach(function(p) {
+        (p.portfolio || []).forEach(function(it) {
+            if (!it || it.type !== 'photo' || it.moderation) return;
+            if (/^data:image\//i.test(it.url || '')) jobs.push({ partnerId: p.id, context: 'portfolio', itemId: it.id, url: it.url });
+            else skipped++;
+        });
+        (p.services || []).forEach(function(s) {
+            if (!s || !s.image || s.image_moderation) return;
+            if (/^data:image\//i.test(s.image)) jobs.push({ partnerId: p.id, context: 'service', itemId: s.id, url: s.image });
+            else skipped++;
+        });
+    });
+    return { jobs: jobs, skipped: skipped };
+}
+async function _runImageRescan(jobs) {
+    var consecutiveErrors = 0;
+    for (var i = 0; i < jobs.length; i++) {
+        var job = jobs[i];
+        try {
+            var snapshot = loadPartners().find(function(x) { return x.id === job.partnerId; });
+            if (!snapshot) { _imageRescan.done++; continue; }
+            var r = await imageModeration.analyzeImage(job.url, snapshot);
+            var failed = r.status === 'invalid' || (r.reasons || []).some(function(x) { return x.code === 'ocr_unavailable' || x.code === 'ocr_error' || x.code === 'disabled'; });
+            if (failed) {
+                _imageRescan.errors++;
+                consecutiveErrors++;
+                if (consecutiveErrors >= 3) { _imageRescan.aborted = 'Analyse indisponible sur le serveur : traitement arrêté, aucune image masquée par erreur.'; break; }
+            } else {
+                consecutiveErrors = 0;
+                // Relecture fraîche juste avant l'écriture : le prestataire a pu modifier son profil
+                // pendant l'analyse ; on n'écrit que si l'image est toujours la même et jamais analysée.
+                var partners = loadPartners();
+                var p = partners.find(function(x) { return x.id === job.partnerId; });
+                var target = null;
+                if (p && job.context === 'portfolio') {
+                    var it = (p.portfolio || []).find(function(x) { return x && x.id === job.itemId && x.url === job.url && !x.moderation; });
+                    if (it) target = function(m) { it.moderation = m; };
+                } else if (p && job.context === 'service') {
+                    var sv = (p.services || []).find(function(x) { return x && x.id === job.itemId && x.image === job.url && !x.image_moderation; });
+                    if (sv) target = function(m) { sv.image_moderation = m; };
+                }
+                if (target) {
+                    var flagged = r.status !== 'approved';
+                    target({
+                        status: flagged ? 'pending' : 'approved',
+                        reasons: r.reasons || [],
+                        text: flagged ? (r.text || '') : '',
+                        analyzedAt: r.analyzedAt,
+                        origin: 'rescan',
+                        autoVerdict: r.status
+                    });
+                    savePartners(partners);
+                    if (flagged) _imageRescan.flagged++; else _imageRescan.approved++;
+                }
+            }
+        } catch (e) {
+            _imageRescan.errors++;
+            console.error('[IMAGE-RESCAN] Erreur :', e.message);
+        }
+        _imageRescan.done++;
+        await new Promise(function(res) { setTimeout(res, 300); }); // laisse passer les requêtes de l'app
+    }
+    _imageRescan.running = false;
+    _imageRescan.finishedAt = new Date().toISOString();
+    console.log('[IMAGE-RESCAN] Terminé :', JSON.stringify(_imageRescan));
+    if (_imageRescan.flagged) {
+        notifyUser(null, 'admin', 'image_moderation', '🖼️ Analyse des anciennes images terminée',
+            _imageRescan.flagged + ' image(s) déjà publiée(s) masquée(s) en attente de votre vérification.', '/admin.html#open-contournement');
+    }
+}
+app.get('/api/admin/image-moderation/rescan', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+    var pending = _imageRescan.running ? null : _legacyImageJobs();
+    res.json(Object.assign({ ok: true, remaining: pending ? pending.jobs.length : null }, _imageRescan));
+});
+app.post('/api/admin/image-moderation/rescan', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        if (_imageRescan.running) return res.status(409).json({ error: 'Analyse déjà en cours' });
+        if (process.env.IMAGE_MODERATION_DISABLED === '1') return res.status(400).json({ error: 'La modération des images est désactivée (IMAGE_MODERATION_DISABLED) : analyse impossible.' });
+        var list = _legacyImageJobs();
+        _imageRescan = { running: list.jobs.length > 0, total: list.jobs.length, done: 0, flagged: 0, approved: 0, errors: 0, skipped: list.skipped,
+            startedAt: new Date().toISOString(), finishedAt: list.jobs.length ? null : new Date().toISOString(), aborted: null };
+        if (list.jobs.length) _runImageRescan(list.jobs).catch(function(e) { _imageRescan.running = false; _imageRescan.aborted = e.message; });
+        res.json(Object.assign({ ok: true }, _imageRescan));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
  * POST /api/admin/image-moderation/decide  { partnerId, context: 'portfolio'|'service', itemId, decision: 'approve'|'reject' }
  * Valide (l'image devient visible des clients) ou refuse (elle reste masquée, le prestataire est
  * prévenu et peut téléverser une version corrigée). L'image d'origine n'est jamais modifiée.

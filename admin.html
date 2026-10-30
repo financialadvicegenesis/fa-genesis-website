@@ -1563,6 +1563,10 @@
                 <div style="margin-bottom:32px;">
                     <h3 style="font-size:16px;font-weight:900;color:#e8467c;margin:0 0 10px;"><i class="fas fa-image mr-2"></i>IMAGES À VÉRIFIER</h3>
                     <div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Photos de portfolio et de prestations que l'analyse automatique (texte + QR codes, sur notre serveur) n'a pas pu trancher : site web, QR code, texte difficile à lire… Elles ne sont <strong>pas visibles des clients</strong> tant que vous n'avez pas décidé. Les images contenant clairement des coordonnées sont refusées automatiquement et n'arrivent pas ici.</div>
+                    <div style="background:#0d0d0d;border:1px dashed rgba(232,70,124,.35);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                        <button onclick="_startImageRescan()" id="imageRescanBtn" style="background:#e8467c;color:#fff;border:none;padding:9px 16px;font-weight:800;font-size:12px;border-radius:8px;cursor:pointer;"><i class="fas fa-magnifying-glass mr-1"></i>Analyser les images déjà publiées</button>
+                        <div id="imageRescanStatus" style="font-size:12px;color:#aaa;flex:1;min-width:220px;line-height:1.5;">Images publiées avant la modération automatique. Les images douteuses sont masquées et ajoutées ici pour votre décision — rien n'est supprimé.</div>
+                    </div>
                     <div id="imageModerationList" style="color:#e0e0e0;">
                         <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
                     </div>
@@ -6946,14 +6950,55 @@
             _loadModerationLog();
             _loadExternalLinksAudit();
             _loadImageModeration();
+            _pollImageRescan();
             _loadUserReports();
         }
 
         // File des images en attente (GET /api/admin/image-moderation, server/image-moderation.js).
         var _IMG_REASON_LABELS = {
             url: 'Site web', qr: 'QR code', low_confidence: 'Texte difficile à lire', contact_unclear: 'Numéro / e-mail',
-            mention: 'Mention d\'une messagerie', ocr_unavailable: 'Analyse indisponible', ocr_error: 'Analyse impossible'
+            mention: 'Mention d\'une messagerie', ocr_unavailable: 'Analyse indisponible', ocr_error: 'Analyse impossible',
+            identity: 'Identifiant du prestataire', social: 'Réseau social / messagerie', contact: 'Coordonnées'
         };
+        // Analyse rétroactive des images déjà publiées (POST/GET /api/admin/image-moderation/rescan).
+        var _imageRescanTimer = null;
+        function _renderImageRescan(st) {
+            var el = document.getElementById('imageRescanStatus');
+            var btn = document.getElementById('imageRescanBtn');
+            if (!el || !st) return;
+            if (btn) { btn.disabled = !!st.running; btn.style.opacity = st.running ? '.5' : ''; }
+            if (st.running) {
+                el.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Analyse en cours : ' + st.done + ' / ' + st.total + ' image(s) — ' + st.flagged + ' masquée(s) pour vérification.';
+            } else if (st.finishedAt) {
+                el.innerHTML = (st.aborted ? '<span style="color:#ef4444;font-weight:700;">' + st.aborted + '</span> ' : '<i class="fas fa-check-circle mr-1" style="color:#22c55e;"></i>Analyse terminée. ')
+                    + st.done + ' / ' + st.total + ' analysée(s) : ' + st.approved + ' conforme(s), <strong>' + st.flagged + ' à vérifier</strong>'
+                    + (st.errors ? ', ' + st.errors + ' erreur(s) (images laissées en ligne)' : '')
+                    + (st.skipped ? ', ' + st.skipped + ' ancienne(s) image(s) hébergée(s) ailleurs non analysable(s)' : '') + '.'
+                    + (st.remaining ? ' Reste ' + st.remaining + ' image(s) à analyser.' : '');
+            } else if (st.remaining != null) {
+                el.innerHTML = st.remaining ? (st.remaining + ' image(s) publiée(s) avant la modération automatique, pas encore analysée(s). Les images douteuses seront masquées et ajoutées ici pour votre décision — rien n\'est supprimé.') : 'Toutes les images publiées ont déjà été analysées.';
+                if (btn && !st.remaining) { btn.disabled = true; btn.style.opacity = '.5'; }
+            }
+        }
+        function _pollImageRescan() {
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/image-moderation/rescan', { headers: { 'Authorization': 'Bearer ' + tok } })
+                .then(function(r) { return r.json(); })
+                .then(function(st) {
+                    _renderImageRescan(st);
+                    if (_imageRescanTimer) { clearTimeout(_imageRescanTimer); _imageRescanTimer = null; }
+                    if (st.running) _imageRescanTimer = setTimeout(_pollImageRescan, 4000);
+                    else if (st.finishedAt) _loadImageModeration();
+                }).catch(function() {});
+        }
+        function _startImageRescan() {
+            if (!confirm('Analyser toutes les images publiées avant la modération automatique ? Les images douteuses seront masquées aux clients jusqu\'à votre décision. L\'analyse tourne en arrière-plan (quelques secondes par image).')) return;
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/image-moderation/rescan', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tok } })
+                .then(function(r) { return r.json(); })
+                .then(function(st) { if (st.error) { alert(st.error); return; } _renderImageRescan(st); _pollImageRescan(); })
+                .catch(function() { alert('Erreur réseau'); });
+        }
         function _loadImageModeration() {
             var el = document.getElementById('imageModerationList');
             if (!el) return;
@@ -6978,6 +7023,7 @@
                         html += '<img src="' + esc(it.image) + '" alt="" style="width:260px;max-width:100%;max-height:340px;object-fit:contain;background:#050505;border-radius:10px;border:1px solid #222;">';
                         html += '<div style="flex:1;min-width:220px;">';
                         html += '<div style="font-weight:900;font-size:13px;color:#e0e0e0;">' + esc(it.partnerName || it.email) + ' <span style="font-size:11px;color:#666;font-weight:600;">' + esc(it.email) + '</span></div>';
+                        if (m.origin === 'rescan') html += '<div style="display:inline-block;font-size:10px;font-weight:800;color:#f59e0b;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:2px 8px;margin-top:6px;">Déjà publiée — masquée par l\'analyse rétroactive' + (m.autoVerdict === 'blocked' ? ' (coordonnées probables)' : '') + '</div>';
                         html += '<div style="font-size:11px;color:#888;margin:4px 0 10px;">' + (it.context === 'service' ? 'Photo de prestation' + (it.serviceLabel ? ' « ' + esc(it.serviceLabel) + ' »' : '') : 'Portfolio') + (m.analyzedAt ? ' — ' + new Date(m.analyzedAt).toLocaleString('fr-FR') : '') + '</div>';
                         html += '<div>' + reasons + '</div>';
                         if (m.text) html += '<div style="font-size:11px;color:#777;background:#111;border-radius:6px;padding:8px 10px;font-family:monospace;margin:4px 0 10px;word-break:break-word;">Texte lu : ' + esc(m.text) + '</div>';
