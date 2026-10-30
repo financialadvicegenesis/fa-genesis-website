@@ -193,8 +193,10 @@ function _isAdminRequest(req) {
 // Detecte si un nom ressemble a une chaine aleatoire generee par un bot
 function isSpamName(name) {
     if (!name || name.length < 2) return false;
-    // Seuls les lettres, espaces, tirets et apostrophes sont autorises
-    if (!/^[a-zA-Z\u00C0-\u024F\-' ]+$/.test(name)) return true;
+    // Seuls les lettres, espaces, tirets et apostrophes sont autorises (y compris l'apostrophe
+    // typographique \u2019, en laquelle l'anti-injection convertit l'apostrophe droite \u2014 sinon
+    // \u00AB d'Arc \u00BB serait refus\u00E9 \u00E0 l'inscription)
+    if (!/^[a-zA-Z\u00C0-\u024F\-'\u2019 ]+$/.test(name)) return true;
     var words = name.trim().split(/[\s\-]+/);
     for (var wi = 0; wi < words.length; wi++) {
         var w = words[wi];
@@ -254,7 +256,30 @@ function generateSessionToken() {
 
 // JWT-first token helpers: tokens survive Render redeploys (verified via secret, no DB lookup)
 var _jwt = require('jsonwebtoken');
-var _JWT_SECRET = process.env.JWT_SECRET || 'fa-genesis-secret-key';
+// FAILLE CRITIQUE CORRIGÉE (2026-10-30) : le repli 'fa-genesis-secret-key' était écrit en clair
+// dans ce dépôt PUBLIC et JWT_SECRET n'était pas défini sur Render — n'importe qui pouvait
+// fabriquer un jeton { role: 'admin' } (vérifié sur la production) ou se faire passer pour
+// n'importe quel client/prestataire. Plus aucun secret dans le code : sans JWT_SECRET valide
+// (≥ 32 caractères), secret aléatoire propre à ce démarrage — sûr, mais toutes les sessions
+// sont perdues à chaque redémarrage tant que JWT_SECRET n'est pas défini sur Render.
+var _JWT_SECRET = process.env.JWT_SECRET;
+if (!_JWT_SECRET || _JWT_SECRET.length < 32 || _JWT_SECRET === 'fa-genesis-secret-key') {
+    _JWT_SECRET = require('crypto').randomBytes(48).toString('hex');
+    console.error('[SECURITE] JWT_SECRET absent ou trop faible : secret aléatoire temporaire utilisé. '
+        + 'Définissez JWT_SECRET (64 caractères aléatoires) sur Render pour garder les sessions entre deux redémarrages.');
+}
+
+// Jeton enregistré sur le compte (repli quand la signature ne se vérifie pas avec le secret
+// actuel — ex. secret aléatoire régénéré au redémarrage) : accepté seulement s'il s'agit d'un JWT
+// NON signé avec l'ancien secret public 'fa-genesis-secret-key' (dépôt GitHub public : tout jeton
+// signé avec lui est reproductible par n'importe qui) et jamais pour les anciens jetons non-JWT
+// (certains figurent dans l'historique public du dépôt). Toutes les sessions d'avant le
+// 2026-10-30 sont donc à rouvrir une fois.
+var _LEAKED_PUBLIC_JWT_SECRET = 'fa-genesis-secret-key';
+function _storedTokenAllowed(token) {
+    if (typeof token !== 'string' || token.split('.').length !== 3) return false;
+    try { _jwt.verify(token, _LEAKED_PUBLIC_JWT_SECRET, { ignoreExpiration: true }); return false; } catch (e) { return true; }
+}
 
 function findUserByToken(token) {
     if (!token) return null;
@@ -263,6 +288,7 @@ function findUserByToken(token) {
         if (decoded && decoded.id) return loadUsers().find(function(u) { return u.id === decoded.id; }) || null;
         if (decoded && decoded.email) return loadUsers().find(function(u) { return u.email === decoded.email.toLowerCase(); }) || null;
     } catch(e) {}
+    if (!_storedTokenAllowed(token)) return null;
     return loadUsers().find(function(u) { return u.sessionToken === token; }) || null;
 }
 
@@ -273,6 +299,7 @@ function findPartnerByToken(token) {
         if (decoded && decoded.id) return loadPartners().find(function(p) { return p.id === decoded.id; }) || null;
         if (decoded && decoded.email) return loadPartners().find(function(p) { return p.email === decoded.email.toLowerCase(); }) || null;
     } catch(e) {}
+    if (!_storedTokenAllowed(token)) return null;
     return loadPartners().find(function(p) { return p.sessionToken === token; }) || null;
 }
 
@@ -1796,6 +1823,107 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 
 // Parser JSON (limite augmentee pour supporter les fichiers base64)
 app.use(express.json({ limit: '50mb' }));
+
+// ── Anti-injection de code (XSS stockée) ──
+// FAILLE CORRIGÉE (2026-10-30, démontrée) : app.html et admin.html insèrent de nombreux textes
+// saisis par les utilisateurs (nom, libellé de prestation, bio, messages, avis…) directement
+// dans la page. Un prestataire pouvait écrire « <img src=x onerror=…> » dans une prestation :
+// le code s'exécutait chez chaque client ouvrant sa fiche (vol de session), ou chez l'admin.
+// Plutôt que de corriger des centaines d'affichages un par un, tout texte saisi par un
+// client/prestataire est neutralisé ICI, à l'entrée : < > ` \ retirés, guillemets et apostrophes
+// remplacés par leurs équivalents typographiques (” ’ — rendu identique en français), entités
+// HTML neutralisées. Exclus : mots de passe, e-mails, fichiers/images, identifiants, admin, webhooks.
+var _SANITIZE_SKIP_KEYS = /pass|pwd|^pin$|token|secret|signature(?!Name)|image|photo|logo|banner|thumb|url|uri|dataurl|^data$|file|attachment|html|email|iban|bic|rib|^code$|referral|^id$|Id$|_id$|^ids$|base64|certificate|cert|lang|locale|subscription|endpoint|keys|^p256dh$|^auth$/i;
+function sanitizeUserText(v) {
+    if (typeof v !== 'string' || !v) return v;
+    return v.replace(/[<>`\\]/g, '')
+        .replace(/"/g, '”')
+        .replace(/'/g, '’')
+        .replace(/&(?=#|apos|quot|lt|gt|amp)/gi, '＆');
+}
+function sanitizeBody(node, key, depth) {
+    if (depth > 8 || node == null) return node;
+    if (key && _SANITIZE_SKIP_KEYS.test(key)) return node;
+    if (typeof node === 'string') return sanitizeUserText(node);
+    if (Array.isArray(node)) { for (var i = 0; i < node.length; i++) node[i] = sanitizeBody(node[i], key, depth + 1); return node; }
+    if (typeof node === 'object') { Object.keys(node).forEach(function(k) { node[k] = sanitizeBody(node[k], k, depth + 1); }); }
+    return node;
+}
+// ── Limitation des tentatives de connexion (FAILLE CORRIGÉE 2026-10-30 : aucune limite —
+// un mot de passe pouvait être deviné par essais répétés, admin compris) ──
+// Échecs comptés par adresse IP et par e-mail sur 15 min ; au-delà → 429. Les réussites ne
+// comptent pas (un utilisateur qui se reconnecte normalement n'est jamais bloqué).
+var _AUTH_LIMITED_PATHS = { '/api/auth/login': 1, '/api/partner/auth/login': 1, '/api/admin/login': 1, '/api/auth/forgot-password': 1, '/api/partner/auth/forgot-password': 1 };
+var _authFails = {};
+var AUTH_WINDOW_MS = 15 * 60 * 1000, AUTH_MAX_PER_EMAIL = 8, AUTH_MAX_PER_IP = 30;
+function _authRecent(key, now) {
+    var list = (_authFails[key] || []).filter(function(t) { return now - t < AUTH_WINDOW_MS; });
+    if (list.length) _authFails[key] = list; else delete _authFails[key];
+    return list;
+}
+app.use(function(req, res, next) {
+    if (req.method !== 'POST' || !_AUTH_LIMITED_PATHS[req.path]) return next();
+    var ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'ip';
+    var email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
+    var now = Date.now();
+    var kIp = 'ip|' + ip + '|' + req.path, kEm = email ? 'em|' + email + '|' + req.path : null;
+    if (_authRecent(kIp, now).length >= AUTH_MAX_PER_IP || (kEm && _authRecent(kEm, now).length >= AUTH_MAX_PER_EMAIL)) {
+        return res.status(429).json({ error: 'Trop de tentatives. Réessayez dans 15 minutes.', code: 'too_many_attempts' });
+    }
+    res.on('finish', function() {
+        if (res.statusCode >= 400 && res.statusCode !== 429) {
+            (_authFails[kIp] = _authFails[kIp] || []).push(Date.now());
+            if (kEm) (_authFails[kEm] = _authFails[kEm] || []).push(Date.now());
+        }
+    });
+    next();
+});
+
+// Migration au démarrage : champs affichés aux autres (prestataires, clients, demandes).
+function sanitizeStoredUserText() {
+    var fixed = 0;
+    function clean(obj, fields) {
+        if (!obj) return;
+        fields.forEach(function(f) {
+            if (typeof obj[f] === 'string') { var v = sanitizeUserText(obj[f]); if (v !== obj[f]) { obj[f] = v; fixed++; } }
+        });
+    }
+    var partners = loadPartners();
+    var before = fixed;
+    partners.forEach(function(p) {
+        clean(p, ['prenom', 'nom', 'company', 'bio', 'city', 'interventionZone', 'partner_type_other']);
+        (p.services || []).forEach(function(s) {
+            clean(s, ['label', 'description']);
+            if (Array.isArray(s.features)) s.features = s.features.map(function(f) { var v = sanitizeUserText(f); if (v !== f) fixed++; return v; });
+        });
+        (p.portfolio || []).forEach(function(it) { clean(it, ['caption']); });
+    });
+    if (fixed > before) savePartners(partners);
+    var mark = fixed;
+    var users = loadUsers();
+    users.forEach(function(u) { clean(u, ['prenom', 'nom', 'profile_bio', 'company']); });
+    if (fixed > mark) saveUsers(users);
+    mark = fixed;
+    var requests = loadPartnerRequests();
+    requests.forEach(function(r) {
+        clean(r, ['client_name', 'description', 'budget_note', 'location', 'service_label']);
+        if (r.proposal) {
+            clean(r.proposal, ['notes']);
+            (r.proposal.items || []).forEach(function(it) { clean(it, ['label']); });
+        }
+    });
+    if (fixed > mark) savePartnerRequests(requests);
+    if (fixed) console.log('[SANITIZE] ' + fixed + ' texte(s) enregistré(s) neutralisé(s).');
+}
+
+app.use(function(req, res, next) {
+    try {
+        if (req.body && typeof req.body === 'object' && !/^\/api\/(admin|webhooks?)\b|webhook|\/paypal\/|\/stripe\//i.test(req.path)) {
+            sanitizeBody(req.body, null, 0);
+        }
+    } catch (e) { console.error('[SANITIZE] Erreur:', e.message); }
+    next();
+});
 
 // Logger les requetes
 app.use((req, res, next) => {
@@ -11579,7 +11707,7 @@ app.get('/api/orders', function(req, res) {
         if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
         var token = authHeader.slice(7).trim();
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = _storedTokenAllowed(token) ? users.find(function(u) { return u.sessionToken === token; }) : null;
         if (!user) return res.status(401).json({ error: 'Session invalide' });
 
         var orders = loadOrders().filter(function(o) {
@@ -11629,7 +11757,7 @@ app.get('/api/livrables', function(req, res) {
         if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
         var token = authHeader.slice(7).trim();
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = _storedTokenAllowed(token) ? users.find(function(u) { return u.sessionToken === token; }) : null;
         if (!user) return res.status(401).json({ error: 'Session invalide' });
 
         var orders = loadOrders().filter(function(o) {
@@ -11671,7 +11799,7 @@ app.delete('/api/account', function(req, res) {
         if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
         var token = authHeader.slice(7).trim();
         var users = loadUsers();
-        var userIdx = users.findIndex(function(u) { return u.sessionToken === token; });
+        var userIdx = _storedTokenAllowed(token) ? users.findIndex(function(u) { return u.sessionToken === token; }) : -1;
         if (userIdx === -1) return res.status(401).json({ error: 'Session invalide' });
 
         var deletedUser = users[userIdx];
@@ -18852,6 +18980,10 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
                 var livrablesForReq = orderForReq ? allLivrablesForPtnr.filter(function(l) { return l.order_id === orderForReq.id; }) : [];
                 var hasReviewForReq = !!(dispatchForReq && allReviewsForPtnr.some(function(rv) { return rv.dispatchId === dispatchForReq.id; }));
                 var out = JSON.parse(JSON.stringify(r));
+                // FAILLE CORRIGÉE (2026-10-30) : l'e-mail du client partait avec CHAQUE demande, même
+                // en attente et non payée — un prestataire pouvait le lire et contacter le client hors
+                // GENESIS. L'app prestataire ne s'en sert pas : retiré.
+                delete out.client_email;
                 out.dispatch_id = dispatchForReq ? dispatchForReq.id : null;
                 out.payment_tier = orderForReq ? (orderForReq.payment_tier || null) : null;
                 out.delivery_confirmed = orderForReq ? (!!orderForReq.delivery_confirmed) : false;
@@ -19005,6 +19137,12 @@ app.post('/api/partner/requests/:id/propose', authenticatePartner, function(req,
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ error: 'Au moins une ligne de proposition requise' });
         }
+        // FAILLE CORRIGÉE (2026-10-30) : texte libre envoyé au client sans aucun contrôle — un
+        // numéro, un @compte ou un site pouvaient y figurer. Même règle que le profil public.
+        for (var _pi = 0; _pi < items.length; _pi++) {
+            if (items[_pi] && rejectExternalLink(res, String(items[_pi].label || '').trim(), null, 'proposal_item')) return;
+        }
+        if (rejectExternalLink(res, notes.trim(), null, 'proposal_notes')) return;
         if (!totalPrice || totalPrice <= 0) {
             return res.status(400).json({ error: 'Le prix total doit être supérieur à 0' });
         }
@@ -22418,26 +22556,35 @@ app.use((err, req, res, next) => {
 // ============================================================
 // COMPTES DE TEST INTERNES (initialisation au démarrage)
 // ============================================================
+// FAILLE CORRIGÉE (2026-10-30) : les mots de passe de ces comptes étaient écrits en clair dans ce
+// dépôt PUBLIC — n'importe qui pouvait se connecter (dont le compte à 1 000 QG). Mot de passe lu
+// depuis TEST_ACCOUNTS_PASSWORD sur Render ; sans cette variable, mot de passe aléatoire inconnu
+// de tous (comptes verrouillés). Réappliqué à CHAQUE démarrage, y compris aux comptes existants.
 var TEST_ACCOUNTS_GENESIS = [
-    { email: 'test-createur@fagenesis.com',    password: 'TestCreateur2026!',    prenom: 'Test', nom: 'Createur',    referralBonusQG: 100  },
-    { email: 'test-batisseur@fagenesis.com',   password: 'TestBatisseur2026!',   prenom: 'Test', nom: 'Batisseur',   referralBonusQG: 300  },
-    { email: 'test-visionnaire@fagenesis.com', password: 'TestVisionnaire2026!', prenom: 'Test', nom: 'Visionnaire', referralBonusQG: 600  },
-    { email: 'test-generateur@fagenesis.com',  password: 'TestGenerateur2026!',  prenom: 'Test', nom: 'Generateur',  referralBonusQG: 1000 }
+    { email: 'test-createur@fagenesis.com',    prenom: 'Test', nom: 'Createur',    referralBonusQG: 100  },
+    { email: 'test-batisseur@fagenesis.com',   prenom: 'Test', nom: 'Batisseur',   referralBonusQG: 300  },
+    { email: 'test-visionnaire@fagenesis.com', prenom: 'Test', nom: 'Visionnaire', referralBonusQG: 600  },
+    { email: 'test-generateur@fagenesis.com',  prenom: 'Test', nom: 'Generateur',  referralBonusQG: 1000 }
 ];
 async function initTestAccounts() {
     try {
         var users = loadUsers();
         var dirty = false;
+        var _envPwd = process.env.TEST_ACCOUNTS_PASSWORD;
+        var testPassword = (_envPwd && _envPwd.length >= 12) ? _envPwd : require('crypto').randomBytes(24).toString('hex');
+        var testHash = await bcrypt.hash(testPassword, 10);
         for (var i = 0; i < TEST_ACCOUNTS_GENESIS.length; i++) {
             var acc = TEST_ACCOUNTS_GENESIS[i];
             var idx = users.findIndex(function(u) { return (u.email || '').toLowerCase() === acc.email; });
             if (idx !== -1) {
                 if (users[idx].referralBonusQG !== acc.referralBonusQG) {
                     users[idx].referralBonusQG = acc.referralBonusQG;
-                    dirty = true;
                 }
+                users[idx].password = testHash;
+                users[idx].sessionToken = null;
+                dirty = true;
             } else {
-                var hash = await bcrypt.hash(acc.password, 10);
+                var hash = testHash;
                 users.push({
                     id: 'USR-TEST-' + acc.nom.toUpperCase(),
                     prenom: acc.prenom, nom: acc.nom,
@@ -23479,6 +23626,10 @@ var httpServer = app.listen(PORT, async () => {
 
     // Nettoyer les faux comptes partenaires de demonstration crees par d'anciens demarrages
     await purgeSeedPartnerAccounts();
+
+    // Textes déjà enregistrés AVANT la neutralisation à l'entrée (voir sanitizeBody) : même
+    // traitement, une fois (idempotent), sur les champs affichés aux autres utilisateurs.
+    try { sanitizeStoredUserText(); } catch (e) { console.error('[SANITIZE] Migration impossible:', e.message); }
 
     // Comptes de test internes : uniquement en dehors de la production
     if (process.env.NODE_ENV !== 'production') {

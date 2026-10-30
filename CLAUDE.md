@@ -236,3 +236,15 @@ tiers. Verdicts : `blocked` (refus 400 `image_blocked`), `review` → stocké `m
   (mémoire Render saturée) : variable `IMAGE_MODERATION_DISABLED=1` → plus d'analyse.
 - File humaine : `GET /api/admin/image-moderation` + `POST .../decide` (admin.html › Modération).
 - Les vidéos (`video_upload`) ne sont PAS analysées (pas d'ffmpeg sur le serveur).
+
+## Sécurité serveur (audit du 2026-10-30) — ne pas défaire
+
+- **Aucun secret dans le code** (dépôt public) : `JWT_SECRET` doit être défini sur Render. Sans
+  lui, secret aléatoire par démarrage. Tout jeton signé avec l'ancien secret public
+  `'fa-genesis-secret-key'` est refusé, même enregistré sur le compte (`_storedTokenAllowed`).
+- **Anti-injection à l'entrée** : middleware `sanitizeBody` juste après `express.json` — tout texte
+  saisi par un client/prestataire perd `< > \` et voit `" '` remplacés par `” ’`. Une nouvelle
+  route qui a besoin du texte brut (mot de passe, fichier, identifiant…) doit avoir une clé
+  couverte par `_SANITIZE_SKIP_KEYS`, sinon sa valeur sera modifiée.
+- **Connexions limitées** (8 échecs / e-mail, 30 / IP, 15 min) : `_AUTH_LIMITED_PATHS`.
+- **Ne jamais renvoyer `client_email` / téléphone du client à un prestataire** avant paiement.
