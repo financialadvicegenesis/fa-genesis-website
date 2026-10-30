@@ -20778,14 +20778,18 @@ function _ptnrModerationChip(m){
   var color = pending ? '#f59e0b' : '#ef4444';
   return '<span style="position:absolute;top:6px;left:6px;z-index:2;font-size:9px;font-weight:800;color:'+color+';background:rgba(0,0,0,.78);border:1px solid '+color+'66;border-radius:6px;padding:2px 6px;pointer-events:none;"><i class="fa-solid '+(pending?'fa-hourglass-half':'fa-ban')+'" style="margin-right:4px;"></i><span>'+(pending?'En vérification':'Refusée')+'</span></span>';
 }
+// Médias comptant dans la limite de 5 : photos et vidéos, hors anciens liens masqués ('video').
+function _ptnrPfMediaCount(){
+  return _ptnrPfItems.filter(function(it){ return it && it.type !== 'video'; }).length;
+}
 function _ptnrPfCanAdd(){
-  if(_ptnrPfItems.length < PTNR_PF_MAX) return true;
+  if(_ptnrPfMediaCount() < PTNR_PF_MAX) return true;
   showToast('Portfolio complet', 'Votre portfolio est limité à '+PTNR_PF_MAX+' médias. Supprimez-en un pour en ajouter un autre.', 'warning');
   return false;
 }
 function _ptnrPfRenderCount(){
   var el = document.getElementById('ptnr-pf-count');
-  var n = _ptnrPfItems.length;
+  var n = _ptnrPfMediaCount();
   var full = n >= PTNR_PF_MAX;
   if(el){
     if(n > PTNR_PF_MAX){
@@ -20848,7 +20852,7 @@ function _ptnrPfOnPhotosSelected(input){
   var files = Array.prototype.slice.call(input.files || []);
   if(!files.length) return;
   input.value = '';
-  var remaining = PTNR_PF_MAX - _ptnrPfItems.length;
+  var remaining = PTNR_PF_MAX - _ptnrPfMediaCount();
   if(remaining <= 0){ _ptnrPfCanAdd(); return; }
   if(files.length > remaining){
     showToast('Limite de '+PTNR_PF_MAX+' médias', 'Seul'+(remaining>1?'s les '+remaining+' premiers fichiers seront ajoutés':' le premier fichier sera ajouté')+'.', 'warning');
@@ -20863,7 +20867,7 @@ function _ptnrPfOnPhotosSelected(input){
 function _ptnrPfProcessFilesQueue(files, idx, results){
   if(idx >= files.length){
     results.forEach(function(r){
-      if(!r || _ptnrPfItems.length >= PTNR_PF_MAX) return;
+      if(!r || _ptnrPfMediaCount() >= PTNR_PF_MAX) return;
       var _pfNew = { id: 'PF-' + Math.random().toString(36).slice(2,8), type: r.type, url: r.dataUri, caption: '' };
       if(r.moderation) _pfNew.moderation = r.moderation; // indicatif : le serveur recalcule toujours
       _ptnrPfItems.push(_pfNew);

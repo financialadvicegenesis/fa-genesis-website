@@ -15239,6 +15239,10 @@ function publicText(value) {
 function isPortfolioExternalLink(item) {
     return !!item && item.type === 'video';
 }
+// Nombre de médias comptant dans la limite de 5 (photos et vidéos, hors anciens liens masqués).
+function portfolioMediaCount(list) {
+    return (list || []).filter(function(it) { return it && !isPortfolioExternalLink(it); }).length;
+}
 
 // Remplacer mon portfolio (partenaire connecté)
 app.put('/api/partner/portfolio', authenticatePartner, async (req, res) => {
@@ -15250,7 +15254,9 @@ app.put('/api/partner/portfolio', authenticatePartner, async (req, res) => {
         const cleaned = [];
         const prevPortfolio = (req.partner && req.partner.portfolio) || [];
         // Limite vérifiée AVANT l'analyse des images (inutile de faire tourner l'OCR pour rien).
-        if (portfolio.length > PORTFOLIO_MAX_ITEMS && portfolio.length > prevPortfolio.length) {
+        // Seuls les vrais médias comptent : un ancien lien masqué (type 'video') n'occupe plus de
+        // place, sinon un prestataire n'ayant que des liens ne pourrait plus rien ajouter.
+        if (portfolioMediaCount(portfolio) > PORTFOLIO_MAX_ITEMS && portfolioMediaCount(portfolio) > portfolioMediaCount(prevPortfolio)) {
             return res.status(400).json({ error: 'Votre portfolio est limité à ' + PORTFOLIO_MAX_ITEMS + ' médias. Supprimez-en un pour en ajouter un autre.' });
         }
         let newPending = 0;
@@ -15299,8 +15305,8 @@ app.put('/api/partner/portfolio', authenticatePartner, async (req, res) => {
         // Refuser tout AJOUT au-delà de 5 médias. Un prestataire qui en avait déjà plus avant la
         // limite peut toujours enregistrer tant qu'il n'en ajoute pas (sinon il ne pourrait même
         // plus supprimer ses médias en trop) ; seuls ses 5 premiers sont montrés aux clients.
-        const previousCount = (partners[index].portfolio || []).length;
-        if (cleaned.length > PORTFOLIO_MAX_ITEMS && cleaned.length > previousCount) {
+        const previousCount = portfolioMediaCount(partners[index].portfolio || []);
+        if (portfolioMediaCount(cleaned) > PORTFOLIO_MAX_ITEMS && portfolioMediaCount(cleaned) > previousCount) {
             return res.status(400).json({ error: 'Votre portfolio est limité à ' + PORTFOLIO_MAX_ITEMS + ' médias. Supprimez-en un pour en ajouter un autre.' });
         }
         partners[index].portfolio = cleaned;
@@ -16937,7 +16943,7 @@ function buildPartnerContextForJeremie(message) {
             parts.push('missions réalisées : ' + getPartnerMissionsCompleted(p.id));
             if (badge) parts.push('badge ' + ({ bronze: 'Bronze', argent: 'Argent', or: 'Or', elite: 'Élite', fondateur: 'Fondateur' }[badge] || badge));
             if (resp !== null) parts.push('répond en ' + (resp >= 60 ? Math.round(resp / 60) + ' h' : resp + ' min') + ' environ');
-            parts.push('portfolio : ' + (p.portfolio || []).slice(0, PORTFOLIO_MAX_ITEMS).filter(function(it) { return !isPortfolioExternalLink(it) && imageIsPublic(it.moderation); }).length + ' élément(s)');
+            parts.push('portfolio : ' + (p.portfolio || []).filter(function(it) { return !isPortfolioExternalLink(it) && imageIsPublic(it.moderation); }).slice(0, PORTFOLIO_MAX_ITEMS).length + ' élément(s)');
             if (svcs.length) parts.push('prestations : ' + svcs.slice(0, 4).map(function(s) {
                 return (publicText(s.label) || 'Prestation') + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : s.price + ' €') + ')';
             }).join(', '));
@@ -17519,11 +17525,12 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 var pricingType = (s.pricing_type === 'quote' && !isValidPrice) ? 'quote' : (isValidPrice ? 'fixed' : 'quote');
                 return { id: s.id, label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: imageIsPublic(s.image_moderation) ? (s.image || '') : '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
             });
-        // Liens externes masqués (photos et vidéos du prestataire uniquement) ; on garde la règle
-        // « 5 premiers » sur le portfolio enregistré, pour ne pas faire remonter un 6e média.
+        // Liens externes et images non validées retirés D'ABORD, puis 5 médias max : un
+        // prestataire dont les 5 premiers éléments sont d'anciens liens doit quand même voir ses
+        // nouvelles vidéos affichées.
         const activePortfolio = (partner.portfolio || [])
-            .slice(0, PORTFOLIO_MAX_ITEMS)
             .filter(item => !isPortfolioExternalLink(item) && imageIsPublic(item.moderation))
+            .slice(0, PORTFOLIO_MAX_ITEMS)
             .map(item => ({ id: item.id, type: item.type, url: item.url, thumb: item.thumb || '', caption: publicText(item.caption || '') }));
         const reviews = loadPartnerReviews()
             .filter(r => r.partnerId === partner.id && r.status === 'published')
@@ -24255,6 +24262,33 @@ app.get('/api/admin/external-links-audit', function(req, res) {
             findingsTotal: rows.reduce(function(n, r) { return n + r.findings.length; }, 0),
             partners: rows
         });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * POST /api/admin/external-links-purge  { partnerId }
+ * Supprime définitivement les anciens liens de portfolio (type 'video') et les liens réseaux
+ * sociaux d'un prestataire, après audit (GET /api/admin/external-links-audit). Les photos, vidéos
+ * et textes ne sont jamais touchés (les liens dans les textes restent masqués à l'affichage).
+ */
+app.post('/api/admin/external-links-purge', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var partners = loadPartners();
+        var p = partners.find(function(x) { return x.id === (req.body || {}).partnerId; });
+        if (!p) return res.status(404).json({ error: 'Prestataire introuvable' });
+        var before = (p.portfolio || []).length;
+        p.portfolio = (p.portfolio || []).filter(function(it) { return !isPortfolioExternalLink(it); });
+        var removedLinks = before - p.portfolio.length;
+        var removedSocial = Object.keys(p.social || {}).filter(function(k) { return typeof p.social[k] === 'string' && p.social[k].trim(); }).length;
+        if (removedSocial) p.social = {};
+        if (!removedLinks && !removedSocial) return res.json({ ok: true, removedLinks: 0, removedSocial: 0 });
+        p.updatedAt = new Date().toISOString();
+        savePartners(partners);
+        console.log('[EXT-LINKS-PURGE] ' + p.id + ' : ' + removedLinks + ' lien(s) de portfolio, ' + removedSocial + ' lien(s) réseaux sociaux supprimés par ' + ((req.admin && req.admin.email) || 'admin'));
+        res.json({ ok: true, removedLinks: removedLinks, removedSocial: removedSocial });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

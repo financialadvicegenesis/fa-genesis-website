@@ -7059,6 +7059,19 @@
             service_label: 'Nom de prestation', service_description: 'Description de prestation', service_feature: 'Point inclus (prestation)',
             promo_title: 'Titre de promotion', promo_description: 'Description de promotion'
         };
+        // Suppression définitive des anciens liens (portfolio + réseaux sociaux) d'un prestataire.
+        function _purgeExternalLinks(partnerId, count, name) {
+            if (!confirm('Supprimer définitivement ' + count + ' lien(s) externe(s) de ' + name + ' ?\n\nIls sont déjà masqués aux clients. Les photos, vidéos et textes du prestataire ne sont pas touchés. Cette action est irréversible.')) return;
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/external-links-purge', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ partnerId: partnerId })
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.ok) _loadExternalLinksAudit();
+                else alert(d.error || 'Erreur');
+            }).catch(function() { alert('Erreur réseau'); });
+        }
         function _loadExternalLinksAudit() {
             var el = document.getElementById('externalLinksAuditList');
             if (!el) return;
@@ -7075,7 +7088,11 @@
                     var html = '<div style="font-size:12px;color:#f59e0b;font-weight:800;margin-bottom:12px;">' + data.partnersAffected + ' prestataire(s) concerné(s) — ' + data.findingsTotal + ' contenu(s) masqué(s)</div>';
                     rows.forEach(function(p) {
                         html += '<div style="background:#0d0d0d;border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:14px 18px;margin-bottom:10px;">';
+                        var purgeable = p.findings.filter(function(f) { return f.field === 'portfolio_link' || f.field.indexOf('social_') === 0; }).length;
+                        html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">';
                         html += '<div style="font-weight:900;font-size:13px;color:#e0e0e0;">' + esc(p.name || p.email) + ' <span style="font-size:11px;color:#666;font-weight:600;">' + esc(p.email) + '</span></div>';
+                        if (purgeable) html += '<button onclick="_purgeExternalLinks(\'' + esc(p.partnerId) + '\',' + purgeable + ',\'' + esc(p.name || p.email).replace(/'/g, '') + '\')" style="background:transparent;color:#f59e0b;border:1.5px solid #f59e0b;padding:6px 12px;font-weight:800;font-size:11px;border-radius:8px;cursor:pointer;"><i class="fas fa-trash-can mr-1"></i>Supprimer ces liens</button>';
+                        html += '</div>';
                         p.findings.forEach(function(f) {
                             var label = _EXT_LINK_FIELD_LABELS[f.field] || (f.field.indexOf('social_') === 0 ? 'Réseau social (' + f.field.slice(7) + ')' : f.field);
                             html += '<div style="display:flex;gap:10px;margin-top:8px;font-size:11px;align-items:baseline;flex-wrap:wrap;">'
