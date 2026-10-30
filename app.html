@@ -2549,15 +2549,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261019c"></script>
-<script src="app-i18n-es.js?v=20261019c"></script>
-<script src="app-i18n-hi.js?v=20261019c"></script>
-<script src="app-i18n-pt.js?v=20261019c"></script>
-<script src="app-i18n-ja.js?v=20261019c"></script>
-<script src="app-i18n-zh.js?v=20261019c"></script>
-<script src="app-i18n-ar.js?v=20261019c"></script>
-<script src="app-i18n-it.js?v=20261019c"></script>
-<script src="app-i18n-de.js?v=20261019c"></script>
+<script src="app-i18n-en.js?v=20261030a"></script>
+<script src="app-i18n-es.js?v=20261030a"></script>
+<script src="app-i18n-hi.js?v=20261030a"></script>
+<script src="app-i18n-pt.js?v=20261030a"></script>
+<script src="app-i18n-ja.js?v=20261030a"></script>
+<script src="app-i18n-zh.js?v=20261030a"></script>
+<script src="app-i18n-ar.js?v=20261030a"></script>
+<script src="app-i18n-it.js?v=20261030a"></script>
+<script src="app-i18n-de.js?v=20261030a"></script>
 </head>
 <body>
 
@@ -5024,12 +5024,20 @@ function verifiedBadgeHtml(p){
 // un client à Paris doit voir d'emblée qu'un prestataire est à Libreville (et qu'il travaille à
 // distance) avant d'ouvrir sa fiche.
 var _PARTNER_COUNTRY_NAMES = {GA:'Gabon',CM:'Cameroun',CG:'Congo',CD:'RD Congo',TD:'Tchad',CF:'Centrafrique',GQ:'Guinée équatoriale',SN:'Sénégal',CI:'Côte d\'Ivoire',BJ:'Bénin',TG:'Togo',BF:'Burkina Faso',ML:'Mali',NE:'Niger',GN:'Guinée',MG:'Madagascar',MA:'Maroc',DZ:'Algérie',TN:'Tunisie',EG:'Égypte',GH:'Ghana',NG:'Nigeria',KE:'Kenya',ZA:'Afrique du Sud',RW:'Rwanda',TZ:'Tanzanie',UG:'Ouganda',BE:'Belgique',CH:'Suisse',LU:'Luxembourg',DE:'Allemagne',ES:'Espagne',IT:'Italie',PT:'Portugal',NL:'Pays-Bas',GB:'Royaume-Uni',CA:'Canada',US:'États-Unis'};
+function _partnerCountryName(c){
+  var lang = (window.AppI18n && AppI18n.getAppLanguage) ? AppI18n.getAppLanguage() : 'fr';
+  if(lang !== 'fr'){
+    try{ var dn = new Intl.DisplayNames([lang], {type:'region'}).of(c); if(dn && dn !== c) return dn; }catch(e){}
+  }
+  return _PARTNER_COUNTRY_NAMES[c] || c;
+}
 function _partnerPlaceLabel(p){
   var city = (p && p.city) || '';
   var c = (p && p.country) || '';
-  var cName = (c && c !== 'FR') ? (_PARTNER_COUNTRY_NAMES[c] || c) : '';
-  var label = city && cName ? (city+', '+cName) : (city || cName);
-  return _escHtml(label);
+  var cName = (c && c !== 'FR') ? _partnerCountryName(c) : '';
+  // data-i18n-skip : le nom est déjà dans la bonne langue, ne pas le repasser au dictionnaire.
+  var cHtml = cName ? '<span data-i18n-skip>'+_escHtml(cName)+'</span>' : '';
+  return city && cName ? (_escHtml(city)+', '+cHtml) : (city ? _escHtml(city) : cHtml);
 }
 function _partnerIsRemote(p){
   return !!(p && (p.serviceMode === 'remote' || p.serviceMode === 'both'));
@@ -20098,7 +20106,7 @@ function _ptnrUpdateWdCfaHint(){
   if(!el) return;
   var amount = parseFloat(((document.getElementById('ptnr-wd-amount')||{}).value)||0);
   if(!_ptnrWdCfa || !amount){ el.style.display='none'; return; }
-  el.textContent = '≈ '+Math.round(amount*_ptnrWdCfa.rate).toLocaleString('fr-FR')+' '+(_ptnrWdCfa.cur==='XAF'?'F CFA (XAF)':'F CFA (XOF)')+' — parité fixe 1 € = 655,957 F CFA';
+  el.innerHTML = '≈ <strong>'+Math.round(amount*_ptnrWdCfa.rate).toLocaleString('fr-FR')+'</strong> <span>'+(_ptnrWdCfa.cur==='XAF'?'F CFA (XAF)':'F CFA (XOF)')+' — parité fixe 1 € = 655,957 F CFA</span>';
   el.style.display='block';
 }
 
@@ -20795,10 +20803,10 @@ function _ptnrPfRenderCount(){
   if(el){
     if(n > PTNR_PF_MAX){
       el.style.color = '#f59e0b';
-      el.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="margin-right:5px;"></i>'+n+' médias : seuls les '+PTNR_PF_MAX+' premiers sont visibles par les clients. Supprimez-en '+(n-PTNR_PF_MAX)+' pour choisir lesquels garder.';
+      el.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="margin-right:5px;"></i><strong>'+n+'</strong> <span>médias : seuls les 5 premiers sont visibles par les clients. Supprimez-en jusqu\'à n\'en garder que 5.</span>';
     } else {
       el.style.color = full ? '#FFD700' : '#888';
-      el.innerHTML = '<strong>'+n+' / '+PTNR_PF_MAX+'</strong> médias'+(full ? ' — limite atteinte. Supprimez-en un pour en ajouter un autre.' : ' (photos, vidéos ou liens).');
+      el.innerHTML = '<strong>'+n+' / '+PTNR_PF_MAX+'</strong> <span>'+(full ? 'médias — limite atteinte. Supprimez-en un pour en ajouter un autre.' : 'médias (photos, vidéos ou liens).')+'</span>';
     }
   }
   document.querySelectorAll('#ptnr-screen-portfolio .ptnr-pf-add-btn').forEach(function(b){
