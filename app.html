@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261030e"></script>
-<script src="app-i18n-es.js?v=20261030e"></script>
-<script src="app-i18n-hi.js?v=20261030e"></script>
-<script src="app-i18n-pt.js?v=20261030e"></script>
-<script src="app-i18n-ja.js?v=20261030e"></script>
-<script src="app-i18n-zh.js?v=20261030e"></script>
-<script src="app-i18n-ar.js?v=20261030e"></script>
-<script src="app-i18n-it.js?v=20261030e"></script>
-<script src="app-i18n-de.js?v=20261030e"></script>
+<script src="app-i18n-en.js?v=20261030f"></script>
+<script src="app-i18n-es.js?v=20261030f"></script>
+<script src="app-i18n-hi.js?v=20261030f"></script>
+<script src="app-i18n-pt.js?v=20261030f"></script>
+<script src="app-i18n-ja.js?v=20261030f"></script>
+<script src="app-i18n-zh.js?v=20261030f"></script>
+<script src="app-i18n-ar.js?v=20261030f"></script>
+<script src="app-i18n-it.js?v=20261030f"></script>
+<script src="app-i18n-de.js?v=20261030f"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -7327,7 +7327,9 @@ function renderProposalCard(r){
   var milestonesHtml = (p.milestones||[]).map(function(m){
     var amt = m.amount != null ? m.amount : Math.round((p.total_price||0)*(m.pct||0)/100);
     var lbl = m.label || '';
-    return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--muted);"><span>'+lbl+'</span><span>'+amt+' €</span></div>';
+    // « 76.5 € » → « 76,50 € » (montants à centimes) ; un montant rond reste « 255 € ».
+    var amtTxt = (Math.round(amt) === Number(amt)) ? String(amt) : Number(amt).toFixed(2).replace('.', ',');
+    return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--muted);"><span>'+lbl+'</span><span data-i18n-skip>'+amtTxt+' €</span></div>';
   }).join('');
   var bodyHtml = '<div class="resa-top"><div class="resa-name">'+(r.service_label||'Demande')+'</div>'
     +'<span class="resa-status s-pending">'+(r.status==='signed'?'✅ Signé — à payer':'📋 Proposition reçue')+'</span></div>'
@@ -7337,7 +7339,7 @@ function renderProposalCard(r){
     +'<div style="display:flex;justify-content:space-between;font-weight:700;padding:6px 0;border-top:1px solid var(--border);margin-top:4px;"><span>Total</span><span>'+(p.total_price||0)+' €</span></div>'
     +(p.delay_days?'<div style="font-size:13px;color:var(--muted);">Délai estimé : '+p.delay_days+' jour(s)</div>':'')
     +(p.revisions_included?'<div style="font-size:13px;color:var(--muted);"><span>Révisions incluses :</span> <strong style="color:#ddd;">'+p.revisions_included+'</strong> <span>(modifications des livrables que vous pouvez demander sans frais supplémentaires)</span></div>':'')
-    +(p.notes?'<div style="font-size:13px;color:var(--muted);margin-top:4px;">'+p.notes+'</div>':'')
+    +(p.notes?'<div style="font-size:13px;color:var(--muted);margin-top:4px;"><span>Précisions du prestataire :</span> <span style="color:#ddd;" data-i18n-skip>'+_escHtml(p.notes)+'</span></div>':'')
     +'<div class="detail-feats-title" style="margin:10px 0 4px;font-size:13px;">Échéancier de paiement sécurisé</div>'
     +milestonesHtml;
   // Demande déjà signée ("Lu et approuvé") : plus rien à signer, juste à payer — avant ce

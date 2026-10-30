@@ -19031,7 +19031,18 @@ function buildRequestContract(request, clientUser, lang) {
     if (p.revisions_included) lines.push('Révisions incluses : ' + p.revisions_included + ' (demandes de modification des livrables par le Client, sans frais supplémentaires).');
     if (p.notes) lines.push('Précisions du Prestataire : ' + p.notes);
     var partner = getPartnerById(request.partner_id) || {};
-    return contractService.generateServiceContractHtml(order, partner, clientUser, lines.join('\n'), lang || 'fr');
+    var html = contractService.generateServiceContractHtml(order, partner, clientUser, lines.join('\n'), lang || 'fr');
+    if (request.contract_signed && request.contract_signature_name) {
+        var esc = function(v) { return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        var when = new Date(request.contract_signed_at).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        html += '<div style="margin-top:24px;padding:14px 16px;border:2px solid #27ae60;border-radius:6px;font-family:sans-serif;font-size:13px;line-height:1.6;">'
+            + '<strong>Signature électronique du Client</strong><br>'
+            + 'Signé par : ' + esc(request.contract_signature_name) + '<br>'
+            + 'Le : ' + esc(when) + ' (heure de Paris)<br>'
+            + 'Mention : « Lu et approuvé » — conditions acceptées' + (request.contract_signature_ip ? '<br>Adresse IP : ' + esc(request.contract_signature_ip) : '')
+            + '</div>';
+    }
+    return html;
 }
 
 // GET /api/my-requests/:id/contract-preview — contrat de prestation à lire avant de signer
@@ -19043,9 +19054,13 @@ app.get('/api/my-requests/:id/contract-preview', function(req, res) {
         if (!r) return res.status(404).json({ error: 'Demande introuvable' });
         if (r.client_email !== user.email) return res.status(403).json({ error: 'Accès non autorisé' });
         if (r.contract_html) return res.json({ html: r.contract_html, signed: true });
-        if (r.status !== 'proposed' || !r.proposal) return res.status(409).json({ error: 'Aucune proposition à consulter pour le moment.' });
+        var signedLegacy = !!(r.contract_signed && r.proposal);
+        if (!signedLegacy && (r.status !== 'proposed' || !r.proposal)) return res.status(409).json({ error: 'Aucune proposition à consulter pour le moment.' });
         var clientUser = loadUsers().find(function(u) { return u.email === user.email; }) || user;
-        res.json({ html: buildRequestContract(r, clientUser, getUserLanguage(user.email, 'client')), signed: false });
+        // Devis signé AVANT la conservation du texte signé (contract_html) : contrat reconstruit
+        // à partir de la proposition signée (inchangée depuis), avec le nom, la date et l'IP de
+        // signature réellement enregistrés.
+        res.json({ html: buildRequestContract(r, clientUser, getUserLanguage(user.email, 'client')), signed: signedLegacy });
     } catch (e) {
         console.error('[CONTRACT] Erreur aperçu contrat devis:', e);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -19110,13 +19125,14 @@ app.post('/api/my-requests/:id/sign-contract', function(req, res) {
         var signIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
         requests[idx].contract_signed = true;
         requests[idx].contract_signed_at = new Date().toISOString();
-        // Texte exact du contrat signé (celui que le client a lu dans l'aperçu), conservé tel quel.
+        requests[idx].contract_signature_name = signatureName;
+        requests[idx].contract_signature_ip = signIp;
+        // Texte exact du contrat signé (celui que le client a lu dans l'aperçu) + bloc de
+        // signature, conservé tel quel.
         try {
             var _signer = loadUsers().find(function(u) { return u.email === user.email; }) || user;
             requests[idx].contract_html = buildRequestContract(requests[idx], _signer, getUserLanguage(user.email, 'client'));
         } catch (e) { console.error('[CONTRACT] Snapshot contrat devis impossible:', e.message); }
-        requests[idx].contract_signature_name = signatureName;
-        requests[idx].contract_signature_ip = signIp;
         requests[idx].status = 'signed';
         savePartnerRequests(requests);
 
