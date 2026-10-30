@@ -10950,12 +10950,15 @@ app.post('/api/auth/register', async (req, res) => {
             .catch(err => console.error('[AUTH] Erreur email bienvenue:', err));
 
         // Notification admin
+        var _referrerUser = referredBy ? users.find(function(u) { return u.id === referredBy; }) : null;
         emailService.sendAdminRegistrationNotification({
             firstName: prenom,
             lastName: nom,
             email: email,
             phone: telephone,
-            offerName: offerData ? offerData.name : null
+            accountType: userAccountType,
+            studentCertificateSubmitted: !!(userAccountType === 'etudiant' && studentCertificate),
+            referredByName: _referrerUser ? (((_referrerUser.prenom || '') + ' ' + (_referrerUser.nom || '')).trim() || _referrerUser.email) : null
         })
             .then(result => {
                 if (result.success) {

@@ -455,15 +455,26 @@ async function sendAdminRegistrationNotification(registrationData) {
         return { success: false, reason: 'SMTP non configuré' };
     }
 
+    // Avant : le bloc principal affichait "Offre choisie : Aucune offre sélectionnée" (ancien
+    // système d'offres supprimé) — l'email ne disait rien d'utile sur le nouveau client.
+    const accountTypeLabel = { particulier: 'Particulier', etudiant: 'Étudiant', entreprise: 'Entreprise' }[registrationData.accountType] || 'Non précisé';
+    const studentHtml = registrationData.accountType === 'etudiant'
+        ? (registrationData.studentCertificateSubmitted
+            ? `<div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 14px 18px; border-radius: 4px; margin: 16px 0; font-size: 13px; color: #555;">⚠️ <strong>Justificatif étudiant à valider</strong> dans l'administration pour activer le tarif Étudiant.</div>`
+            : `<div style="background-color: #f5f5f5; border: 1px solid #e0e0e0; padding: 14px 18px; border-radius: 4px; margin: 16px 0; font-size: 13px; color: #555;">Aucun justificatif étudiant envoyé pour l'instant.</div>`)
+        : '';
+
     const content = `
         <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
             Nouvelle inscription client
         </h2>
 
         <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 20px 0; text-align: center;">
-            <p style="margin: 0 0 5px 0; font-size: 14px; color: #888888;">Offre choisie</p>
-            <p style="margin: 0; font-size: 20px; font-weight: 700; color: #FFD700;">${registrationData.offerName || 'Aucune offre sélectionnée'}</p>
+            <p style="margin: 0 0 5px 0; font-size: 14px; color: #888888;">Type de compte</p>
+            <p style="margin: 0; font-size: 20px; font-weight: 700; color: #FFD700;">${accountTypeLabel}</p>
         </div>
+
+        ${studentHtml}
 
         <div style="background-color: #f5f5f5; padding: 25px; border-radius: 4px; margin: 20px 0;">
             <table style="width: 100%; border-collapse: collapse;">
@@ -482,15 +493,23 @@ async function sendAdminRegistrationNotification(registrationData) {
                     <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${registrationData.phone || 'Non renseigné'}</td>
                 </tr>
                 <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Parrainage</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${registrationData.referredByName ? 'Parrainé par ' + registrationData.referredByName : 'Aucun'}</td>
+                </tr>
+                <tr>
                     <td style="padding: 10px 0; font-weight: 700; color: #666;">Date d'inscription</td>
-                    <td style="padding: 10px 0; color: #000;">${new Date().toLocaleString('fr-FR')}</td>
+                    <td style="padding: 10px 0; color: #000;">${new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}</td>
                 </tr>
             </table>
         </div>
 
         <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
+            <a href="${process.env.FRONT_URL || 'https://fagenesis.com'}/admin.html#open-clients"
+               style="display: inline-block; background-color: #FFD700; color: #000; padding: 12px 25px; text-decoration: none; font-weight: 700; border-radius: 4px; margin-right: 8px;">
+                Voir dans l'administration
+            </a>
             <a href="mailto:${registrationData.email}?subject=FA GENESIS - Votre inscription"
-               style="display: inline-block; background-color: #FFD700; color: #000; padding: 12px 25px; text-decoration: none; font-weight: 700; border-radius: 4px;">
+               style="display: inline-block; background-color: #000; color: #FFD700; padding: 12px 25px; text-decoration: none; font-weight: 700; border-radius: 4px;">
                 Contacter le client
             </a>
         </p>
@@ -500,7 +519,7 @@ async function sendAdminRegistrationNotification(registrationData) {
         const result = await transport.sendMail({
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
             to: process.env.EMAIL_ADMIN_ADDRESS || 'contact@fagenesis.com',
-            subject: `[FA GENESIS] Nouvelle inscription - ${registrationData.firstName} ${registrationData.lastName}`,
+            subject: `[FA GENESIS] Nouveau client inscrit - ${registrationData.firstName || ''} ${registrationData.lastName || ''}`,
             html: getEmailTemplate(content, 'Nouvelle inscription'),
             replyTo: registrationData.email
         });
