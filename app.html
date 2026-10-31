@@ -284,7 +284,7 @@ a{text-decoration:none;color:inherit}
 .hdr-avatar{width:36px;height:36px;border-radius:10px;background:var(--card);
   display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--yellow);
   overflow:hidden}
-.notif-inbox-panel{position:fixed;top:60px;right:10px;width:min(340px,calc(100vw - 20px));max-height:70vh;
+.notif-inbox-panel{position:fixed;top:calc(58px + env(safe-area-inset-top,0px));right:10px;width:min(340px,calc(100vw - 20px));max-height:70vh;
   background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.5);
   z-index:9999;display:none;flex-direction:column;overflow:hidden}
 .notif-inbox-panel.on{display:flex}
@@ -2875,7 +2875,7 @@ function _genesisVersionFooter(){
       <button class="hdr-cart-btn" id="cart-icon-btn" onclick="openCart()" title="Panier" style="display:none;">
         <i class="fa-solid fa-cart-shopping"></i><span class="cart-badge" id="cart-count"></span>
       </button>
-      <button class="hdr-btn" onclick="toggleNotifInbox()" title="Notifications">
+      <button class="hdr-btn" id="hdrNotifBtn" onclick="toggleNotifInbox()" title="Notifications">
         <i class="fa-solid fa-bell"></i><span class="hdr-badge" id="hdrBadge"></span>
       </button>
       <div class="hdr-avatar" id="hdrAvatar" onclick="nav('profil')" style="display:none;"><i class="fa-solid fa-user"></i></div>
@@ -9780,8 +9780,33 @@ function toggleNotifInbox(){
   var panel = document.getElementById('notif-inbox-panel');
   if(!panel) return;
   if(panel.classList.contains('on')){ panel.classList.remove('on'); return; }
+  // Le panneau s'ouvre SOUS la cloche, jamais par-dessus : sur iPhone (encoche), l'en-tête fait
+  // ~110 px avec env(safe-area-inset-top) ; l'ancien top:60px fixe recouvrait la cloche, et le
+  // 2e tap tombait sur le panneau au lieu de la cloche — impossible de le refermer.
+  try{
+    var btn = document.getElementById('hdrNotifBtn');
+    var r = btn ? btn.getBoundingClientRect() : null;
+    if(r && r.bottom > 0) panel.style.top = Math.round(r.bottom + 10) + 'px';
+  }catch(e){}
   panel.classList.add('on');
+  _bindNotifOutsideClose();
   loadNotifInbox();
+}
+// Tap n'importe où hors du panneau (et hors de la cloche, qui gère elle-même la bascule) =
+// fermeture. pointerdown plutôt que click : sous iOS, un click sur un élément non cliquable
+// ne remonte pas jusqu'au document.
+var _notifOutsideBound = false;
+function _bindNotifOutsideClose(){
+  if(_notifOutsideBound) return;
+  _notifOutsideBound = true;
+  document.addEventListener('pointerdown', function(ev){
+    var panel = document.getElementById('notif-inbox-panel');
+    if(!panel || !panel.classList.contains('on')) return;
+    var btn = document.getElementById('hdrNotifBtn');
+    var t = ev.target;
+    if(panel.contains(t) || (btn && btn.contains(t))) return;
+    panel.classList.remove('on');
+  }, true);
 }
 function loadNotifInbox(){
   var token = _currentAuthToken();
