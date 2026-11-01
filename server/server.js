@@ -141,6 +141,47 @@ const PARTNER_TYPES = [
 ];
 const PARTNER_TYPE_VALUES = PARTNER_TYPES.map(t => t.value);
 
+// Métiers multiples : UN seul compte (avis, badges, portefeuille, messagerie communs), un métier
+// principal (partner_type, inchangé) + jusqu'à 2 métiers secondaires (secondary_types). Le
+// prestataire apparaît dans chacune de ses catégories ; chaque prestation est rattachée à l'un de
+// ses métiers (service.category). Jamais deux comptes pour une même personne.
+const PARTNER_SECONDARY_TYPES_MAX = 2;
+const PARTNER_SECONDARY_EXCLUDED = ['other', 'coworking'];
+function cleanSecondaryTypes(list, primary) {
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    list.forEach(function(t) {
+        if (typeof t !== 'string') return;
+        if (PARTNER_TYPE_VALUES.indexOf(t) === -1 || PARTNER_SECONDARY_EXCLUDED.indexOf(t) !== -1) return;
+        if (t === primary || out.indexOf(t) !== -1) return;
+        out.push(t);
+    });
+    return out.slice(0, PARTNER_SECONDARY_TYPES_MAX);
+}
+function partnerTypesOf(p) {
+    if (!p) return [];
+    const primary = p.partner_type || '';
+    return (primary ? [primary] : []).concat(cleanSecondaryTypes(p.secondary_types, primary));
+}
+function partnerHasType(p, type) {
+    return !!type && partnerTypesOf(p).indexOf(type) !== -1;
+}
+// Présence dans une catégorie de l'annuaire : toujours pour le métier principal ; pour un métier
+// secondaire, seulement avec au moins une prestation active dans ce métier (cocher un métier ne
+// suffit pas à apparaître dans une catégorie où l'on ne propose rien).
+function partnerListedInType(p, type) {
+    if (!type || !p) return false;
+    if (p.partner_type === type) return true;
+    if (!partnerHasType(p, type)) return false;
+    return (p.services || []).some(function(s) { return s && s.active !== false && serviceCategoryOf(s, p) === type; });
+}
+// Métier d'une prestation : celui choisi s'il fait toujours partie des métiers du prestataire,
+// sinon son métier principal (anciennes prestations, métier secondaire retiré depuis).
+function serviceCategoryOf(s, p) {
+    const types = partnerTypesOf(p);
+    return (s && types.indexOf(s.category) !== -1) ? s.category : (p && p.partner_type) || '';
+}
+
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
     fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
@@ -15150,7 +15191,7 @@ app.post('/api/partner/auth/logout', authenticatePartner, (req, res) => {
 // Modifier profil partenaire
 app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res) => {
     try {
-        const { prenom, nom, telephone, photo, logo, bio, city, country, interventionZone, serviceMode, social, responseTimeCommitmentMinutes, currentPassword, newPassword } = req.body;
+        const { prenom, nom, telephone, photo, logo, bio, city, country, interventionZone, serviceMode, social, responseTimeCommitmentMinutes, currentPassword, newPassword, secondary_types } = req.body;
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === req.partner.id);
         if (index === -1) {
@@ -15178,6 +15219,14 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         // Mode d'intervention : 'onsite' (sur place, dans sa ville), 'remote' (à distance, ex.
         // prestataire au Gabon pour un client en France), 'both'. Absent = sur place.
         if (['onsite', 'remote', 'both'].indexOf(serviceMode) !== -1) partners[index].serviceMode = serviceMode;
+        // Métiers secondaires (2 max). Une prestation rattachée à un métier retiré revient au
+        // métier principal.
+        if (Array.isArray(secondary_types)) {
+            partners[index].secondary_types = cleanSecondaryTypes(secondary_types, partners[index].partner_type);
+            (partners[index].services || []).forEach(function(sv) {
+                if (sv && sv.category) sv.category = serviceCategoryOf(sv, partners[index]);
+            });
+        }
         if (responseTimeCommitmentMinutes !== undefined) {
             const allowedResponseMinutes = [30, 60, 180, 720, 1440, 2880];
             partners[index].responseTimeCommitmentMinutes = allowedResponseMinutes.indexOf(responseTimeCommitmentMinutes) !== -1
@@ -15264,6 +15313,7 @@ app.put('/api/partner/services', authenticatePartner, async (req, res) => {
                 : null;
             cleaned.push({
                 id: s.id || ('SVC-' + uuidv4().split('-')[0]),
+                category: serviceCategoryOf(s, req.partner),
                 label: s.label.trim(),
                 description: (s.description || '').trim(),
                 price: price,
@@ -15506,6 +15556,16 @@ function scopePartnerForAudience(p, aud) {
 function scopePartnersForAudience(list, aud) {
     if (!aud) return list;
     return list.map(function(p) { return scopePartnerForAudience(p, aud); }).filter(function(p) { return p.services.length > 0; });
+}
+
+// Prix « à partir de » limité aux prestations d'un métier ; sans métier (ou sans prix dans ce
+// métier), prix « à partir de » de toutes ses prestations.
+function partnerFromPriceInType(partner, type) {
+    if (type && partner && partnerTypesOf(partner).length > 1) {
+        const inType = getPartnerFromPrice({ services: (partner.services || []).filter(s => serviceCategoryOf(s, partner) === type) });
+        if (inType !== null) return inType;
+    }
+    return getPartnerFromPrice(partner);
 }
 
 function getPartnerFromPrice(partner) {
@@ -17076,7 +17136,7 @@ function buildPartnerContextForJeremie(message, audience) {
         if (detectedCats.length) {
             var wanted = [];
             detectedCats.forEach(function(cat) { (catToTypes[cat] || []).forEach(function(t) { if (wanted.indexOf(t) === -1) wanted.push(t); }); });
-            var byType = allPartners.filter(function(p) { return wanted.indexOf(p.partner_type) !== -1; });
+            var byType = allPartners.filter(function(p) { return wanted.some(function(t) { return partnerListedInType(p, t); }); });
             if (byType.length) filtered = byType;
         }
 
@@ -17106,7 +17166,7 @@ function buildPartnerContextForJeremie(message, audience) {
             var rating  = getPartnerRatingSummary(p.id);
             var price   = getPartnerFromPrice(p);
             var name    = ((p.prenom || '') + ' ' + (p.nom || '')).trim();
-            var type    = p.partner_type_other || ((PARTNER_TYPES.find(function(t) { return t.value === p.partner_type; }) || {}).label) || p.partner_type || '';
+            var type    = p.partner_type_other || partnerTypesOf(p).map(function(v) { return ((PARTNER_TYPES.find(function(t) { return t.value === v; }) || {}).label) || v; }).join(' + ') || '';
             var ratingStr = rating.count
                 ? (parseFloat(rating.average || 0).toFixed(1) + '/5 (' + rating.count + ' avis)')
                 : 'pas encore noté';
@@ -17612,7 +17672,7 @@ app.get('/api/partners/directory', (req, res) => {
         let partners = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req));
 
         if (category) {
-            partners = partners.filter(p => p.partner_type === category);
+            partners = partners.filter(p => partnerListedInType(p, category));
         }
         // Filtre audience : ne garder que les partenaires ayant au moins 1 service actif pour cet audience
         if (audience) {
@@ -17625,7 +17685,7 @@ app.get('/api/partners/directory', (req, res) => {
         if (q) {
             const needle = q.trim().toLowerCase();
             partners = partners.filter(p => {
-                const typeLabel = (PARTNER_TYPES.find(t => t.value === p.partner_type) || {}).label || '';
+                const typeLabel = partnerTypesOf(p).map(v => (PARTNER_TYPES.find(t => t.value === v) || {}).label || '').join(' ');
                 return ((p.prenom || '') + ' ' + (p.nom || '')).toLowerCase().includes(needle)
                     || typeLabel.toLowerCase().includes(needle)
                     || (p.partner_type_other || '').toLowerCase().includes(needle)
@@ -17674,7 +17734,7 @@ app.get('/api/partners/directory', (req, res) => {
         }
 
         let results = partners.map((p, idx) => {
-            return Object.assign(partnerDirectoryShape(p, allPromos), {
+            return Object.assign(partnerDirectoryShape(p, allPromos, category), {
                 verified: true,
                 rank: (sortMode === 'score' && idx < 3) ? idx + 1 : null
             });
@@ -17709,7 +17769,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 var isValidPrice = !isNaN(sPrice) && isFinite(sPrice) && sPrice > 0;
                 // pricing_type 'quote' uniquement si explicitement défini ET pas de prix valide
                 var pricingType = (s.pricing_type === 'quote' && !isValidPrice) ? 'quote' : (isValidPrice ? 'fixed' : 'quote');
-                return { id: s.id, label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: imageIsPublic(s.image_moderation) ? (s.image || '') : '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
+                return { id: s.id, category: serviceCategoryOf(s, partner), label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: imageIsPublic(s.image_moderation) ? (s.image || '') : '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
             });
         // Liens externes et images non validées retirés D'ABORD, puis 5 médias max : un
         // prestataire dont les 5 premiers éléments sont d'anciens liens doit quand même voir ses
@@ -17743,6 +17803,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 nom: partner.nom,
                 partner_type: partner.partner_type,
                 partner_type_other: partner.partner_type_other || '',
+                partner_types: partnerTypesOf(partner),
                 photo: partner.photo || null,
                 bio: publicText(partner.bio || ''),
                 city: partner.city || '',
@@ -17778,13 +17839,13 @@ app.get('/api/partners/top', (req, res) => {
         const { category, limit } = req.query;
         if (!category) return res.status(400).json({ error: 'category requis' });
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
-        const categoryPartners = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active' && p.partner_type === category), clientAudienceOf(req));
+        const categoryPartners = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active' && partnerListedInType(p, category)), clientAudienceOf(req));
 
         const ranked = categoryPartners
             .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }))
             .sort((a, b) => b.score - a.score)
             .slice(0, max)
-            .map(entry => partnerDirectoryShape(entry.partner));
+            .map(entry => partnerDirectoryShape(entry.partner, null, category));
 
         res.json({ success: true, category: category, partners: ranked });
     } catch (error) {
@@ -17799,13 +17860,13 @@ app.get('/api/partners/featured', (req, res) => {
         const { limit, category } = req.query;
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
         let activePartners = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req));
-        if (category) activePartners = activePartners.filter(p => p.partner_type === category);
+        if (category) activePartners = activePartners.filter(p => partnerListedInType(p, category));
 
         const ranked = activePartners
             .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }))
             .sort((a, b) => b.score - a.score)
             .slice(0, max)
-            .map(entry => partnerDirectoryShape(entry.partner));
+            .map(entry => partnerDirectoryShape(entry.partner, null, category));
 
         res.json({ success: true, partners: ranked });
     } catch (error) {
@@ -17814,7 +17875,7 @@ app.get('/api/partners/featured', (req, res) => {
     }
 });
 
-function partnerDirectoryShape(p, allPromos) {
+function partnerDirectoryShape(p, allPromos, matchedType) {
     // Array.isArray : appelée parfois via .map(partnerDirectoryShape), qui passe l'INDEX en 2e
     // argument — dès le 2e prestataire, « 1.find » plantait la route (Nouveaux talents, Recommandés).
     var promos = Array.isArray(allPromos) ? allPromos : loadPromotions();
@@ -17828,13 +17889,17 @@ function partnerDirectoryShape(p, allPromos) {
         nom: p.nom,
         partner_type: p.partner_type,
         partner_type_other: p.partner_type_other || '',
+        partner_types: partnerTypesOf(p),
+        // Catégorie parcourue par le client (ex. « Marketeurs ») : la carte affiche ce métier-là
+        // et le prix « à partir de » de ses prestations dans ce métier.
+        matched_type: (matchedType && partnerListedInType(p, matchedType)) ? matchedType : null,
         photo: p.photo || null,
         city: p.city || '',
         country: p.country || '',
         serviceMode: p.serviceMode || 'onsite',
         lat: coords ? coords[0] : null,
         lng: coords ? coords[1] : null,
-        fromPrice: getPartnerFromPrice(p),
+        fromPrice: partnerFromPriceInType(p, matchedType),
         avgResponseMinutes: typeof p.avgResponseMinutes === 'number' ? p.avgResponseMinutes : null,
         responseTimeCommitmentMinutes: typeof p.responseTimeCommitmentMinutes === 'number' ? p.responseTimeCommitmentMinutes : null,
         rating: getPartnerRatingSummary(p.id),
@@ -17852,11 +17917,11 @@ app.get('/api/partners/new', (req, res) => {
         const { limit, category } = req.query;
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
         let pool = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req));
-        if (category) pool = pool.filter(p => p.partner_type === category);
+        if (category) pool = pool.filter(p => partnerListedInType(p, category));
         const sorted = pool
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
             .slice(0, max)
-            .map(p => partnerDirectoryShape(p));
+            .map(p => partnerDirectoryShape(p, null, category));
         res.json({ success: true, partners: sorted });
     } catch (error) {
         console.error('[PARTNERS-NEW] Erreur:', error);
@@ -17877,7 +17942,7 @@ function getClientPreferredCategories(email) {
         if (user && user.favoris && user.favoris.length) {
             user.favoris.forEach(function(pid) {
                 var p = partners.find(function(pp) { return pp.id === pid; });
-                if (p && p.partner_type) counts[p.partner_type] = (counts[p.partner_type] || 0) + 2;
+                if (p && p.partner_type) partnerTypesOf(p).forEach(function(t) { counts[t] = (counts[t] || 0) + 2; });
             });
         }
         var orders = loadOrders();
@@ -17916,7 +17981,7 @@ app.get('/api/partners/recommended', (req, res) => {
         var usedIds = {};
         preferredCategories.forEach(function(cat) {
             ranked
-                .filter(function(e) { return e.partner.partner_type === cat; })
+                .filter(function(e) { return partnerListedInType(e.partner, cat); })
                 .sort(function(a, b) { return b.score - a.score; })
                 .forEach(function(e) {
                     if (result.length < max && !usedIds[e.partner.id]) {

@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261030i"></script>
-<script src="app-i18n-es.js?v=20261030i"></script>
-<script src="app-i18n-hi.js?v=20261030i"></script>
-<script src="app-i18n-pt.js?v=20261030i"></script>
-<script src="app-i18n-ja.js?v=20261030i"></script>
-<script src="app-i18n-zh.js?v=20261030i"></script>
-<script src="app-i18n-ar.js?v=20261030i"></script>
-<script src="app-i18n-it.js?v=20261030i"></script>
-<script src="app-i18n-de.js?v=20261030i"></script>
+<script src="app-i18n-en.js?v=20261101a"></script>
+<script src="app-i18n-es.js?v=20261101a"></script>
+<script src="app-i18n-hi.js?v=20261101a"></script>
+<script src="app-i18n-pt.js?v=20261101a"></script>
+<script src="app-i18n-ja.js?v=20261101a"></script>
+<script src="app-i18n-zh.js?v=20261101a"></script>
+<script src="app-i18n-ar.js?v=20261101a"></script>
+<script src="app-i18n-it.js?v=20261101a"></script>
+<script src="app-i18n-de.js?v=20261101a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3478,6 +3478,7 @@ function _genesisVersionFooter(){
           <div class="ptnr-menu-hero">
             <div class="ptnr-menu-hero-title"><i class="fa-solid fa-bag-shopping"></i> Mes tarifs &amp; prestations</div>
             <div class="ptnr-menu-hero-sub">Ajoutez vos prestations avec prix et photo. Elles s'affichent en temps réel sur votre fiche publique, comme un menu.</div>
+            <button type="button" onclick="_ptnrNav('profil');_ptnrProfilEditMetiers();" style="margin-top:8px;background:none;border:none;padding:0;color:#FFD700;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;"><i class="fa-solid fa-layer-group" style="margin-right:5px;"></i>Vous exercez plusieurs métiers ?</button>
           </div>
 
           <div class="ptnr-audience-pills">
@@ -6788,8 +6789,28 @@ function loadPromoServices(){
 // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
 var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking', animateur_evenementiel:'Animateur / Événementiel', influencer:'Influenceur / Influenceuse', other:'Autre'};
 function partnerTypeLabel(p){
+  // Catégorie parcourue (ex. « Marketeurs ») pour un prestataire à plusieurs métiers : la carte
+  // affiche ce métier-là (matched_type, renvoyé par le serveur).
+  if(p.matched_type && p.matched_type!==p.partner_type && PARTNER_TYPE_LABELS_DIR[p.matched_type]) return PARTNER_TYPE_LABELS_DIR[p.matched_type];
   if(p.partner_type==='other') return p.partner_type_other || 'Autre';
   return PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+}
+// Métiers d'un prestataire : principal d'abord, puis secondaires (2 max, voir le serveur).
+function partnerTypesOf(p){
+  if(!p) return [];
+  var list = Array.isArray(p.partner_types) && p.partner_types.length ? p.partner_types : [p.partner_type].concat(Array.isArray(p.secondary_types) ? p.secondary_types : []);
+  var out = [];
+  list.forEach(function(t){ if(t && out.indexOf(t)===-1) out.push(t); });
+  return out;
+}
+// Tous les métiers, chacun dans son <span> (traduits un par un par AppI18n).
+function partnerTypesLabelHtml(p){
+  var types = partnerTypesOf(p);
+  if(types.length < 2) return '<span>'+partnerTypeLabel({partner_type:p.partner_type, partner_type_other:p.partner_type_other})+'</span>';
+  return types.map(function(t, i){
+    var lbl = (i===0 && t==='other') ? (p.partner_type_other || 'Autre') : (PARTNER_TYPE_LABELS_DIR[t] || t);
+    return '<span>'+lbl+'</span>';
+  }).join(' · ');
 }
 
 // ── Liseuse plein écran du portfolio prestataire (fiche client) ──────────────
@@ -6897,6 +6918,15 @@ function _ptnrRenderServiceCards(services, audience, p){
 function _ptnrRenderProfileSvcCards(services, audience, p){
   var filtered = services.filter(function(s){ return (s.audience||'particulier')===audience; });
   if(!filtered.length) return '<div class="p-dir-review-empty">Aucune prestation dans cette catégorie.</div>';
+  // Prestataire à plusieurs métiers : prestations du métier parcouru en premier (ex. arrivé
+  // depuis « Marketeurs »), et métier indiqué sur chaque carte.
+  var _multi = partnerTypesOf(p).length > 1;
+  if(_multi && typeof _rankCategory !== 'undefined' && _rankCategory){
+    filtered = filtered.map(function(s, i){ return {s:s, i:i}; }).sort(function(a, b){
+      var wa = a.s.category===_rankCategory ? 0 : 1, wb = b.s.category===_rankCategory ? 0 : 1;
+      return wa - wb || a.i - b.i;
+    }).map(function(x){ return x.s; });
+  }
   return filtered.map(function(s){
     var imgSrc = s.image || '';
     var imgHtml = imgSrc
@@ -6912,6 +6942,7 @@ function _ptnrRenderProfileSvcCards(services, audience, p){
     return '<div class="pf-svc-card" onclick="openServiceDetail(\''+p.id+'\',\''+s.id+'\')">'
       + imgHtml
       + '<div class="pf-svc-body">'
+        + (_multi && s.category && PARTNER_TYPE_LABELS_DIR[s.category] ? '<div style="font-size:9px;font-weight:800;color:#FFD700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;">'+PARTNER_TYPE_LABELS_DIR[s.category]+'</div>' : '')
         + '<div class="pf-svc-label">'+s.label+'</div>'
         + featHtml
         + priceHtml
@@ -6980,7 +7011,7 @@ function openPartnerDetail(partnerId){
             + '<span class="pf-hero-name">'+(p.prenom||'')+' '+(p.nom||'')+'</span>'
             + verifiedHtml
           + '</div>'
-          + '<div class="pf-hero-type">'+label+'</div>'
+          + '<div class="pf-hero-type">'+partnerTypesLabelHtml(p)+'</div>'
           + (badgeHtml||constellationHtml||distinctionHtml ? '<div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:5px;">'+badgeHtml+constellationHtml+'</div>' : '')
           + (distinctionHtml ? '<div style="display:flex;justify-content:center;gap:5px;flex-wrap:wrap;margin-top:4px;">'+distinctionHtml+'</div>' : '')
         + '</div>'
@@ -15341,7 +15372,7 @@ function _ptnrShowDash(){
     var ini = (savedProfile && savedProfile.initials) || (nm[0]||'P').toUpperCase();
     var av = document.getElementById('ptnr-avatar'); if(av) av.innerHTML = p.photo ? '<img src="'+p.photo+'" alt="">' : ini;
     var dn = document.getElementById('ptnr-display-name'); if(dn) dn.textContent = nm;
-    var dt = document.getElementById('ptnr-display-type'); if(dt) dt.textContent = p.partner_type ? partnerTypeLabel(p) : (p.type || p.role || '');
+    var dt = document.getElementById('ptnr-display-type'); if(dt){ if(p.partner_type) dt.innerHTML = partnerTypesLabelHtml(p); else dt.textContent = (p.type || p.role || ''); }
     var pendingBar = document.getElementById('ptnr-pending-bar'); if(pendingBar) pendingBar.style.display = (p.accountStatus === 'pending') ? 'flex' : 'none';
     if(p.accountStatus === 'pending') _ptnrStartStatusPoll(); else _ptnrStopStatusPoll();
     _ptnrFetch('/api/partner/reputation').then(function(data){
@@ -21262,6 +21293,7 @@ function _ptnrLoadProfil(){
     +'<div class="plus-section-title">MON PROFIL</div>'
     +'<div class="plus-group">'
     +pli('<i class="fa-solid fa-circle-user"></i>',       '#1a1a00','Paramètres du profil', null,'_ptnrProfilEditParams()')
+    +pli('<i class="fa-solid fa-layer-group"></i>',       '#1a1000','Mes métiers',          null,'_ptnrProfilEditMetiers()')
     +pli('<i class="fa-solid fa-building-columns"></i>',  '#001a12','Coordonnées de versement', null,'_ptnrShowPayoutDetails()')
     +pli('<i class="fa-solid fa-clock"></i>',             '#14000a','Temps de réponse',     null,'_ptnrProfilEditResponseTime()')
     +pli('<i class="fa-solid fa-earth-africa"></i>',      '#001a1a','Pays et zone d\'intervention', null,'_ptnrProfilEditServiceMode()')
@@ -21550,6 +21582,80 @@ function _ptnrProfilEditResponseTime(){
     +'</div></div></div>';
   var sel = document.getElementById('ptnr-response-time-select');
   if(sel && typeof current === 'number') sel.value = String(current);
+}
+
+// ── MES MÉTIERS ───────────────────────────────────────────────────────────────
+// Un seul compte pour un prestataire à plusieurs métiers (ex. développeur + marketeur) : métier
+// principal (choisi à l'inscription, modifiable par l'assistance) + 2 métiers secondaires max.
+// Avis, badges, gains et messagerie restent communs. Il apparaît dans une catégorie secondaire
+// dès qu'il y propose au moins une prestation (voir partnerListedInType côté serveur).
+var _PTNR_SECONDARY_MAX = 2;
+var _ptnrMetiersSel = [];
+function _ptnrSecondaryChoices(){
+  var primary = _ptnrSession && _ptnrSession.partner_type;
+  return Object.keys(PARTNER_TYPE_LABELS_DIR).filter(function(t){ return t!=='other' && t!=='coworking' && t!==primary; });
+}
+function _ptnrProfilEditMetiers(){
+  var c = document.getElementById('ptnr-profil-content');
+  if(!c || !_ptnrSession) return;
+  _ptnrMetiersSel = (Array.isArray(_ptnrSession.secondary_types) ? _ptnrSession.secondary_types : []).slice(0, _PTNR_SECONDARY_MAX);
+  var primaryLbl = partnerTypeLabel({partner_type:_ptnrSession.partner_type, partner_type_other:_ptnrSession.partner_type_other});
+  c.innerHTML = '<div class="plus-subpage">'
+    +'<div class="plus-back-bar">'
+    +'<button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button>'
+    +'<div class="plus-sub-title">Mes métiers</div>'
+    +'</div>'
+    +'<div class="plus-section" style="padding-top:20px;">'
+    +'<div class="ptnr-card">'
+    +'<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Métier principal</div>'
+    +'<div style="display:inline-block;padding:7px 12px;border-radius:10px;background:#FFD700;color:#000;font-size:12px;font-weight:900;">'+primaryLbl+'</div>'
+    +'<div style="font-size:11px;color:#777;line-height:1.5;margin-top:6px;">Pour changer de métier principal, contactez l\'assistance.</div>'
+    +'<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin:16px 0 6px;">Métiers secondaires (2 maximum)</div>'
+    +'<div id="ptnr-metiers-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>'
+    +'<div style="font-size:11px;color:#888;line-height:1.5;margin-top:12px;">Vous apparaissez dans la catégorie d\'un métier secondaire dès que vous y proposez au moins une prestation : choisissez le métier de chaque prestation dans « Mes tarifs et prestations ».</div>'
+    +'<div style="font-size:11px;color:#888;line-height:1.5;margin-top:6px;">Un seul compte pour tous vos métiers : vos avis, vos badges, vos gains et vos messages restent au même endroit.</div>'
+    +'<button class="ptnr-login-btn" id="ptnr-metiers-btn" style="margin-top:14px;" onclick="_ptnrSaveMetiers()">Enregistrer</button>'
+    +'<div class="ptnr-login-err" id="ptnr-metiers-msg" style="margin-top:8px;"></div>'
+    +'</div></div></div>';
+  _ptnrRenderMetiersChips();
+}
+function _ptnrRenderMetiersChips(){
+  var wrap = document.getElementById('ptnr-metiers-chips');
+  if(!wrap) return;
+  wrap.innerHTML = _ptnrSecondaryChoices().map(function(t){
+    var on = _ptnrMetiersSel.indexOf(t) !== -1;
+    return '<button type="button" onclick="_ptnrToggleMetier(\''+t+'\')" style="padding:7px 11px;border-radius:10px;font-size:12px;font-weight:'+(on?'900':'600')+';cursor:pointer;font-family:inherit;border:1.5px solid '+(on?'#FFD700':'#2a2a2a')+';background:'+(on?'rgba(255,215,0,.12)':'#141414')+';color:'+(on?'#FFD700':'#aaa')+';">'+(on?'<i class="fa-solid fa-check" style="margin-right:5px;"></i>':'')+PARTNER_TYPE_LABELS_DIR[t]+'</button>';
+  }).join('');
+}
+function _ptnrToggleMetier(t){
+  var i = _ptnrMetiersSel.indexOf(t);
+  if(i !== -1) _ptnrMetiersSel.splice(i, 1);
+  else if(_ptnrMetiersSel.length >= _PTNR_SECONDARY_MAX){ showToast('2 métiers secondaires maximum', 'Retirez-en un pour en choisir un autre.', 'info'); return; }
+  else _ptnrMetiersSel.push(t);
+  _ptnrRenderMetiersChips();
+}
+function _ptnrSaveMetiers(){
+  var msgEl = document.getElementById('ptnr-metiers-msg');
+  var btnEl = document.getElementById('ptnr-metiers-btn');
+  if(btnEl){ btnEl.disabled=true; btnEl.textContent='Enregistrement...'; }
+  if(msgEl){ msgEl.className='ptnr-login-err'; msgEl.textContent=''; }
+  _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {secondary_types: _ptnrMetiersSel}).then(function(data){
+    if(data && data.success){
+      _ptnrSession.secondary_types = data.partner.secondary_types || [];
+      if(Array.isArray(data.partner.services)) _ptnrSession.services = data.partner.services;
+      _ptnrSaveToCache(_ptnrSession);
+      var dt = document.getElementById('ptnr-display-type'); if(dt) dt.innerHTML = partnerTypesLabelHtml(_ptnrSession);
+      try{ _ptnrRenderServicesSection(); }catch(e){}
+      showToast('Métiers mis à jour', '', 'success');
+      setTimeout(_ptnrProfilBack, 600);
+    } else {
+      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'enregistrement'; msgEl.className='ptnr-login-err on'; }
+      if(btnEl){ btnEl.disabled=false; btnEl.textContent='Enregistrer'; }
+    }
+  }).catch(function(){
+    if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Erreur de connexion au serveur'; msgEl.className='ptnr-login-err on'; }
+    if(btnEl){ btnEl.disabled=false; btnEl.textContent='Enregistrer'; }
+  });
 }
 
 // ── PAYS ET ZONE D'INTERVENTION ───────────────────────────────────────────────
@@ -22313,6 +22419,7 @@ function _ptnrRenderServiceItemRow(service){
     + '<input type="file" accept="image/*" class="ptnr-svc-img-input" style="display:none;" onchange="_ptnrOnServiceImageSelected(this)">'
     + '<div class="ptnr-svc-card-body">'
       + '<input type="text" class="ptnr-svc-label" placeholder="Nom de la prestation…" value="'+(service.label||'').replace(/"/g,'&quot;')+'">'
+      + _ptnrSvcCategorySelectHtml(service)
       + '<div style="font-size:8.5px;font-weight:900;text-transform:uppercase;color:#555;letter-spacing:.4px;margin:6px 0 3px;">Détails (optionnel)</div>'
       + '<div class="ptnr-svc-features">'
         + (service.features||[]).map(function(f){ return _ptnrFeatureItemHtml(f); }).join('')
@@ -22351,6 +22458,20 @@ function _ptnrRenderServiceItemRow(service){
         +'</div>')
     + '</div>'
   + '</div>';
+}
+// Métier de la prestation : affiché seulement pour un prestataire à plusieurs métiers (sinon,
+// toujours son métier principal, rien à choisir).
+function _ptnrSvcCategorySelectHtml(service){
+  var types = partnerTypesOf(_ptnrSession);
+  if(types.length < 2) return '';
+  var cur = types.indexOf(service.category) !== -1 ? service.category : types[0];
+  return '<div style="font-size:8.5px;font-weight:900;text-transform:uppercase;color:#555;letter-spacing:.4px;margin:6px 0 3px;">Métier</div>'
+    + '<select class="ptnr-svc-category" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,215,0,.3);border-radius:7px;color:#FFD700;font-size:11px;font-weight:700;padding:5px 8px;outline:none;font-family:inherit;">'
+    + types.map(function(t, i){
+        var lbl = (i===0 && t==='other') ? (_ptnrSession.partner_type_other || 'Autre') : (PARTNER_TYPE_LABELS_DIR[t] || t);
+        return '<option value="'+t+'"'+(t===cur?' selected':'')+'>'+lbl+'</option>';
+      }).join('')
+    + '</select>';
 }
 function _ptnrFeatureItemHtml(text){
   return '<div class="ptnr-svc-feature-item">'
@@ -22550,8 +22671,12 @@ function _ptnrCollectServiceItems(audience){
       var _ic = parseInt(installEl.value);
       installCount = isNaN(_ic) ? 2 : Math.max(2, Math.min(8, _ic));
     }
+    var catEl = cards[i].querySelector('.ptnr-svc-category');
+    var prevSvc = ((_ptnrSession && _ptnrSession.services) || []).filter(function(ps){ return ps && serviceId && ps.id === serviceId; })[0];
     services.push({
       id: serviceId,
+      // Sans sélecteur (un seul métier) : métier déjà enregistré conservé, sinon métier principal (serveur).
+      category: catEl ? catEl.value : ((prevSvc && prevSvc.category) || ''),
       label: label,
       description: '',
       price: isQuote ? 0 : price,

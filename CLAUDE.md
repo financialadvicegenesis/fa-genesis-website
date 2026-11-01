@@ -248,3 +248,16 @@ tiers. Verdicts : `blocked` (refus 400 `image_blocked`), `review` → stocké `m
   couverte par `_SANITIZE_SKIP_KEYS`, sinon sa valeur sera modifiée.
 - **Connexions limitées** (8 échecs / e-mail, 30 / IP, 15 min) : `_AUTH_LIMITED_PATHS`.
 - **Ne jamais renvoyer `client_email` / téléphone du client à un prestataire** avant paiement.
+
+## Métiers multiples d'un prestataire : UN compte, jamais un compte par métier
+- `partner_type` = métier principal (inchangé, fixé à l'inscription). `secondary_types` = 2 métiers
+  secondaires max (ni `other` ni `coworking`), modifiables dans Profil → « Mes métiers ».
+- Chaque prestation a `category` (un des métiers du prestataire, sinon métier principal —
+  `serviceCategoryOf`). Retirer un métier ramène ses prestations au métier principal.
+- Filtrer une catégorie de l'annuaire avec `partnerListedInType(p, cat)`, JAMAIS
+  `p.partner_type === cat` : métier principal toujours listé, secondaire seulement avec au moins une
+  prestation active dans ce métier (anti « je coche tout »).
+- `partnerDirectoryShape(p, promos, category)` renvoie `partner_types`, `matched_type` (libellé de
+  la carte côté app via `partnerTypeLabel`) et le prix « à partir de » du métier parcouru.
+- Les usages internes de `partner_type` (dispatch/kickoff, densité par catégorie, pairs) restent sur
+  le métier principal, volontairement.
