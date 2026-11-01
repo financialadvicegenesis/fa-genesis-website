@@ -14929,7 +14929,7 @@ app.post('/api/partner/auth/login', async (req, res) => {
 // Inscription partenaire (self-service) — compte créé en 'pending', visible en annuaire seulement après validation admin
 app.post('/api/partner/auth/register', async (req, res) => {
     try {
-        const { prenom, nom, email, telephone, city, country, password, partner_type, partner_type_other, company, referralCode } = req.body;
+        const { prenom, nom, email, telephone, city, country, password, partner_type, partner_type_other, company, referralCode, secondary_types } = req.body;
         if (!prenom || !nom || !email || !password || !partner_type) {
             return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
         }
@@ -15004,6 +15004,8 @@ app.post('/api/partner/auth/register', async (req, res) => {
             password: hashedPassword,
             partner_type: partner_type,
             partner_type_other: partner_type === 'other' ? partner_type_other.trim() : '',
+            // Autres métiers choisis dès l'inscription (2 max, voir cleanSecondaryTypes).
+            secondary_types: cleanSecondaryTypes(secondary_types, partner_type),
             company: company || '',
             services: [],
             sessionToken: sessionToken,
@@ -20930,7 +20932,7 @@ app.post('/api/partner/comments', authenticatePartner, (req, res) => {
 // Creer un partenaire
 app.post('/api/admin/partners/create', async (req, res) => {
     try {
-        const { prenom, nom, email, telephone, password, partner_type, partner_type_other, company } = req.body;
+        const { prenom, nom, email, telephone, password, partner_type, partner_type_other, company, secondary_types } = req.body;
         if (!prenom || !nom || !email || !password || !partner_type) {
             return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
         }
@@ -20958,6 +20960,7 @@ app.post('/api/admin/partners/create', async (req, res) => {
             password: hashedPassword,
             partner_type: partner_type,
             partner_type_other: partner_type === 'other' ? partner_type_other.trim() : '',
+            secondary_types: cleanSecondaryTypes(secondary_types, partner_type),
             company: company || '',
             sessionToken: null,
             accountStatus: 'active',
@@ -21170,7 +21173,7 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
         if (index === -1) {
             return res.status(404).json({ error: 'Partenaire non trouve' });
         }
-        const { prenom, nom, telephone, partner_type, company, accountStatus } = req.body;
+        const { prenom, nom, telephone, partner_type, company, accountStatus, secondary_types } = req.body;
         const wasActive = partners[index].accountStatus === 'active';
         if (prenom) partners[index].prenom = prenom;
         if (nom) partners[index].nom = nom;
@@ -21179,6 +21182,16 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
             if (PARTNER_TYPE_VALUES.indexOf(partner_type) !== -1) {
                 partners[index].partner_type = partner_type;
             }
+        }
+        // Métiers secondaires (2 max). Changer le métier principal le retire des secondaires ; une
+        // prestation rattachée à un métier qui n'est plus le sien revient au métier principal.
+        if (Array.isArray(secondary_types) || partner_type) {
+            partners[index].secondary_types = cleanSecondaryTypes(
+                Array.isArray(secondary_types) ? secondary_types : partners[index].secondary_types,
+                partners[index].partner_type);
+            (partners[index].services || []).forEach(function(sv) {
+                if (sv && sv.category) sv.category = serviceCategoryOf(sv, partners[index]);
+            });
         }
         if (company !== undefined) partners[index].company = company;
         if (accountStatus) partners[index].accountStatus = accountStatus;

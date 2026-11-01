@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261101a"></script>
-<script src="app-i18n-es.js?v=20261101a"></script>
-<script src="app-i18n-hi.js?v=20261101a"></script>
-<script src="app-i18n-pt.js?v=20261101a"></script>
-<script src="app-i18n-ja.js?v=20261101a"></script>
-<script src="app-i18n-zh.js?v=20261101a"></script>
-<script src="app-i18n-ar.js?v=20261101a"></script>
-<script src="app-i18n-it.js?v=20261101a"></script>
-<script src="app-i18n-de.js?v=20261101a"></script>
+<script src="app-i18n-en.js?v=20261101b"></script>
+<script src="app-i18n-es.js?v=20261101b"></script>
+<script src="app-i18n-hi.js?v=20261101b"></script>
+<script src="app-i18n-pt.js?v=20261101b"></script>
+<script src="app-i18n-ja.js?v=20261101b"></script>
+<script src="app-i18n-zh.js?v=20261101b"></script>
+<script src="app-i18n-ar.js?v=20261101b"></script>
+<script src="app-i18n-it.js?v=20261101b"></script>
+<script src="app-i18n-de.js?v=20261101b"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3237,7 +3237,7 @@ function _genesisVersionFooter(){
               <option value="ID">🇮🇩 Indonésie</option>
             </optgroup>
           </select>
-          <select class="ptnr-input" id="ptnr-reg-type" onchange="document.getElementById('ptnr-reg-type-other').style.display = (this.value==='other') ? 'block' : 'none';">
+          <select class="ptnr-input" id="ptnr-reg-type" onchange="document.getElementById('ptnr-reg-type-other').style.display = (this.value==='other') ? 'block' : 'none';_ptnrRegRenderSecondary();">
             <option value="">Choisir une catégorie...</option>
             <option value="photographer">Photographe</option>
             <option value="videographer">Vidéaste</option>
@@ -3254,6 +3254,10 @@ function _genesisVersionFooter(){
             <option value="other">Autre</option>
           </select>
           <input class="ptnr-input" id="ptnr-reg-type-other" type="text" placeholder="Précisez votre profil" style="display:none;">
+          <div id="ptnr-reg-secondary-wrap" style="display:none;margin:0 0 12px;">
+            <div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin:2px 0 6px;">Autres métiers (optionnel, 2 maximum)</div>
+            <div id="ptnr-reg-secondary-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+          </div>
           <input class="ptnr-input" id="ptnr-reg-ville" type="text" placeholder="Ville" autocomplete="address-level2">
           <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Entreprise (optionnel)">
           <div class="reg-pw-wrap">
@@ -14979,12 +14983,35 @@ function _ptnrRegStart(){
   });
   var typeOtherEl=document.getElementById('ptnr-reg-type-other'); if(typeOtherEl) typeOtherEl.style.display='none';
   var typeEl=document.getElementById('ptnr-reg-type'); if(typeEl) typeEl.value='';
+  _ptnrRegSecondary = []; _ptnrRegRenderSecondary();
   var errEl=document.getElementById('ptnr-reg-err'); if(errEl) errEl.className='ptnr-login-err';
   _ptnrRegOpenedAt = Date.now();
   _ptnrShowScreen('register');
 }
 
 function _ptnrRegBackToLogin(){ _ptnrShowScreen('login'); }
+
+// Autres métiers dès l'inscription (2 max, même règle que Profil → « Mes métiers »).
+var _ptnrRegSecondary = [];
+function _ptnrRegRenderSecondary(){
+  var wrap = document.getElementById('ptnr-reg-secondary-wrap');
+  var chips = document.getElementById('ptnr-reg-secondary-chips');
+  var primary = (document.getElementById('ptnr-reg-type')||{}).value || '';
+  if(!wrap || !chips) return;
+  _ptnrRegSecondary = _ptnrRegSecondary.filter(function(t){ return t!==primary; });
+  wrap.style.display = primary ? 'block' : 'none';
+  chips.innerHTML = Object.keys(PARTNER_TYPE_LABELS_DIR).filter(function(t){ return t!=='other' && t!=='coworking' && t!==primary; }).map(function(t){
+    var on = _ptnrRegSecondary.indexOf(t) !== -1;
+    return '<button type="button" onclick="_ptnrRegToggleSecondary(\''+t+'\')" style="padding:7px 11px;border-radius:10px;font-size:12px;font-weight:'+(on?'900':'600')+';cursor:pointer;font-family:inherit;border:1.5px solid '+(on?'#FFD700':'#2a2a2a')+';background:'+(on?'rgba(255,215,0,.12)':'#141414')+';color:'+(on?'#FFD700':'#aaa')+';">'+(on?'<i class="fa-solid fa-check" style="margin-right:5px;"></i>':'')+PARTNER_TYPE_LABELS_DIR[t]+'</button>';
+  }).join('');
+}
+function _ptnrRegToggleSecondary(t){
+  var i = _ptnrRegSecondary.indexOf(t);
+  if(i !== -1) _ptnrRegSecondary.splice(i, 1);
+  else if(_ptnrRegSecondary.length >= _PTNR_SECONDARY_MAX){ showToast('2 métiers secondaires maximum', 'Retirez-en un pour en choisir un autre.', 'info'); return; }
+  else _ptnrRegSecondary.push(t);
+  _ptnrRegRenderSecondary();
+}
 
 function _ptnrRegSubmit(){
   var prenom = (document.getElementById('ptnr-reg-prenom')||{}).value || '';
@@ -15021,7 +15048,7 @@ function _ptnrRegSubmit(){
   fetch(_ptnrApiUrl()+'/api/partner/auth/register',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), country:country, password:password, partner_type:partnerType, partner_type_other:partnerTypeOther, company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt}),
+    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), country:country, password:password, partner_type:partnerType, partner_type_other:partnerTypeOther, secondary_types:_ptnrRegSecondary.filter(function(t){ return t!==partnerType; }), company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt}),
     signal: _ptnrRegCtrl ? _ptnrRegCtrl.signal : undefined
   }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Réponse serveur invalide');}});})
   .then(function(res){

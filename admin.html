@@ -3887,6 +3887,75 @@
 
         var allPartners = [];
 
+        // Métiers multiples (voir CLAUDE.md) : métier principal + 2 métiers secondaires max.
+        var PARTNER_SECONDARY_MAX = 2;
+        function partnerSecondaryTypes(p) {
+            var list = (p && Array.isArray(p.secondary_types)) ? p.secondary_types : [];
+            return list.filter(function(t, i) { return t && t !== p.partner_type && t !== 'other' && t !== 'coworking' && list.indexOf(t) === i && PARTNER_TYPE_LABELS[t]; }).slice(0, PARTNER_SECONDARY_MAX);
+        }
+        function partnerTypeLabelAdmin(t) { return PARTNER_TYPE_LABELS[t] || t || 'N/A'; }
+        function partnerSecondaryBadgesHtml(p) {
+            return partnerSecondaryTypes(p).map(function(t) {
+                return '<span style="background:#fff;color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;margin-left:6px;">+ ' + partnerTypeLabelAdmin(t).toUpperCase() + '</span>';
+            }).join('');
+        }
+        // Éditeur des métiers dans la fiche d'un prestataire.
+        var _metiersEditSel = [];
+        function renderPartnerMetiersEditor(partner) {
+            _metiersEditSel = partnerSecondaryTypes(partner).slice();
+            var opts = Object.keys(PARTNER_TYPE_LABELS).map(function(t) {
+                return '<option value="' + t + '"' + (t === partner.partner_type ? ' selected' : '') + '>' + PARTNER_TYPE_LABELS[t] + '</option>';
+            }).join('');
+            return '<div id="metiersEditor" style="border:3px solid black;padding:16px;margin-bottom:8px;">' +
+                '<p class="text-sm font-bold uppercase opacity-70 mb-2">Métier principal</p>' +
+                '<select id="metiersPrimary" onchange="renderMetiersChips()" style="border:3px solid black;padding:8px 10px;font-weight:900;width:100%;max-width:340px;">' + opts + '</select>' +
+                '<p class="text-sm font-bold uppercase opacity-70 mt-4 mb-2">Métiers secondaires (2 maximum)</p>' +
+                '<div id="metiersChips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>' +
+                '<p class="text-xs opacity-60 mt-3">Le prestataire apparaît dans la catégorie d\'un métier secondaire dès qu\'il y propose au moins une prestation. Ses prestations d\'un métier retiré reviennent à son métier principal.</p>' +
+                '<button onclick="savePartnerMetiers(\'' + partner.id + '\')" class="neo-btn-yellow px-5 py-2 text-sm mt-3"><i class="fas fa-save mr-1"></i>Enregistrer les métiers</button>' +
+            '</div>';
+        }
+        function renderMetiersChips() {
+            var wrap = document.getElementById('metiersChips');
+            var primary = (document.getElementById('metiersPrimary') || {}).value || '';
+            if (!wrap) return;
+            _metiersEditSel = _metiersEditSel.filter(function(t) { return t !== primary; });
+            wrap.innerHTML = Object.keys(PARTNER_TYPE_LABELS).filter(function(t) {
+                return t !== primary && t !== 'other' && t !== 'coworking';
+            }).map(function(t) {
+                var on = _metiersEditSel.indexOf(t) !== -1;
+                return '<button type="button" onclick="toggleMetierEdit(\'' + t + '\')" style="border:2px solid black;padding:6px 10px;font-size:12px;font-weight:900;cursor:pointer;background:' + (on ? 'var(--genesis-yellow)' : '#fff') + ';color:black;">' + (on ? '✓ ' : '') + PARTNER_TYPE_LABELS[t] + '</button>';
+            }).join('');
+        }
+        function toggleMetierEdit(t) {
+            var i = _metiersEditSel.indexOf(t);
+            if (i !== -1) _metiersEditSel.splice(i, 1);
+            else if (_metiersEditSel.length >= PARTNER_SECONDARY_MAX) { alert('2 métiers secondaires maximum. Retirez-en un pour en choisir un autre.'); return; }
+            else _metiersEditSel.push(t);
+            renderMetiersChips();
+        }
+        async function savePartnerMetiers(partnerId) {
+            var primary = (document.getElementById('metiersPrimary') || {}).value || '';
+            if (!primary) { alert('Choisissez un métier principal.'); return; }
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/partners/' + encodeURIComponent(partnerId), {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ partner_type: primary, secondary_types: _metiersEditSel })
+                });
+                var result = await response.json();
+                if (result.success) {
+                    alert('Métiers mis à jour');
+                    loadPartnersList();
+                    openPartnerModal(partnerId);
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                alert('Erreur de connexion');
+            }
+        }
+
         function showCreatePartnerForm() {
             document.getElementById('createPartnerFormContainer').style.display = 'block';
             // Generer un mot de passe temporaire
@@ -4058,6 +4127,7 @@
                                (p.nom && p.nom.toLowerCase().includes(q)) ||
                                (p.email && p.email.toLowerCase().includes(q)) ||
                                (p.partner_type && p.partner_type.toLowerCase().includes(q)) ||
+                               [p.partner_type].concat(partnerSecondaryTypes(p)).some(function(t) { return partnerTypeLabelAdmin(t).toLowerCase().includes(q) || (t || '').toLowerCase().includes(q); }) ||
                                (p.specialite && p.specialite.toLowerCase().includes(q)) ||
                                (p.telephone && p.telephone.includes(q));
                     });
@@ -4095,6 +4165,7 @@
                             '</div>' +
                             '<div>' +
                                 '<span style="background:var(--genesis-yellow);color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + typeLabel.toUpperCase() + '</span>' +
+                                partnerSecondaryBadgesHtml(partner) +
                             '</div>' +
                             '<div>' +
                                 '<span style="background:' + statusColor + ';color:' + statusTextColor + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
@@ -4166,8 +4237,12 @@
                         '<p class="font-black">' + (partner.telephone || 'N/A') + '</p>' +
                     '</div>' +
                     '<div>' +
-                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Type</p>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Métier principal</p>' +
                         '<p class="font-black">' + typeLabel + '</p>' +
+                    '</div>' +
+                    '<div>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Métiers secondaires</p>' +
+                        '<p class="font-black">' + (partnerSecondaryTypes(partner).map(partnerTypeLabelAdmin).join(', ') || 'Aucun') + '</p>' +
                     '</div>' +
                     (partner.specialite ?
                         '<div>' +
@@ -4188,6 +4263,9 @@
                         '<p class="font-black" style="color:' + (partner.founderBadge ? '#FFD700' : 'inherit') + '">' + (partner.founderBadge ? 'Oui' : 'Non') + '</p>' +
                     '</div>' +
                 '</div>' +
+                '<hr class="border-2 border-black my-6">' +
+                '<h3 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-layer-group mr-2"></i>MÉTIERS</h3>' +
+                renderPartnerMetiersEditor(partner) +
                 '<hr class="border-2 border-black my-6">' +
                 '<h3 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-sack-dollar mr-2"></i>REVENUS & COMMISSION GENESIS</h3>' +
                 (financials ?
@@ -4242,6 +4320,7 @@
             if (!contentEl || !modalEl) throw new Error('Éléments modal introuvables dans le DOM');
             contentEl.innerHTML = modalHTML;
             modalEl.style.display = 'block';
+            renderMetiersChips();
           } catch(err) {
             alert('Erreur ouverture modal partenaire : ' + (err && err.message ? err.message : err));
           }

@@ -272,15 +272,15 @@ a{text-decoration:none;color:inherit;}
 .reg-footer a{color:var(--orange);font-weight:600;}
 </style>
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261019c"></script>
-<script src="app-i18n-es.js?v=20261019c"></script>
-<script src="app-i18n-pt.js?v=20261019c"></script>
-<script src="app-i18n-ar.js?v=20261019c"></script>
-<script src="app-i18n-de.js?v=20261019c"></script>
-<script src="app-i18n-zh.js?v=20261019c"></script>
-<script src="app-i18n-it.js?v=20261019c"></script>
-<script src="app-i18n-ja.js?v=20261019c"></script>
-<script src="app-i18n-hi.js?v=20261019c"></script>
+<script src="app-i18n-en.js?v=20261101b"></script>
+<script src="app-i18n-es.js?v=20261101b"></script>
+<script src="app-i18n-pt.js?v=20261101b"></script>
+<script src="app-i18n-ar.js?v=20261101b"></script>
+<script src="app-i18n-de.js?v=20261101b"></script>
+<script src="app-i18n-zh.js?v=20261101b"></script>
+<script src="app-i18n-it.js?v=20261101b"></script>
+<script src="app-i18n-ja.js?v=20261101b"></script>
+<script src="app-i18n-hi.js?v=20261101b"></script>
 <script>if (typeof AppI18n !== 'undefined') AppI18n.initAppLanguage();</script>
 <script src="site-lang-picker.js?v=20261014"></script>
 </head>
@@ -399,7 +399,7 @@ a{text-decoration:none;color:inherit;}
       </div>
       <div class="frm-group">
         <label for="partner_type" class="frm-label">Catégorie</label>
-        <select id="partner_type" name="partner_type" class="frm-select" onchange="document.getElementById('partner_type_other_wrap').style.display=(this.value==='other')?'block':'none'">
+        <select id="partner_type" name="partner_type" class="frm-select" onchange="document.getElementById('partner_type_other_wrap').style.display=(this.value==='other')?'block':'none';renderSecondaryTypes();">
           <option value="">Choisir une catégorie…</option>
           <option value="photographer">Photographe</option>
           <option value="videographer">Vidéaste</option>
@@ -419,6 +419,11 @@ a{text-decoration:none;color:inherit;}
       <div id="partner_type_other_wrap" style="display:none;" class="frm-group">
         <label for="partner_type_other" class="frm-label">Précisez votre profil</label>
         <input type="text" id="partner_type_other" name="partner_type_other" class="frm-input" placeholder="Ex : Wedding planner, Coach sportif…">
+      </div>
+      <div id="secondary_types_wrap" style="display:none;" class="frm-group">
+        <div class="frm-label">Autres métiers (optionnel, 2 maximum)</div>
+        <div id="secondary_types_chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        <div class="frm-hint" id="secondary_types_hint">Vous apparaîtrez aussi dans ces catégories dès que vous y proposerez une prestation. Un seul compte pour tous vos métiers.</div>
       </div>
       <div class="wiz-btn-row">
         <button type="button" onclick="showStep(1)" class="btn-secondary"><i class="fa-solid fa-chevron-left" style="font-size:10px;"></i> Précédent</button>
@@ -668,6 +673,33 @@ a{text-decoration:none;color:inherit;}
         showStep(2);
     }
 
+    // Autres métiers (2 max, ni « Autre » ni coworking — même règle que le serveur).
+    var SECONDARY_TYPE_LABELS = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', animateur_evenementiel:'Animateur / Événementiel', influencer:'Influenceur / Influenceuse'};
+    var selectedSecondaryTypes = [];
+    function renderSecondaryTypes() {
+        var wrap = document.getElementById('secondary_types_wrap');
+        var chips = document.getElementById('secondary_types_chips');
+        var primary = (document.getElementById('partner_type') || {}).value || '';
+        if (!wrap || !chips) return;
+        selectedSecondaryTypes = selectedSecondaryTypes.filter(function(t) { return t !== primary; });
+        wrap.style.display = primary ? 'block' : 'none';
+        chips.innerHTML = Object.keys(SECONDARY_TYPE_LABELS).filter(function(t) { return t !== primary; }).map(function(t) {
+            var on = selectedSecondaryTypes.indexOf(t) !== -1;
+            return '<button type="button" onclick="toggleSecondaryType(\'' + t + '\')" style="padding:8px 12px;border-radius:10px;font-size:12px;font-weight:' + (on ? '800' : '500') + ';cursor:pointer;font-family:var(--font-b);border:1.5px solid ' + (on ? 'var(--gold)' : 'rgba(255,255,255,.12)') + ';background:' + (on ? 'var(--gold-dim)' : 'var(--s2)') + ';color:' + (on ? 'var(--gold)' : 'var(--t2)') + ';">' + (on ? '<i class="fa-solid fa-check" style="margin-right:5px;"></i>' : '') + SECONDARY_TYPE_LABELS[t] + '</button>';
+        }).join('');
+    }
+    function toggleSecondaryType(t) {
+        var i = selectedSecondaryTypes.indexOf(t);
+        var hint = document.getElementById('secondary_types_hint');
+        if (i !== -1) selectedSecondaryTypes.splice(i, 1);
+        else if (selectedSecondaryTypes.length >= 2) {
+            if (hint) { hint.textContent = '2 métiers secondaires maximum. Retirez-en un pour en choisir un autre.'; hint.style.color = 'var(--orange)'; }
+            return;
+        } else selectedSecondaryTypes.push(t);
+        if (hint) { hint.textContent = 'Vous apparaîtrez aussi dans ces catégories dès que vous y proposerez une prestation. Un seul compte pour tous vos métiers.'; hint.style.color = ''; }
+        renderSecondaryTypes();
+    }
+
     async function submitStep2() {
         var errorMessage = document.getElementById('errorMessage');
         var infoMessage = document.getElementById('infoMessage');
@@ -687,6 +719,7 @@ a{text-decoration:none;color:inherit;}
             nom: document.getElementById('nom').value.trim(),
             partner_type: partnerType,
             partner_type_other: partnerTypeOther,
+            secondary_types: selectedSecondaryTypes.filter(function(t) { return t !== partnerType; }),
             company: document.getElementById('company').value.trim(),
             email: document.getElementById('email').value.trim(),
             telephone: document.getElementById('telephone').value.trim(),

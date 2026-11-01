@@ -261,3 +261,7 @@ tiers. Verdicts : `blocked` (refus 400 `image_blocked`), `review` → stocké `m
   la carte côté app via `partnerTypeLabel`) et le prix « à partir de » du métier parcouru.
 - Les usages internes de `partner_type` (dispatch/kickoff, densité par catégorie, pairs) restent sur
   le métier principal, volontairement.
+- Saisie des métiers secondaires : inscription app (`_ptnrRegSecondary`) ET site
+  (`partner-register.html`, `selectedSecondaryTypes`), Profil → « Mes métiers », admin (fiche
+  prestataire → « Métiers », PUT `/api/admin/partners/:id` avec `partner_type`/`secondary_types`).
+  Toujours passer par `cleanSecondaryTypes` côté serveur.
