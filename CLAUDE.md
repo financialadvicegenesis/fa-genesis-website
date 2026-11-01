@@ -265,3 +265,15 @@ tiers. Verdicts : `blocked` (refus 400 `image_blocked`), `review` → stocké `m
   (`partner-register.html`, `selectedSecondaryTypes`), Profil → « Mes métiers », admin (fiche
   prestataire → « Métiers », PUT `/api/admin/partners/:id` avec `partner_type`/`secondary_types`).
   Toujours passer par `cleanSecondaryTypes` côté serveur.
+
+## Étudiants : tarifs réservés aux étudiants VÉRIFIÉS + justificatifs persistés
+- `studentPriceBlocked(service, user)` : un compte `etudiant` dont `student_status !== 'verified'`
+  voit les offres étudiants mais ne peut pas les commander (`/api/partner-requests` et
+  `/api/orders/create` → 403 `student_not_verified`). Promotions ouvertes à tous. Tout nouveau
+  chemin de commande doit appeler ce contrôle.
+- `student_certificates` est un OBJET `{ userId: {data, submitted_at} }` en mémoire, persisté dans
+  MongoDB en TABLEAU `[{userId, ...}]` (collection `student_certificates`, dans COLLECTIONS de
+  persistent-store.js). `loadCertificates` accepte les deux formats. Avant le 2026-11-02 rien
+  n'était persisté : les justificatifs disparaissaient à chaque redéploiement.
+- Admin → Étudiants : `reject` sert aussi à « Demander un nouveau justificatif » et « Retirer la
+  vérification » (motif envoyé à l'étudiant).

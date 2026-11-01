@@ -59,7 +59,9 @@ var COLLECTIONS = [
     'contournement-log',
     'client-errors',
     'user-reports',
-    'user-blocks'
+    'user-blocks',
+    // Justificatifs étudiants (avant : jamais persistés, perdus à chaque redéploiement)
+    'student_certificates'
 ];
 
 /**

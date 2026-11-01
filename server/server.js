@@ -960,15 +960,39 @@ function saveDisputes(data) {
 }
 
 // ── Certificats étudiants ──
+// Objet { userId: { data, submitted_at } } en mémoire. Persisté dans MongoDB sous forme de
+// tableau [{ userId, data, submitted_at }] : avant, rien n'était envoyé à MongoDB et tous les
+// justificatifs disparaissaient à chaque redéploiement Render (l'admin voyait « Aucun
+// justificatif » pour des étudiants « En attente »). restoreAllFromCloud réécrit le fichier au
+// format tableau au démarrage : les deux formats sont donc acceptés à la lecture.
 function loadCertificates() {
     try {
         if (!fs.existsSync(CERTIFICATES_FILE)) return {};
-        return JSON.parse(fs.readFileSync(CERTIFICATES_FILE, 'utf8')) || {};
+        var raw = JSON.parse(fs.readFileSync(CERTIFICATES_FILE, 'utf8'));
+        if (Array.isArray(raw)) {
+            var obj = {};
+            raw.forEach(function(c) { if (c && c.userId) obj[c.userId] = { data: c.data, submitted_at: c.submitted_at }; });
+            return obj;
+        }
+        return (raw && typeof raw === 'object') ? raw : {};
     } catch(e) { return {}; }
 }
 function saveCertificates(data) {
-    try { fs.writeFileSync(CERTIFICATES_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+    var obj = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    try { fs.writeFileSync(CERTIFICATES_FILE, JSON.stringify(obj, null, 2), 'utf8'); }
     catch(e) { console.error('[CERT] Erreur sauvegarde:', e); }
+    var list = Object.keys(obj).map(function(uid) { return { userId: uid, data: obj[uid].data, submitted_at: obj[uid].submitted_at }; });
+    persistentStore.persistToCloud('student_certificates', list).catch(function(e) {});
+}
+// Tarifs étudiants réservés aux étudiants VÉRIFIÉS : un compte étudiant en attente, rejeté ou
+// sans justificatif voit les offres étudiants mais ne peut pas les commander (sinon n'importe qui
+// s'inscrivant « étudiant » obtenait les tarifs étudiants, la vérification n'avait aucun effet).
+// Les promotions restent ouvertes à tous.
+var STUDENT_NOT_VERIFIED_MESSAGE = 'Les tarifs étudiants sont réservés aux étudiants vérifiés. Envoyez votre justificatif depuis votre profil : il est vérifié sous 24 h.';
+function studentPriceBlocked(service, user) {
+    if (!service || !user || user.accountType !== 'etudiant' || user.student_status === 'verified') return false;
+    var a = Array.isArray(service.audience) ? service.audience : [service.audience || 'particulier'];
+    return a.indexOf('etudiant') !== -1 && a.indexOf('promo') === -1;
 }
 
 async function triggerPayPalPayouts(items) {
@@ -2732,13 +2756,21 @@ app.get('/api/admin/students', function(req, res) {
                 prenom: u.prenom,
                 nom: u.nom || '',
                 email: u.email,
+                telephone: u.telephone || '',
                 student_status: u.student_status || 'unverified',
+                student_verified_at: u.student_verified_at || null,
+                student_reject_reason: u.student_reject_reason || '',
                 has_certificate: false,
+                certificate_submitted_at: null,
                 createdAt: u.createdAt
             };
         });
         var certs = loadCertificates();
-        students.forEach(function(s) { s.has_certificate = !!certs[s.id]; });
+        students.forEach(function(s) {
+            s.has_certificate = !!(certs[s.id] && certs[s.id].data);
+            s.certificate_submitted_at = certs[s.id] ? (certs[s.id].submitted_at || null) : null;
+        });
+        students.sort(function(a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
         res.json({ success: true, students: students });
     } catch(e) {
         console.error('[ADMIN/STUDENTS] Erreur:', e.message);
@@ -2768,6 +2800,8 @@ app.post('/api/admin/students/:id/verify', function(req, res) {
         if (idx === -1) return res.status(404).json({ error: 'Utilisateur non trouvé' });
         if (users[idx].accountType !== 'etudiant') return res.status(400).json({ error: 'Cet utilisateur n\'est pas étudiant' });
         users[idx].student_status = 'verified';
+        users[idx].student_verified_at = new Date().toISOString();
+        users[idx].student_reject_reason = '';
         users[idx].updatedAt = new Date().toISOString();
         saveUsers(users);
         notifyUser(users[idx].email, 'client', 'student_verified', 'Compte étudiant vérifié ✓', 'Votre justificatif étudiant a été validé par FA GENESIS. Vous bénéficiez maintenant des offres étudiants.', '#profil');
@@ -2787,11 +2821,13 @@ app.post('/api/admin/students/:id/verify', function(req, res) {
 app.post('/api/admin/students/:id/reject', function(req, res) {
     if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     try {
-        var reason = (req.body && req.body.reason) ? req.body.reason.trim() : 'Justificatif non valide.';
+        var reason = (req.body && typeof req.body.reason === 'string' && req.body.reason.trim()) ? req.body.reason.trim().slice(0, 300) : 'Justificatif non valide.';
         var users = loadUsers();
         var idx = users.findIndex(function(u) { return u.id === req.params.id; });
         if (idx === -1) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        if (users[idx].accountType !== 'etudiant') return res.status(400).json({ error: 'Cet utilisateur n\'est pas étudiant' });
         users[idx].student_status = 'rejected';
+        users[idx].student_verified_at = null;
         users[idx].student_reject_reason = reason;
         users[idx].updatedAt = new Date().toISOString();
         saveUsers(users);
@@ -4257,11 +4293,10 @@ app.post('/api/orders/create', (req, res) => {
 
         // Catégorie du client (jeton, sinon compte correspondant à l'e-mail) : une prestation
         // réservée à une autre catégorie ne peut pas être commandée.
-        var _ordAud = clientAudienceOf(req);
-        if (!_ordAud) {
-            var _ordUser = loadUsers().find(function(u) { return (u.email || '').toLowerCase() === String(clientInfo.email).toLowerCase(); });
-            _ordAud = clientAudienceOfUser(_ordUser);
-        }
+        var _ordAuthH = req.headers.authorization || '';
+        var _ordUser = (_ordAuthH.toLowerCase().indexOf('bearer ') === 0) ? findUserByToken(_ordAuthH.slice(7).trim()) : null;
+        if (!_ordUser) _ordUser = loadUsers().find(function(u) { return (u.email || '').toLowerCase() === String(clientInfo.email).toLowerCase(); });
+        var _ordAud = clientAudienceOfUser(_ordUser);
         if (_ordAud) {
             var _ordRefs = [];
             if (partnerServiceOrder && partnerServiceOrder.partnerId && partnerServiceOrder.serviceId) _ordRefs.push(partnerServiceOrder);
@@ -4271,6 +4306,9 @@ app.post('/api/orders/create', (req, res) => {
                 var _rs = _rp && (_rp.services || []).find(function(s) { return s.id === _ordRefs[_ri].serviceId; });
                 if (_rs && !serviceVisibleFor(_rs, _ordAud)) {
                     return res.status(403).json({ error: 'Cette prestation est réservée à une autre catégorie de clients. Votre compte donne accès aux offres pour les ' + CLIENT_AUDIENCE_LABELS[_ordAud] + '.', code: 'audience_mismatch' });
+                }
+                if (_rs && studentPriceBlocked(_rs, _ordUser)) {
+                    return res.status(403).json({ error: STUDENT_NOT_VERIFIED_MESSAGE, code: 'student_not_verified' });
                 }
             }
         }
@@ -10332,11 +10370,10 @@ function _purgeAccountData(opts) {
 
         try {
             // Certificats étudiants
+            // Objet indexé par id d'utilisateur (l'ancien certs.filter levait une erreur : le
+            // justificatif n'était jamais supprimé avec le compte).
             var certs = loadCertificates();
-            var cc = certs.filter(function(c) {
-                return !((c.email && c.email.toLowerCase() === email) || c.userId === userId);
-            });
-            if (cc.length !== certs.length) saveCertificates(cc);
+            if (userId && certs[userId]) { delete certs[userId]; saveCertificates(certs); }
         } catch(e) { errs.push('certificates:' + e.message); }
 
         try {
@@ -18833,6 +18870,9 @@ app.post('/api/partner-requests', function(req, res) {
         var _reqAud = clientAudienceOfUser(user);
         if (!serviceVisibleFor(service, _reqAud)) {
             return res.status(403).json({ error: 'Cette prestation est réservée à une autre catégorie de clients. Votre compte donne accès aux offres pour les ' + CLIENT_AUDIENCE_LABELS[_reqAud] + '.', code: 'audience_mismatch' });
+        }
+        if (studentPriceBlocked(service, user)) {
+            return res.status(403).json({ error: STUDENT_NOT_VERIFIED_MESSAGE, code: 'student_not_verified' });
         }
 
         var requests = loadPartnerRequests();

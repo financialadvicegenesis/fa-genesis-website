@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261101b"></script>
-<script src="app-i18n-es.js?v=20261101b"></script>
-<script src="app-i18n-hi.js?v=20261101b"></script>
-<script src="app-i18n-pt.js?v=20261101b"></script>
-<script src="app-i18n-ja.js?v=20261101b"></script>
-<script src="app-i18n-zh.js?v=20261101b"></script>
-<script src="app-i18n-ar.js?v=20261101b"></script>
-<script src="app-i18n-it.js?v=20261101b"></script>
-<script src="app-i18n-de.js?v=20261101b"></script>
+<script src="app-i18n-en.js?v=20261102a"></script>
+<script src="app-i18n-es.js?v=20261102a"></script>
+<script src="app-i18n-hi.js?v=20261102a"></script>
+<script src="app-i18n-pt.js?v=20261102a"></script>
+<script src="app-i18n-ja.js?v=20261102a"></script>
+<script src="app-i18n-zh.js?v=20261102a"></script>
+<script src="app-i18n-ar.js?v=20261102a"></script>
+<script src="app-i18n-it.js?v=20261102a"></script>
+<script src="app-i18n-de.js?v=20261102a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -7094,7 +7094,7 @@ function openPartnerDetail(partnerId){
           }).join('')+'</div>'
         : '';
       var servicesHtml = services.length
-        ? svcTabsHtml + '<div class="pf-svcs" id="p-svc-grid">'+_ptnrRenderProfileSvcCards(services, _partnerDetailAudience, p)+'</div>'
+        ? _studentVerifyNoticeHtml(services) + svcTabsHtml + '<div class="pf-svcs" id="p-svc-grid">'+_ptnrRenderProfileSvcCards(services, _partnerDetailAudience, p)+'</div>'
         : (_viewAud
           ? '<div class="p-dir-review-empty">'+({ etudiant: 'Ce prestataire ne propose pas encore d\'offres pour les étudiants.', particulier: 'Ce prestataire ne propose pas encore d\'offres pour les particuliers.', entreprise: 'Ce prestataire ne propose pas encore d\'offres pour les entreprises.' })[_viewAud]+'</div>'
           : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>');
@@ -9198,6 +9198,26 @@ function _studentBadgeHtml(){
     +'<i class="fa-solid fa-graduation-cap"></i> '+m.label
     +(ss==='rejected'||ss==='unverified' ? ' <button onclick="_appUploadNewCert()" style="margin-left:auto;padding:4px 9px;border-radius:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#ccc;font-size:10px;cursor:pointer;">Envoyer</button>' : '')
     +'</div>';
+}
+
+// Étudiant pas encore vérifié : il voit les offres étudiants mais ne peut les commander qu'une
+// fois son justificatif validé (règle serveur studentPriceBlocked). Prévient avant qu'il remplisse
+// une demande, plutôt qu'un refus à l'envoi.
+function _studentVerifyNoticeHtml(services){
+  if(!USER || GUEST || USER.accountType !== 'etudiant' || USER.student_status === 'verified') return '';
+  var hasStudentOffer = (services||[]).some(function(s){
+    var a = Array.isArray(s.audience) ? s.audience : [s.audience || 'particulier'];
+    return a.indexOf('etudiant') !== -1 && a.indexOf('promo') === -1;
+  });
+  if(!hasStudentOffer) return '';
+  var pending = USER.student_status === 'pending';
+  return '<div style="margin:0 0 14px;padding:12px 14px;border-radius:12px;background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);display:flex;gap:10px;align-items:flex-start;">'
+    +'<i class="fa-solid fa-graduation-cap" style="color:#eab308;margin-top:2px;"></i>'
+    +'<div style="flex:1;font-size:12px;color:#ddd;line-height:1.5;">'
+      +'<div style="font-weight:800;color:#eab308;margin-bottom:2px;">'+(pending ? 'Justificatif en cours de vérification' : 'Vérifiez votre statut étudiant')+'</div>'
+      +'<div>'+(pending ? 'Vous pourrez commander les offres étudiants dès sa validation (sous 24 h).' : 'Les tarifs étudiants sont réservés aux étudiants vérifiés. Envoyez votre justificatif pour pouvoir commander.')+'</div>'
+      +(pending ? '' : '<button onclick="_appUploadNewCert()" style="margin-top:8px;padding:6px 12px;border-radius:8px;background:#eab308;border:none;color:#000;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;">Envoyer mon justificatif</button>')
+    +'</div></div>';
 }
 
 function _appUploadNewCert(){
