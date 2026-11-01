@@ -754,7 +754,7 @@
             <div class="sheet-pill"></div>
             <div class="sheet-grid">
                 <div class="sheet-item" onclick="showSectionMobile('partenaires');closeAdminSheet()">
-                    <i class="fas fa-handshake"></i><span>Partenaires</span>
+                    <i class="fas fa-handshake"></i><span>Prestataires</span>
                 </div>
                 <div class="sheet-item" onclick="showSectionMobile('prospects');closeAdminSheet()">
                     <i class="fas fa-crosshairs"></i><span>Prospects</span>
@@ -830,7 +830,7 @@
                 </button>
                 <div class="sidebar-divider"></div>
                 <button class="sidebar-btn" data-section="partenaires" onclick="showSection('partenaires')">
-                    <i class="fas fa-handshake"></i><span>Partenaires</span>
+                    <i class="fas fa-handshake"></i><span>Prestataires</span>
                     <span id="pendingPartnersBadge" class="sidebar-badge" style="display:none;"></span>
                 </button>
                 <button class="sidebar-btn" data-section="evenements" onclick="showSection('evenements')">
@@ -1068,17 +1068,17 @@
             <div id="partenairesSection" class="container mx-auto max-w-7xl" style="display: none;">
                 <div class="flex justify-between items-center mb-12 flex-wrap gap-4">
                     <h2 class="text-5xl font-black italic uppercase text-[var(--genesis-yellow)]">
-                        <i class="fas fa-handshake mr-4"></i>PARTENAIRES
+                        <i class="fas fa-handshake mr-4"></i>PRESTATAIRES
                     </h2>
                     <button onclick="showCreatePartnerForm()" class="neo-btn-yellow px-6 py-3 text-sm">
-                        <i class="fas fa-user-plus mr-2"></i>CRÉER UN PARTENAIRE
+                        <i class="fas fa-user-plus mr-2"></i>CRÉER UN PRESTATAIRE
                     </button>
                 </div>
 
                 <!-- Formulaire creation partenaire (cache par defaut) -->
                 <div id="createPartnerFormContainer" class="admin-card neo-shadow mb-8" style="display: none;">
                     <h3 class="text-2xl font-black italic uppercase mb-6">
-                        <i class="fas fa-user-plus mr-2"></i>NOUVEAU PARTENAIRE
+                        <i class="fas fa-user-plus mr-2"></i>NOUVEAU PRESTATAIRE
                     </h3>
                     <form id="createPartnerForm">
                         <div class="grid md:grid-cols-2 gap-4 mb-4">
@@ -1094,7 +1094,7 @@
                         <div class="grid md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block font-black mb-2 uppercase text-sm">Email</label>
-                                <input type="email" id="partnerEmail" required placeholder="email@partenaire.com">
+                                <input type="email" id="partnerEmail" required placeholder="email@prestataire.com">
                             </div>
                             <div>
                                 <label class="block font-black mb-2 uppercase text-sm">Téléphone</label>
@@ -1103,7 +1103,7 @@
                         </div>
                         <div class="grid md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="block font-black mb-2 uppercase text-sm">Type de partenaire</label>
+                                <label class="block font-black mb-2 uppercase text-sm">Type de prestataire</label>
                                 <select id="partnerType" required>
                                     <option value="">Sélectionner...</option>
                                     <option value="photographer">Photographe</option>
@@ -1159,7 +1159,7 @@
                 <!-- Recherche partenaires -->
                 <div class="admin-card neo-shadow mb-6" style="padding:16px 20px;">
                     <div class="flex gap-3 flex-wrap items-center">
-                        <input type="text" id="partnerSearchInput" placeholder="Rechercher un partenaire (nom, email, type)..." class="flex-1" onkeydown="if(event.key==='Enter')handleSearchPartners()" style="min-width:200px;">
+                        <input type="text" id="partnerSearchInput" placeholder="Rechercher un prestataire (nom, email, type)..." class="flex-1" onkeydown="if(event.key==='Enter')handleSearchPartners()" style="min-width:200px;">
                         <button onclick="handleSearchPartners()" class="neo-btn-yellow px-6">
                             <i class="fas fa-search mr-2"></i>Rechercher
                         </button>
@@ -1186,8 +1186,8 @@
                 <!-- Dossiers partenaires (sous-profils) -->
                 <div id="partnerDossiersContainer" style="display: none;">
                     <div class="admin-card neo-shadow mb-6" style="border-left: 6px solid var(--genesis-yellow);">
-                        <h3 class="text-xl font-black italic uppercase mb-2"><i class="fas fa-folder-open mr-2" style="color:var(--genesis-yellow);"></i>Dossiers partenaires</h3>
-                        <p class="text-sm opacity-60 font-bold mb-0">Ces dossiers sont créés par les partenaires depuis leur espace dans l'application. Vous pouvez les supprimer.</p>
+                        <h3 class="text-xl font-black italic uppercase mb-2"><i class="fas fa-folder-open mr-2" style="color:var(--genesis-yellow);"></i>Dossiers prestataires</h3>
+                        <p class="text-sm opacity-60 font-bold mb-0">Ces dossiers sont créés par les prestataires depuis leur espace dans l'application. Vous pouvez les supprimer.</p>
                     </div>
                     <div id="dossiersList">
                         <p class="text-center py-8 opacity-50 font-bold">Chargement...</p>
@@ -1508,7 +1508,7 @@
                             <button onclick="_adminWiseRetryAll()" style="background:#0d1a10;color:#4ade80;border:1.5px solid #1a6e3a;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;"><i class="fas fa-rotate" style="margin-right:6px;"></i>RETRY TOUS</button>
                         </div>
                     </div>
-                    <div id="wiseIbanStatusResult" style="font-size:12px;color:#aaa;">Cliquez "VOIR STATUT" pour lister les partenaires avec IBAN.</div>
+                    <div id="wiseIbanStatusResult" style="font-size:12px;color:#aaa;">Cliquez "VOIR STATUT" pour lister les prestataires avec IBAN.</div>
                 </div>
 
                 <!-- ── Remboursement admin (commande validée/livrée) ── -->
@@ -2386,7 +2386,7 @@
                             '<p style="margin:0 0 6px 0;font-weight:900;color:#4338CA;font-size:12px;text-transform:uppercase;">' +
                                 '<i class="fas ' + kickoffIcon + ' mr-1"></i>En attente du ' + kickoffLabel +
                             '</p>' +
-                            '<p style="margin:0;font-weight:700;font-size:12px;color:#555;">Ce partenaire doit confirmer la date. Vous recevrez une notification quand c\'est fait.</p>' +
+                            '<p style="margin:0;font-weight:700;font-size:12px;color:#555;">Ce prestataire doit confirmer la date. Vous recevrez une notification quand c\'est fait.</p>' +
                           '</div>';
                     } else if (order.schedule_confirmed_by_admin) {
                         actionHtml = '<span style="display:inline-block;padding:10px 20px;font-weight:900;text-transform:uppercase;font-size:13px;background:rgba(34,197,94,0.18);color:#4ade80;border:1px solid rgba(34,197,94,0.35);border-radius:9px;letter-spacing:.5px;">Confirmé ✓</span>';
@@ -2445,7 +2445,7 @@
                     if (data.finalized) {
                         alert('Date confirmée et parcours lancé ! Le projet a été créé.');
                     } else {
-                        alert('Confirmation admin enregistrée. En attente de la confirmation du partenaire.');
+                        alert('Confirmation admin enregistrée. En attente de la confirmation du prestataire.');
                     }
                     // Recharger la liste
                     loadPendingSchedules();
@@ -4000,7 +4000,7 @@
                     var badge = document.getElementById('dossiersBadge');
                     if (badge) { badge.textContent = profiles.length; badge.style.display = profiles.length ? '' : 'none'; }
                     if (!profiles.length) {
-                        if (el) el.innerHTML = '<div class="admin-card neo-shadow text-center py-12"><p class="font-bold opacity-50 text-lg">Aucun dossier créé pour le moment.</p><p class="text-sm opacity-40 mt-2">Les dossiers sont créés par les partenaires depuis leur espace dans l\'application.</p></div>';
+                        if (el) el.innerHTML = '<div class="admin-card neo-shadow text-center py-12"><p class="font-bold opacity-50 text-lg">Aucun dossier créé pour le moment.</p><p class="text-sm opacity-40 mt-2">Les dossiers sont créés par les prestataires depuis leur espace dans l\'application.</p></div>';
                         return;
                     }
                     // Grouper par type de partenaire
@@ -4078,7 +4078,7 @@
                     var result = await response.json();
 
                     if (result.success) {
-                        alert('Partenaire créé avec succès !\n\nEmail : ' + data.email + '\nMot de passe : ' + data.password + '\n\nCommuniquez ces identifiants au partenaire.');
+                        alert('Prestataire créé avec succès !\n\nEmail : ' + data.email + '\nMot de passe : ' + data.password + '\n\nCommuniquez ces identifiants au prestataire.');
                         createPartnerFormEl.reset();
                         document.getElementById('createPartnerFormContainer').style.display = 'none';
                         loadPartnersList();
@@ -4097,7 +4097,7 @@
             var container = document.getElementById('partnersList');
             if (!container) return;
 
-            container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold"><i class="fas fa-spinner fa-spin mr-2" style="color:var(--genesis-yellow);"></i>Chargement des partenaires...</p>';
+            container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold"><i class="fas fa-spinner fa-spin mr-2" style="color:var(--genesis-yellow);"></i>Chargement des prestataires...</p>';
 
             try {
                 var response = await fetch(API_BASE_URL + '/api/admin/partners');
@@ -4134,7 +4134,7 @@
                 }
 
                 if (partners.length === 0) {
-                    container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">' + (searchQuery ? 'Aucun résultat pour "' + searchQuery + '".' : 'Aucun partenaire inscrit pour le moment.') + '</p>';
+                    container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">' + (searchQuery ? 'Aucun résultat pour "' + searchQuery + '".' : 'Aucun prestataire inscrit pour le moment.') + '</p>';
                     return;
                 }
 
@@ -4214,7 +4214,7 @@
             }
 
             if (!partner || !partner.email) {
-                alert('Partenaire non trouvé (id: ' + partnerId + ')');
+                alert('Prestataire non trouvé (id: ' + partnerId + ')');
                 return;
             }
 
@@ -4322,7 +4322,7 @@
             modalEl.style.display = 'block';
             renderMetiersChips();
           } catch(err) {
-            alert('Erreur ouverture modal partenaire : ' + (err && err.message ? err.message : err));
+            alert('Erreur ouverture modal prestataire : ' + (err && err.message ? err.message : err));
           }
         }
 
@@ -4331,14 +4331,14 @@
         }
 
         async function sendStripeOnboardingLink(partnerId) {
-            if (!confirm('Envoyer un email au partenaire avec le lien Stripe pour configurer son compte de paiement ?')) return;
+            if (!confirm('Envoyer un email au prestataire avec le lien Stripe pour configurer son compte de paiement ?')) return;
             try {
                 var resp = await fetch(API_BASE_URL + '/api/admin/partners/' + partnerId + '/stripe-onboarding-link', {
                     method: 'POST'
                 });
                 var result = await resp.json();
                 if (result.ok) {
-                    alert('Lien Stripe envoyé par email au partenaire.');
+                    alert('Lien Stripe envoyé par email au prestataire.');
                 } else {
                     alert('Erreur : ' + (result.error || 'Impossible d\'envoyer le lien'));
                 }
@@ -4391,7 +4391,7 @@
         }
 
         async function deletePartner(partnerId) {
-            if (!confirm('Voulez-vous vraiment supprimer ce partenaire ? Cette action est irréversible.')) return;
+            if (!confirm('Voulez-vous vraiment supprimer ce prestataire ? Cette action est irréversible.')) return;
 
             try {
                 var response = await fetch(API_BASE_URL + '/api/admin/partners/' + partnerId, {
@@ -4400,7 +4400,7 @@
 
                 var result = await response.json();
                 if (result.success) {
-                    alert('Partenaire supprimé');
+                    alert('Prestataire supprimé');
                     closePartnerModal();
                     loadPartnersList();
                     loadDashboard();
@@ -4594,7 +4594,7 @@
                 return '<label class="flex items-center gap-3 py-2">' +
                     '<input type="checkbox" data-attendee="' + a.id + '" ' + (a.attended ? 'checked' : '') + ' onchange="markAttendance(\'' + eventId + '\',\'' + a.id + '\',this.checked)">' +
                     '<span class="font-bold">' + (a.name || a.id) + '</span>' +
-                    '<span class="text-xs opacity-50">(' + (a.type === 'partner' ? 'partenaire' : 'client') + ')</span>' +
+                    '<span class="text-xs opacity-50">(' + (a.type === 'partner' ? 'prestataire' : 'client') + ')</span>' +
                 '</label>';
             }).join('');
         }
@@ -4864,7 +4864,7 @@
                 // Filtrer les partenaires actifs
                 var activePartners = partners.filter(function(p) { return p.accountStatus !== 'deactivated'; });
 
-                var html = '<h4 class="text-lg font-black italic uppercase mb-4"><i class="fas fa-handshake mr-2"></i>PARTENAIRES ASSIGNÉS</h4>';
+                var html = '<h4 class="text-lg font-black italic uppercase mb-4"><i class="fas fa-handshake mr-2"></i>PRESTATAIRES ASSIGNÉS</h4>';
 
                 // Afficher les assignations existantes
                 if (assignments.length > 0) {
@@ -4885,13 +4885,13 @@
                         '</div>';
                     });
                 } else {
-                    html += '<p class="text-sm opacity-50 mb-4">Aucun partenaire assigné</p>';
+                    html += '<p class="text-sm opacity-50 mb-4">Aucun prestataire assigné</p>';
                 }
 
                 // Formulaire d'assignation
                 if (activePartners.length > 0) {
                     html += '<div class="mt-4 p-4 bg-gray-100 border-2 border-black">' +
-                        '<label class="block font-black mb-2 uppercase text-sm">Assigner un partenaire</label>' +
+                        '<label class="block font-black mb-2 uppercase text-sm">Assigner un prestataire</label>' +
                         '<div class="flex gap-2 flex-wrap">' +
                             '<select id="assignPartnerSelect_' + orderId + '" class="flex-1 min-w-[200px]">' +
                                 '<option value="">Sélectionner...</option>';
@@ -4914,7 +4914,7 @@
 
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement assignations:', error);
-                container.innerHTML = '<p class="text-sm text-red-600 font-bold">Erreur de chargement des partenaires</p>';
+                container.innerHTML = '<p class="text-sm text-red-600 font-bold">Erreur de chargement des prestataires</p>';
             }
         }
 
@@ -4923,7 +4923,7 @@
             var notesInput = document.getElementById('assignNotes_' + orderId);
 
             if (!select || !select.value) {
-                alert('Sélectionnez un partenaire');
+                alert('Sélectionnez un prestataire');
                 return;
             }
 
@@ -4951,7 +4951,7 @@
         }
 
         async function removeAssignment(assignmentId, orderId, containerElId) {
-            if (!confirm('Retirer ce partenaire du projet ?')) return;
+            if (!confirm('Retirer ce prestataire du projet ?')) return;
 
             try {
                 var response = await fetch(API_BASE_URL + '/api/admin/partners/assign/' + assignmentId, {
@@ -6489,7 +6489,7 @@
             _adminWiseFetch('GET', '/api/admin/wise/iban-status').then(function(data) {
                 if (!el) return;
                 if (!data.ok) { el.innerHTML = '<span style="color:#ef4444;">Erreur: ' + (data.error || 'inconnue') + '</span>'; return; }
-                if (!data.partners || !data.partners.length) { el.innerHTML = '<span style="color:#aaa;">Aucun partenaire avec IBAN enregistré.</span>'; return; }
+                if (!data.partners || !data.partners.length) { el.innerHTML = '<span style="color:#aaa;">Aucun prestataire avec IBAN enregistré.</span>'; return; }
 
                 var linked = data.partners.filter(function(p){ return p.wiseLinked; }).length;
                 var unlinked = data.partners.filter(function(p){ return !p.wiseLinked; });
@@ -6545,7 +6545,7 @@
                     html += '</tr>';
                 });
                 html += '</tbody></table></div>';
-                html += '<div style="margin-top:8px;font-size:11px;color:#666;">' + data.count + ' partenaire(s) avec IBAN — ' + linked + ' liés à Wise automatiquement, ' + (data.count - linked) + ' virement(s) manuel(s) requis</div>';
+                html += '<div style="margin-top:8px;font-size:11px;color:#666;">' + data.count + ' prestataire(s) avec IBAN — ' + linked + ' liés à Wise automatiquement, ' + (data.count - linked) + ' virement(s) manuel(s) requis</div>';
                 el.innerHTML = html;
             }).catch(function(e) {
                 if (el) el.innerHTML = '<span style="color:#ef4444;">Erreur réseau: ' + e.message + '</span>';
@@ -6554,11 +6554,11 @@
 
         function _adminWiseRetryAll() {
             var el = document.getElementById('wiseIbanStatusResult');
-            if (el) el.innerHTML = '<span style="color:#aaa;">Retry en cours pour tous les partenaires sans lien Wise...</span>';
+            if (el) el.innerHTML = '<span style="color:#aaa;">Retry en cours pour tous les prestataires sans lien Wise...</span>';
             _adminWiseFetch('POST', '/api/admin/wise/retry-all').then(function(data) {
                 if (!el) return;
                 if (!data.ok) { el.innerHTML = '<span style="color:#ef4444;">Erreur: ' + (data.error || 'inconnue') + '</span>'; return; }
-                var html = '<div style="font-weight:800;color:#4ade80;margin-bottom:8px;font-size:13px;">Retry terminé — ' + data.processed + ' partenaire(s) traité(s)</div>';
+                var html = '<div style="font-weight:800;color:#4ade80;margin-bottom:8px;font-size:13px;">Retry terminé — ' + data.processed + ' prestataire(s) traité(s)</div>';
                 (data.results || []).forEach(function(r) {
                     var ok = r.ok;
                     html += '<div style="padding:6px 10px;margin-bottom:4px;border-radius:6px;background:' + (ok ? '#0a1a10' : '#1a0a0a') + ';border:1px solid ' + (ok ? '#1a6e3a' : '#6e1a1a') + ';">';
@@ -6618,7 +6618,7 @@
                     // Partenaires en attente
                     var pendingPartners = stats.pendingPartners || 0;
                     if (pendingPartners > 0) {
-                        items.push({ icon: 'fa-handshake', color: '#f59e0b', text: pendingPartners + ' partenaire(s) en attente de validation', action: "showSection('partenaires')", unread: true });
+                        items.push({ icon: 'fa-handshake', color: '#f59e0b', text: pendingPartners + ' prestataire(s) en attente de validation', action: "showSection('partenaires')", unread: true });
                     }
                     // Litiges ouverts
                     var openDisputes = (disputesData.disputes || []).filter(function(d) { return d.status !== 'resolved'; });
@@ -6992,7 +6992,7 @@
                         var amountStr = p.amount_partner != null ? parseFloat(p.amount_partner).toFixed(2) + '€' : '—';
                         html += '<div style="background:#111;border:1px solid rgba(255,215,0,.12);border-radius:12px;padding:16px;margin-bottom:10px;">';
                         html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px;">';
-                        html += '<div><div style="font-weight:900;font-size:14px;color:#e0e0e0;">' + (p.partner_name || 'Partenaire') + '</div>';
+                        html += '<div><div style="font-weight:900;font-size:14px;color:#e0e0e0;">' + (p.partner_name || 'Prestataire') + '</div>';
                         html += '<div style="font-size:11px;color:#666;margin-top:2px;">' + (p.partner_email || '') + ' · ' + (p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR') : '') + '</div></div>';
                         html += '<div style="text-align:right;"><div style="font-size:20px;font-weight:900;color:var(--c-gold);">' + amountStr + '</div>';
                         html += '<div style="font-size:11px;color:#888;">' + methodLabel + '</div></div></div>';
@@ -7431,7 +7431,7 @@
                         html += '<div style="background:#111;border:1px solid rgba(255,215,0,.12);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;" onclick="_adminOpenDispute(\'' + d.id + '\')">';
                         html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">';
                         html += '<div><div style="font-weight:900;font-size:13px;color:#e0e0e0;">' + d.id + '</div>';
-                        html += '<div style="font-size:12px;color:#aaa;margin-top:3px;">' + (d.partner_name || 'Partenaire inconnu') + ' · ' + (d.client_email || '') + '</div>';
+                        html += '<div style="font-size:12px;color:#aaa;margin-top:3px;">' + (d.partner_name || 'Prestataire inconnu') + ' · ' + (d.client_email || '') + '</div>';
                         html += '<div style="font-size:11px;color:#666;margin-top:2px;">' + (d.category || '') + ' · ' + (d.created_at ? new Date(d.created_at).toLocaleDateString('fr-FR') : '') + '</div></div>';
                         html += '<span style="background:' + st.bg + ';color:' + st.color + ';border:1px solid ' + st.color + '44;border-radius:20px;font-size:10px;font-weight:900;padding:3px 10px;letter-spacing:.5px;white-space:nowrap;">' + st.label + '</span>';
                         html += '</div>';
@@ -7465,7 +7465,7 @@
                     if (d.jeremie_analysis) html += '<div style="margin-top:16px;padding:12px;background:#0d0d1a;border:1px solid rgba(167,139,250,.3);border-radius:10px;"><h4 style="font-size:12px;font-weight:900;color:#a78bfa;margin-bottom:6px;"><i class="fas fa-robot" style="margin-right:6px;"></i>ANALYSE JÉRÉMIE</h4><p style="font-size:12px;color:#c4b5fd;">' + d.jeremie_analysis + '</p></div>';
                     if (d.status !== 'resolved') {
                         html += '<div style="margin-top:20px;border-top:1px solid rgba(255,255,255,.08);padding-top:16px;"><h4 style="font-size:12px;font-weight:900;color:#aaa;margin-bottom:10px;">VERDICT ADMIN</h4><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">';
-                        [['partner_favor','Faveur partenaire'],['client_favor','Faveur client'],['split','Partage'],['manual_action_required','Action manuelle']].forEach(function(v) {
+                        [['partner_favor','Faveur prestataire'],['client_favor','Faveur client'],['split','Partage'],['manual_action_required','Action manuelle']].forEach(function(v) {
                             html += '<button onclick="_adminResolveDispute(\'' + d.id + '\',\'' + v[0] + '\')" style="background:#1a1a1a;color:#e0e0e0;border:1px solid rgba(255,255,255,.15);border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;">' + v[1] + '</button>';
                         });
                         html += '</div><textarea id="dispute-note-' + d.id + '" placeholder="Note (optionnel)" style="width:100%;resize:vertical;min-height:60px;font-size:12px;"></textarea></div>';
