@@ -22733,7 +22733,7 @@ app.get('/api/payments/stripe/config', function(req, res) {
     var cfg = mps.getConfig();
     res.json({
         publishableKey:    process.env.STRIPE_PUBLISHABLE_KEY || null,
-        globalCommission:  cfg.globalCommissionRate,
+        globalCommission:  platformCommissionPct() / 100,
         currency:          cfg.currency || 'eur',
         paymentsEnabled:   cfg.paymentsEnabled !== false,
         stripeEnabled:     !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY)
@@ -22908,18 +22908,72 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
 });
 
 // ── Admin : statistiques marketplace ─────────────────────────────────────────
+// Taux de commission réel (source unique : GENESIS_TIER_BENEFITS, identique pour tous les badges
+// et toutes les catégories depuis le passage à la commission plate).
+function platformCommissionPct() {
+    return (getBenefitsForBadge(null) || {}).commissionPct || 5;
+}
+// Moyens de versement configurés par un prestataire (Stripe Connect, IBAN/Wise, PayPal, Mobile Money).
+function partnerPayoutMethods(p) {
+    var m = [];
+    if (!p) return m;
+    if (p.stripeAccountId && p.stripeAccountStatus === 'active') m.push('stripe');
+    if (p.payout_iban || p.wiseRecipientId || (p.bankDetails && p.bankDetails.iban)) m.push('iban');
+    if (p.payout_paypal_email) m.push('paypal');
+    if (p.payout_mobile_money && (p.payout_mobile_money.number || p.payout_mobile_money.phone || typeof p.payout_mobile_money === 'string')) m.push('mobile_money');
+    return m;
+}
+// Montant réellement encaissé sur une commande (acompte, solde, échéances payées).
+function orderPaidAmount(o) {
+    if (!o) return 0;
+    var total = parseFloat(o.total_price || o.total_amount || 0) || 0;
+    if (o.paymentStatus === 'fully_paid') return total;
+    if (Array.isArray(o.installments) && o.installments.length) {
+        return o.installments.reduce(function(sum, it) { return sum + ((it && (it.paid || it.status === 'paid')) ? (parseFloat(it.amount) || 0) : 0); }, 0);
+    }
+    return (o.deposit_paid ? (parseFloat(o.deposit_amount) || 0) : 0) + (o.balance_paid ? (parseFloat(o.balance_amount) || 0) : 0);
+}
+
+// ── Admin : statistiques marketplace (données réelles) ──────────────────────
+// Avant : lisait stripe_payments.json, que seul un ancien circuit Stripe Connect (jamais appelé
+// depuis GENESIS SAFE™) alimentait — tout restait à 0 €. Désormais : encaissements réels des
+// commandes, commission GENESIS et montants dus aux prestataires d'après payouts.json (la
+// commission exacte appliquée à chaque versement), moyens de versement de tous types.
 app.get('/api/admin/marketplace/stats', function(req, res) {
     if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     try {
-        var stats = mps.getMarketplaceStats();
-        // Statuts des comptes prestataires
+        var r2 = function(v) { return Math.round(v * 100) / 100; };
+        var orders = loadOrders();
+        var collected = 0, paidOrders = 0, refundedOrders = 0;
+        orders.forEach(function(o) {
+            if (!o) return;
+            if (o.status === 'refunded') { refundedOrders++; return; }
+            if (o.status === 'cancelled') return;
+            var paid = orderPaidAmount(o);
+            if (paid > 0) { collected += paid; paidOrders++; }
+        });
+        var payouts = loadPayouts();
+        var released = payouts.filter(function(p) { return p && p.status !== 'on_hold' && p.status !== 'cancelled'; });
+        var onHold = payouts.filter(function(p) { return p && p.status === 'on_hold'; });
+        var commission = released.reduce(function(s, p) { return s + (parseFloat(p.fa_amount) || 0); }, 0);
+        var toPartners = released.reduce(function(s, p) { return s + (parseFloat(p.amount) || 0); }, 0);
+        var sentToPartners = released.filter(function(p) { return p.status === 'sent' || p.status === 'paid' || p.status === 'completed'; })
+            .reduce(function(s, p) { return s + (parseFloat(p.amount) || 0); }, 0);
+        var onHoldAmount = onHold.reduce(function(s, p) { return s + (parseFloat(p.amount) || 0) + (parseFloat(p.fa_amount) || 0); }, 0);
         var partners = loadPartners().filter(function(p){ return p.accountStatus === 'active'; });
-        var stripeVerified  = partners.filter(function(p){ return p.stripeAccountStatus === 'active'; }).length;
-        var stripePending   = partners.filter(function(p){ return p.stripeAccountId && p.stripeAccountStatus !== 'active'; }).length;
-        var stripeNone      = partners.filter(function(p){ return !p.stripeAccountId; }).length;
-        res.json(Object.assign({}, stats, {
-            partnerStats: { verified: stripeVerified, pending: stripePending, notConfigured: stripeNone }
-        }));
+        var withMethod = partners.filter(function(p) { return partnerPayoutMethods(p).length > 0; }).length;
+        res.json({
+            commissionPct:    platformCommissionPct(),
+            totalCollected:   r2(collected),
+            totalCommission:  r2(commission),
+            totalToPartners:  r2(toPartners),
+            totalSentToPartners: r2(sentToPartners),
+            paidOrdersCount:  paidOrders,
+            refundedOrdersCount: refundedOrders,
+            onHoldCount:      onHold.length,
+            onHoldAmount:     r2(onHoldAmount),
+            partnerStats: { active: partners.length, withPayoutMethod: withMethod, withoutPayoutMethod: partners.length - withMethod }
+        });
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
@@ -22928,7 +22982,7 @@ app.get('/api/admin/marketplace/stats', function(req, res) {
 // ── Admin : configuration des commissions ─────────────────────────────────────
 app.get('/api/admin/marketplace/config', function(req, res) {
     if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
-    res.json({ ok: true, config: mps.getConfig() });
+    res.json({ ok: true, config: Object.assign({}, mps.getConfig(), { globalCommissionRate: platformCommissionPct() / 100, categoryCommissions: {} }), commissionPct: platformCommissionPct() });
 });
 
 app.put('/api/admin/marketplace/config', function(req, res) {
@@ -22936,19 +22990,10 @@ app.put('/api/admin/marketplace/config', function(req, res) {
     try {
         var b = req.body || {};
         var patch = {};
-        if (typeof b.globalCommissionRate === 'number') {
-            if (b.globalCommissionRate < 0 || b.globalCommissionRate > 0.5) {
-                return res.status(400).json({ error: 'Commission globale entre 0 et 50 %' });
-            }
-            patch.globalCommissionRate = b.globalCommissionRate;
-        }
-        if (b.categoryCommissions && typeof b.categoryCommissions === 'object') {
-            var cats = {};
-            Object.keys(b.categoryCommissions).forEach(function(k){
-                var v = parseFloat(b.categoryCommissions[k]);
-                if (!isNaN(v) && v >= 0 && v <= 0.5) cats[k] = v;
-            });
-            patch.categoryCommissions = cats;
+        // La commission (5 %, identique pour tous) est fixée dans le code et dans les contrats :
+        // elle ne se modifie plus depuis l'admin.
+        if (b.globalCommissionRate !== undefined || b.categoryCommissions !== undefined) {
+            return res.status(400).json({ error: 'La commission GENESIS est fixe (' + platformCommissionPct() + ' %, identique pour toutes les catégories) et ne se modifie pas ici.' });
         }
         if (typeof b.paymentsEnabled === 'boolean') patch.paymentsEnabled = b.paymentsEnabled;
         if (['daily','weekly','monthly'].indexOf(b.payoutSchedule) !== -1) patch.payoutSchedule = b.payoutSchedule;
@@ -22976,7 +23021,10 @@ app.get('/api/admin/marketplace/partners', function(req, res) {
                 stripeAccountId:     p.stripeAccountId   || null,
                 stripeAccountStatus: p.stripeAccountStatus || 'not_configured',
                 stripeChargesEnabled:p.stripeChargesEnabled || false,
-                stripePayoutsEnabled:p.stripePayoutsEnabled || false
+                stripePayoutsEnabled:p.stripePayoutsEnabled || false,
+                country:             p.country || '',
+                payoutMethods:       partnerPayoutMethods(p),
+                ibanLast4:           (function(){ var i = p.payout_iban || (p.bankDetails && p.bankDetails.iban) || ''; i = String(i).replace(/\s+/g, ''); return i ? i.slice(-4) : ''; })()
             };
         });
         res.json({ ok: true, partners: list });

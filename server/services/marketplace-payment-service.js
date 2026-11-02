@@ -23,7 +23,7 @@ function loadConfig() {
     try { return JSON.parse(fs.readFileSync(PAYMENT_CONFIG_FILE, 'utf8')); }
     catch(e) {
         return {
-            globalCommissionRate: 0.15,
+            globalCommissionRate: 0.05,
             categoryCommissions:  {},
             payoutSchedule:       'daily',
             paymentsEnabled:      true,
@@ -48,12 +48,11 @@ function saveStripePayments(data) {
 
 // ── Commission ────────────────────────────────────────────────────────────────
 
+// Commission GENESIS : 5 %, identique pour toutes les catégories (voir GENESIS_TIER_BENEFITS dans
+// server.js). Les anciens taux par catégorie de payment-config.json ne sont plus lus.
+var PLATFORM_COMMISSION_RATE = 0.05;
 function getCommissionRate(partnerType) {
-    var cfg = loadConfig();
-    if (cfg.categoryCommissions && typeof cfg.categoryCommissions[partnerType] === 'number') {
-        return cfg.categoryCommissions[partnerType];
-    }
-    return typeof cfg.globalCommissionRate === 'number' ? cfg.globalCommissionRate : 0.15;
+    return PLATFORM_COMMISSION_RATE;
 }
 
 // amountCents : total en centimes — retourne la répartition exacte (arrondie)

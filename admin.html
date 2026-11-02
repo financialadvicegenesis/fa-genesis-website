@@ -1426,27 +1426,34 @@
                     <i class="fa-brands fa-stripe mr-3" style="color:var(--genesis-yellow);"></i>MARKETPLACE — PAIEMENTS
                 </h2>
 
-                <!-- Stats -->
+                <!-- Stats (données réelles : commandes + versements) -->
                 <div id="mkt-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px;">
-                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">CA TRAITÉ</div><div id="mkt-stat-gross" style="font-size:24px;font-weight:900;color:#FFD700;">—</div></div>
-                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">COMMISSIONS FA</div><div id="mkt-stat-comm" style="font-size:24px;font-weight:900;color:#22c55e;">—</div></div>
-                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">VERSÉ PRESTATAIRES</div><div id="mkt-stat-ptnr" style="font-size:24px;font-weight:900;color:#60a5fa;">—</div></div>
-                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">PAIEMENTS</div><div id="mkt-stat-count" style="font-size:24px;font-weight:900;color:#fff;">—</div></div>
-                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">REMBOURSEMENTS</div><div id="mkt-stat-refunds" style="font-size:24px;font-weight:900;color:#f59e0b;">—</div></div>
-                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">COMPTES VÉRIFIÉS</div><div id="mkt-stat-verified" style="font-size:24px;font-weight:900;color:#22c55e;">—</div></div>
-                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">EN ATTENTE</div><div id="mkt-stat-pending" style="font-size:24px;font-weight:900;color:#f59e0b;">—</div></div>
-                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">NON CONFIGURÉS</div><div id="mkt-stat-none" style="font-size:24px;font-weight:900;color:#888;">—</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">ENCAISSÉ CLIENTS</div><div id="mkt-stat-gross" style="font-size:24px;font-weight:900;color:#FFD700;">—</div><div style="font-size:10px;color:#666;margin-top:4px;">Paiements reçus, hors commandes annulées</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">COMMISSIONS GENESIS</div><div id="mkt-stat-comm" style="font-size:24px;font-weight:900;color:#22c55e;">—</div><div style="font-size:10px;color:#666;margin-top:4px;">Sur les prestations terminées</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">CRÉDITÉ AUX PRESTATAIRES</div><div id="mkt-stat-ptnr" style="font-size:24px;font-weight:900;color:#60a5fa;">—</div><div style="font-size:10px;color:#666;margin-top:4px;">Gains nets versés dans leur portefeuille</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">COMMANDES PAYÉES</div><div id="mkt-stat-count" style="font-size:24px;font-weight:900;color:#fff;">—</div><div style="font-size:10px;color:#666;margin-top:4px;">Au moins un paiement reçu</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">REMBOURSÉES</div><div id="mkt-stat-refunds" style="font-size:24px;font-weight:900;color:#f59e0b;">—</div><div style="font-size:10px;color:#666;margin-top:4px;">Commandes remboursées</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">BLOQUÉ (LITIGES)</div><div id="mkt-stat-hold" style="font-size:24px;font-weight:900;color:#ef4444;">—</div><div style="font-size:10px;color:#666;margin-top:4px;">Versements suspendus</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">AVEC MOYEN DE VERSEMENT</div><div id="mkt-stat-verified" style="font-size:24px;font-weight:900;color:#22c55e;">—</div><div style="font-size:10px;color:#666;margin-top:4px;">IBAN, PayPal, Mobile Money ou Stripe</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">SANS MOYEN DE VERSEMENT</div><div id="mkt-stat-none" style="font-size:24px;font-weight:900;color:#888;">—</div><div style="font-size:10px;color:#666;margin-top:4px;">Prestataires actifs à relancer</div></div>
                 </div>
 
-                <!-- Commission settings -->
+                <!-- Commission (fixe) -->
                 <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:20px;margin-bottom:24px;">
-                    <div style="font-size:14px;font-weight:800;color:#FFD700;margin-bottom:16px;"><i class="fa-solid fa-percent" style="margin-right:8px;"></i>PARAMÈTRES DE COMMISSION</div>
-                    <div id="mkt-config-content">Chargement…</div>
+                    <div style="font-size:14px;font-weight:800;color:#FFD700;margin-bottom:12px;"><i class="fa-solid fa-percent" style="margin-right:8px;"></i>COMMISSION GENESIS</div>
+                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                        <div id="mkt-comm-pct" style="font-size:40px;font-weight:900;color:#FFD700;line-height:1;">5 %</div>
+                        <div style="font-size:13px;color:#ccc;line-height:1.6;max-width:640px;">
+                            Prélevée sur chaque prestation payée, <strong>identique pour toutes les catégories et tous les badges</strong>. Aucun abonnement, inscription gratuite pour les clients et les prestataires.
+                            <div style="font-size:11px;color:#777;margin-top:4px;">Ce taux est fixé dans l'application et repris dans les contrats de prestation : il ne se modifie pas depuis l'admin.</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Remboursement -->
                 <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:20px;margin-bottom:24px;">
-                    <div style="font-size:14px;font-weight:800;color:#ef4444;margin-bottom:14px;"><i class="fa-solid fa-rotate-left" style="margin-right:8px;"></i>ÉMETTRE UN REMBOURSEMENT</div>
+                    <div style="font-size:14px;font-weight:800;color:#ef4444;margin-bottom:6px;"><i class="fa-solid fa-rotate-left" style="margin-right:8px;"></i>REMBOURSEMENT STRIPE MANUEL (CAS PARTICULIERS)</div>
+                    <div style="font-size:12px;color:#888;line-height:1.5;margin-bottom:12px;">Pour annuler une commande et rembourser le client, passez par la commande dans <a href="#" onclick="showSection('commandes');return false;" style="color:#FFD700;">Commandes</a> : son statut et le portefeuille du prestataire sont mis à jour. Ce formulaire sert uniquement aux cas que ce circuit ne couvre pas (ex. solde déjà payé) : il rembourse un paiement par carte sans modifier la commande. Paiements PayPal non concernés.</div>
                     <div style="display:flex;flex-direction:column;gap:10px;">
                         <input id="mkt-refund-pi" type="text" placeholder="PaymentIntent ID (pi_xxxxx)" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 14px;font-size:13px;font-family:monospace;">
                         <div style="display:flex;gap:8px;">
@@ -1464,7 +1471,7 @@
 
                 <!-- Comptes partenaires Stripe -->
                 <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:20px;">
-                    <div style="font-size:14px;font-weight:800;color:#FFD700;margin-bottom:14px;"><i class="fa-solid fa-users" style="margin-right:8px;"></i>COMPTES STRIPE PRESTATAIRES</div>
+                    <div style="font-size:14px;font-weight:800;color:#FFD700;margin-bottom:14px;"><i class="fa-solid fa-users" style="margin-right:8px;"></i>MOYENS DE VERSEMENT DES PRESTATAIRES</div>
                     <div id="mkt-partners-list">Chargement…</div>
                 </div>
             </div>
@@ -5932,77 +5939,31 @@
                     fetch(API + '/api/admin/marketplace/config', { headers: { 'x-admin-key': adminKey } }),
                     fetch(API + '/api/admin/marketplace/partners', { headers: { 'x-admin-key': adminKey } })
                 ]);
+                if (!statsRes.ok) throw new Error('HTTP ' + statsRes.status);
                 var stats    = await statsRes.json();
                 var config   = await configRes.json();
                 var partners = await partnersRes.json();
                 _mktConfig   = config.config;
 
-                // Stats
-                var fmt = function(v){ return typeof v==='number' ? v.toFixed(2)+' €' : '—'; };
-                document.getElementById('mkt-stat-gross').textContent    = fmt(stats.totalGross);
-                document.getElementById('mkt-stat-comm').textContent     = fmt(stats.totalCommission);
-                document.getElementById('mkt-stat-ptnr').textContent     = fmt(stats.totalToPartners);
-                document.getElementById('mkt-stat-count').textContent    = stats.paymentsCount || 0;
-                document.getElementById('mkt-stat-refunds').textContent  = stats.refundsCount  || 0;
-                document.getElementById('mkt-stat-verified').textContent = (stats.partnerStats&&stats.partnerStats.verified) || 0;
-                document.getElementById('mkt-stat-pending').textContent  = (stats.partnerStats&&stats.partnerStats.pending)  || 0;
-                document.getElementById('mkt-stat-none').textContent     = (stats.partnerStats&&stats.partnerStats.notConfigured) || 0;
+                // Stats (données réelles)
+                var fmt = function(v){ return typeof v==='number' ? v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })+' €' : '—'; };
+                var set = function(id, v){ var e = document.getElementById(id); if (e) e.textContent = v; };
+                set('mkt-stat-gross',    fmt(stats.totalCollected));
+                set('mkt-stat-comm',     fmt(stats.totalCommission));
+                set('mkt-stat-ptnr',     fmt(stats.totalToPartners));
+                set('mkt-stat-count',    stats.paidOrdersCount || 0);
+                set('mkt-stat-refunds',  stats.refundedOrdersCount || 0);
+                set('mkt-stat-hold',     (stats.onHoldCount || 0) + (stats.onHoldAmount ? ' · ' + fmt(stats.onHoldAmount) : ''));
+                set('mkt-stat-verified', (stats.partnerStats && stats.partnerStats.withPayoutMethod) || 0);
+                set('mkt-stat-none',     (stats.partnerStats && stats.partnerStats.withoutPayoutMethod) || 0);
+                if (typeof stats.commissionPct === 'number') set('mkt-comm-pct', stats.commissionPct.toLocaleString('fr-FR') + ' %');
 
-                // Commission config
-                _renderCommissionConfig(_mktConfig);
-
-                // Partenaires Stripe
+                // Moyens de versement des prestataires
                 _renderStripePartners(partners.partners || []);
             } catch(e) {
-                document.getElementById('mkt-config-content').textContent = 'Erreur : ' + e.message;
+                var pl = document.getElementById('mkt-partners-list');
+                if (pl) pl.textContent = 'Erreur de chargement : ' + e.message;
             }
-        }
-
-        function _renderCommissionConfig(cfg) {
-            var el = document.getElementById('mkt-config-content');
-            if (!el || !cfg) return;
-            var PTNR_TYPES = ['photographer','videographer','marketer','media','community_manager','graphiste','developpeur_web','pilote_drone','consultant','coworking','animateur_evenementiel','influencer','other'];
-            var LABELS = {photographer:'Photographe',videographer:'Vidéaste',marketer:'Marketeur',media:'Média',community_manager:'Community Manager',graphiste:'Graphiste',developpeur_web:'Développeur Web',pilote_drone:'Pilote Drone',consultant:'Consultant',coworking:'Coworking',animateur_evenementiel:'Animateur/Événementiel',influencer:'Influenceur',other:'Autre'};
-            var html = '<div style="margin-bottom:16px;">';
-            html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="font-size:12px;color:#888;font-weight:700;">COMMISSION GLOBALE</span><input id="mkt-global-comm" type="number" step="0.1" min="0" max="50" value="'+(cfg.globalCommissionRate*100).toFixed(1)+'" style="width:80px;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#FFD700;padding:6px 10px;font-size:14px;font-weight:700;"><span style="color:#888;font-size:13px;">%</span></div>';
-            html += '</div>';
-            html += '<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:8px;">PAR CATÉGORIE</div>';
-            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:14px;">';
-            PTNR_TYPES.forEach(function(k){
-                var val = cfg.categoryCommissions && cfg.categoryCommissions[k] !== undefined ? (cfg.categoryCommissions[k]*100).toFixed(1) : (cfg.globalCommissionRate*100).toFixed(1);
-                html += '<div style="display:flex;align-items:center;justify-content:space-between;background:#0d0d0d;border-radius:8px;padding:8px 12px;"><span style="font-size:12px;color:#ccc;">'+LABELS[k]+'</span><div style="display:flex;align-items:center;gap:4px;"><input data-cat="'+k+'" type="number" step="0.1" min="0" max="50" value="'+val+'" style="width:60px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#FFD700;padding:4px 8px;font-size:12px;text-align:right;"><span style="color:#888;font-size:11px;">%</span></div></div>';
-            });
-            html += '</div>';
-            html += '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">';
-            html += '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:12px;color:#888;font-weight:700;">PAIEMENTS</span><select id="mkt-payments-enabled" style="background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#fff;padding:6px 10px;font-size:12px;"><option value="true"'+(cfg.paymentsEnabled?' selected':'')+'>Activés</option><option value="false"'+(!cfg.paymentsEnabled?' selected':'')+'>Désactivés</option></select></div>';
-            html += '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:12px;color:#888;font-weight:700;">VERSEMENTS</span><select id="mkt-payout-schedule" style="background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#fff;padding:6px 10px;font-size:12px;"><option value="daily"'+(cfg.payoutSchedule==='daily'?' selected':'')+'>Quotidiens</option><option value="weekly"'+(cfg.payoutSchedule==='weekly'?' selected':'')+'>Hebdomadaires</option><option value="monthly"'+(cfg.payoutSchedule==='monthly'?' selected':'')+'>Mensuels</option></select></div>';
-            html += '</div>';
-            html += '<div id="mkt-save-feedback" style="display:none;padding:8px 12px;border-radius:8px;font-size:12px;margin-top:10px;"></div>';
-            html += '<button onclick="adminSaveCommission()" style="margin-top:14px;background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:800;cursor:pointer;">ENREGISTRER</button>';
-            el.innerHTML = html;
-        }
-
-        async function adminSaveCommission() {
-            var globalPct = parseFloat((document.getElementById('mkt-global-comm')||{}).value||'15') / 100;
-            var enabled   = (document.getElementById('mkt-payments-enabled')||{}).value !== 'false';
-            var schedule  = (document.getElementById('mkt-payout-schedule')||{}).value || 'daily';
-            var catComms  = {};
-            document.querySelectorAll('[data-cat]').forEach(function(inp){
-                var cat = inp.getAttribute('data-cat');
-                var val = parseFloat(inp.value) / 100;
-                if (!isNaN(val)) catComms[cat] = val;
-            });
-            var fb = document.getElementById('mkt-save-feedback');
-            if(fb){ fb.style.display='block'; fb.textContent='Enregistrement…'; fb.style.color='#aaa'; }
-            try {
-                var r = await fetch(API + '/api/admin/marketplace/config', {
-                    method: 'PUT', headers: { 'Content-Type':'application/json', 'x-admin-key': _adminKey() },
-                    body: JSON.stringify({ globalCommissionRate: globalPct, categoryCommissions: catComms, paymentsEnabled: enabled, payoutSchedule: schedule })
-                });
-                var d = await r.json();
-                if (d.ok) { if(fb){ fb.textContent='✓ Configuration enregistrée'; fb.style.color='#22c55e'; } _mktConfig = d.config; }
-                else { if(fb){ fb.textContent='Erreur : '+(d.error||'Échec'); fb.style.color='#ef4444'; } }
-            } catch(e) { if(fb){ fb.textContent='Erreur réseau'; fb.style.color='#ef4444'; } }
         }
 
         async function adminIssueRefund() {
@@ -6029,19 +5990,20 @@
             var el = document.getElementById('mkt-partners-list');
             if (!el) return;
             if (!list.length) { el.innerHTML = '<p style="color:#555;">Aucun prestataire actif.</p>'; return; }
-            var statusStyle = {
-                active:         { cls:'#22c55e', txt:'Vérifié' },
-                pending:        { cls:'#f59e0b', txt:'En attente' },
-                requires_info:  { cls:'#ef4444', txt:'Docs requis' },
-                rejected:       { cls:'#ef4444', txt:'Refusé' },
-                not_configured: { cls:'#555',    txt:'Non configuré' }
-            };
+            var LABELS = { iban: 'IBAN', paypal: 'PayPal', mobile_money: 'Mobile Money', stripe: 'Stripe' };
+            var TYPE_LABELS = (typeof PARTNER_TYPE_LABELS !== 'undefined') ? PARTNER_TYPE_LABELS : {};
+            // Prestataires sans moyen de versement en premier : ce sont eux qu'il faut relancer.
+            var sorted = list.slice().sort(function(a, b) { return ((a.payoutMethods || []).length ? 1 : 0) - ((b.payoutMethods || []).length ? 1 : 0); });
             var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
-            list.forEach(function(p){
-                var s = statusStyle[p.stripeAccountStatus] || statusStyle.not_configured;
-                html += '<div style="background:#0d0d0d;border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">';
-                html += '<div><div style="font-size:13px;font-weight:700;color:#fff;">'+_escHtml(p.prenom+' '+p.nom)+'</div><div style="font-size:11px;color:#666;">'+_escHtml(p.email)+' · '+_escHtml(p.partner_type||'')+'</div>'+(p.stripeAccountId?'<div style="font-size:10px;color:#444;font-family:monospace;">'+p.stripeAccountId+'</div>':'')+'</div>';
-                html += '<div style="font-size:11px;font-weight:800;color:'+s.cls+';">'+s.txt+'</div>';
+            sorted.forEach(function(p){
+                var methods = p.payoutMethods || [];
+                var chips = methods.length
+                    ? methods.map(function(m){ return '<span style="font-size:10px;font-weight:800;color:#22c55e;border:1px solid rgba(34,197,94,.4);border-radius:6px;padding:2px 8px;">' + LABELS[m] + (m === 'iban' && p.ibanLast4 ? ' ••' + _escHtml(p.ibanLast4) : '') + '</span>'; }).join(' ')
+                    : '<span style="font-size:11px;font-weight:800;color:#888;">Aucun moyen de versement</span>';
+                if (p.stripeAccountId && p.stripeAccountStatus !== 'active') chips += ' <span style="font-size:10px;font-weight:800;color:#f59e0b;">Stripe en cours</span>';
+                html += '<div style="background:#0d0d0d;border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
+                html += '<div><div style="font-size:13px;font-weight:700;color:#fff;">'+_escHtml(p.prenom+' '+p.nom)+'</div><div style="font-size:11px;color:#666;">'+_escHtml(p.email)+' · '+_escHtml(TYPE_LABELS[p.partner_type] || p.partner_type || '')+(p.country ? ' · '+_escHtml(p.country) : '')+'</div></div>';
+                html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' + chips + '</div>';
                 html += '</div>';
             });
             html += '</div>';
