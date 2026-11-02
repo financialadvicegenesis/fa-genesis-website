@@ -944,6 +944,8 @@ function loadProspects() {
 function saveProspects(data) {
     try { fs.writeFileSync(PROSPECTS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
     catch(e) { console.error('[PROSPECTS] Erreur sauvegarde:', e); }
+    // Avant : jamais envoyé à MongoDB — la liste de prospection disparaissait à chaque redéploiement.
+    persistentStore.persistToCloud('prospects', data).catch(function(e) {});
 }
 
 // ── Litiges ──
@@ -22012,14 +22014,73 @@ async function extractEmailFromWebsite(websiteUrl) {
     return null;
 }
 
+// Prospection de PRESTATAIRES à inviter sur GENESIS (photographes, vidéastes, marketeurs…), plus
+// d'entreprises clientes : la recherche porte sur les métiers de l'annuaire (PARTNER_TYPES).
+// Requêtes Google Places par métier (le libellé seul donne de mauvais résultats pour certains).
+var PROSPECT_TYPE_QUERIES = {
+    photographer: 'photographe',
+    videographer: 'vidéaste réalisateur vidéo',
+    marketer: 'agence marketing digital',
+    media: 'agence de communication',
+    community_manager: 'community manager',
+    graphiste: 'graphiste',
+    developpeur_web: 'création site internet développeur web',
+    pilote_drone: 'pilote drone prise de vue',
+    consultant: 'consultant en stratégie entreprise',
+    coworking: 'espace coworking',
+    animateur_evenementiel: 'animateur événementiel DJ',
+    influencer: 'agence influenceurs créateurs de contenu'
+};
+var PROSPECT_SCORE_MAX = 9;
+// Score de recrutement /9 : un bon candidat est un professionnel actif, bien noté, avec des
+// réalisations visibles, et qui gagnerait à recevoir plus de clients (pas une grande enseigne).
+function prospectRecruitScore(pl) {
+    var rating = pl.rating || 0, reviews = pl.userRatingCount || 0, photos = pl.photos ? pl.photos.length : 0;
+    var score = 0;
+    if (!rating) score += 1; else if (rating >= 4.5) score += 3; else if (rating >= 4) score += 2; else if (rating >= 3.5) score += 1;
+    if (reviews <= 50) score += 2; else if (reviews <= 150) score += 1;
+    if (photos >= 5) score += 2; else if (photos >= 1) score += 1;
+    if (pl.websiteUri) score += 1;
+    if (pl.nationalPhoneNumber || pl.internationalPhoneNumber) score += 1;
+    return Math.min(score, PROSPECT_SCORE_MAX);
+}
+function _prospectDigits(v) { var d = String(v || '').replace(/\D/g, ''); return d.length >= 9 ? d.slice(-9) : ''; }
+function _prospectDomain(u) {
+    try { return String(u || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0].toLowerCase(); } catch (e) { return ''; }
+}
+// Prospect déjà inscrit comme prestataire (même e-mail, même téléphone ou même site) ?
+function findPartnerForProspect(pr, partners) {
+    var email = (pr.email || '').toLowerCase(), tel = _prospectDigits(pr.phone), dom = _prospectDomain(pr.website);
+    var generic = ['instagram.com', 'facebook.com', 'linktr.ee', 'tiktok.com', 'linkedin.com', 'google.com', 'business.site', 'wixsite.com'];
+    return (partners || []).find(function(p) {
+        if (email && (p.email || '').toLowerCase() === email) return true;
+        if (tel && _prospectDigits(p.telephone) === tel) return true;
+        if (dom && generic.indexOf(dom) === -1 && p.social && _prospectDomain(p.social.website) === dom) return true;
+        return false;
+    }) || null;
+}
+
 /**
  * GET /api/admin/prospects
+ * Chaque prospect est rapproché des prestataires inscrits : un prospect qui s'est inscrit passe
+ * automatiquement en « Inscrit sur GENESIS » (statut converted).
  */
 app.get('/api/admin/prospects', (req, res) => {
     try {
         var prospects = loadProspects();
+        var partners = loadPartners();
+        var changed = false;
+        prospects.forEach(function(pr) {
+            var match = findPartnerForProspect(pr, partners);
+            var pid = match ? match.id : null;
+            if ((pr.partner_id || null) !== pid) { pr.partner_id = pid; changed = true; }
+            if (match && pr.status !== 'converted' && pr.status !== 'dismissed') { pr.status = 'converted'; pr.converted_at = new Date().toISOString(); changed = true; }
+            pr.partner_name = match ? ((match.prenom || '') + ' ' + (match.nom || '')).trim() : null;
+            pr.partner_status = match ? (match.accountStatus || null) : null;
+        });
+        if (changed) saveProspects(prospects);
         prospects.sort(function(a, b) { return (b.score || 0) - (a.score || 0); });
-        res.json({ success: true, prospects: prospects });
+        res.json({ success: true, prospects: prospects, score_max: PROSPECT_SCORE_MAX, types: PARTNER_TYPES.filter(function(t) { return PROSPECT_TYPE_QUERIES[t.value]; }) });
     } catch (err) {
         console.error('[API] Erreur admin/prospects:', err);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -22028,86 +22089,86 @@ app.get('/api/admin/prospects', (req, res) => {
 
 /**
  * POST /api/admin/prospects/search
- * Lance une recherche Google Places et importe les nouveaux résultats scorés.
- * Body: { category: "restaurant", zone: "Montpellier" }
+ * Recherche Google Places de professionnels d'un métier GENESIS dans une zone.
+ * Body: { partner_type: "photographer", zone: "Montpellier", keywords: "mariage" }
  */
 app.post('/api/admin/prospects/search', async (req, res) => {
     try {
-        var category = (req.body.category || '').trim();
-        var zone = (req.body.zone || 'Montpellier').trim();
-        if (!category) return res.status(400).json({ error: 'category requise' });
+        var partnerType = (req.body.partner_type || req.body.category || '').trim();
+        var zone = (req.body.zone || 'Montpellier').trim().slice(0, 80) || 'Montpellier';
+        var keywords = (req.body.keywords || '').trim().slice(0, 60);
+        var baseQuery = PROSPECT_TYPE_QUERIES[partnerType];
+        if (!baseQuery) return res.status(400).json({ error: 'Choisissez un métier.' });
 
         var apiKey = process.env.GOOGLE_PLACES_API_KEY;
         if (!apiKey) {
-            return res.status(503).json({ error: 'GOOGLE_PLACES_API_KEY non configurée dans .env — voir guide de configuration', results: [] });
+            return res.status(503).json({ error: 'Recherche indisponible : la clé GOOGLE_PLACES_API_KEY n\'est pas configurée dans les variables d\'environnement Render.', results: [] });
         }
 
+        var body = {
+            textQuery: baseQuery + (keywords ? ' ' + keywords : '') + ' ' + zone,
+            maxResultCount: 20,
+            languageCode: 'fr'
+        };
+        // Biais géographique seulement pour Montpellier : pour une autre ville (Lyon, Libreville…),
+        // la ville dans la requête suffit — l'ancien cercle fixe autour de Montpellier faussait les résultats.
+        if (/montpellier/i.test(zone)) body.locationBias = { circle: { center: { latitude: 43.6117, longitude: 3.8767 }, radius: 20000.0 } };
         var r = await fetch('https://places.googleapis.com/v1/places:searchText', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Goog-Api-Key': apiKey,
-                'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.photos,places.rating,places.userRatingCount'
+                'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.photos,places.rating,places.userRatingCount,places.businessStatus,places.googleMapsUri'
             },
-            body: JSON.stringify({
-                textQuery: category + ' ' + zone,
-                locationBias: { circle: { center: { latitude: 43.6117, longitude: 3.8767 }, radius: 15000.0 } },
-                maxResultCount: 20,
-                languageCode: 'fr'
-            })
+            body: JSON.stringify(body)
         });
 
         var data = await r.json();
         if (!r.ok) {
             console.error('[PROSPECTS] Google Places error:', JSON.stringify(data));
-            return res.status(502).json({ error: 'Erreur Google Places: ' + ((data.error && data.error.message) || r.status) });
+            return res.status(502).json({ error: 'Erreur Google Places : ' + ((data.error && data.error.message) || r.status) });
         }
 
         var places = data.places || [];
         var prospects = loadProspects();
+        var partners = loadPartners();
         var existingIds = {};
         prospects.forEach(function(p) { existingIds[p.place_id] = true; });
-        var newCount = 0;
+        var newCount = 0, alreadyPartner = 0, closed = 0;
 
         places.forEach(function(pl) {
             if (existingIds[pl.id]) return;
-            var photos = pl.photos ? pl.photos.length : 0;
-            var website = pl.websiteUri || null;
-            var reviews = pl.userRatingCount || 0;
-            var rating = pl.rating || 0;
-
-            var score = 0;
-            if (photos === 0) score += 3;
-            else if (photos <= 3) score += 2;
-            else if (photos <= 8) score += 1;
-            if (!website) score += 2;
-            if (reviews < 10) score += 1;
-            if (rating > 0 && rating < 3.5) score += 1;
-
-            prospects.push({
+            if (pl.businessStatus && pl.businessStatus !== 'OPERATIONAL') { closed++; return; }
+            var pr = {
                 id: uuidv4(),
                 place_id: pl.id,
                 name: (pl.displayName && pl.displayName.text) || 'Inconnu',
                 address: pl.formattedAddress || '',
-                category: category,
-                phone: pl.nationalPhoneNumber || null,
-                website: website,
-                photos_count: photos,
-                rating: rating,
-                reviews_count: reviews,
-                score: score,
+                partner_type: partnerType,
+                category: (PARTNER_TYPES.find(function(t) { return t.value === partnerType; }) || {}).label || partnerType,
+                keywords: keywords,
+                phone: pl.nationalPhoneNumber || pl.internationalPhoneNumber || null,
+                website: pl.websiteUri || null,
+                maps_url: pl.googleMapsUri || null,
+                photos_count: pl.photos ? pl.photos.length : 0,
+                rating: pl.rating || 0,
+                reviews_count: pl.userRatingCount || 0,
+                score: prospectRecruitScore(pl),
                 status: 'new',
                 notes: '',
                 email: null,
                 email_source: null,
                 found_at: new Date().toISOString(),
                 searched_zone: zone
-            });
+            };
+            var match = findPartnerForProspect(pr, partners);
+            if (match) { pr.partner_id = match.id; pr.status = 'converted'; pr.converted_at = pr.found_at; alreadyPartner++; }
+            prospects.push(pr);
             newCount++;
         });
 
         saveProspects(prospects);
-        res.json({ success: true, added: newCount, total_found: places.length });
+        res.json({ success: true, added: newCount, already_partner: alreadyPartner, closed_skipped: closed, total_found: places.length });
     } catch (err) {
         console.error('[API] Erreur prospects/search:', err);
         res.status(500).json({ error: 'Erreur serveur' });

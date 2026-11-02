@@ -61,7 +61,9 @@ var COLLECTIONS = [
     'user-reports',
     'user-blocks',
     // Justificatifs étudiants (avant : jamais persistés, perdus à chaque redéploiement)
-    'student_certificates'
+    'student_certificates',
+    // Prospection de prestataires (admin)
+    'prospects'
 ];
 
 /**

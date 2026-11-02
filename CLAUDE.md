@@ -277,3 +277,11 @@ tiers. Verdicts : `blocked` (refus 400 `image_blocked`), `review` → stocké `m
   n'était persisté : les justificatifs disparaissaient à chaque redéploiement.
 - Admin → Étudiants : `reject` sert aussi à « Demander un nouveau justificatif » et « Retirer la
   vérification » (motif envoyé à l'étudiant).
+
+## Admin → Prospects = recrutement de PRESTATAIRES (plus d'entreprises clientes)
+- Recherche Google Places par métier GENESIS (`PROSPECT_TYPE_QUERIES`, clés = PARTNER_TYPES),
+  score de recrutement /9 (`prospectRecruitScore`), établissements fermés ignorés.
+- `findPartnerForProspect` (e-mail, téléphone, site) : un prospect inscrit passe en `converted`
+  (« Inscrit sur GENESIS ») à chaque GET. `prospects` est persisté dans MongoDB.
+- Messages d'invitation (e-mail + message court à copier pour Instagram/TikTok) : 5 %, sans
+  abonnement, inscription gratuite, lien partner-register.html, mention « STOP ».
