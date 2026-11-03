@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261103b"></script>
-<script src="app-i18n-es.js?v=20261103b"></script>
-<script src="app-i18n-hi.js?v=20261103b"></script>
-<script src="app-i18n-pt.js?v=20261103b"></script>
-<script src="app-i18n-ja.js?v=20261103b"></script>
-<script src="app-i18n-zh.js?v=20261103b"></script>
-<script src="app-i18n-ar.js?v=20261103b"></script>
-<script src="app-i18n-it.js?v=20261103b"></script>
-<script src="app-i18n-de.js?v=20261103b"></script>
+<script src="app-i18n-en.js?v=20261103c"></script>
+<script src="app-i18n-es.js?v=20261103c"></script>
+<script src="app-i18n-hi.js?v=20261103c"></script>
+<script src="app-i18n-pt.js?v=20261103c"></script>
+<script src="app-i18n-ja.js?v=20261103c"></script>
+<script src="app-i18n-zh.js?v=20261103c"></script>
+<script src="app-i18n-ar.js?v=20261103c"></script>
+<script src="app-i18n-it.js?v=20261103c"></script>
+<script src="app-i18n-de.js?v=20261103c"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -9257,7 +9257,7 @@ function _offersPushSet(enabled, silent){
     if(enabled){ if(window.FAGMobile.initPushNotifications) window.FAGMobile.initPushNotifications(null); }
     else if(window.FAGMobile.unregisterGuestOffers) window.FAGMobile.unregisterGuestOffers();
   }
-  if(!silent) showToast(enabled ? 'C\'est noté' : 'Notifications d\'offres désactivées', enabled ? '3 notifications par semaine au maximum, jamais la nuit.' : 'Vous recevez toujours vos messages et le suivi de vos commandes.', enabled ? 'success' : 'info');
+  if(!silent) showToast(enabled ? 'C\'est noté' : 'Notifications d\'offres désactivées', enabled ? 'Les nouveautés qui vous correspondent vous seront signalées.' : 'Vous recevez toujours vos messages et le suivi de vos commandes.', enabled ? 'success' : 'info');
 }
 // Après connexion : l'accord donné en visiteur suit le compte (s'il n'a jamais répondu).
 function _offersPushAfterSession(){
@@ -9295,7 +9295,8 @@ function _offersPushShowAsk(){
   ov.innerHTML = '<div style="width:100%;max-width:480px;background:#111;border-top:2px solid #FFD700;border-radius:20px 20px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom,0px));">'
     + '<div style="width:52px;height:52px;border-radius:16px;background:rgba(255,215,0,.12);display:flex;align-items:center;justify-content:center;margin-bottom:12px;"><i class="fa-solid fa-bell" style="color:#FFD700;font-size:22px;"></i></div>'
     + '<div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:6px;">Ne ratez pas les nouveautés</div>'
-    + '<div style="font-size:13px;color:#aaa;line-height:1.55;margin-bottom:16px;">Recevez une notification quand un nouveau prestataire rejoint GENESIS ou lance une promo. <strong style="color:#ddd;">3 par semaine au maximum</strong>, jamais la nuit. Vous pouvez arrêter à tout moment dans votre profil.</div>'
+    + '<div style="font-size:13px;color:#aaa;line-height:1.55;margin-bottom:16px;">Soyez parmi les premiers à découvrir les nouveaux prestataires et les promos qui vous correspondent.</div>'
+    + '<div style="font-size:11px;color:#666;line-height:1.5;margin:-8px 0 16px;">Vous pouvez désactiver ces notifications à tout moment dans votre profil.</div>'
     + '<button onclick="_offersPushAnswer(true)" style="width:100%;padding:14px;border-radius:12px;background:#FFD700;color:#000;border:none;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;margin-bottom:8px;">Oui, me prévenir</button>'
     + '<button onclick="_offersPushAnswer(false)" style="width:100%;padding:12px;border-radius:12px;background:transparent;color:#888;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Non merci</button>'
     + '</div>';
@@ -9311,7 +9312,7 @@ function _offersPushRowHtml(){
   if(!logged && !_isNativeApp()) return '';
   return '<div class="plus-item">'
     + '<div class="plus-item-ico" style="background:#1a1400"><i class="fa-solid fa-bullhorn"></i></div>'
-    + '<div class="plus-item-label">Nouveautés et promos<div style="font-size:10px;color:#777;font-weight:600;margin-top:2px;">3 notifications par semaine au maximum</div></div>'
+    + '<div class="plus-item-label">Nouveautés et promos<div style="font-size:10px;color:#777;font-weight:600;margin-top:2px;">Nouveaux prestataires et promos pour vous</div></div>'
     + '<label class="tgl"><input type="checkbox" id="offers-push-toggle"'+(_offersPushEnabled()?' checked':'')+' onchange="_offersPushSet(this.checked)"><span class="tgl-slider"></span></label>'
     + '</div>';
 }
