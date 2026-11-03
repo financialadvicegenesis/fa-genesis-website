@@ -285,3 +285,15 @@ tiers. Verdicts : `blocked` (refus 400 `image_blocked`), `review` → stocké `m
   (« Inscrit sur GENESIS ») à chaque GET. `prospects` est persisté dans MongoDB.
 - Messages d'invitation (e-mail + message court à copier pour Instagram/TikTok) : 5 %, sans
   abonnement, inscription gratuite, lien partner-register.html, mention « STOP ».
+
+## Notifications d'offres (nouveaux prestataires + promos) — accord obligatoire, plafonds
+- `runDiscoveryPushes` (server.js) : 1 passage/jour entre 18 h 30 et 21 h (heure de Paris), verrou
+  `last_run_date` persisté AVANT envoi. Par destinataire : 1/jour, 3/7 jours glissants, jamais deux
+  fois le même prestataire ni la même promo, filtré par catégorie client (`scopePartnerForAudience`).
+- N'envoyer QU'aux personnes ayant accepté : `users[].offers_push === true`, ou jeton visiteur
+  `fcm_tokens[].guest && offers` (`/api/push/register-guest`). Exigence Apple 4.5.4 + CNIL : ne jamais
+  ajouter de notification promotionnelle hors de ce circuit.
+- Canal Android : `genesis_general` (un nouveau canal exige une nouvelle version native, sinon la
+  notification est perdue sans erreur — voir GenesisMessagingService.ensureChannelExists).
+- Textes traduits par fragments dans app-i18n-dict-*.js (métiers entre parenthèses « (Photographe) »).
+- Lien `#decouverte:OFR-xxx:<partnerId>` → `/api/push/opened` (mesure) + fiche du prestataire.

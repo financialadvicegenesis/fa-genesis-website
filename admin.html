@@ -756,6 +756,9 @@
                 <div class="sheet-item" onclick="showSectionMobile('partenaires');closeAdminSheet()">
                     <i class="fas fa-handshake"></i><span>Prestataires</span>
                 </div>
+                <div class="sheet-item" onclick="showSectionMobile('offerspush');closeAdminSheet()">
+                    <i class="fas fa-bell"></i><span>Notif. d'offres</span>
+                </div>
                 <div class="sheet-item" onclick="showSectionMobile('prospects');closeAdminSheet()">
                     <i class="fas fa-crosshairs"></i><span>Prospects</span>
                 </div>
@@ -838,6 +841,9 @@
                 </button>
                 <button class="sidebar-btn" data-section="campagnes" onclick="showSection('campagnes')">
                     <i class="fas fa-bullhorn"></i><span>Campagnes</span>
+                </button>
+                <button class="sidebar-btn" data-section="offerspush" onclick="showSection('offerspush')">
+                    <i class="fas fa-bell"></i><span>Notif. d'offres</span>
                 </button>
                 <button class="sidebar-btn" data-section="nouvfonct" onclick="showSection('nouvfonct')">
                     <i class="fas fa-rocket"></i><span>Nouvelles Fonct.</span>
@@ -1628,6 +1634,15 @@
                 <div id="supportTicketDetail" style="display:none;"></div>
             </div>
 
+            <!-- ===== SECTION NOTIFICATIONS D'OFFRES ===== -->
+            <div id="offerspushSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-2" style="font-family:'Playfair Display',serif;">
+                    <i class="fas fa-bell mr-3" style="color:var(--genesis-yellow);"></i>NOTIFICATIONS D'OFFRES
+                </h2>
+                <p style="color:#888;font-size:13px;margin-bottom:20px;max-width:860px;line-height:1.6;">Chaque jour entre 18 h 30 et 21 h (heure de Paris), GENESIS envoie <strong style="color:#ccc;">au plus une notification</strong> aux personnes qui l'ont accepté, et <strong style="color:#ccc;">seulement s'il y a du nouveau pour elles</strong> : promo qui se termine, nouvelle promo, nouveau prestataire de leur catégorie (étudiant, particulier, entreprise), puis prestataire qu'elles n'ont jamais vu. <strong style="color:#ccc;">3 par semaine au maximum</strong>, jamais deux fois le même prestataire ni la même promo.</p>
+                <div id="offersPushContent"><p style="color:#666;">Chargement…</p></div>
+            </div>
+
             <!-- ===== SECTION PROSPECTS ===== -->
             <div id="prospectsSection" class="container mx-auto max-w-7xl" style="display: none;">
                 <h2 class="text-3xl font-black mb-2" style="font-family:'Playfair Display',serif;">
@@ -2117,6 +2132,8 @@
             var clienterrorsEl = document.getElementById('clienterrorsSection');
             var supportEl = document.getElementById('supportSection');
             var prospectsEl = document.getElementById('prospectsSection');
+            var offersPushEl = document.getElementById('offerspushSection');
+            if (offersPushEl) offersPushEl.style.display = 'none';
             var actualitesEl = document.getElementById('actualitesSection');
             if (actualitesEl) actualitesEl.style.display = 'none';
             var campagnesEl = document.getElementById('campagnesSection');
@@ -2195,6 +2212,10 @@
             } else if (section === 'prospects') {
                 if (prospectsEl) prospectsEl.style.display = 'block';
                 loadAdminProspects();
+            } else if (section === 'offerspush') {
+                if (offersPushEl) offersPushEl.style.display = 'block';
+                if (typeof loadOffersPushAdmin === 'function') loadOffersPushAdmin();
+                else setTimeout(function(){ if (typeof loadOffersPushAdmin === 'function') loadOffersPushAdmin(); }, 0);
             } else if (section === 'campagnes') {
                 if (campagnesEl) campagnesEl.style.display = 'block';
                 loadCampagnesAdmin();
@@ -5625,6 +5646,64 @@
         }
 
         // ============================================================
+        // NOTIFICATIONS D'OFFRES — tableau de bord (voir runDiscoveryPushes côté serveur)
+        // ============================================================
+        var OFFER_KIND_LABELS = { promo_ending: 'Promo qui se termine', promo_new: 'Nouvelle promo', promo: 'Promo en cours', partner_new: 'Nouveau prestataire', partner_discover: 'Prestataire à découvrir' };
+        function _opEsc(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function _opPct(a, b) { return b ? Math.round(a * 100 / b) + ' %' : '—'; }
+        function loadOffersPushAdmin() {
+            var el = document.getElementById('offersPushContent');
+            if (!el) return;
+            el.innerHTML = '<p style="color:#666;"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement…</p>';
+            fetch(API_BASE_URL + '/api/admin/offers-push').then(function(r) { return r.json(); }).then(function(d) {
+                if (!d || !d.success) throw new Error((d && d.error) || 'Erreur');
+                var card = 'background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;';
+                var stat = function(label, val, color, sub) { return '<div style="' + card + 'text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">' + label + '</div><div style="font-size:24px;font-weight:900;color:' + color + ';">' + val + '</div>' + (sub ? '<div style="font-size:10px;color:#666;margin-top:4px;">' + sub + '</div>' : '') + '</div>'; };
+                var a = d.audience || {}, w = d.last_7_days || {}, m = d.last_30_days || {};
+                var html = '<div style="' + card + 'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;">'
+                    + '<div><div style="font-size:14px;font-weight:900;color:' + (d.enabled ? '#22c55e' : '#ef4444') + ';"><i class="fas fa-circle mr-2" style="font-size:9px;"></i>' + (d.enabled ? 'Envoi automatique actif' : 'Envoi automatique en pause') + '</div>'
+                    + '<div style="font-size:12px;color:#888;margin-top:4px;">' + (d.last_run_at ? 'Dernier passage : ' + new Date(d.last_run_at).toLocaleString('fr-FR') + ' · ' + ((d.last_run_stats && d.last_run_stats.sent) || 0) + ' notification(s)' : 'Aucun passage pour le moment') + (d.ran_today ? ' · déjà passé aujourd\'hui' : '') + '</div></div>'
+                    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+                    + '<button onclick="previewOffersPush()" style="background:#1a1a1a;border:1px solid rgba(255,215,0,.4);color:#FFD700;padding:9px 16px;font-size:12px;font-weight:900;cursor:pointer;border-radius:8px;"><i class="fas fa-eye mr-1"></i>Aperçu du prochain envoi</button>'
+                    + '<button onclick="toggleOffersPush(' + (d.enabled ? 'false' : 'true') + ')" style="background:' + (d.enabled ? 'transparent' : '#22c55e') + ';border:1px solid ' + (d.enabled ? '#ef4444' : '#22c55e') + ';color:' + (d.enabled ? '#ef4444' : '#000') + ';padding:9px 16px;font-size:12px;font-weight:900;cursor:pointer;border-radius:8px;"><i class="fas ' + (d.enabled ? 'fa-pause' : 'fa-play') + ' mr-1"></i>' + (d.enabled ? 'Mettre en pause' : 'Réactiver') + '</button>'
+                    + '</div></div>';
+                html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px;">'
+                    + stat('CLIENTS ABONNÉS', a.clients_opted_in || 0, '#22c55e', (a.clients_not_asked || 0) + ' pas encore sollicité(s)')
+                    + stat('VISITEURS ABONNÉS', a.guest_devices || 0, '#60a5fa', 'Appareils sans compte')
+                    + stat('ONT REFUSÉ', a.clients_opted_out || 0, '#888', 'Clients')
+                    + stat('ENVOYÉES (7 J)', w.sent || 0, '#FFD700', (w.opened || 0) + ' ouverte(s) · ' + _opPct(w.opened || 0, w.sent || 0))
+                    + stat('ENVOYÉES (30 J)', m.sent || 0, '#FFD700', (m.opened || 0) + ' ouverte(s) · ' + _opPct(m.opened || 0, m.sent || 0))
+                    + '</div>';
+                var kinds = Object.keys(m.by_kind || {});
+                html += '<div style="' + card + 'margin-bottom:18px;"><div style="font-size:13px;font-weight:900;color:#FFD700;margin-bottom:10px;">Ce qui fonctionne (30 jours)</div>'
+                    + (kinds.length ? kinds.map(function(k) { var v = m.by_kind[k]; return '<div style="display:flex;justify-content:space-between;font-size:12px;color:#ccc;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);"><span>' + (OFFER_KIND_LABELS[k] || k) + '</span><span>' + v.sent + ' envoyée(s) · ' + v.opened + ' ouverte(s) · <strong style="color:#fff;">' + _opPct(v.opened, v.sent) + '</strong></span></div>'; }).join('') : '<div style="font-size:12px;color:#666;">Pas encore de données.</div>')
+                    + '</div>';
+                html += '<div id="offersPushPreview"></div>';
+                html += '<div style="' + card + '"><div style="font-size:13px;font-weight:900;color:#FFD700;margin-bottom:10px;">Derniers envois</div>'
+                    + ((d.recent || []).length ? (d.recent || []).map(function(e) { return '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:#ccc;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);"><span>' + new Date(e.sent_at).toLocaleString('fr-FR') + ' · ' + _opEsc(e.recipient) + '</span><span>' + (OFFER_KIND_LABELS[e.kind] || e.kind) + ' · ' + _opEsc(e.partner) + ' · ' + (e.opened ? '<span style="color:#22c55e;font-weight:900;">ouverte</span>' : '<span style="color:#666;">non ouverte</span>') + '</span></div>'; }).join('') : '<div style="font-size:12px;color:#666;">Aucun envoi pour le moment.</div>')
+                    + '</div>';
+                el.innerHTML = html;
+            }).catch(function(e) { el.innerHTML = '<p style="color:#ef4444;">Erreur de chargement : ' + _opEsc(e.message) + '</p>'; });
+        }
+        function toggleOffersPush(enabled) {
+            if (!enabled && !confirm('Mettre en pause l\'envoi automatique des notifications d\'offres ?')) return;
+            fetch(API_BASE_URL + '/api/admin/offers-push', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: enabled }) })
+                .then(function(r) { return r.json(); }).then(function() { loadOffersPushAdmin(); }).catch(function() { alert('Erreur réseau'); });
+        }
+        function previewOffersPush() {
+            var el = document.getElementById('offersPushPreview');
+            if (!el) return;
+            el.innerHTML = '<p style="color:#666;margin-bottom:18px;"><i class="fas fa-spinner fa-spin mr-2"></i>Calcul…</p>';
+            fetch(API_BASE_URL + '/api/admin/offers-push/preview', { method: 'POST' }).then(function(r) { return r.json(); }).then(function(d) {
+                if (!d || !d.success) throw new Error((d && d.error) || 'Erreur');
+                var card = 'background:#0d0d0d;border:1.5px solid rgba(255,215,0,.25);border-radius:14px;padding:16px;margin-bottom:18px;';
+                el.innerHTML = '<div style="' + card + '"><div style="font-size:13px;font-weight:900;color:#FFD700;margin-bottom:4px;">Aperçu : ' + d.planned_count + ' notification(s) sur ' + d.recipients + ' abonné(s)</div>'
+                    + '<div style="font-size:11px;color:#777;margin-bottom:10px;">Rien n\'est envoyé. C\'est ce que recevraient les abonnés si le passage avait lieu maintenant (les autres ont déjà atteint leur limite ou n\'ont rien de nouveau).</div>'
+                    + (d.planned || []).map(function(it) { return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);"><div style="font-size:11px;color:#888;">' + _opEsc(it.recipient) + ' · ' + (OFFER_KIND_LABELS[it.kind] || it.kind) + '</div><div style="font-size:13px;font-weight:900;color:#fff;margin-top:2px;">' + _opEsc(it.title) + '</div><div style="font-size:12px;color:#ccc;">' + _opEsc(it.body) + '</div></div>'; }).join('')
+                    + '</div>';
+            }).catch(function(e) { el.innerHTML = '<p style="color:#ef4444;margin-bottom:18px;">Erreur : ' + _opEsc(e.message) + '</p>'; });
+        }
+
         // PROSPECTS — Recrutement de prestataires (photographes, vidéastes, marketeurs…)
         // ============================================================
 

@@ -305,6 +305,20 @@
                 || (function() { try { return JSON.parse(localStorage.getItem('fa_genesis_partner_data') || '{}').id; } catch(e) { return null; } })();
 
             if (!uid) {
+                // Visiteur sans compte qui a accepté les notifications d'offres (voir app.html,
+                // _offersPushSet) : appareil enregistré pour les seules offres, sans compte.
+                var offersOk = false;
+                try { offersOk = localStorage.getItem('fa_offers_push') === '1'; } catch(e) {}
+                if (offersOk) {
+                    var lang = 'fr';
+                    try { lang = (localStorage.getItem('fa_genesis_app_lang') || document.documentElement.lang || 'fr').slice(0, 2); } catch(e) {}
+                    fetch(api + '/api/push/register-guest', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: token, platform: window.Capacitor.getPlatform(), lang: lang })
+                    }).catch(function(e) { console.warn('[FAG Mobile] Enregistrement visiteur:', e.message); });
+                    return;
+                }
                 console.warn('[FAG Mobile] Token FCM non envoyé : userId inconnu');
                 return;
             }
@@ -379,6 +393,20 @@
     // arrête de recevoir des notifications push destinées au compte qu'il vient de quitter.
     // Best-effort : le token reste stocké localement (fag_fcm_token) pour permettre un futur
     // ré-enregistrement immédiat à la prochaine connexion (initPushNotifications le réutilise).
+    // Visiteur qui désactive les notifications d'offres dans son profil.
+    window.FAGMobile.unregisterGuestOffers = async function() {
+        try {
+            var token = localStorage.getItem('fag_fcm_token');
+            if (!token) return;
+            var api = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+            await fetch(api + '/api/push/unregister-guest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token })
+            });
+        } catch(e) { console.warn('[FAG Mobile] unregisterGuestOffers:', e.message); }
+    };
+
     window.FAGMobile.unregisterPushToken = async function() {
         try {
             var token = localStorage.getItem('fag_fcm_token');

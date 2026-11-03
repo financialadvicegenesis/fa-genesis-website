@@ -11434,6 +11434,7 @@ app.get('/api/auth/me', (req, res) => {
             missionBonuses: user.missionBonuses || {},
             accountType: user.accountType || null,
             student_status: user.student_status || null,
+            offers_push: user.offers_push === true ? true : (user.offers_push === false ? false : null),
             preferred_partner_types: user.preferred_partner_types || [],
             profile_bio: user.profile_bio || '',
             profile_theme: user.profile_theme || 'genesis',
@@ -21247,8 +21248,8 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
                 console.error('[ADMIN] Erreur envoi email approbation partenaire:', e);
             });
             notifyUser(partnerSafe.email, 'partner', 'compte-approuve', 'Votre compte est approuvé !', 'Vous pouvez desormais configurer vos prestations, elles seront visibles par les clients.', '/app.html#open-partner');
-            // Alertes intelligentes : notifier les clients Bâtisseur+ dont les préférences correspondent
-            setTimeout(function() { alertBatisseurPlusOnNewPartner(partnerSafe); }, 0);
+            // Nouveau prestataire : présenté aux clients par le passage quotidien des notifications
+            // d'offres (runDiscoveryPushes), dès qu'il a publié une prestation de leur catégorie.
         }
         res.json({ success: true, partner: partnerSafe });
     } catch (error) {
@@ -23732,6 +23733,350 @@ app.post('/api/admin/setup-screenshot-demo', async function(req, res) {
 // Traitement des notifications différées (toutes les 5 min)
 processScheduledNotifs();
 setInterval(processScheduledNotifs, 5 * 60 * 1000);
+
+
+// ============================================================
+// NOTIFICATIONS D'OFFRES — découverte de prestataires + promos (clients et visiteurs)
+// ============================================================
+// Un passage par jour (18 h 30 – 21 h, heure de Paris), UNIQUEMENT s'il y a du nouveau pour la
+// personne : promo qui se termine, nouvelle promo, nouveau prestataire de SA catégorie, puis
+// prestataire jamais présenté. Plafond : 1 par jour et 3 par 7 jours glissants par destinataire ;
+// jamais deux fois le même prestataire ni la même promo. Réservé aux personnes qui ont accepté
+// (users[].offers_push === true, ou appareil visiteur enregistré avec son accord) — exigence
+// Apple (règle 4.5.4 de l'App Store) et CNIL pour les notifications promotionnelles.
+var DISCOVERY_STATE_FILE = path.join(DATA_DIR, 'discovery_push.json');
+var DISCOVERY_LOG_FILE   = path.join(DATA_DIR, 'discovery_push_log.json');
+var DISCOVERY_MAX_PER_WEEK = 3;
+var DISCOVERY_WINDOW = { startHour: 18, startMinute: 30, endHour: 21 }; // heure de Paris
+var DISCOVERY_NEW_PARTNER_DAYS = 14;
+var DISCOVERY_NEW_PROMO_DAYS = 7;
+var DISCOVERY_ENDING_HOURS = 36;
+var DISCOVERY_LOG_KEEP_DAYS = 90;
+
+function loadDiscoveryState() {
+    try {
+        if (fs.existsSync(DISCOVERY_STATE_FILE)) {
+            var raw = JSON.parse(fs.readFileSync(DISCOVERY_STATE_FILE, 'utf8'));
+            var st = Array.isArray(raw) ? (raw[0] || {}) : (raw || {});
+            if (st.enabled === undefined) st.enabled = true;
+            if (!st.partner_first_seen) st.partner_first_seen = {};
+            return st;
+        }
+    } catch (e) {}
+    return { key: 'state', enabled: true, partner_first_seen: {} };
+}
+function saveDiscoveryState(st) {
+    st.key = 'state';
+    try { fs.writeFileSync(DISCOVERY_STATE_FILE, JSON.stringify([st], null, 2), 'utf8'); } catch (e) { console.error('[OFFERS-PUSH] Sauvegarde état:', e.message); }
+    persistentStore.persistToCloud('discovery_push', [st]).catch(function(e) {});
+}
+function loadDiscoveryLog() {
+    try { if (fs.existsSync(DISCOVERY_LOG_FILE)) return JSON.parse(fs.readFileSync(DISCOVERY_LOG_FILE, 'utf8')) || []; } catch (e) {}
+    return [];
+}
+function saveDiscoveryLog(list) {
+    var cutoff = Date.now() - DISCOVERY_LOG_KEEP_DAYS * 86400000;
+    var kept = (list || []).filter(function(e) { return e && new Date(e.sent_at).getTime() > cutoff; });
+    try { fs.writeFileSync(DISCOVERY_LOG_FILE, JSON.stringify(kept, null, 2), 'utf8'); } catch (e) { console.error('[OFFERS-PUSH] Sauvegarde journal:', e.message); }
+    persistentStore.persistToCloud('discovery_push_log', kept).catch(function(e) {});
+}
+// Date et heure de Paris (le serveur Render tourne en UTC).
+function _parisNow(d) {
+    var parts = {};
+    new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+        .formatToParts(d || new Date()).forEach(function(x) { parts[x.type] = x.value; });
+    return { date: parts.year + '-' + parts.month + '-' + parts.day, hour: parseInt(parts.hour, 10) % 24, minute: parseInt(parts.minute, 10) };
+}
+function _discoveryInWindow(pn) {
+    var m = pn.hour * 60 + pn.minute;
+    return m >= DISCOVERY_WINDOW.startHour * 60 + DISCOVERY_WINDOW.startMinute && m < DISCOVERY_WINDOW.endHour * 60;
+}
+function _partnerDisplayName(p) { return ((p.prenom || '') + ' ' + (p.nom || '')).trim() || p.company || 'Un prestataire'; }
+function _partnerTypeLabel(p) {
+    if (p.partner_type === 'other') return p.partner_type_other || 'Prestataire';
+    return (PARTNER_TYPES.find(function(t) { return t.value === p.partner_type; }) || {}).label || 'Prestataire';
+}
+function _promoShortLabel(pr) {
+    var title = publicText(pr.title || '') || 'Offre spéciale';
+    if (pr.type === 'percentage' && pr.value) return '-' + pr.value + ' % — ' + title;
+    if (pr.type === 'fixed' && pr.value) return '-' + pr.value + ' € — ' + title;
+    return title;
+}
+// Prestataire présentable à une catégorie de client (null = visiteur : toutes les offres).
+function _discoveryPartnerFor(p, aud) {
+    if (!p || p.accountStatus !== 'active') return null;
+    var scoped = scopePartnerForAudience(p, aud);
+    var has = (scoped.services || []).some(function(s) { return s && s.active !== false; });
+    return has ? scoped : null;
+}
+
+// Construit le message de la meilleure nouveauté pour un destinataire, ou null.
+function pickDiscoveryFor(recipient, ctx) {
+    var now = ctx.now;
+    var mine = ctx.logByRecipient[recipient.key] || [];
+    var weekAgo = now - 7 * 86400000;
+    if (mine.filter(function(e) { return new Date(e.sent_at).getTime() > weekAgo; }).length >= DISCOVERY_MAX_PER_WEEK) return null;
+    if (mine.some(function(e) { return _parisNow(new Date(e.sent_at)).date === ctx.today; })) return null;
+    var seenPartners = {}, seenPromos = {};
+    mine.forEach(function(e) { if (e.partner_id) seenPartners[e.partner_id] = true; if (e.promo_id) seenPromos[e.promo_id] = true; });
+    var favs = recipient.favoris || [];
+    var prefs = recipient.preferred || [];
+    var cands = [];
+    function boost(p) {
+        var b = 0;
+        if (favs.indexOf(p.id) !== -1) b -= 0.6;
+        if (prefs.length && partnerTypesOf(p).some(function(t) { return prefs.indexOf(t) !== -1; })) b -= 0.3;
+        return b;
+    }
+    ctx.promos.forEach(function(pr) {
+        if (seenPromos[pr.id]) return;
+        var p = _discoveryPartnerFor(ctx.partnersById[pr.partner_id], recipient.audience);
+        if (!p || (recipient.email && (p.email || '').toLowerCase() === recipient.email)) return;
+        var endsIn = new Date(pr.end_date).getTime() - now;
+        var ageDays = (now - new Date(pr.created_at || pr.start_date).getTime()) / 86400000;
+        var kind = endsIn <= DISCOVERY_ENDING_HOURS * 3600000 ? 'promo_ending' : (ageDays <= DISCOVERY_NEW_PROMO_DAYS ? 'promo_new' : 'promo');
+        var prio = kind === 'promo_ending' ? 1 : (kind === 'promo_new' ? 2 : 4);
+        cands.push({ kind: kind, prio: prio + boost(p), score: ctx.scoreOf(p), partner: p, promo: pr });
+    });
+    ctx.partners.forEach(function(raw) {
+        if (seenPartners[raw.id]) return;
+        var p = _discoveryPartnerFor(raw, recipient.audience);
+        if (!p || (recipient.email && (p.email || '').toLowerCase() === recipient.email)) return;
+        var first = ctx.firstSeen[p.id] ? new Date(ctx.firstSeen[p.id]).getTime() : 0;
+        var isNew = first && (now - first) <= DISCOVERY_NEW_PARTNER_DAYS * 86400000;
+        cands.push({ kind: isNew ? 'partner_new' : 'partner_discover', prio: (isNew ? 3 : 5) + boost(p), score: ctx.scoreOf(p), partner: p });
+    });
+    if (!cands.length) return null;
+    cands.sort(function(a, b) { return (a.prio - b.prio) || (b.score - a.score); });
+    var c = cands[0];
+    var name = _partnerDisplayName(c.partner), label = '(' + _partnerTypeLabel(c.partner) + ')';
+    var title, body;
+    if (c.kind === 'promo_ending') {
+        title = 'Dernier moment pour en profiter';
+        body = 'Dernier moment pour profiter de l\'offre de ' + name + ' ' + label + ' : ' + _promoShortLabel(c.promo) + '.';
+    } else if (c.kind === 'promo_new' || c.kind === 'promo') {
+        title = 'Nouvelle promo sur GENESIS';
+        body = name + ' ' + label + ' : ' + _promoShortLabel(c.promo) + '. Découvrez l\'offre avant qu\'elle n\'expire.';
+    } else if (c.kind === 'partner_new') {
+        title = 'Nouveau sur GENESIS';
+        body = name + ' ' + label + ' vient de rejoindre GENESIS. Découvrez ses prestations.';
+    } else {
+        title = 'À découvrir sur GENESIS';
+        body = name + ' ' + label + ' — découvrez ses prestations et ses réalisations sur GENESIS.';
+    }
+    return { kind: c.kind, partner_id: c.partner.id, promo_id: c.promo ? c.promo.id : null, title: title, body: body };
+}
+
+// Destinataires ayant accepté : clients (offers_push === true) et appareils visiteurs.
+function _discoveryRecipients() {
+    var list = [];
+    loadUsers().forEach(function(u) {
+        if (!u || u.offers_push !== true || !u.email) return;
+        list.push({
+            key: 'user:' + u.id, type: 'user', email: u.email.toLowerCase(), audience: clientAudienceOfUser(u),
+            favoris: Array.isArray(u.favoris) ? u.favoris : [],
+            preferred: (u.preferred_partner_types && u.preferred_partner_types.length) ? u.preferred_partner_types : getClientPreferredCategories(u.email),
+            name: ((u.prenom || '') + ' ' + (u.nom || '')).trim()
+        });
+    });
+    var seenTok = {};
+    loadFcmTokens().forEach(function(t) {
+        if (!t || !t.guest || t.offers === false || seenTok[t.userId]) return;
+        seenTok[t.userId] = true;
+        list.push({ key: 'guest:' + t.userId, type: 'guest', fcmUserId: t.userId, lang: t.lang || 'fr', audience: null, favoris: [], preferred: [] });
+    });
+    return list;
+}
+
+// dryRun : calcule sans rien envoyer ni journaliser (aperçu admin).
+function runDiscoveryPushes(opts) {
+    opts = opts || {};
+    var now = Date.now();
+    var st = loadDiscoveryState();
+    var partners = loadPartners().filter(function(p) { return p.accountStatus === 'active'; });
+    var partnersById = {};
+    loadPartners().forEach(function(p) { partnersById[p.id] = p; });
+    // Date à laquelle chaque prestataire est devenu présentable (actif + au moins une prestation).
+    var firstSeen = st.partner_first_seen || {};
+    partners.forEach(function(p) {
+        if (!firstSeen[p.id] && _discoveryPartnerFor(p, null)) firstSeen[p.id] = new Date(now).toISOString();
+    });
+    var promos = loadPromotions().filter(function(pr) { return isPromoActive(pr) && partnersById[pr.partner_id]; });
+    var log = loadDiscoveryLog();
+    var logByRecipient = {};
+    log.forEach(function(e) { (logByRecipient[e.recipient] = logByRecipient[e.recipient] || []).push(e); });
+    var scoreCache = {};
+    var ctx = {
+        now: now, today: _parisNow(new Date(now)).date, partners: partners, partnersById: partnersById, promos: promos,
+        firstSeen: firstSeen, logByRecipient: logByRecipient,
+        scoreOf: function(p) { if (scoreCache[p.id] === undefined) { try { scoreCache[p.id] = getPartnerCategoryScore(partnersById[p.id] || p); } catch (e) { scoreCache[p.id] = 0; } } return scoreCache[p.id]; }
+    };
+    var planned = [];
+    _discoveryRecipients().forEach(function(r) {
+        var msg = pickDiscoveryFor(r, ctx);
+        if (msg) planned.push({ recipient: r, msg: msg });
+    });
+    if (opts.dryRun) return { planned: planned, stats: { recipients: _discoveryRecipients().length, planned: planned.length } };
+
+    var byKind = {};
+    planned.forEach(function(it) {
+        var id = 'OFR-' + crypto.randomBytes(6).toString('hex');
+        var link = '/app.html#decouverte:' + id + ':' + it.msg.partner_id;
+        var type = 'offre_' + it.msg.kind;
+        try {
+            if (it.recipient.type === 'user') {
+                notifyUser(it.recipient.email, 'client', type, it.msg.title, it.msg.body, link);
+            } else {
+                var lang = it.recipient.lang || 'fr';
+                sendFcmToUser(it.recipient.fcmUserId, { data: {
+                    url: link, type: type, channelId: 'genesis_general',
+                    title: translateServerText(it.msg.title, lang) || 'GENESIS', body: translateServerText(it.msg.body, lang) || ''
+                } });
+            }
+            log.push({ id: id, recipient: it.recipient.key, recipient_type: it.recipient.type, kind: it.msg.kind, partner_id: it.msg.partner_id, promo_id: it.msg.promo_id, sent_at: new Date(now).toISOString(), opened_at: null });
+            byKind[it.msg.kind] = (byKind[it.msg.kind] || 0) + 1;
+        } catch (e) { console.error('[OFFERS-PUSH] Envoi:', e.message); }
+    });
+    saveDiscoveryLog(log);
+    st.partner_first_seen = firstSeen;
+    st.last_run_at = new Date(now).toISOString();
+    st.last_run_stats = { sent: planned.length, by_kind: byKind };
+    saveDiscoveryState(st);
+    console.log('[OFFERS-PUSH] Passage du jour : ' + planned.length + ' notification(s)', JSON.stringify(byKind));
+    return { sent: planned.length, by_kind: byKind };
+}
+
+// Vérifie toutes les 10 min ; un seul passage par jour, verrouillé AVANT l'envoi (survit à un
+// redémarrage : last_run_date est persisté dans MongoDB).
+function maybeRunDiscoveryPushes() {
+    try {
+        var st = loadDiscoveryState();
+        if (st.enabled === false) return;
+        var pn = _parisNow();
+        if (!_discoveryInWindow(pn) || st.last_run_date === pn.date) return;
+        st.last_run_date = pn.date;
+        saveDiscoveryState(st);
+        runDiscoveryPushes();
+    } catch (e) { console.error('[OFFERS-PUSH] Passage:', e.message); }
+}
+setInterval(maybeRunDiscoveryPushes, 10 * 60 * 1000);
+
+// Accord du client connecté (profil ou question dans l'app).
+app.put('/api/clients/offers-push', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    try {
+        if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'enabled (booléen) requis' });
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.id === user.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Utilisateur introuvable' });
+        users[idx].offers_push = req.body.enabled;
+        users[idx].offers_push_at = new Date().toISOString();
+        saveUsers(users);
+        res.json({ success: true, offers_push: users[idx].offers_push });
+    } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// Appareil d'un visiteur sans compte, avec son accord : uniquement les notifications d'offres
+// (jamais de donnée personnelle). Si le jeton appartient déjà à un compte, rien ne change.
+var _guestPushHits = {};
+app.post('/api/push/register-guest', function(req, res) {
+    try {
+        var ip = req.ip || 'x';
+        var hour = Math.floor(Date.now() / 3600000);
+        var k = ip + ':' + hour;
+        _guestPushHits[k] = (_guestPushHits[k] || 0) + 1;
+        if (_guestPushHits[k] > 30) return res.status(429).json({ error: 'Trop de demandes' });
+        var token = req.body && req.body.token;
+        if (typeof token !== 'string' || token.length < 20 || token.length > 4096) return res.status(400).json({ error: 'token invalide' });
+        var platform = req.body.platform === 'ios' ? 'ios' : 'android';
+        var lang = typeof req.body.lang === 'string' && /^[a-z]{2}$/.test(req.body.lang) ? req.body.lang : 'fr';
+        var tokens = loadFcmTokens();
+        if (tokens.some(function(t) { return t.token === token && !t.guest; })) return res.json({ success: true, account: true });
+        tokens = tokens.filter(function(t) { return t.token !== token; });
+        tokens.push({ id: uuidv4(), userId: 'guest-' + crypto.createHash('sha256').update(token).digest('hex').slice(0, 24), token: token, platform: platform, guest: true, offers: true, lang: lang, registered_at: new Date().toISOString() });
+        saveFcmTokens(tokens);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+app.post('/api/push/unregister-guest', function(req, res) {
+    try {
+        var token = req.body && req.body.token;
+        if (typeof token !== 'string' || !token) return res.status(400).json({ error: 'token requis' });
+        var tokens = loadFcmTokens();
+        var kept = tokens.filter(function(t) { return !(t.guest && t.token === token); });
+        if (kept.length !== tokens.length) saveFcmTokens(kept);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+// Ouverture d'une notification d'offre (mesure). L'identifiant est aléatoire et non devinable.
+app.post('/api/push/opened', function(req, res) {
+    try {
+        var id = req.body && req.body.id;
+        if (typeof id !== 'string' || !/^OFR-[a-f0-9]{12}$/.test(id)) return res.status(400).json({ error: 'id invalide' });
+        var log = loadDiscoveryLog();
+        var e = log.find(function(x) { return x.id === id; });
+        if (e && !e.opened_at) { e.opened_at = new Date().toISOString(); saveDiscoveryLog(log); }
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── Admin : tableau de bord, pause, aperçu ──
+app.get('/api/admin/offers-push', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var st = loadDiscoveryState();
+        var log = loadDiscoveryLog();
+        var since = function(days) { var c = Date.now() - days * 86400000; return log.filter(function(e) { return new Date(e.sent_at).getTime() > c; }); };
+        var summarize = function(list) {
+            var byKind = {};
+            list.forEach(function(e) { var k = byKind[e.kind] = byKind[e.kind] || { sent: 0, opened: 0 }; k.sent++; if (e.opened_at) k.opened++; });
+            return { sent: list.length, opened: list.filter(function(e) { return e.opened_at; }).length, by_kind: byKind };
+        };
+        var users = loadUsers();
+        var tokens = loadFcmTokens();
+        var guestIds = {};
+        tokens.forEach(function(t) { if (t.guest && t.offers !== false) guestIds[t.userId] = true; });
+        var usersById = {}; users.forEach(function(u) { usersById[u.id] = u; });
+        var partnersById = {}; loadPartners().forEach(function(p) { partnersById[p.id] = p; });
+        var recent = log.slice(-30).reverse().map(function(e) {
+            var who = 'Visiteur (sans compte)';
+            if (e.recipient_type === 'user') { var u = usersById[String(e.recipient).replace(/^user:/, '')]; who = u ? (((u.prenom || '') + ' ' + (u.nom || '')).trim() || u.email) : 'Client supprimé'; }
+            var p = partnersById[e.partner_id];
+            return { sent_at: e.sent_at, kind: e.kind, recipient: who, partner: p ? _partnerDisplayName(p) : '—', opened: !!e.opened_at };
+        });
+        var pn = _parisNow();
+        res.json({
+            success: true, enabled: st.enabled !== false, last_run_at: st.last_run_at || null, last_run_stats: st.last_run_stats || null,
+            ran_today: st.last_run_date === pn.date,
+            window: '18 h 30 – 21 h (heure de Paris)', max_per_week: DISCOVERY_MAX_PER_WEEK,
+            audience: {
+                clients_opted_in: users.filter(function(u) { return u.offers_push === true; }).length,
+                clients_opted_out: users.filter(function(u) { return u.offers_push === false; }).length,
+                clients_not_asked: users.filter(function(u) { return u.offers_push !== true && u.offers_push !== false; }).length,
+                guest_devices: Object.keys(guestIds).length
+            },
+            last_7_days: summarize(since(7)), last_30_days: summarize(since(30)), recent: recent
+        });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/admin/offers-push', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'enabled (booléen) requis' });
+    var st = loadDiscoveryState();
+    st.enabled = req.body.enabled;
+    saveDiscoveryState(st);
+    res.json({ success: true, enabled: st.enabled });
+});
+app.post('/api/admin/offers-push/preview', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var r = runDiscoveryPushes({ dryRun: true });
+        res.json({ success: true, recipients: r.stats.recipients, planned: r.planned.slice(0, 50).map(function(it) {
+            return { recipient: it.recipient.type === 'user' ? (it.recipient.name || it.recipient.email) : 'Visiteur (sans compte)', kind: it.msg.kind, title: it.msg.title, body: it.msg.body };
+        }), planned_count: r.planned.length });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 /**
  * GET /api/admin/client-withdrawals

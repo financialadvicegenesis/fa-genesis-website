@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261102a"></script>
-<script src="app-i18n-es.js?v=20261102a"></script>
-<script src="app-i18n-hi.js?v=20261102a"></script>
-<script src="app-i18n-pt.js?v=20261102a"></script>
-<script src="app-i18n-ja.js?v=20261102a"></script>
-<script src="app-i18n-zh.js?v=20261102a"></script>
-<script src="app-i18n-ar.js?v=20261102a"></script>
-<script src="app-i18n-it.js?v=20261102a"></script>
-<script src="app-i18n-de.js?v=20261102a"></script>
+<script src="app-i18n-en.js?v=20261103a"></script>
+<script src="app-i18n-es.js?v=20261103a"></script>
+<script src="app-i18n-hi.js?v=20261103a"></script>
+<script src="app-i18n-pt.js?v=20261103a"></script>
+<script src="app-i18n-ja.js?v=20261103a"></script>
+<script src="app-i18n-zh.js?v=20261103a"></script>
+<script src="app-i18n-ar.js?v=20261103a"></script>
+<script src="app-i18n-it.js?v=20261103a"></script>
+<script src="app-i18n-de.js?v=20261103a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -4220,6 +4220,7 @@ function showApp(){
   initApp();
   _clientCheckNativePush();
   setTimeout(_restoreNavSession, 400);
+  setTimeout(function(){ try{ _offersPushAfterSession(); _offersPushMaybeAsk(); }catch(e){} }, 1500);
   // Après la restauration de l'onglet (voir _restoreNavSession ci-dessus, qui peut basculer vers
   // 'partner' si c'était le dernier onglet ouvert) — jamais avant, pour ne jamais poser le voile
   // client sur un contenu qui va de toute façon être remplacé par l'espace prestataire un instant
@@ -9220,6 +9221,107 @@ function _studentVerifyNoticeHtml(services){
     +'</div></div>';
 }
 
+// Appel API client authentifié → JSON. BUG CORRIGÉ : appelée par l'envoi du justificatif
+// étudiant (_appUploadNewCert) mais jamais définie — ReferenceError, rien ne partait.
+function _cliFetch(path, method, body){
+  var token = (USER && USER._token) || '';
+  var headers = {'Content-Type':'application/json'};
+  if(token) headers['Authorization'] = 'Bearer '+token;
+  return fetch((window.FA_GENESIS_API||API)+path, { method: method||'GET', headers: headers, body: body!=null ? JSON.stringify(body) : undefined })
+    .then(function(r){ return r.text().then(function(t){
+      var d; try{ d = JSON.parse(t||'{}'); }catch(e){ d = { error: 'Réponse serveur invalide' }; }
+      if(!r.ok && d && !d.error) d.error = 'Erreur '+r.status;
+      return d;
+    }); });
+}
+
+// ── NOTIFICATIONS D'OFFRES (nouveaux prestataires + promos) ──────────────────
+// Accord explicite exigé (règle 4.5.4 de l'App Store, CNIL) : question posée une fois, puis
+// interrupteur dans Profil → Mes paramètres. Compte connecté : enregistré sur le compte
+// (users[].offers_push). Visiteur sans compte (app native) : l'appareil est enregistré pour les
+// seules offres (voir mobile-bridge.js, _sendTokenToServer). 3 notifications par semaine au plus,
+// envoyées par le serveur (runDiscoveryPushes) entre 18 h 30 et 21 h.
+var OFFERS_PUSH_KEY = 'fa_offers_push';
+function _isNativeApp(){ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+function _offersPushLocal(){ try{ return localStorage.getItem(OFFERS_PUSH_KEY); }catch(e){ return null; } }
+function _offersPushEnabled(){
+  if(USER && !GUEST && USER._token && (USER.offers_push === true || USER.offers_push === false)) return USER.offers_push === true;
+  return _offersPushLocal() === '1';
+}
+function _offersPushSet(enabled, silent){
+  try{ localStorage.setItem(OFFERS_PUSH_KEY, enabled ? '1' : '0'); }catch(e){}
+  if(USER && !GUEST && USER._token){
+    USER.offers_push = enabled;
+    _cliFetch('/api/clients/offers-push','PUT',{ enabled: enabled }).catch(function(){});
+  } else if(_isNativeApp() && window.FAGMobile){
+    if(enabled){ if(window.FAGMobile.initPushNotifications) window.FAGMobile.initPushNotifications(null); }
+    else if(window.FAGMobile.unregisterGuestOffers) window.FAGMobile.unregisterGuestOffers();
+  }
+  if(!silent) showToast(enabled ? 'C\'est noté' : 'Notifications d\'offres désactivées', enabled ? '3 notifications par semaine au maximum, jamais la nuit.' : 'Vous recevez toujours vos messages et le suivi de vos commandes.', enabled ? 'success' : 'info');
+}
+// Après connexion : l'accord donné en visiteur suit le compte (s'il n'a jamais répondu).
+function _offersPushAfterSession(){
+  try{
+    if(USER && !GUEST && USER._token){
+      var local = _offersPushLocal();
+      if((USER.offers_push === null || USER.offers_push === undefined) && (local === '1' || local === '0')) _offersPushSet(local === '1', true);
+    } else if(_isNativeApp() && _offersPushLocal() === '1' && window.FAGMobile && window.FAGMobile.initPushNotifications){
+      // Visiteur ayant accepté : réenregistre l'appareil (jeton retiré à une déconnexion, par ex.)
+      window.FAGMobile.initPushNotifications(null);
+    }
+  }catch(e){}
+}
+var _offersAskTimer = null;
+function _offersPushMaybeAsk(){
+  if(!_isNativeApp()) return;
+  if(USER && !GUEST && (USER.offers_push === true || USER.offers_push === false)) return;
+  var local = _offersPushLocal();
+  if(local === '1' || local === '0') return;
+  clearTimeout(_offersAskTimer);
+  _offersAskTimer = setTimeout(function(){
+    // Jamais par-dessus un écran en cours (paiement, fiche, formulaire) : seulement sur l'accueil
+    // ou les listes de prestataires, sinon on retente plus tard.
+    var onBrowse = ['tab-home','tab-prestataires','tab-explorer'].some(function(id){ var t = document.getElementById(id); return t && t.classList.contains('on'); });
+    var busy = document.querySelector('#detail-sheet.on, .detail-overlay, #pay-overlay.on, #offers-ask-sheet, #welcome[style*="flex"]');
+    if(!onBrowse || busy){ _offersPushMaybeAsk(); return; }
+    _offersPushShowAsk();
+  }, 25000);
+}
+function _offersPushShowAsk(){
+  if(document.getElementById('offers-ask-sheet')) return;
+  var ov = document.createElement('div');
+  ov.id = 'offers-ask-sheet';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML = '<div style="width:100%;max-width:480px;background:#111;border-top:2px solid #FFD700;border-radius:20px 20px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom,0px));">'
+    + '<div style="width:52px;height:52px;border-radius:16px;background:rgba(255,215,0,.12);display:flex;align-items:center;justify-content:center;margin-bottom:12px;"><i class="fa-solid fa-bell" style="color:#FFD700;font-size:22px;"></i></div>'
+    + '<div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:6px;">Ne ratez pas les nouveautés</div>'
+    + '<div style="font-size:13px;color:#aaa;line-height:1.55;margin-bottom:16px;">Recevez une notification quand un nouveau prestataire rejoint GENESIS ou lance une promo. <strong style="color:#ddd;">3 par semaine au maximum</strong>, jamais la nuit. Vous pouvez arrêter à tout moment dans votre profil.</div>'
+    + '<button onclick="_offersPushAnswer(true)" style="width:100%;padding:14px;border-radius:12px;background:#FFD700;color:#000;border:none;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;margin-bottom:8px;">Oui, me prévenir</button>'
+    + '<button onclick="_offersPushAnswer(false)" style="width:100%;padding:12px;border-radius:12px;background:transparent;color:#888;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Non merci</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+}
+function _offersPushAnswer(yes){
+  var ov = document.getElementById('offers-ask-sheet'); if(ov) ov.remove();
+  _offersPushSet(!!yes);
+}
+// Ligne Profil → Mes paramètres (compte connecté, ou visiteur dans l'app).
+function _offersPushRowHtml(){
+  var logged = USER && !GUEST && USER._token;
+  if(!logged && !_isNativeApp()) return '';
+  return '<div class="plus-item">'
+    + '<div class="plus-item-ico" style="background:#1a1400"><i class="fa-solid fa-bullhorn"></i></div>'
+    + '<div class="plus-item-label">Nouveautés et promos<div style="font-size:10px;color:#777;font-weight:600;margin-top:2px;">3 notifications par semaine au maximum</div></div>'
+    + '<label class="tgl"><input type="checkbox" id="offers-push-toggle"'+(_offersPushEnabled()?' checked':'')+' onchange="_offersPushSet(this.checked)"><span class="tgl-slider"></span></label>'
+    + '</div>';
+}
+// Tap sur une notification d'offre : mesure de l'ouverture, puis fiche du prestataire.
+function _openDiscoveryNotif(id, partnerId){
+  try{ fetch((window.FA_GENESIS_API||API)+'/api/push/opened',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: id }) }).catch(function(){}); }catch(e){}
+  if(typeof nav === 'function') nav('prestataires');
+  if(partnerId && typeof openPartnerDetail === 'function') setTimeout(function(){ openPartnerDetail(partnerId); }, 450);
+}
+
 function _appUploadNewCert(){
   var inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*,.pdf';
@@ -9340,6 +9442,7 @@ function renderProfil(){
     +pli('<i class="fa-solid fa-folder-tree"></i>','#0d0d1a','Gestion des données personnelles',null,'showDonneesMenu()')
     +pli('<i class="fa-solid fa-cookie-bite"></i>','#1a1000','Gestion des cookies',null,'showCookiesMenu()')
     +(USER && !GUEST ? pli('<i class="fa-solid fa-bell"></i>','#1a0800','Notifications',null,'showNotifications()') : '')
+    +_offersPushRowHtml()
     +(USER && !GUEST ? pli('<i class="fa-solid fa-gear"></i>','#141414','Paramètres du compte',null,'showParametresCompte()') : '')
     +bioRowClient
     +'</div></div>';
@@ -10313,6 +10416,7 @@ function _syncUserBadge(){
       if(d.accountType)    USER.accountType    = d.accountType;
       var _prevStudentStatus = USER.student_status;
       if(d.student_status != null) USER.student_status = d.student_status;
+      if(d.offers_push === true || d.offers_push === false || d.offers_push === null) USER.offers_push = d.offers_push;
       try{ _applyUserTheme(USER.profile_theme); }catch(e){}
       // Détection de passage de niveau : popup + confettis UNIQUEMENT pour une vraie progression
       // observée sur CET appareil. Le dernier niveau connu est mémorisé localement ('none' = aucun
@@ -16626,6 +16730,12 @@ function _handleNotifHash(hash, _retryCount){
     } else {
       console.log('[GENESIS_NOTIFICATION] navigation_failed session_not_ready');
     }
+    return;
+  }
+  // Notification d'offre (nouveau prestataire / promo) → fiche du prestataire
+  var discoveryMatch = hash.match(/^decouverte:(OFR-[a-f0-9]+):(.+)$/);
+  if(discoveryMatch){
+    _openDiscoveryNotif(discoveryMatch[1], decodeURIComponent(discoveryMatch[2]));
     return;
   }
   // Réponse admin à un ticket Assistance → ouvrir directement le fil de conversation
@@ -23754,6 +23864,6 @@ async function _confirmBalancePayment(){
      indéfiniment (contrairement à app.html, rechargé à chaque navigation, un <script src> externe
      peut rester en cache bien au-delà de l'en-tête Cache-Control du serveur selon l'implémentation
      exacte du cache HTTP de la WebView) — à incrémenter à chaque modification de ce fichier. -->
-<script src="mobile-bridge.js?v=20260930c" defer></script>
+<script src="mobile-bridge.js?v=20261103a" defer></script>
 </body>
 </html>

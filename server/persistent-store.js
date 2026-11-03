@@ -63,7 +63,10 @@ var COLLECTIONS = [
     // Justificatifs étudiants (avant : jamais persistés, perdus à chaque redéploiement)
     'student_certificates',
     // Prospection de prestataires (admin)
-    'prospects'
+    'prospects',
+    // Notifications d'offres : état du passage quotidien + journal (plafonds, mesure des ouvertures)
+    'discovery_push',
+    'discovery_push_log'
 ];
 
 /**
