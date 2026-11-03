@@ -24302,6 +24302,24 @@ app.get('/api/partner/promotions', authenticatePartner, (req, res) => {
     }
 });
 
+// Une date « jour » du formulaire (AAAA-MM-JJ) était lue à minuit UTC : une promo « jusqu'au
+// 30/11 » s'arrêtait le 30/11 à 1 h du matin (heure de Paris), le dernier jour n'était pas compté.
+// Début = 00:00:00 et fin = 23:59:59 à Paris ; une date complète (avec heure) est gardée telle quelle.
+function _parisOffsetMinutes(d) {
+    var parts = {};
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+        .formatToParts(d).forEach(function(x) { parts[x.type] = x.value; });
+    var asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, (+parts.hour) % 24, +parts.minute, +parts.second);
+    return Math.round((asUtc - d.getTime()) / 60000);
+}
+function promoDateBound(value, endOfDay) {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        var naive = new Date(value + (endOfDay ? 'T23:59:59Z' : 'T00:00:00Z'));
+        return new Date(naive.getTime() - _parisOffsetMinutes(naive) * 60000).toISOString();
+    }
+    return new Date(value).toISOString();
+}
+
 // POST /api/partner/promotions — créer une promotion
 app.post('/api/partner/promotions', authenticatePartner, (req, res) => {
     try {
@@ -24315,7 +24333,10 @@ app.post('/api/partner/promotions', authenticatePartner, (req, res) => {
         if (typeof b.description === 'string' && rejectExternalLink(res, b.description.trim(), null, 'promo_description')) return;
         if (!PROMO_TYPES_ALL.includes(type))    return res.status(400).json({ error: 'Type invalide' });
         if (!b.start_date || !b.end_date)       return res.status(400).json({ error: 'Dates requises' });
-        if (new Date(b.end_date) <= new Date(b.start_date)) return res.status(400).json({ error: 'La date de fin doit être après la date de début' });
+        if (isNaN(new Date(b.start_date).getTime()) || isNaN(new Date(b.end_date).getTime())) return res.status(400).json({ error: 'Dates invalides' });
+        var _prStart = promoDateBound(b.start_date, false), _prEnd = promoDateBound(b.end_date, true);
+        if (new Date(_prEnd) <= new Date(_prStart)) return res.status(400).json({ error: 'La date de fin doit être après la date de début' });
+        if (new Date(_prEnd) <= new Date()) return res.status(400).json({ error: 'La date de fin est déjà passée' });
         if ((type === 'percentage' || type === 'fixed') && (b.value === null || b.value === undefined || isNaN(parseFloat(b.value)))) {
             return res.status(400).json({ error: 'Valeur numérique requise pour ce type' });
         }
@@ -24329,8 +24350,8 @@ app.post('/api/partner/promotions', authenticatePartner, (req, res) => {
             description: (b.description || '').trim(),
             type: type,
             value: (type === 'percentage' || type === 'fixed') ? parseFloat(b.value) : null,
-            start_date: new Date(b.start_date).toISOString(),
-            end_date: new Date(b.end_date).toISOString(),
+            start_date: _prStart,
+            end_date: _prEnd,
             max_uses: b.max_uses ? parseInt(b.max_uses) : null,
             current_uses: 0,
             min_amount: b.min_amount ? parseFloat(b.min_amount) : null,
@@ -24362,6 +24383,7 @@ app.put('/api/partner/promotions/:id', authenticatePartner, (req, res) => {
         if (idx === -1) return res.status(404).json({ error: 'Promotion introuvable' });
         var pr = all[idx];
         var b  = req.body;
+        if (pr.status === 'ended') return res.status(409).json({ error: 'Cette promotion est terminée. Créez-en une nouvelle pour relancer une offre.' });
         // Même règle qu'à la création ; un texte inchangé d'avant la règle reste accepté (masqué aux clients).
         if (typeof b.title === 'string' && rejectExternalLink(res, b.title.trim(), pr.title, 'promo_title')) return;
         if (typeof b.description === 'string' && rejectExternalLink(res, b.description.trim(), pr.description, 'promo_description')) return;
@@ -24369,8 +24391,12 @@ app.put('/api/partner/promotions/:id', authenticatePartner, (req, res) => {
         if (b.description !== undefined) pr.description = b.description.trim();
         if (b.type        !== undefined && PROMO_TYPES_ALL.includes(b.type)) pr.type = b.type;
         if (b.value       !== undefined) pr.value       = b.value !== null ? parseFloat(b.value) : null;
-        if (b.start_date  !== undefined) pr.start_date  = new Date(b.start_date).toISOString();
-        if (b.end_date    !== undefined) pr.end_date    = new Date(b.end_date).toISOString();
+        var _nStart = b.start_date !== undefined ? promoDateBound(b.start_date, false) : pr.start_date;
+        var _nEnd   = b.end_date   !== undefined ? promoDateBound(b.end_date, true)    : pr.end_date;
+        if (isNaN(new Date(_nStart).getTime()) || isNaN(new Date(_nEnd).getTime())) return res.status(400).json({ error: 'Dates invalides' });
+        if (new Date(_nEnd) <= new Date(_nStart)) return res.status(400).json({ error: 'La date de fin doit être après la date de début' });
+        pr.start_date = _nStart;
+        pr.end_date   = _nEnd;
         if (b.max_uses    !== undefined) pr.max_uses    = b.max_uses ? parseInt(b.max_uses) : null;
         if (b.min_amount  !== undefined) pr.min_amount  = b.min_amount ? parseFloat(b.min_amount) : null;
         if (b.categories  !== undefined) pr.categories  = Array.isArray(b.categories) ? b.categories : [];
@@ -24392,12 +24418,36 @@ app.post('/api/partner/promotions/:id/suspend', authenticatePartner, (req, res) 
         var all = loadPromotions();
         var idx = all.findIndex(function(p) { return p.id === req.params.id && p.partner_id === pid; });
         if (idx === -1) return res.status(404).json({ error: 'Promotion introuvable' });
+        if (all[idx].status === 'ended') return res.status(409).json({ error: 'Cette promotion est terminée.' });
         all[idx].status     = all[idx].status === 'suspended' ? 'active' : 'suspended';
         all[idx].updated_at = new Date().toISOString();
         savePromotions(all);
         res.json({ ok: true, status: all[idx].status });
     } catch(e) {
         console.error('[PROMO SUSPEND]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/promotions/:id/end — terminer la promotion maintenant (définitif). Elle
+// disparaît aussitôt de la fiche, de l'annuaire et des notifications d'offres (isPromoActive) ;
+// ses statistiques restent visibles par le prestataire. Les commandes déjà passées ne changent pas.
+app.post('/api/partner/promotions/:id/end', authenticatePartner, (req, res) => {
+    try {
+        var pid = req.partner.id;
+        var all = loadPromotions();
+        var idx = all.findIndex(function(p) { return p.id === req.params.id && p.partner_id === pid; });
+        if (idx === -1) return res.status(404).json({ error: 'Promotion introuvable' });
+        if (all[idx].status === 'ended') return res.json({ ok: true, promotion: all[idx] });
+        var nowIso = new Date().toISOString();
+        all[idx].status = 'ended';
+        all[idx].ended_at = nowIso;
+        if (new Date(all[idx].end_date) > new Date(nowIso)) all[idx].end_date = nowIso;
+        all[idx].updated_at = nowIso;
+        savePromotions(all);
+        res.json({ ok: true, promotion: all[idx] });
+    } catch(e) {
+        console.error('[PROMO END]', e.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261103a"></script>
-<script src="app-i18n-es.js?v=20261103a"></script>
-<script src="app-i18n-hi.js?v=20261103a"></script>
-<script src="app-i18n-pt.js?v=20261103a"></script>
-<script src="app-i18n-ja.js?v=20261103a"></script>
-<script src="app-i18n-zh.js?v=20261103a"></script>
-<script src="app-i18n-ar.js?v=20261103a"></script>
-<script src="app-i18n-it.js?v=20261103a"></script>
-<script src="app-i18n-de.js?v=20261103a"></script>
+<script src="app-i18n-en.js?v=20261103b"></script>
+<script src="app-i18n-es.js?v=20261103b"></script>
+<script src="app-i18n-hi.js?v=20261103b"></script>
+<script src="app-i18n-pt.js?v=20261103b"></script>
+<script src="app-i18n-ja.js?v=20261103b"></script>
+<script src="app-i18n-zh.js?v=20261103b"></script>
+<script src="app-i18n-ar.js?v=20261103b"></script>
+<script src="app-i18n-it.js?v=20261103b"></script>
+<script src="app-i18n-de.js?v=20261103b"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -20994,15 +20994,21 @@ function _ptnrLoadPromotions(){
   el.innerHTML = _skeletonRows(2);
   _ptnrFetch('/api/partner/promotions').then(function(data){
     var promos = (data && data.promotions) || [];
+    _ptnrPromosCache = promos;
+    // En cours d'abord, puis suspendues, puis terminées / expirées (les plus récentes d'abord)
+    var _rank = function(pr){ var past = pr.status==='ended' || new Date(pr.end_date) < new Date(); return past ? 2 : (pr.status==='suspended' ? 1 : 0); };
+    promos = promos.slice().sort(function(a, b){ return (_rank(a) - _rank(b)) || (new Date(b.created_at||0) - new Date(a.created_at||0)); });
     var html = '<button onclick="_ptnrOpenPromoForm()" style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:14px;padding:14px;font-size:13px;font-weight:900;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa-solid fa-plus"></i> Créer une promotion</button>';
     if(!promos.length){
       html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-tag"></i></div><div class="ptnr-empty-txt">Aucune promotion créée</div><div class="ptnr-empty-sub">Vos promotions apparaîtront ici et seront visibles dans l\'annuaire.</div></div>';
     } else {
       promos.forEach(function(pr){
         var now = new Date(); var end = new Date(pr.end_date);
-        var expired = end < now;
-        var statusColor = pr.status==='active' && !expired ? '#4caf50' : pr.status==='suspended' ? '#FFD700' : '#666';
-        var statusLabel = expired ? 'Expirée' : pr.status==='active' ? 'Active' : 'Suspendue';
+        var ended = pr.status === 'ended';
+        var expired = ended || end < now;
+        var notStarted = !expired && new Date(pr.start_date) > now;
+        var statusColor = ended ? '#666' : (pr.status==='active' && !expired ? (notStarted ? '#60a5fa' : '#4caf50') : pr.status==='suspended' && !expired ? '#FFD700' : '#666');
+        var statusLabel = ended ? 'Terminée' : expired ? 'Expirée' : pr.status==='suspended' ? 'Suspendue' : (notStarted ? 'Programmée' : 'Active');
         var typeLabel   = _PROMO_TYPE_LABELS[pr.type] || pr.type;
         var valueStr    = pr.type==='percentage'?(' — -'+pr.value+'%') : pr.type==='fixed'?(' — -'+pr.value+'€') : '';
         var daysLeft    = expired ? '' : Math.ceil((end-now)/(1000*60*60*24))+' j restant'+(Math.ceil((end-now)/(1000*60*60*24))>1?'s':'');
@@ -21013,17 +21019,24 @@ function _ptnrLoadPromotions(){
         html += '</div>';
         html += '<div style="font-size:11px;color:#888;margin-bottom:4px;">'+typeLabel+valueStr+'</div>';
         if(pr.description) html += '<div style="font-size:11px;color:#666;margin-bottom:6px;">'+pr.description+'</div>';
-        html += '<div style="font-size:11px;color:#555;margin-bottom:8px;">Du '+_ptnrFmt(pr.start_date)+' au '+_ptnrFmt(pr.end_date)+(daysLeft?' <span style="color:#FFD700;font-weight:700;">('+daysLeft+')</span>':'')+'</div>';
+        html += '<div style="font-size:11px;color:#555;margin-bottom:8px;">Du '+_ptnrFmt(pr.start_date)+' au '+_ptnrFmt(pr.end_date)+(daysLeft?' <span style="color:#FFD700;font-weight:700;">('+daysLeft+')</span>':'')+(ended && pr.ended_at ? ' <span style="color:#888;">· terminée le '+_ptnrFmt(pr.ended_at)+'</span>' : '')+'</div>';
         html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">';
         html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:6px 10px;font-size:11px;color:#aaa;"><i class="fa-solid fa-users" style="color:#666;"></i> '+pr.current_uses+(pr.max_uses?'/'+pr.max_uses:'')+' utilisation'+(pr.current_uses!==1?'s':'')+'</div>';
         html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:6px 10px;font-size:11px;color:#aaa;"><i class="fa-solid fa-calendar-check" style="color:#666;"></i> '+pr.bookings_generated+' réservation'+(pr.bookings_generated!==1?'s':'')+'</div>';
         html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:6px 10px;font-size:11px;color:#aaa;"><i class="fa-solid fa-euro-sign" style="color:#666;"></i> '+Number(pr.revenue_generated||0).toFixed(0)+' € CA généré</div>';
         html += '</div>';
+        var _pbtn = 'background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;';
         if(!expired){
-          html += '<div style="display:flex;gap:8px;">';
-          html += '<button onclick="_ptnrOpenPromoForm(\''+pr.id+'\')" style="flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:#aaa;cursor:pointer;"><i class="fa-solid fa-pen"></i> Modifier</button>';
-          html += '<button onclick="_ptnrTogglePromo(\''+pr.id+'\')" style="flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:'+(pr.status==='suspended'?'#4caf50':'#FFD700')+';cursor:pointer;">'+(pr.status==='suspended'?'<i class="fa-solid fa-play"></i> Réactiver':'<i class="fa-solid fa-pause"></i> Suspendre')+'</button>';
-          html += '<button onclick="_ptnrDeletePromo(\''+pr.id+'\')" style="flex:0 0 auto;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:9px 12px;font-size:11px;font-weight:700;color:#ef4444;cursor:pointer;"><i class="fa-solid fa-trash"></i></button>';
+          html += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+          html += '<button onclick="_ptnrOpenPromoForm(\''+pr.id+'\')" style="flex:1;min-width:88px;'+_pbtn+'color:#aaa;"><i class="fa-solid fa-pen"></i> Modifier</button>';
+          html += '<button onclick="_ptnrTogglePromo(\''+pr.id+'\')" style="flex:1;min-width:88px;'+_pbtn+'color:'+(pr.status==='suspended'?'#4caf50':'#FFD700')+';">'+(pr.status==='suspended'?'<i class="fa-solid fa-play"></i> Réactiver':'<i class="fa-solid fa-pause"></i> Suspendre')+'</button>';
+          html += '<button onclick="_ptnrEndPromo(\''+pr.id+'\')" style="flex:1;min-width:88px;'+_pbtn+'color:#ef4444;"><i class="fa-solid fa-flag-checkered"></i> Terminer</button>';
+          html += '<button onclick="_ptnrDeletePromo(\''+pr.id+'\')" title="Supprimer" style="flex:0 0 auto;'+_pbtn+'padding:9px 12px;color:#ef4444;"><i class="fa-solid fa-trash"></i></button>';
+          html += '</div>';
+        } else {
+          html += '<div style="display:flex;gap:6px;">';
+          html += '<button onclick="_ptnrDuplicatePromo(\''+pr.id+'\')" style="flex:1;'+_pbtn+'color:#FFD700;"><i class="fa-solid fa-rotate-right"></i> Relancer une offre similaire</button>';
+          html += '<button onclick="_ptnrDeletePromo(\''+pr.id+'\')" title="Supprimer" style="flex:0 0 auto;'+_pbtn+'padding:9px 12px;color:#ef4444;"><i class="fa-solid fa-trash"></i></button>';
           html += '</div>';
         }
         html += '</div>';
@@ -21033,7 +21046,7 @@ function _ptnrLoadPromotions(){
   }).catch(function(){ el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
 }
 
-function _ptnrOpenPromoForm(editId){
+function _ptnrOpenPromoForm(editId, copyFromId){
   _ptnrPromoEditId = editId || null;
   var el = document.getElementById('ptnr-promotions-content'); if(!el) return;
   var today = new Date().toISOString().slice(0,10);
@@ -21061,6 +21074,33 @@ function _ptnrOpenPromoForm(editId){
   html += '<button onclick="_ptnrLoadPromotions()" style="flex:1;background:transparent;border:1px solid #2a2a2a;border-radius:12px;padding:10px;font-size:12px;font-weight:700;color:#555;cursor:pointer;">Annuler</button>';
   html += '</div></div>';
   el.innerHTML = html;
+  // BUG CORRIGÉ : « Modifier » ouvrait un formulaire vide (dates remises par défaut) — le
+  // prestataire devait tout ressaisir, et enregistrer écrasait la promo avec ces valeurs.
+  var src = (_ptnrPromosCache||[]).filter(function(x){ return x.id === (editId || copyFromId); })[0];
+  if(src){
+    var _set = function(id, v){ var f = document.getElementById(id); if(f && v !== null && v !== undefined) f.value = v; };
+    var _day = function(iso){ try{ var d = new Date(iso); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }catch(e){ return ''; } };
+    _set('pf-promo-title', src.title); _set('pf-promo-desc', src.description || ''); _set('pf-promo-type', src.type);
+    _set('pf-promo-value', src.value); _set('pf-promo-maxuses', src.max_uses); _set('pf-promo-minamount', src.min_amount);
+    if(editId){ _set('pf-promo-start', _day(src.start_date)); _set('pf-promo-end', _day(src.end_date)); }
+    var _b = document.getElementById('pf-promo-submit-btn'); if(_b && editId) _b.textContent = 'ENREGISTRER LES MODIFICATIONS';
+  }
+  _ptnrPromoTypeChange();
+}
+
+function _ptnrDuplicatePromo(promoId){ _ptnrOpenPromoForm(null, promoId); }
+
+// Terminer une promo maintenant (définitif) : elle disparaît aussitôt de la fiche, de l'annuaire
+// et des notifications d'offres ; ses statistiques restent ici.
+function _ptnrEndPromo(promoId){
+  showConfirmModal('Terminer cette promotion maintenant ?\n\nElle disparaît tout de suite de votre fiche et de l\'annuaire. Les commandes déjà passées ne changent pas. Pour une simple pause, utilisez plutôt « Suspendre ».', {danger:true, confirmLabel:'Terminer'}).then(function(ok){
+    if(!ok) return;
+    _ptnrFetch('/api/partner/promotions/'+promoId+'/end','POST',{}).then(function(d){
+      if(d && d.ok){ showToast('Promotion terminée','Elle n\'est plus visible des clients.','success'); }
+      else { showToast('Erreur',(d&&d.error)||'Impossible de terminer la promotion','error'); }
+      _ptnrLoadPromotions();
+    }).catch(function(){ showToast('Erreur de connexion','Réessayez','error'); });
+  });
 }
 
 function _ptnrPromoTypeChange(){
@@ -21083,7 +21123,9 @@ function _ptnrSubmitPromo(){
   function showErr(msg){ if(errEl){errEl.style.display='';errEl.textContent=msg;} }
   if(!title)         return showErr('Le titre est requis.');
   if(!start||!end)   return showErr('Les dates sont requises.');
-  if(end <= start)   return showErr('La date de fin doit être après la date de début.');
+  // Les dates sont des jours entiers (début 00:00, fin 23:59, heure de Paris) : une promo d'un
+  // seul jour a la même date de début et de fin.
+  if(end < start)    return showErr('La date de fin doit être après la date de début.');
   if((type==='percentage'||type==='fixed') && !value) return showErr('La valeur est requise pour ce type.');
   // Promotion visible des clients : pas de lien externe ni de coordonnées (même règle que le
   // serveur, server/link-guard.js).
@@ -21105,7 +21147,7 @@ function _ptnrSubmitPromo(){
       _ptnrLoadPromotions();
     } else {
       showErr((data&&data.error)||'Erreur serveur');
-      if(btn){ btn.disabled=false; btn.textContent='PUBLIER LA PROMOTION'; }
+      if(btn){ btn.disabled=false; btn.textContent=_ptnrPromoEditId?'ENREGISTRER LES MODIFICATIONS':'PUBLIER LA PROMOTION'; }
     }
   }).catch(function(){
     showErr('Erreur de connexion');
@@ -21114,10 +21156,13 @@ function _ptnrSubmitPromo(){
 }
 
 function _ptnrTogglePromo(promoId){
-  _ptnrFetch('/api/partner/promotions/'+promoId+'/suspend','POST',{}).then(function(){
+  _ptnrFetch('/api/partner/promotions/'+promoId+'/suspend','POST',{}).then(function(d){
+    if(d && d.ok) showToast(d.status==='suspended' ? 'Promotion suspendue' : 'Promotion réactivée', d.status==='suspended' ? 'Elle n\'est plus visible jusqu\'à sa réactivation.' : '', 'info');
+    else if(d && d.error) showToast('Erreur', d.error, 'error');
     _ptnrLoadPromotions();
   });
 }
+var _ptnrPromosCache = [];
 
 function _ptnrDeletePromo(promoId){
   showConfirmModal('Supprimer cette promotion ?', {confirmLabel:'Supprimer'}).then(function(ok){
