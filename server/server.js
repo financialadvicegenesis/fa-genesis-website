@@ -1144,7 +1144,9 @@ function _maybeGenerateMissionInvoice(order, partner, dispatch) {
     }
 }
 
-async function processDispatchPayout(dispatch, stage) {
+// opts.silent : pas de notification « Gains disponibles » ici, l'appelant l'annonce lui-même dans
+// sa propre notification (validation client, libération à 7 jours) pour éviter 2 à 3 push d'affilée.
+async function processDispatchPayout(dispatch, stage, opts) {
     try {
         // claimed_by_partner_id OU partner_id : les deux champs coexistent selon le flux de
         // création du dispatch (broadcast réclamé vs. commande "prestation partenaire" directe).
@@ -1335,7 +1337,7 @@ async function processDispatchPayout(dispatch, stage) {
         }
         if (_walletOk) {
             console.log('[PAYOUT] ' + stage + ' → Wallet GENESIS crédité : +' + paidAmount + '€ pour ' + partner.email);
-            notifyUser(partner.email, 'partner', 'wallet_credited', '💰 Gains disponibles !',
+            if (!(opts && opts.silent)) notifyUser(partner.email, 'partner', 'wallet_credited', '💰 Gains disponibles !',
                 '+' + paidAmount.toFixed(2) + '€ viennent d\'être ajoutés à votre Wallet GENESIS. Retirez-les quand vous voulez.',
                 '#partner:wallet:' + _dispId);
             if (_isFinalStage) _maybeGenerateMissionInvoice(order, partner, dispatch);
@@ -2300,37 +2302,6 @@ function sendPushToRole(role, payload) {
     }
 }
 
-// Alerte Bâtisseur+ : notifie les clients de niveau argent/or/elite dont les préférences
-// correspondent au type du nouveau partenaire venant d'être approuvé.
-function alertBatisseurPlusOnNewPartner(partner) {
-    try {
-        var batisseurBadges = ['argent', 'or', 'elite'];
-        var partnerName = ((partner.prenom || '') + ' ' + (partner.nom || '')).trim();
-        var partnerType = partner.partner_type || '';
-        loadUsers().forEach(function(user) {
-            var qg = getClientGenesisPoints(user);
-            var badge = getClientQGBadge(qg);
-            if (batisseurBadges.indexOf(badge) === -1) return;
-            // Priorité aux préférences explicitement renseignées par le client ; sinon, dérivées des favoris/historique
-            var preferred = (user.preferred_partner_types && user.preferred_partner_types.length)
-                ? user.preferred_partner_types
-                : getClientPreferredCategories(user.email);
-            // Si des préférences sont connues, ne notifier que si le type du partenaire correspond
-            if (preferred.length > 0 && preferred.indexOf(partnerType) === -1) return;
-            notifyUser(
-                user.email,
-                'client',
-                'nouveau-prestataire',
-                'Nouveau prestataire disponible',
-                partnerName + ' vient de rejoindre GENESIS et correspond à vos préférences.',
-                '/app.html#explorer'
-            );
-        });
-    } catch(e) {
-        console.error('[ALERT] alertBatisseurPlusOnNewPartner erreur:', e);
-    }
-}
-
 // Nombre BRUT de messages non lus reçus par ce destinataire précis (email+role) — chaque
 // message compte, pas chaque interlocuteur distinct : demandé explicitement (2 messages reçus
 // → badge "2", 3 messages → "3"), même convention que _ptnrRefreshBadges/_clientRefreshMsgBadge
@@ -2441,6 +2412,27 @@ function translateServerText(text, lang) {
         }
     }
     return result;
+}
+
+// Regroupement : si le destinataire a déjà, pour le même lien, une notification NON LUE d'un de ces
+// types créée il y a moins de withinMs, on la met à jour (update) au lieu d'en créer une nouvelle —
+// pas de nouveau push. Renvoie true si c'est le cas (l'appelant n'envoie alors rien).
+function _mergeIntoRecentNotif(email, types, link, withinMs, update) {
+    try {
+        if (!email) return false;
+        var all = loadNotifications();
+        var em = String(email).toLowerCase(), since = Date.now() - withinMs;
+        for (var i = all.length - 1; i >= 0; i--) {
+            var n = all[i];
+            if (!n || n.read || (n.email || '').toLowerCase() !== em || n.link !== link) continue;
+            if (types.indexOf(n.type) === -1) continue;
+            if (new Date(n.created_at).getTime() < since) continue;
+            if (update) update(n);
+            saveNotifications(all);
+            return true;
+        }
+    } catch (e) { console.error('[NOTIFY] _mergeIntoRecentNotif:', e.message); }
+    return false;
 }
 
 function notifyUser(email, role, type, title, body, link) {
@@ -3477,11 +3469,7 @@ function updateOrder(orderId, updates) {
                             'Votre contrat de prestation avec ' + _newCtr.partner_name + ' est disponible. Signez-le pour démarrer la mission.',
                             '/app.html#client:contract:' + _cId);
                     }
-                    if (_partner) {
-                        notifyUser(_partner.email, 'partner', 'contract_sent', 'Contrat envoyé au client',
-                            'Le contrat pour la commande ' + _order.id + ' a été envoyé à ' + (_clientName || _clientEmail) + '.',
-                            '#partner:contract:' + _cId);
-                    }
+                    // Prestataire : pas de notification ici, seulement à la signature (contract_signed).
                     console.log('[CONTRACT] Contrat prestation auto-généré:', _cId);
                 } catch(_e) { console.error('[CONTRACT] Erreur auto-génération:', _e); }
             }, 500);
@@ -3689,10 +3677,10 @@ async function checkAutoPaymentRelease() {
                     // depuis l'acceptation de la mission — sans ce second appel en stage 'balance',
                     // le solde capturé automatiquement ci-dessus (7j) ne serait jamais crédité.
                     var _arHasBalance = parseFloat(_o.balance_amount || 0) > 0;
-                    var _arDepositOk = await processDispatchPayout(_arDisp, 'deposit');
+                    var _arDepositOk = await processDispatchPayout(_arDisp, 'deposit', { silent: true });
                     var _arBalanceOk = true;
                     if (_arHasBalance && _o.balance_paid === true) {
-                        _arBalanceOk = await processDispatchPayout(_arDisp, 'balance');
+                        _arBalanceOk = await processDispatchPayout(_arDisp, 'balance', { silent: true });
                     }
                     _arPayoutOk = _arDepositOk && _arBalanceOk;
                     if (_arPayoutOk) {
@@ -3787,7 +3775,8 @@ async function checkAutoPaymentRelease() {
                 if (_arPartnerEmail) {
                     notifyUser(_arPartnerEmail, 'partner', 'auto_release',
                         'Virement automatique déclenché',
-                        'Le délai de 7 jours s\'est écoulé — votre paiement pour « ' + (_o.product_name || 'la prestation') + ' » a été automatiquement libéré.',
+                        'Le délai de 7 jours s\'est écoulé — votre paiement pour « ' + (_o.product_name || 'la prestation')
+                            + (_arPayoutOk ? ' » a été ajouté à votre Wallet GENESIS.' : ' » a été automatiquement libéré.'),
                         '#partner:wallet:' + _o.id);
                 }
                 // Demande d'avis client — même correctif que dans validate-delivery (voir son
@@ -6676,11 +6665,15 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
 
     // Notifications
     if (updatedOrder.client_info && updatedOrder.client_info.email) {
-        const msg = stage === 'deposit' ? 'Votre acompte a été reçu. Votre accompagnement démarre !'
+        const msg = stage === 'deposit' ? 'Votre acompte a bien été reçu.'
             : stage === 'installment_2' ? 'Le paiement de la tranche 2 a été reçu. Merci !'
             : 'Votre paiement complet a été confirmé. Merci !';
         const lbl = stage === 'deposit' ? 'acompte' : stage === 'installment_2' ? 'tranche 2' : stage === 'installment_3' ? 'tranche 3' : 'solde';
-        notifyUser(updatedOrder.client_info.email, 'client', 'paiement', 'Paiement confirmé ✅', msg, '#client:order:' + orderId);
+        // Acompte d'une prestation : la notification client est « Paiement réussi ! » (payment_success,
+        // envoyée à la création de la mission plus bas) — ne pas en envoyer une deuxième ici.
+        if (!(stage === 'deposit' && updatedOrder.product_type === 'partner_service')) {
+            notifyUser(updatedOrder.client_info.email, 'client', 'paiement', 'Paiement confirmé ✅', msg, '#client:order:' + orderId);
+        }
         notifyUser(null, 'admin', 'paiement-admin', 'Paiement reçu', (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + lbl, '/app.html#open-admin');
     }
 
@@ -8158,23 +8151,12 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
             }
         }
 
-        // Notifier le partenaire — message différent si le virement est réellement déjà parti
-        // (Wise/PayPal ont répondu "envoyé" à l'instant) plutôt que juste "demande enregistrée".
-        // Sans ça, le prestataire n'avait AUCUN moyen de savoir que son argent était bien parti
-        // quand tout s'était passé automatiquement — seule une confirmation manuelle admin
-        // (/api/admin/withdrawals/:id/mark-sent) envoyait ce message, jamais le cas qui marche.
+        // Pas de notification push : c'est le prestataire qui vient de demander le retrait, la réponse
+        // ci-dessous (sent + message) lui dit à l'écran si le virement est déjà parti ou en cours.
+        // L'email reste envoyé quand le virement est parti (trace hors de l'app).
         if (_wdInstantSent) {
-            notifyUser(req.partner.email, 'partner', 'withdrawal_sent', '💸 Virement envoyé',
-                'Votre retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' a été envoyé.',
-                '#partner:wallet:' + withdrawal.id);
-            // Email en redondance du push, demandé pour ne pas dépendre uniquement du push si
-            // l'app n'est pas ouverte / le token FCM a expiré.
             emailService.sendWithdrawalSentToPartnerEmail(req.partner.email, req.partner.prenom || req.partner.firstName || '', amount, method)
                 .catch(function(e) { console.warn('[WALLET] Email virement envoyé non envoyé:', e.message); });
-        } else {
-            notifyUser(req.partner.email, 'partner', 'withdrawal_pending', '📤 Retrait en cours',
-                'Votre demande de retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' est en cours de traitement.',
-                '#partner:wallet:' + withdrawal.id);
         }
 
         // Notifier l'admin par email : montant à virer sur Wise avant l'envoi automatique
@@ -8228,7 +8210,7 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
         // le flux réel : Stripe → Boursorama en ~2j, PUIS virement manuel Boursorama → Wise avant
         // que l'automatisation ne puisse reprendre la main) — promettre 2-5j à chaque fois
         // risquait de ne pas être tenu selon la réactivité de ce virement manuel intermédiaire.
-        res.json({ ok: true, withdrawal_id: withdrawal.id, message: 'Demande de retrait enregistrée. Traitement sous 5 à 10 jours ouvrés.' });
+        res.json({ ok: true, withdrawal_id: withdrawal.id, sent: _wdInstantSent, message: _wdInstantSent ? 'Votre retrait a été envoyé.' : 'Demande de retrait enregistrée. Traitement sous 5 à 10 jours ouvrés.' });
     } catch(e) {
         console.error('[WALLET] Erreur withdraw:', e);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -8460,11 +8442,11 @@ app.post('/api/payments/verify', async (req, res) => {
                     if (psDispatch) {
                         if (updatedOrder.payment_tier === 'small') {
                             console.log('[VERIFY] Mission partenaire — fonds GENESIS SAFE™ (small)');
-                            notifyUser(clientEmail, 'client', 'mission_created', 'Mission créée — paiement sécurisé', 'Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire après livraison.', '/app.html#client:order:' + updatedOrder.id);
+                            notifyUser(clientEmail, 'client', 'payment_success', '✅ Paiement réussi !', 'Votre paiement a bien été reçu. ' + psVPName + ' va prendre en charge votre demande sous 24h.', '/app.html#client:order:' + updatedOrder.id);
                         } else {
                             await processDispatchPayout(psDispatch, 'deposit');
                             console.log('[VERIFY] Mission partenaire — acompte 30% versé (large)');
-                            notifyUser(clientEmail, 'client', 'mission_created', 'Mission en cours', 'Votre acompte a été versé au prestataire. La livraison sera bientôt disponible.', '/app.html#client:order:' + updatedOrder.id);
+                            notifyUser(clientEmail, 'client', 'payment_success', '✅ Paiement réussi !', 'Votre paiement a bien été reçu. ' + psVPName + ' va prendre en charge votre demande sous 24h.', '/app.html#client:order:' + updatedOrder.id);
                         }
                     }
                 } else {
@@ -11406,7 +11388,8 @@ app.get('/api/auth/me', (req, res) => {
 
         // Détection level-up : notifier + email si le niveau a changé depuis la dernière visite
         var prevBadge = user.lastKnownClientBadge !== undefined ? user.lastKnownClientBadge : '__init__';
-        if (prevBadge !== '__init__' && prevBadge !== clientBadge && clientBadge) {
+        var _lvlOrder = [null, 'bronze', 'argent', 'or', 'elite'];
+        if (prevBadge !== '__init__' && clientBadge && _lvlOrder.indexOf(clientBadge) > _lvlOrder.indexOf(prevBadge || null)) {
             var newLevel = getGenesisLevel(clientBadge);
             notifyUser(user.email, 'client', 'level_up',
                 '🎉 Vous avez atteint le niveau ' + newLevel.label + ' !',
@@ -16475,8 +16458,8 @@ function checkDelayedMissions() {
             var order = orders.find(function(o) { return o.id === d.order_id; });
             var clientEmail = order && order.client_info && order.client_info.email;
             if (clientEmail) {
-                notifyUser(clientEmail, 'client', 'delay-reminder', 'Mise à jour de votre commande',
-                    'Votre prestataire travaille toujours sur votre projet. N\'hésitez pas à le contacter via la messagerie pour un point d\'avancement.',
+                notifyUser(clientEmail, 'client', 'delay-reminder', 'Délai annoncé dépassé',
+                    'Le délai annoncé pour "' + (d.offer_name || 'votre commande') + '" est dépassé. Vous pouvez demander un point d\'avancement à votre prestataire dans la messagerie.',
                     '/app.html#client:order:' + order.id);
             }
         });
@@ -16588,24 +16571,6 @@ function getNextQGThreshold(pts) {
     return null;
 }
 
-// Envoie une notification proactive si l'utilisateur est à 1 action du prochain palier
-function checkAndSendProactiveQGNotif(email, role, pts) {
-    try {
-        var _next = getNextQGThreshold(pts);
-        if (!_next) return;
-        var _gap = _next.nextPts - pts;
-        if (_gap <= GENESIS_POINT_VALUES.reservationEffectuee) {
-            var _msg = _gap <= GENESIS_POINT_VALUES.avisLaisse
-                ? 'Plus qu\'un avis pour atteindre le niveau ' + _next.nextLabel + ' !'
-                : 'Plus qu\'une mission pour atteindre le niveau ' + _next.nextLabel + ' !';
-            notifyUser(email, role, 'jeremie_proactif',
-                'Palier ' + _next.nextLabel + ' en vue !' ,
-                _msg + ' (' + pts + '/' + _next.nextPts + ' QG)',
-                role === 'partner' ? '/app.html#partner:home' : '/app.html#profil');
-        }
-    } catch(_e) {}
-}
-
 // Vérifie et attribue les récompenses de parrainage et de mission multi_collab.
 // Appelée après chaque paiement final (balance_paid). Retourne l'objet user mis à jour
 // ou null si aucun changement. Idempotente : les gardes referralBonusQG / missionBonuses.multi_collab
@@ -16634,11 +16599,10 @@ function checkReferralAndMissionRewards(clientEmail) {
                 var parrain = users.find(function(u) { return u.id === user.referredBy; });
                 if (parrain) {
                     var parrainIdx = users.findIndex(function(u) { return u.id === user.referredBy; });
-                    notifyUser(parrain.email, 'client', 'referral_reward',
-                        '🎉 Récompense parrainage !',
-                        'Votre filleul ' + (users[uIdx].prenom || 'votre filleul') + ' vient de réaliser sa première prestation. Vous gagnez +100 Points QG !',
-                        '/app.html#profil');
-                    // Missions de parrainage progressives (parrain) — 5 paliers
+                    // Une seule notification pour le parrain : la récompense, les missions de
+                    // parrainage atteintes et le classement Top Ambassadeurs (s'il progresse) sont
+                    // réunis dans le même message au lieu de 2 à 4 push simultanés.
+                    var _refBody = 'Votre filleul ' + (users[uIdx].prenom || 'votre filleul') + ' vient de réaliser sa première prestation. Vous gagnez +100 Points QG !';
                     if (parrainIdx !== -1) {
                         var parrainRefCount = getClientReferralCount(users[parrainIdx].id);
                         if (!users[parrainIdx].missionBonuses) users[parrainIdx].missionBonuses = {};
@@ -16653,13 +16617,11 @@ function checkReferralAndMissionRewards(clientEmail) {
                             if (parrainRefCount >= m.target && !users[parrainIdx].missionBonuses[m.key]) {
                                 users[parrainIdx].missionBonuses[m.key] = true;
                                 dirty = true;
-                                notifyUser(users[parrainIdx].email, 'client', 'mission_complete',
-                                    '🏆 Mission communauté accomplie !',
-                                    'Vous avez invité ' + m.target + ' membre' + (m.target > 1 ? 's actifs' : ' actif') + ' dans GENESIS. +' + m.qg + ' Points QG crédités !',
-                                    '/app.html#profil');
+                                _refBody += ' Mission communauté accomplie : ' + m.target + (m.target > 1 ? ' membres actifs invités, +' : ' membre actif invité, +') + m.qg + ' Points QG.';
                             }
                         });
-                        // Notification de classement Top Ambassadeurs
+                        // Classement Top Ambassadeurs : mentionné seulement s'il progresse (avant,
+                        // une notification à chaque parrainage, même sans changement de place).
                         try {
                             var _orders = loadOrders();
                             var _refMap = {};
@@ -16671,15 +16633,17 @@ function checkReferralAndMissionRewards(clientEmail) {
                             });
                             var _sorted = Object.keys(_refMap).sort(function(a,b){ return _refMap[b] - _refMap[a]; });
                             var _newRank = _sorted.indexOf(users[parrainIdx].id) + 1;
-                            var _rankMsgs = { 1: ['🥇 1ère place !', 'Vous venez de prendre la tête du Top Ambassadeurs GENESIS !'], 2: ['🥈 2ᵉ place !', 'Vous êtes maintenant 2ᵉ du Top Ambassadeurs GENESIS.'], 3: ['🥉 3ᵉ place !', 'Vous êtes maintenant 3ᵉ du Top Ambassadeurs GENESIS.'] };
-                            if (_rankMsgs[_newRank]) {
-                                notifyUser(users[parrainIdx].email, 'client', 'ambassadeur_rank', _rankMsgs[_newRank][0], _rankMsgs[_newRank][1] + ' (' + parrainRefCount + ' parrainage' + (parrainRefCount > 1 ? 's' : '') + ' validé' + (parrainRefCount > 1 ? 's' : '') + ')', '#profil');
-                            } else if (_newRank > 0 && _newRank <= 10) {
-                                notifyUser(users[parrainIdx].email, 'client', 'ambassadeur_rank', '🏆 Top 10 Ambassadeurs !', 'Vous occupez la ' + _newRank + 'ᵉ place du Top Ambassadeurs GENESIS.', '#profil');
+                            var _bestRank = users[parrainIdx].ambassadorBestRank || 0;
+                            if (_newRank > 0 && _newRank <= 10 && (!_bestRank || _newRank < _bestRank)) {
+                                users[parrainIdx].ambassadorBestRank = _newRank;
+                                dirty = true;
+                                _refBody += _newRank === 1
+                                    ? ' Vous êtes en tête du Top Ambassadeurs GENESIS !'
+                                    : ' Vous êtes maintenant ' + _newRank + 'ᵉ du Top Ambassadeurs GENESIS.';
                             }
                         } catch(_rankErr) { console.warn('[HOF_RANK]', _rankErr.message); }
                     }
-                    try { checkAndSendProactiveQGNotif(parrain.email, 'client', getClientGenesisPoints(parrain)); } catch(_) {}
+                    notifyUser(parrain.email, 'client', 'referral_reward', '🎉 Récompense parrainage !', _refBody, '/app.html#profil');
                 }
             }
         }
@@ -16701,7 +16665,6 @@ function checkReferralAndMissionRewards(clientEmail) {
         if (dirty) {
             saveUsers(users);
             var updated = users[uIdx];
-            try { checkAndSendProactiveQGNotif(clientEmail, 'client', getClientGenesisPoints(updated)); } catch(_) {}
             return updated;
         }
         return null;
@@ -18463,12 +18426,6 @@ app.post('/api/partner-reviews', (req, res) => {
             }
         }
 
-        // Tâche 7 : Jérémie proactif — vérifier si le client approche un palier
-        try {
-            var _rvClientUser = loadUsers().find(function(u) { return (u.email||'')===(review.userEmail||''); });
-            if (_rvClientUser) checkAndSendProactiveQGNotif(_rvClientUser.email, 'client', getClientGenesisPoints(_rvClientUser));
-        } catch(_e) {}
-
         res.json({ success: true, review: review, client_qg_gain: GENESIS_POINT_VALUES.avisLaisse });
     } catch (error) {
         console.error('[PARTNER-REVIEWS] Erreur soumission avis:', error);
@@ -18616,11 +18573,8 @@ app.post('/api/partner/livrables/:id/publish', authenticatePartner, function(req
         var order = getOrderById(livrables[idx].order_id);
         if (order) {
             var clientEmail = order.client_info && order.client_info.email;
-            if (clientEmail) {
-                notifyUser(clientEmail, 'client', 'livrable_published', '📦 Livrable disponible',
-                    'Votre prestataire a mis à disposition "' + livrables[idx].title + '" pour "' + (order.product_name || 'votre prestation') + '".',
-                    '/app.html#client:order:' + order.id);
-            }
+            var _pubLink = '/app.html#client:order:' + order.id;
+            var _pubIsRevision = (order.client_validated || order.pending_client_validation) && order.revision_requested;
             // Publier un livrable rend le paiement validable et démarre le délai de sécurité
             // 7j (pour protéger le prestataire même sans réponse du client) — MAIS ne déclare
             // PAS la prestation "terminée" : ça reste une action explicite et distincte
@@ -18638,11 +18592,25 @@ app.post('/api/partner/livrables/:id/publish', authenticatePartner, function(req
                 // Le prestataire vient de publier un livrable (nouveau ou mis à jour) suite à
                 // une demande de révision au niveau commande — on la considère traitée.
                 updateOrder(order.id, { revision_requested: false, revision_cleared_at: new Date().toISOString() });
-                var revClientEmail = order.client_info && order.client_info.email;
-                if (revClientEmail) {
-                    notifyUser(revClientEmail, 'client', 'revision_addressed', '✏️ Révision traitée',
-                        'Votre prestataire a mis à jour les livrables suite à votre demande de révision pour « ' + (order.product_name || 'votre prestation') + ' ». Merci de vérifier et valider.',
-                        '/app.html#client:order:' + order.id);
+            }
+            if (clientEmail && _pubIsRevision) {
+                // Une seule notification : « Révision traitée » remplace « Livrable disponible ».
+                notifyUser(clientEmail, 'client', 'revision_addressed', '✏️ Révision traitée',
+                    'Votre prestataire a mis à jour les livrables suite à votre demande de révision pour « ' + (order.product_name || 'votre prestation') + ' ». Merci de vérifier et valider.',
+                    _pubLink);
+            } else if (clientEmail) {
+                // Plusieurs livrables publiés à la suite : on met à jour la notification encore non
+                // lue au lieu d'en envoyer une par fichier (un seul push par vague).
+                var _pubMerged = _mergeIntoRecentNotif(clientEmail, ['livrable_published', 'revision_addressed'], _pubLink, 30 * 60 * 1000, function(n) {
+                    if (n.type !== 'livrable_published') return;
+                    n.group_count = (n.group_count || 1) + 1;
+                    n.title = '📦 Nouveaux livrables disponibles';
+                    n.body = n.group_count + ' livrables disponibles pour "' + (order.product_name || 'votre prestation') + '".';
+                });
+                if (!_pubMerged) {
+                    notifyUser(clientEmail, 'client', 'livrable_published', '📦 Livrable disponible',
+                        'Votre prestataire a mis à disposition "' + livrables[idx].title + '" pour "' + (order.product_name || 'votre prestation') + '".',
+                        _pubLink);
                 }
             }
         }
@@ -20095,9 +20063,7 @@ app.post('/api/partner/boost/activate', authenticatePartner, function(req, res) 
 
         savePartners(partners);
 
-        notifyUser(partner.email, 'partner', 'boost_activated', '🚀 Boost de visibilité activé',
-            'Votre profil est mis en avant dans l\'annuaire jusqu\'au ' + newExpiry.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' }) + '.',
-            '/app.html#partner:reputation');
+        // Pas de notification : c'est le prestataire qui vient d'activer le boost, l'app le confirme.
 
         res.json({
             success: true,
@@ -20768,6 +20734,7 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
         // confirmé true (capture Stripe réussie maintenant, OU déjà payé avant — ex. PayPal en
         // capture immédiate). Sans cette vérification, un échec de capture (carte refusée,
         // autorisation expirée) paierait quand même le prestataire avec de l'argent jamais reçu.
+        var _vdPaidToWallet = false;
         if (_vdCaptureFailed || order.deposit_paid !== true) {
             console.error('[VALIDATE] Capture non confirmée pour commande', orderId, '— versement prestataire BLOQUÉ, notification admin envoyée');
             notifyUser(null, 'admin', 'refund_manual',
@@ -20797,12 +20764,13 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
                 // vient d'être capturé — processDispatchPayout() reste idempotent dans tous les
                 // cas (rien à payer deux fois si un des deux versements existait déjà).
                 var _vdHasBalance = parseFloat(order.balance_amount || 0) > 0;
-                var _vdDepositOk = await processDispatchPayout(_vdDisp, 'deposit');
+                var _vdDepositOk = await processDispatchPayout(_vdDisp, 'deposit', { silent: true });
                 var _vdBalanceOk = true;
                 if (_vdHasBalance && order.balance_paid === true) {
-                    _vdBalanceOk = await processDispatchPayout(_vdDisp, 'balance');
+                    _vdBalanceOk = await processDispatchPayout(_vdDisp, 'balance', { silent: true });
                 }
                 var _payoutOk = _vdDepositOk && _vdBalanceOk;
+                _vdPaidToWallet = _payoutOk;
                 if (_payoutOk) {
                     updateOrder(orderId, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
                     // Sortir la mission de la liste "en cours" côté partenaire — validée et payée.
@@ -20859,7 +20827,8 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
             if (ptnrEmailN) {
                 notifyUser(ptnrEmailN, 'partner', 'delivery_validated',
                     '⭐ Prestation validée par le client',
-                    'Le client a confirmé la bonne livraison de « ' + (order.product_name || '') + ' ». Merci pour votre travail !',
+                    'Le client a confirmé la bonne livraison de « ' + (order.product_name || '') + ' ».'
+                        + (_vdPaidToWallet ? ' Vos gains ont été ajoutés à votre Wallet GENESIS.' : ' Merci pour votre travail !'),
                     '/app.html#partner:mission:' + orderId
                 );
             }
@@ -21738,11 +21707,7 @@ app.post('/api/contracts/service/generate', function(req, res) {
                 'Votre contrat de prestation avec ' + newContract.partner_name + ' est disponible. Signez-le pour démarrer la mission.',
                 '/app.html#client:contract:' + newContract.id);
         }
-        // Notifier le partenaire
-        notifyUser(partner.email, 'partner', 'contract_sent',
-            'Contrat envoyé au client',
-            'Le contrat pour la commande ' + order.id + ' a été envoyé à ' + (clientName || clientEmail) + '.',
-            '#partner:contract:' + newContract.id);
+        // Prestataire : pas de notification ici, seulement à la signature (contract_signed).
 
         console.log('[CONTRACT] Contrat prestation généré:', contractId, '→', clientEmail);
         res.json({ success: true, contract: newContract });

@@ -30,6 +30,23 @@ support jamais notifiée sur Android), le statut des réservations coworking, et
 Avant tout nouvel appel à `sendPushToUser`/`sendPushToRole`, vérifier si `notifyUser()` ne devrait
 pas être utilisée à la place.
 
+### Pas de notification inutile (ménage du 2026-11-05)
+
+Avant d'ajouter un `notifyUser()`, vérifier que la personne a quelque chose à apprendre ou à faire :
+- **Jamais pour une action qu'elle vient de faire elle-même** dans l'app (boost activé, retrait
+  demandé…) : la réponse de l'API + le toast suffisent. Le retrait renvoie `sent` + un message exact.
+- **Une seule notification par événement.** Si un même événement touche plusieurs choses (gains
+  crédités + prestation validée, récompense de parrainage + mission + classement), on fait UN
+  message. `processDispatchPayout(d, stage, { silent: true })` quand l'appelant annonce lui-même les
+  gains (validate-delivery, libération à 7 jours). Une notif pour le client à l'acompte d'une
+  prestation (`payment_success`), pas aussi « Paiement confirmé ».
+- **Vagues** (plusieurs livrables publiés à la suite) : `_mergeIntoRecentNotif()` met à jour la
+  notification non lue au lieu d'en créer une nouvelle — un seul push.
+- **Rien d'invérifiable** (« votre prestataire travaille toujours… ») et **aucune relance
+  marketing** hors du circuit d'offres opt-in (« Palier en vue », alerte nouveau prestataire :
+  supprimées). Pas de bandeau qui explique le mécanisme des notifications.
+- Niveau client : annoncé seulement quand il monte.
+
 ## AOS (Animate on Scroll) peut cacher tout le contenu
 
 Le CSS d'AOS met `opacity: 0` sur tout élément `data-aos`. Si `AOS.js`/`AOS.init()` échoue à
