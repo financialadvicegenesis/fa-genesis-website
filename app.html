@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261105b"></script>
-<script src="app-i18n-es.js?v=20261105b"></script>
-<script src="app-i18n-hi.js?v=20261105b"></script>
-<script src="app-i18n-pt.js?v=20261105b"></script>
-<script src="app-i18n-ja.js?v=20261105b"></script>
-<script src="app-i18n-zh.js?v=20261105b"></script>
-<script src="app-i18n-ar.js?v=20261105b"></script>
-<script src="app-i18n-it.js?v=20261105b"></script>
-<script src="app-i18n-de.js?v=20261105b"></script>
+<script src="app-i18n-en.js?v=20261105c"></script>
+<script src="app-i18n-es.js?v=20261105c"></script>
+<script src="app-i18n-hi.js?v=20261105c"></script>
+<script src="app-i18n-pt.js?v=20261105c"></script>
+<script src="app-i18n-ja.js?v=20261105c"></script>
+<script src="app-i18n-zh.js?v=20261105c"></script>
+<script src="app-i18n-ar.js?v=20261105c"></script>
+<script src="app-i18n-it.js?v=20261105c"></script>
+<script src="app-i18n-de.js?v=20261105c"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -8196,6 +8196,9 @@ function renderMsgTab(showArchived){
     // Name + photo map from requests
     var nameMap={};
     reqs.forEach(function(r){ if(r.partner_email) nameMap[r.partner_email.toLowerCase()]={name:r.partner_name||'Prestataire',photo:r.partner_photo||null}; });
+    // Conversation avec FA GENESIS (réponses de l'équipe depuis l'admin) : jusqu'ici absente de
+    // la liste, le client ne pouvait pas voir qu'on lui avait répondu.
+    var adminMsgs=allMsgs.filter(function(m){ return (m.to_type==='admin'||m.from_type==='admin') && !m.deleted_for_everyone; });
     // Group messages by partner
     var convMap={};
     allMsgs.forEach(function(m){
@@ -8217,6 +8220,13 @@ function renderMsgTab(showArchived){
     });
     var archivedSet={}; archivedEmails.forEach(function(e){ archivedSet[e]=true; });
     var convs = allConvs.filter(function(c){ return showArchived ? !!archivedSet[c.email] : !archivedSet[c.email]; });
+    if(!showArchived && adminMsgs.some(function(m){ return m.from_type==='admin'; })){
+      var _admConv={isAdmin:true,email:'__admin__',name:'FA GENESIS',msgs:adminMsgs};
+      var _admAt=new Date(adminMsgs[adminMsgs.length-1].created_at);
+      var _admPos=0;
+      while(_admPos<convs.length && new Date(convs[_admPos].msgs[convs[_admPos].msgs.length-1].created_at)>_admAt) _admPos++;
+      convs.splice(_admPos,0,_admConv);
+    }
     // Lien d'accès aux conversations archivées (masqué s'il n'y en a aucune), uniquement sur
     // la vue "actives" — comme WhatsApp/Instagram.
     var linkEl=document.getElementById('msgArchivedLink');
@@ -8239,7 +8249,8 @@ function renderMsgTab(showArchived){
       var timeStr=(now-dt)<86400000
         ?dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
         :dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
-      var unread=conv.msgs.filter(function(m){return m.from_type==='partner'&&!m.read_at;}).length;
+      var unread=conv.msgs.filter(function(m){return m.from_type===(conv.isAdmin?'admin':'partner')&&!m.read_at;}).length;
+      if(conv.isAdmin) return _msgAdminConvRowHtml(conv, last, preview, timeStr, unread);
       var safeEmail=conv.email.replace(/'/g,"\'");
       var safeName=(conv.name||'Prestataire').replace(/'/g,"\'");
       return '<div class="swipe-row-wrap" data-counterpart="'+conv.email+'" data-name="'+_escHtml(conv.name||'Prestataire')+'">'
@@ -8272,7 +8283,7 @@ function renderMsgTab(showArchived){
         onMore: function(){ _clientOpenConvMore(email, name); }
       });
     });
-    _msgLoadAvatars('client', convs.map(function(c){ return c.email; }), convEl);
+    _msgLoadAvatars('client', convs.filter(function(c){ return !c.isAdmin; }).map(function(c){ return c.email; }), convEl);
   }).catch(function(){
     var convEl=document.getElementById('msgConvList');
     if(convEl) convEl.innerHTML='<div class="empty"><p>Erreur de chargement</p></div>';
@@ -9301,7 +9312,7 @@ function _offersPushShowAsk(){
   ov.innerHTML = '<div style="width:100%;max-width:480px;background:#111;border-top:2px solid #FFD700;border-radius:20px 20px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom,0px));">'
     + '<div style="width:52px;height:52px;border-radius:16px;background:rgba(255,215,0,.12);display:flex;align-items:center;justify-content:center;margin-bottom:12px;"><i class="fa-solid fa-bell" style="color:#FFD700;font-size:22px;"></i></div>'
     + '<div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:6px;">Ne ratez pas les nouveautés</div>'
-    + '<div style="font-size:13px;color:#aaa;line-height:1.55;margin-bottom:16px;">Soyez parmi les premiers à découvrir les nouveaux prestataires et les promos qui vous correspondent.</div>'
+    + '<div style="font-size:13px;color:#aaa;line-height:1.55;margin-bottom:16px;">Soyez parmi les premiers à découvrir les nouveaux prestataires, les promos qui vous correspondent et les nouveautés GENESIS.</div>'
     + '<div style="font-size:11px;color:#666;line-height:1.5;margin:-8px 0 16px;">Vous pouvez désactiver ces notifications à tout moment dans votre profil.</div>'
     + '<button onclick="_offersPushAnswer(true)" style="width:100%;padding:14px;border-radius:12px;background:#FFD700;color:#000;border:none;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;margin-bottom:8px;">Oui, me prévenir</button>'
     + '<button onclick="_offersPushAnswer(false)" style="width:100%;padding:12px;border-radius:12px;background:transparent;color:#888;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Non merci</button>'
@@ -9318,7 +9329,7 @@ function _offersPushRowHtml(){
   if(!logged && !_isNativeApp()) return '';
   return '<div class="plus-item">'
     + '<div class="plus-item-ico" style="background:#1a1400"><i class="fa-solid fa-bullhorn"></i></div>'
-    + '<div class="plus-item-label">Nouveautés et promos<div style="font-size:10px;color:#777;font-weight:600;margin-top:2px;">Nouveaux prestataires et promos pour vous</div></div>'
+    + '<div class="plus-item-label">Nouveautés et promos<div style="font-size:10px;color:#777;font-weight:600;margin-top:2px;">Nouveaux prestataires, promos et nouveautés GENESIS</div></div>'
     + '<label class="tgl"><input type="checkbox" id="offers-push-toggle"'+(_offersPushEnabled()?' checked':'')+' onchange="_offersPushSet(this.checked)"><span class="tgl-slider"></span></label>'
     + '</div>';
 }
@@ -10920,6 +10931,31 @@ function _clientAppendChatBubble(m){
 
 // partnerEmail : email du prestataire (pour les conversations client↔partenaire)
 // Si null/absent, la conversation est avec l'admin FA GENESIS (rétrocompatibilité)
+function _msgAdminConvRowHtml(conv, last, preview, timeStr, unread){
+  return '<div onclick="_openAdminConversation()" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);">'
+    +'<div style="width:48px;height:48px;border-radius:50%;background:#1a1400;border:1px solid rgba(255,215,0,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-headset" style="color:#FFD700;font-size:20px;"></i></div>'
+    +'<div style="flex:1;min-width:0;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
+        +'<div style="font-weight:900;font-size:14px;color:#fff;">FA GENESIS</div>'
+        +'<div style="font-size:11px;color:#555;white-space:nowrap;">'+timeStr+'</div>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+        +'<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">'+_escHtml(preview)+'</div>'
+        +(unread?'<span style="background:#FFD700;color:#000;border-radius:50%;min-width:18px;height:18px;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 3px;">'+unread+'</span>':'')
+      +'</div>'
+    +'</div>'
+  +'</div>';
+}
+function _openAdminConversation(){
+  openConversation('__admin__', 'FA GENESIS', 'headset');
+  if(USER && USER._token){
+    fetch((window.FA_GENESIS_API||API)+'/api/messages/conversation/read',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'},
+      body:JSON.stringify({counterpart:'__admin__'})
+    }).then(function(){ if(typeof _clientRefreshMsgBadge==='function') _clientRefreshMsgBadge(); }).catch(function(){});
+  }
+}
 function openConversation(key, name, icon, partnerEmail){
   _clearChatPoll();
   _chatKey=key; _chatName=name;
@@ -10983,7 +11019,7 @@ function _clientRefreshMsgBadge(){
       var msgs = (data && data.messages) || [];
       // Nombre BRUT de messages non lus — demandé explicitement (2 messages reçus → badge "2",
       // 3 messages → "3"), pas le nombre d'interlocuteurs distincts.
-      var count = msgs.filter(function(m){ return m.from_type === 'partner' && !m.read_at; }).length;
+      var count = msgs.filter(function(m){ return (m.from_type === 'partner' || m.from_type === 'admin') && !m.read_at; }).length;
       document.querySelectorAll('.client-msg-badge').forEach(function(el){
         if(count>0){ el.textContent = count; el.className = 'client-msg-badge on'; }
         else { el.className = 'client-msg-badge'; }
@@ -12278,13 +12314,13 @@ function showAvantPremiere() {
     +'<div style="display:flex;flex-direction:column;gap:10px;">'
     +'<div style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#aaa;">'
     +'<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:2px;flex-shrink:0;"></i>'
-    +'<span>Dès qu\'une nouvelle fonctionnalité GENESIS est lancée, vous recevez une <strong style="color:#ccc;">notification push</strong> immédiate.</span></div>'
+    +'<span>Dès qu\'une nouvelle fonctionnalité GENESIS est lancée, vous en êtes informé immédiatement dans vos notifications.</span></div>'
     +'<div style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#aaa;">'
     +'<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:2px;flex-shrink:0;"></i>'
     +'<span>Les membres sans niveau ou au niveau Créateur reçoivent la même notification <strong style="color:#ccc;">24h plus tard</strong>.</span></div>'
     +'<div style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#aaa;">'
     +'<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:2px;flex-shrink:0;"></i>'
-    +'<span>Assurez-vous d\'avoir activé les <strong style="color:#ccc;">notifications push</strong> sur votre appareil pour ne rien rater.</span></div>'
+    +'<span>Pour la recevoir aussi sur votre téléphone, activez <strong style="color:#ccc;">Nouveautés et promos</strong> dans votre profil.</span></div>'
     +'</div></div>'
     +'</div></div>';
 }
@@ -12319,7 +12355,7 @@ function showInvitationsVIP() {
     +'</div>'
     +'<div style="background:#0a120a;border:1px solid #1a2e1a;border-radius:12px;padding:13px 15px;margin-bottom:16px;">'
     +'<div style="font-size:11px;color:#4caf50;font-weight:700;margin-bottom:8px;"><i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Comment ça marche ?</div>'
-    +'<div style="font-size:12px;color:#888;line-height:1.6;">Dès qu\'un événement GENESIS est programmé, vous êtes notifié en premier par email et notification push. Pour les événements à capacité limitée, votre inscription est prioritaire — aucune place ne vous sera refusée.</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.6;">Dès qu\'un événement GENESIS est programmé, vous êtes prévenu en premier par email et dans vos notifications. Pour les événements à capacité limitée, votre inscription est prioritaire — aucune place ne vous sera refusée.</div>'
     +'</div>'
     +'<button onclick="profilBack();setTimeout(goToEventsExplorer,100);" style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;color:#1a1200;cursor:pointer;"><i class="fa-solid fa-calendar-days"></i> Voir les événements GENESIS</button>'
     +'</div></div>';
@@ -16794,6 +16830,12 @@ function _handleNotifHash(hash, _retryCount){
     console.log('[GENESIS_NOTIFICATION] navigate_conversation');
     _ptnrSetPendingNotifTarget({ screen: 'messages', threadEmail: decodeURIComponent(msgThreadMatch[1]) });
     nav('partner');
+    return;
+  }
+  // Réponse de l'équipe FA GENESIS (côté client) → conversation FA GENESIS.
+  if(hash === 'open-messages-admin'){
+    nav('messages');
+    setTimeout(function(){ if(typeof _openAdminConversation==='function') _openAdminConversation(); }, 400);
     return;
   }
   // Message d'un prestataire (côté client) → ouvrir directement la conversation avec lui.

@@ -46,6 +46,14 @@ Avant d'ajouter un `notifyUser()`, vérifier que la personne a quelque chose à 
   marketing** hors du circuit d'offres opt-in (« Palier en vue », alerte nouveau prestataire :
   supprimées). Pas de bandeau qui explique le mécanisme des notifications.
 - Niveau client : annoncé seulement quand il monte.
+- **Annonces GENESIS** (nouvelle fonctionnalité, événement à places limitées, et leur envoi
+  différé de 24 h) : `notifyAnnouncement()` — tout le monde la voit dans l'app, mais le push ne part
+  qu'avec « Nouveautés et promos » accepté (`offers_push === true`), dans les plafonds et le journal
+  des notifications d'offres (kind `annonce`). `notifyUser(..., { push: false })` = liste seulement.
+- **Réponse de FA GENESIS depuis la messagerie admin** (`/api/admin/inbox/reply`) : notifie le client
+  (`message-admin`, lien `#open-messages-admin`). Côté app, la conversation « FA GENESIS » apparaît
+  dans la liste Messages (clé `__admin__`, lue via `/api/messages/conversation/read`) et compte dans
+  le badge — avant, le client ne voyait jamais la réponse.
 
 ## AOS (Animate on Scroll) peut cacher tout le contenu
 

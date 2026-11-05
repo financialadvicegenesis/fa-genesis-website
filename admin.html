@@ -2040,6 +2040,9 @@
                             fb.textContent = '✓ Envoyé immédiatement à ' + result.immediate + ' client(s) Bâtisseur+. '
                                 + result.scheduled + ' client(s) Créateur/sans niveau recevront la notification dans 24h.';
                         }
+                        // Le push sur le téléphone ne part qu'aux clients ayant accepté « Nouveautés et promos »
+                        // (dans la limite de 1 par jour / 3 par semaine) ; les autres la voient dans l'app.
+                        fb.textContent += ' Sur le téléphone : ' + (result.pushed || 0) + ' maintenant (clients ayant accepté « Nouveautés et promos »). Les autres la voient dans leurs notifications de l'app.';
                     }
                     document.getElementById('nfTitle').value = '';
                     document.getElementById('nfDescription').value = '';
@@ -5656,7 +5659,7 @@
         // ============================================================
         // NOTIFICATIONS D'OFFRES — tableau de bord (voir runDiscoveryPushes côté serveur)
         // ============================================================
-        var OFFER_KIND_LABELS = { promo_ending: 'Promo qui se termine', promo_new: 'Nouvelle promo', promo: 'Promo en cours', partner_new: 'Nouveau prestataire', partner_discover: 'Prestataire à découvrir' };
+        var OFFER_KIND_LABELS = { promo_ending: 'Promo qui se termine', promo_new: 'Nouvelle promo', promo: 'Promo en cours', partner_new: 'Nouveau prestataire', partner_discover: 'Prestataire à découvrir', annonce: 'Annonce GENESIS' };
         function _opEsc(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
         function _opPct(a, b) { return b ? Math.round(a * 100 / b) + ' %' : '—'; }
         function loadOffersPushAdmin() {

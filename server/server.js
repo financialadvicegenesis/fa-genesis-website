@@ -481,9 +481,17 @@ function processScheduledNotifs() {
         var now = Date.now();
         var notifs = loadScheduledNotifs();
         var updated = false;
+        var annLog = null, annPushed = false, annUsers = null;
         notifs.forEach(function(n) {
             if (!n.sent && new Date(n.sendAt).getTime() <= now) {
-                notifyUser(n.email, n.role, n.type, n.title, n.body, n.link);
+                if (ANNOUNCEMENT_TYPES.indexOf(n.type) !== -1) {
+                    if (!annLog) { annLog = loadDiscoveryLog(); annUsers = loadUsers(); }
+                    var em = String(n.email || '').toLowerCase();
+                    var annUser = annUsers.find(function(u) { return u.email && u.email.toLowerCase() === em; });
+                    if (annUser) { if (notifyAnnouncement(annUser, n.type, n.title, n.body, n.link, annLog, now)) annPushed = true; }
+                } else {
+                    notifyUser(n.email, n.role, n.type, n.title, n.body, n.link);
+                }
                 if (n.emailType === 'capacity_limited_event') {
                     emailService.sendCapacityLimitedEventEmail(n.email, n.userPrenom, n.emailEventTitle, n.link).catch(function(e) {
                         console.warn('[SCHED_NOTIF] Email event capacite:', e.message);
@@ -493,6 +501,7 @@ function processScheduledNotifs() {
                 updated = true;
             }
         });
+        if (annPushed) saveDiscoveryLog(annLog);
         if (updated) {
             var cutoff = now - 7 * 24 * 3600 * 1000;
             notifs = notifs.filter(function(n) { return !n.sent || new Date(n.sendAt).getTime() > cutoff; });
@@ -2320,8 +2329,8 @@ function _countUnreadMessages(email, role) {
             }
             return m.from_email === email || m.to_email === email;
         });
-        var incomingType = role === 'partner' ? 'client' : 'partner';
-        return mine.filter(function(m) { return m.from_type === incomingType && !m.read_at; }).length;
+        var incomingTypes = role === 'partner' ? ['client'] : ['partner', 'admin'];
+        return mine.filter(function(m) { return incomingTypes.indexOf(m.from_type) !== -1 && !m.read_at; }).length;
     } catch (e) {
         return 0;
     }
@@ -2435,7 +2444,9 @@ function _mergeIntoRecentNotif(email, types, link, withinMs, update) {
     return false;
 }
 
-function notifyUser(email, role, type, title, body, link) {
+// opts.push === false : la notification est enregistrée (liste des notifications de l'app) mais
+// aucun push n'est envoyé sur le téléphone (annonces pour qui n'a pas accepté « Nouveautés et promos »).
+function notifyUser(email, role, type, title, body, link, opts) {
     try {
         var notif = {
             id: 'NOTIF-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
@@ -2451,6 +2462,7 @@ function notifyUser(email, role, type, title, body, link) {
         var all = loadNotifications();
         all.push(notif);
         saveNotifications(all);
+        if (opts && opts.push === false) return;
 
         // notif.title/notif.body ci-dessus restent en français : affichés dans la liste des
         // notifications DANS l'app, ils sont traduits automatiquement côté client comme le
@@ -13228,11 +13240,17 @@ app.post('/api/messages/conversation/read', function(req, res) {
         var changed = 0;
         msgs.forEach(function(m) {
             if (m.to_email !== user.email) return; // seuls les messages REÇUS par ce client
-            if (m.from_type !== 'partner') return;
-            if (!m.from_email || m.from_email.toLowerCase() !== counterpart) return;
+            if (counterpart === '__admin__') {
+                if (m.from_type !== 'admin') return; // conversation avec FA GENESIS
+            } else {
+                if (m.from_type !== 'partner') return;
+                if (!m.from_email || m.from_email.toLowerCase() !== counterpart) return;
+            }
             if (!m.read_at) { m.read_at = new Date().toISOString(); changed++; }
         });
-        if (changed > 0) {
+        if (changed > 0 && counterpart === '__admin__') {
+            saveChat(msgs);
+        } else if (changed > 0) {
             saveChat(msgs);
             // Prévient le prestataire en temps réel pour que ses coches passent à "lu"
             // instantanément (façon WhatsApp/Messenger), sans attendre son propre polling.
@@ -13725,6 +13743,10 @@ app.post('/api/admin/inbox/reply', function(req, res) {
         msgs.push(newMsg);
         saveChat(msgs);
         console.log('[CHAT] Admin -> ' + toEmail + ' : ' + content.substring(0, 50));
+        // Avant : aucune notification — le client ne savait pas qu'on lui avait répondu. Type
+        // 'message-admin' (canal Messages) sans réponse directe depuis la notification : elle
+        // ouvre la conversation « FA GENESIS » de l'app (#open-messages-admin).
+        notifyUser(toEmail, 'client', 'message-admin', 'Message de FA GENESIS', content.substring(0, 100), '/app.html#open-messages-admin');
         res.json({ ok: true, message: newMsg });
     } catch (err) {
         res.status(500).json({ error: 'Erreur serveur' });
@@ -18252,6 +18274,7 @@ app.post('/api/admin/feature-announcement', function(req, res) {
         var scheduledCount = 0;
         var later24h = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
         var scheduled = loadScheduledNotifs();
+        var annLog = loadDiscoveryLog(), annNow = Date.now(), pushedCount = 0;
 
         loadUsers().forEach(function(user) {
             if (!user.email) return;
@@ -18259,7 +18282,8 @@ app.post('/api/admin/feature-announcement', function(req, res) {
             var badge = getClientQGBadge(qg);
             var isImmediate = experimental ? (badge === 'elite') : (['argent', 'or', 'elite'].indexOf(badge) !== -1);
             if (isImmediate) {
-                notifyUser(user.email, 'client', notifType, title, description, link);
+                // Push seulement si le client a accepté « Nouveautés et promos » (voir notifyAnnouncement).
+                if (notifyAnnouncement(user, notifType, title, description, link, annLog, annNow)) pushedCount++;
                 immediateCount++;
             } else {
                 scheduled.push({
@@ -18271,8 +18295,9 @@ app.post('/api/admin/feature-announcement', function(req, res) {
             }
         });
 
+        if (pushedCount) saveDiscoveryLog(annLog);
         saveScheduledNotifs(scheduled);
-        res.json({ success: true, immediate: immediateCount, scheduled: scheduledCount, experimental: experimental });
+        res.json({ success: true, immediate: immediateCount, scheduled: scheduledCount, pushed: pushedCount, experimental: experimental });
     } catch(e) {
         console.error('[FEATURE_ANNONCE] Erreur:', e);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -18289,12 +18314,13 @@ function notifyCapacityLimitedEvent(event) {
         var link = '/app.html#evenement-' + event.id;
         var later24h = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
         var scheduled = loadScheduledNotifs();
+        var annLog = loadDiscoveryLog(), annNow = Date.now(), annPushed = false;
         loadUsers().forEach(function(user) {
             if (!user.email) return;
             var qg = getClientGenesisPoints(user, getClientCompletedOrders(user.email));
             var badge = getClientQGBadge(qg);
             if (['or', 'elite'].indexOf(badge) !== -1) {
-                notifyUser(user.email, 'client', 'evenement_capacite_limitee', title, body, link);
+                if (notifyAnnouncement(user, 'evenement_capacite_limitee', title, body, link, annLog, annNow)) annPushed = true;
                 emailService.sendCapacityLimitedEventEmail(user.email, user.prenom, event.title, link).catch(function(e) {
                     console.warn('[EVENT_NOTIFY] Email prioritaire:', e.message);
                 });
@@ -18316,6 +18342,7 @@ function notifyCapacityLimitedEvent(event) {
                 });
             }
         });
+        if (annPushed) saveDiscoveryLog(annLog);
         saveScheduledNotifs(scheduled);
         console.log('[EVENT_NOTIFY] notifyCapacityLimitedEvent planifie pour:', event.title);
     } catch(e) {
@@ -23835,6 +23862,25 @@ function saveDiscoveryLog(list) {
     var kept = (list || []).filter(function(e) { return e && new Date(e.sent_at).getTime() > cutoff; });
     try { fs.writeFileSync(DISCOVERY_LOG_FILE, JSON.stringify(kept, null, 2), 'utf8'); } catch (e) { console.error('[OFFERS-PUSH] Sauvegarde journal:', e.message); }
     persistentStore.persistToCloud('discovery_push_log', kept).catch(function(e) {});
+}
+// Annonces GENESIS (nouvelle fonctionnalité, événement à places limitées) : tout le monde la voit
+// dans sa liste de notifications, mais le push sur le téléphone ne part QUE pour les clients ayant
+// accepté « Nouveautés et promos » (offers_push === true), dans les mêmes plafonds que les
+// notifications d'offres (1 par jour, 3 sur 7 jours, même journal) — exigence Apple 4.5.4 / CNIL.
+var ANNOUNCEMENT_TYPES = ['nouvelle_fonctionnalite', 'fonctionnalite_experimentale', 'evenement_capacite_limitee'];
+function _announcementPushAllowed(user, log, now) {
+    if (!user || user.offers_push !== true || !user.id) return false;
+    var key = 'user:' + user.id, weekAgo = now - 7 * 86400000, today = _parisNow(new Date(now)).date;
+    var mine = log.filter(function(e) { return e && e.recipient === key; });
+    if (mine.filter(function(e) { return new Date(e.sent_at).getTime() > weekAgo; }).length >= DISCOVERY_MAX_PER_WEEK) return false;
+    return !mine.some(function(e) { return _parisNow(new Date(e.sent_at)).date === today; });
+}
+// log : journal chargé une fois par l'appelant (loadDiscoveryLog), à sauvegarder s'il renvoie true.
+function notifyAnnouncement(user, type, title, body, link, log, now) {
+    var push = _announcementPushAllowed(user, log, now);
+    notifyUser(user.email, 'client', type, title, body, link, { push: push });
+    if (push) log.push({ id: 'ANN-' + crypto.randomBytes(6).toString('hex'), recipient: 'user:' + user.id, recipient_type: 'user', kind: 'annonce', sent_at: new Date(now).toISOString() });
+    return push;
 }
 // Date et heure de Paris (le serveur Render tourne en UTC).
 function _parisNow(d) {
