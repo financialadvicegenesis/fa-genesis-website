@@ -11056,9 +11056,17 @@ function _msgApplyAvatars(root){
     if(ph && !el.querySelector('img')) el.innerHTML = _msgAvatarHtml(ph, el.getAttribute('data-av-name'), parseInt(el.getAttribute('data-av-size'),10) || 48);
   });
 }
+// « Pas de photo » n'est gardé que 5 min : un interlocuteur qui ajoute sa photo apparaît sans
+// devoir relancer l'app (les photos trouvées, elles, restent en cache).
+var _msgAvatarMissAt = {};
+var MSG_AVATAR_MISS_TTL = 5 * 60 * 1000;
 function _msgLoadAvatars(side, emails, root){
-  var missing = [];
-  (emails||[]).forEach(function(e){ e = String(e||'').toLowerCase(); if(e && !(e in _msgAvatarCache) && missing.indexOf(e) === -1) missing.push(e); });
+  var missing = [], _now = Date.now();
+  (emails||[]).forEach(function(e){
+    e = String(e||'').toLowerCase();
+    var known = (e in _msgAvatarCache) && (_msgAvatarCache[e] || (_now - (_msgAvatarMissAt[e] || 0)) < MSG_AVATAR_MISS_TTL);
+    if(e && !known && missing.indexOf(e) === -1) missing.push(e);
+  });
   if(!missing.length){ _msgApplyAvatars(root); return; }
   var req;
   if(side === 'partner'){
@@ -11070,7 +11078,7 @@ function _msgLoadAvatars(side, emails, root){
   }
   req.then(function(d){
     if(!d || !d.avatars) return;
-    missing.forEach(function(e){ _msgAvatarCache[e] = d.avatars[e] || null; });
+    missing.forEach(function(e){ _msgAvatarCache[e] = d.avatars[e] || null; if(!d.avatars[e]) _msgAvatarMissAt[e] = Date.now(); });
     _msgApplyAvatars(root);
   }).catch(function(){});
 }
