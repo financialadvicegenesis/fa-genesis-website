@@ -251,7 +251,12 @@ tiers. Verdicts : `blocked` (refus 400 `image_blocked`), `review` → stocké `m
 
 ## Métiers multiples d'un prestataire : UN compte, jamais un compte par métier
 - `partner_type` = métier principal (inchangé, fixé à l'inscription). `secondary_types` = 2 métiers
-  secondaires max (ni `other` ni `coworking`), modifiables dans Profil → « Mes métiers ».
+  secondaires max (pas `coworking`), modifiables dans Profil → « Mes métiers ».
+- Secondaire `other` = « Autre métier » écrit par le prestataire dans `secondary_type_other`
+  (2–40 car., contrôlé comme la bio par `rejectExternalLink`). Sans texte, `cleanSecondaryTypes(list,
+  primary, otherText)` l'écarte ; impossible si le principal est déjà `other`. Libellés :
+  `partnerTypeLabelFor` (serveur) / `partnerTypeLabelOf` (app) — jamais `PARTNER_TYPE_LABELS['other']`.
+  Pour l'instant proposé seulement dans « Mes métiers » (pas à l'inscription).
 - Chaque prestation a `category` (un des métiers du prestataire, sinon métier principal —
   `serviceCategoryOf`). Retirer un métier ramène ses prestations au métier principal.
 - Filtrer une catégorie de l'annuaire avec `partnerListedInType(p, cat)`, JAMAIS
@@ -265,6 +270,16 @@ tiers. Verdicts : `blocked` (refus 400 `image_blocked`), `review` → stocké `m
   (`partner-register.html`, `selectedSecondaryTypes`), Profil → « Mes métiers », admin (fiche
   prestataire → « Métiers », PUT `/api/admin/partners/:id` avec `partner_type`/`secondary_types`).
   Toujours passer par `cleanSecondaryTypes` côté serveur.
+
+## Messagerie client ↔ prestataire : texte seulement, photos via un appel séparé
+- Aucune pièce jointe entre client et prestataire (`PEER_ATTACHMENTS_MESSAGE`, refus 400
+  `attachments_not_allowed` dans `POST /api/messages` vers un prestataire et
+  `POST /api/partner/inbox/reply`) : un PDF/une image contourne le filtre anti-coordonnées. Les
+  fichiers de travail passent par les livrables. Ne pas remettre de trombone dans ces conversations.
+- Photos des interlocuteurs : `POST /api/messages/avatars` (client) et
+  `POST /api/partner/inbox/avatars` (prestataire), limités aux personnes avec qui l'appelant a
+  échangé. Côté app : `_msgAvatarSlot` / `_msgLoadAvatars` (cache par email). Ne JAMAIS mettre les
+  photos dans `GET /api/messages` ou `/api/partner/inbox` (pollés en continu, photos en data URI).
 
 ## Étudiants : tarifs réservés aux étudiants VÉRIFIÉS + justificatifs persistés
 - `studentPriceBlocked(service, user)` : un compte `etudiant` dont `student_status !== 'verified'`

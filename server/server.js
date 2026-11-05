@@ -146,14 +146,23 @@ const PARTNER_TYPE_VALUES = PARTNER_TYPES.map(t => t.value);
 // prestataire apparaît dans chacune de ses catégories ; chaque prestation est rattachée à l'un de
 // ses métiers (service.category). Jamais deux comptes pour une même personne.
 const PARTNER_SECONDARY_TYPES_MAX = 2;
-const PARTNER_SECONDARY_EXCLUDED = ['other', 'coworking'];
-function cleanSecondaryTypes(list, primary) {
+const PARTNER_SECONDARY_EXCLUDED = ['coworking'];
+// Métier secondaire « Autre » : le prestataire écrit lui-même son métier (secondary_type_other,
+// ex. « Traducteur »). Sans texte valable, ce métier n'est pas retenu. Un prestataire dont le
+// métier principal est déjà « Autre » ne peut pas en ajouter un second (même catégorie).
+const SECONDARY_OTHER_MAX_LEN = 40;
+function cleanSecondaryOther(v) {
+    if (typeof v !== 'string') return '';
+    return sanitizeUserText(v.replace(/\s+/g, ' ').trim()).slice(0, SECONDARY_OTHER_MAX_LEN).trim();
+}
+function cleanSecondaryTypes(list, primary, otherText) {
     if (!Array.isArray(list)) return [];
     const out = [];
     list.forEach(function(t) {
         if (typeof t !== 'string') return;
         if (PARTNER_TYPE_VALUES.indexOf(t) === -1 || PARTNER_SECONDARY_EXCLUDED.indexOf(t) !== -1) return;
         if (t === primary || out.indexOf(t) !== -1) return;
+        if (t === 'other' && cleanSecondaryOther(otherText).length < 2) return;
         out.push(t);
     });
     return out.slice(0, PARTNER_SECONDARY_TYPES_MAX);
@@ -161,7 +170,12 @@ function cleanSecondaryTypes(list, primary) {
 function partnerTypesOf(p) {
     if (!p) return [];
     const primary = p.partner_type || '';
-    return (primary ? [primary] : []).concat(cleanSecondaryTypes(p.secondary_types, primary));
+    return (primary ? [primary] : []).concat(cleanSecondaryTypes(p.secondary_types, primary, p.secondary_type_other));
+}
+// Libellé d'un métier du prestataire (« Autre » = le texte qu'il a saisi).
+function partnerTypeLabelFor(p, t) {
+    if (t === 'other') return ((p && (p.partner_type === 'other' ? p.partner_type_other : p.secondary_type_other)) || 'Autre');
+    return (PARTNER_TYPES.find(function(x) { return x.value === t; }) || {}).label || t;
 }
 function partnerHasType(p, type) {
     return !!type && partnerTypesOf(p).indexOf(type) !== -1;
@@ -1958,7 +1972,7 @@ function sanitizeStoredUserText() {
     var partners = loadPartners();
     var before = fixed;
     partners.forEach(function(p) {
-        clean(p, ['prenom', 'nom', 'company', 'bio', 'city', 'interventionZone', 'partner_type_other']);
+        clean(p, ['prenom', 'nom', 'company', 'bio', 'city', 'interventionZone', 'partner_type_other', 'secondary_type_other']);
         (p.services || []).forEach(function(s) {
             clean(s, ['label', 'description']);
             if (Array.isArray(s.features)) s.features = s.features.map(function(f) { var v = sanitizeUserText(f); if (v !== f) fixed++; return v; });
@@ -12850,6 +12864,14 @@ var MESSAGING_SUSPENDED_MESSAGE = 'Votre messagerie a été suspendue suite à p
 var ATTACHMENT_ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
 var ATTACHMENT_MAX_COUNT = 3;
 var ATTACHMENT_MAX_TOTAL_CHARS = 6 * 1024 * 1024;
+// Entre un client et un prestataire, la messagerie ne transporte que du texte : un fichier ou une
+// image échappe au filtre anti-contournement (un numéro, un QR code ou une adresse dans un PDF ou
+// une capture). Les fichiers de travail passent par les livrables de la mission. Les échanges avec
+// FA GENESIS (assistance) gardent les pièces jointes.
+var PEER_ATTACHMENTS_MESSAGE = 'Les fichiers ne s\'envoient pas par la messagerie. Déposez-les dans les livrables de la mission.';
+function hasAttachments(body) {
+    return !!(body && Array.isArray(body.attachments) && body.attachments.length);
+}
 
 function validateAttachments(attachments) {
     if (!attachments) return { ok: true, attachments: [] };
@@ -13129,6 +13151,45 @@ app.get('/api/messages', function(req, res) {
     }
 });
 
+// Photos de profil des interlocuteurs (liste des conversations + en-tête d'une conversation).
+// Appel séparé du polling des messages (les photos sont lourdes) : l'app ne demande que les
+// emails qu'elle n'a pas encore en cache. Seulement des personnes avec qui l'appelant a échangé.
+var MSG_AVATARS_MAX = 50;
+function _msgAvatarEmails(req, myEmail) {
+    var asked = Array.isArray(req.body && req.body.emails) ? req.body.emails : [];
+    var me = String(myEmail || '').toLowerCase();
+    var mine = {};
+    loadChat().forEach(function(m) {
+        var from = String(m.from_email || '').toLowerCase(), to = String(m.to_email || '').toLowerCase();
+        if (from === me && to) mine[to] = true;
+        else if (to === me && from) mine[from] = true;
+    });
+    var out = [];
+    asked.forEach(function(e) {
+        e = String(e || '').toLowerCase();
+        if (e && mine[e] && out.indexOf(e) === -1 && out.length < MSG_AVATARS_MAX) out.push(e);
+    });
+    return out;
+}
+app.post('/api/messages/avatars', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var user = token && findUserByToken(token);
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+        var emails = _msgAvatarEmails(req, user.email);
+        var partners = loadPartners();
+        var avatars = {};
+        emails.forEach(function(e) {
+            var p = partners.find(function(x) { return String(x.email || '').toLowerCase() === e; });
+            avatars[e] = p ? (p.photo || null) : null;
+        });
+        res.json({ ok: true, avatars: avatars });
+    } catch (err) {
+        console.error('[CHAT] Erreur avatars client:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 /**
  * DELETE /api/messages/conversation — Le client supprime (de son côté uniquement) toute sa
  * conversation avec un prestataire précis. Le prestataire et l'admin continuent de la voir.
@@ -13353,6 +13414,9 @@ app.post('/api/messages', function(req, res) {
             return res.status(400).json({ error: 'contournement', message: CONTOURNEMENT_MESSAGE, warnings: warnings });
         }
 
+        if ((req.body.to_type || 'admin') === 'partner' && hasAttachments(req.body)) {
+            return res.status(400).json({ error: 'attachments_not_allowed', message: PEER_ATTACHMENTS_MESSAGE });
+        }
         var attResult = validateAttachments(req.body.attachments);
         if (!attResult.ok) return res.status(400).json({ error: attResult.error });
 
@@ -13706,6 +13770,22 @@ app.get('/api/partner/inbox', authenticatePartner, function(req, res) {
     }
 });
 
+app.post('/api/partner/inbox/avatars', authenticatePartner, function(req, res) {
+    try {
+        var emails = _msgAvatarEmails(req, req.partner.email);
+        var users = loadUsers();
+        var avatars = {};
+        emails.forEach(function(e) {
+            var u = users.find(function(x) { return String(x.email || '').toLowerCase() === e; });
+            avatars[e] = u ? (u.photo || null) : null;
+        });
+        res.json({ ok: true, avatars: avatars });
+    } catch (err) {
+        console.error('[CHAT] Erreur avatars prestataire:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 /**
  * DELETE /api/partner/inbox/conversation — Le prestataire supprime (de son côté uniquement)
  * toute sa conversation avec un client précis. Le client et l'admin continuent de la voir.
@@ -13882,6 +13962,7 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
         var toEmail = req.body.to_email;
         var content = (req.body.content || '').trim();
         if (!toEmail || !content) return res.status(400).json({ error: 'to_email et content requis' });
+        if (hasAttachments(req.body)) return res.status(400).json({ error: 'attachments_not_allowed', message: PEER_ATTACHMENTS_MESSAGE });
 
         if (isBlockedPair('partner', partner.email, 'client', toEmail)) {
             return res.status(403).json({ error: 'blocked', message: 'Vous ne pouvez pas envoyer de message à ce client.' });
@@ -15233,7 +15314,7 @@ app.post('/api/partner/auth/logout', authenticatePartner, (req, res) => {
 // Modifier profil partenaire
 app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res) => {
     try {
-        const { prenom, nom, telephone, photo, logo, bio, city, country, interventionZone, serviceMode, social, responseTimeCommitmentMinutes, currentPassword, newPassword, secondary_types } = req.body;
+        const { prenom, nom, telephone, photo, logo, bio, city, country, interventionZone, serviceMode, social, responseTimeCommitmentMinutes, currentPassword, newPassword, secondary_types, secondary_type_other } = req.body;
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === req.partner.id);
         if (index === -1) {
@@ -15241,6 +15322,12 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         }
         // Bio publique : aucun lien de redirection externe ni coordonnée (voir rejectExternalLink).
         if (typeof bio === 'string' && rejectExternalLink(res, bio.trim(), partners[index].bio || '', 'bio')) return;
+        // Métier secondaire écrit par le prestataire : affiché aux clients, donc même contrôle que la bio.
+        const _secOther = cleanSecondaryOther(secondary_type_other);
+        if (Array.isArray(secondary_types) && secondary_types.indexOf('other') !== -1 && partners[index].partner_type !== 'other') {
+            if (_secOther.length < 2) return res.status(400).json({ error: 'Précisez votre autre métier (2 caractères minimum).', code: 'secondary_other_required' });
+            if (rejectExternalLink(res, _secOther, partners[index].secondary_type_other || '', 'secondary_type_other')) return;
+        }
         // Liens réseaux sociaux / site perso : on ne peut plus en AJOUTER ni en modifier (seulement
         // les vider). Les liens déjà enregistrés restent en base, masqués côté client.
         if (social && typeof social === 'object') {
@@ -15264,7 +15351,8 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         // Métiers secondaires (2 max). Une prestation rattachée à un métier retiré revient au
         // métier principal.
         if (Array.isArray(secondary_types)) {
-            partners[index].secondary_types = cleanSecondaryTypes(secondary_types, partners[index].partner_type);
+            partners[index].secondary_types = cleanSecondaryTypes(secondary_types, partners[index].partner_type, _secOther);
+            partners[index].secondary_type_other = partners[index].secondary_types.indexOf('other') !== -1 ? _secOther : '';
             (partners[index].services || []).forEach(function(sv) {
                 if (sv && sv.category) sv.category = serviceCategoryOf(sv, partners[index]);
             });
@@ -17208,7 +17296,7 @@ function buildPartnerContextForJeremie(message, audience) {
             var rating  = getPartnerRatingSummary(p.id);
             var price   = getPartnerFromPrice(p);
             var name    = ((p.prenom || '') + ' ' + (p.nom || '')).trim();
-            var type    = p.partner_type_other || partnerTypesOf(p).map(function(v) { return ((PARTNER_TYPES.find(function(t) { return t.value === v; }) || {}).label) || v; }).join(' + ') || '';
+            var type    = partnerTypesOf(p).map(function(v) { return partnerTypeLabelFor(p, v); }).join(' + ') || '';
             var ratingStr = rating.count
                 ? (parseFloat(rating.average || 0).toFixed(1) + '/5 (' + rating.count + ' avis)')
                 : 'pas encore noté';
@@ -17727,7 +17815,7 @@ app.get('/api/partners/directory', (req, res) => {
         if (q) {
             const needle = q.trim().toLowerCase();
             partners = partners.filter(p => {
-                const typeLabel = partnerTypesOf(p).map(v => (PARTNER_TYPES.find(t => t.value === v) || {}).label || '').join(' ');
+                const typeLabel = partnerTypesOf(p).map(v => partnerTypeLabelFor(p, v)).join(' ');
                 return ((p.prenom || '') + ' ' + (p.nom || '')).toLowerCase().includes(needle)
                     || typeLabel.toLowerCase().includes(needle)
                     || (p.partner_type_other || '').toLowerCase().includes(needle)
@@ -17845,6 +17933,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 nom: partner.nom,
                 partner_type: partner.partner_type,
                 partner_type_other: partner.partner_type_other || '',
+                secondary_type_other: publicText(partner.secondary_type_other || ''),
                 partner_types: partnerTypesOf(partner),
                 photo: partner.photo || null,
                 bio: publicText(partner.bio || ''),
@@ -17931,6 +18020,7 @@ function partnerDirectoryShape(p, allPromos, matchedType) {
         nom: p.nom,
         partner_type: p.partner_type,
         partner_type_other: p.partner_type_other || '',
+        secondary_type_other: publicText(p.secondary_type_other || ''),
         partner_types: partnerTypesOf(p),
         // Catégorie parcourue par le client (ex. « Marketeurs ») : la carte affiche ce métier-là
         // et le prix « à partir de » de ses prestations dans ce métier.
@@ -21231,7 +21321,8 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
         if (Array.isArray(secondary_types) || partner_type) {
             partners[index].secondary_types = cleanSecondaryTypes(
                 Array.isArray(secondary_types) ? secondary_types : partners[index].secondary_types,
-                partners[index].partner_type);
+                partners[index].partner_type, partners[index].secondary_type_other);
+            if (partners[index].secondary_types.indexOf('other') === -1) partners[index].secondary_type_other = '';
             (partners[index].services || []).forEach(function(sv) {
                 if (sv && sv.category) sv.category = serviceCategoryOf(sv, partners[index]);
             });

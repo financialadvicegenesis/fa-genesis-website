@@ -2546,15 +2546,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261103c"></script>
-<script src="app-i18n-es.js?v=20261103c"></script>
-<script src="app-i18n-hi.js?v=20261103c"></script>
-<script src="app-i18n-pt.js?v=20261103c"></script>
-<script src="app-i18n-ja.js?v=20261103c"></script>
-<script src="app-i18n-zh.js?v=20261103c"></script>
-<script src="app-i18n-ar.js?v=20261103c"></script>
-<script src="app-i18n-it.js?v=20261103c"></script>
-<script src="app-i18n-de.js?v=20261103c"></script>
+<script src="app-i18n-en.js?v=20261105a"></script>
+<script src="app-i18n-es.js?v=20261105a"></script>
+<script src="app-i18n-hi.js?v=20261105a"></script>
+<script src="app-i18n-pt.js?v=20261105a"></script>
+<script src="app-i18n-ja.js?v=20261105a"></script>
+<script src="app-i18n-zh.js?v=20261105a"></script>
+<script src="app-i18n-ar.js?v=20261105a"></script>
+<script src="app-i18n-it.js?v=20261105a"></script>
+<script src="app-i18n-de.js?v=20261105a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -6796,9 +6796,15 @@ var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéas
 function partnerTypeLabel(p){
   // Catégorie parcourue (ex. « Marketeurs ») pour un prestataire à plusieurs métiers : la carte
   // affiche ce métier-là (matched_type, renvoyé par le serveur).
-  if(p.matched_type && p.matched_type!==p.partner_type && PARTNER_TYPE_LABELS_DIR[p.matched_type]) return PARTNER_TYPE_LABELS_DIR[p.matched_type];
+  if(p.matched_type && p.matched_type!==p.partner_type && PARTNER_TYPE_LABELS_DIR[p.matched_type]) return partnerTypeLabelOf(p, p.matched_type);
   if(p.partner_type==='other') return p.partner_type_other || 'Autre';
   return PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+}
+// Libellé d'un des métiers du prestataire : « Autre » = le métier qu'il a écrit lui-même
+// (partner_type_other pour le principal, secondary_type_other pour un secondaire).
+function partnerTypeLabelOf(p, t){
+  if(t==='other') return ((p && (p.partner_type==='other' ? p.partner_type_other : p.secondary_type_other)) || 'Autre');
+  return PARTNER_TYPE_LABELS_DIR[t] || t;
 }
 // Métiers d'un prestataire : principal d'abord, puis secondaires (2 max, voir le serveur).
 function partnerTypesOf(p){
@@ -6812,9 +6818,8 @@ function partnerTypesOf(p){
 function partnerTypesLabelHtml(p){
   var types = partnerTypesOf(p);
   if(types.length < 2) return '<span>'+partnerTypeLabel({partner_type:p.partner_type, partner_type_other:p.partner_type_other})+'</span>';
-  return types.map(function(t, i){
-    var lbl = (i===0 && t==='other') ? (p.partner_type_other || 'Autre') : (PARTNER_TYPE_LABELS_DIR[t] || t);
-    return '<span>'+lbl+'</span>';
+  return types.map(function(t){
+    return '<span>'+_escHtml(partnerTypeLabelOf(p, t))+'</span>';
   }).join(' · ');
 }
 
@@ -8204,6 +8209,7 @@ function renderMsgTab(showArchived){
     // Override names from request data (more reliable)
     Object.keys(convMap).forEach(function(email){
       if(nameMap[email]) convMap[email].name=nameMap[email].name;
+      if(nameMap[email] && nameMap[email].photo && !_msgAvatarCache[email]) _msgAvatarCache[email]=nameMap[email].photo;
     });
     var allConvs=Object.keys(convMap).map(function(k){return convMap[k];}).sort(function(a,b){
       var la=a.msgs[a.msgs.length-1], lb=b.msgs[b.msgs.length-1];
@@ -8228,7 +8234,6 @@ function renderMsgTab(showArchived){
     }
     convEl.innerHTML=convs.map(function(conv){
       var last=conv.msgs[conv.msgs.length-1];
-      var initials=(conv.name||'?').split(' ').map(function(w){return w[0]||''}).slice(0,2).join('').toUpperCase();
       var preview=last.deleted_for_everyone?'Message supprimé':(last.content||'Photo').substring(0,55);
       var dt=new Date(last.created_at), now=new Date();
       var timeStr=(now-dt)<86400000
@@ -8244,7 +8249,7 @@ function renderMsgTab(showArchived){
         +'</div>'
         +'<div class="swipe-row-fg" style="display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(255,255,255,.06);background:var(--bg);">'
         +'<div onclick="openConversation(\''+safeEmail+'\',\''+safeName+'\',\'user-tie\',\''+safeEmail+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex:1;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);">'
-        +'<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a1200,#2a1f00);border:2px solid #FFD700;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#FFD700;flex-shrink:0;">'+initials+'</div>'
+        +_msgAvatarSlot(conv.email, conv.name, 48)
         +'<div style="flex:1;min-width:0;">'
           +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
             +'<div style="font-weight:900;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+conv.name+'</div>'
@@ -8267,6 +8272,7 @@ function renderMsgTab(showArchived){
         onMore: function(){ _clientOpenConvMore(email, name); }
       });
     });
+    _msgLoadAvatars('client', convs.map(function(c){ return c.email; }), convEl);
   }).catch(function(){
     var convEl=document.getElementById('msgConvList');
     if(convEl) convEl.innerHTML='<div class="empty"><p>Erreur de chargement</p></div>';
@@ -10924,7 +10930,7 @@ function openConversation(key, name, icon, partnerEmail){
   c.innerHTML='<div class="chat-view">'
     +'<div class="chat-back-bar">'
     +'<button class="chat-back-btn" onclick="renderMsgTab()">&#8249;</button>'
-    +'<div style="font-size:16px;line-height:1;margin-right:6px;"><i class="fa-solid fa-'+(icon||'comment-dots')+'"></i></div>'
+    +(partnerEmail ? _msgAvatarSlot(partnerEmail, name, 34) : '<div style="font-size:16px;line-height:1;margin-right:6px;"><i class="fa-solid fa-'+(icon||'comment-dots')+'"></i></div>')
     +'<div class="chat-conv-name">'+name+'</div>'
     +(partnerEmail ? '<button class="chat-back-btn" style="margin-left:auto;" onclick="_convSafetyMenu(\'partner\',\''+String(partnerEmail).replace(/\'/g,"\\\'")+'\',\''+String(name||'').replace(/\'/g,"\\\'")+'\',USER&&USER._token)"><i class="fa-solid fa-ellipsis-vertical"></i></button>' : '')
     +'</div>'
@@ -10939,6 +10945,7 @@ function openConversation(key, name, icon, partnerEmail){
     +'</div>'
     +'</div>';
   loadChatMessages(partnerEmail);
+  if(partnerEmail) _msgLoadAvatars('client', [partnerEmail], c);
   // Marque côté serveur les messages de ce prestataire comme lus, UNE SEULE FOIS à
   // l'ouverture (pas à chaque tick du polling ci-dessous) — fait redescendre immédiatement
   // le badge "messages non lus" (façon Instagram/Messenger), voir _clientRefreshMsgBadge().
@@ -10989,6 +10996,47 @@ function _clientRefreshMsgBadge(){
         window.FAGMobile.refreshBadge('client').catch(function(){});
       }
     }).catch(function(){});
+}
+
+// Photos des interlocuteurs de la messagerie, en cache par email (POST /api/messages/avatars côté
+// client, /api/partner/inbox/avatars côté prestataire). Demandées à part du polling des messages
+// et seulement pour les emails pas encore connus. Sans photo : initiales, comme avant.
+var _msgAvatarCache = {};
+function _msgAvatarHtml(photo, name, size){
+  var sz = size || 48;
+  var base = 'width:'+sz+'px;height:'+sz+'px;border-radius:50%;flex-shrink:0;border:2px solid #FFD700;';
+  if(photo && /^(data:image\/|https:\/\/)/i.test(photo)) return '<img src="'+_escHtml(photo)+'" alt="" style="'+base+'object-fit:cover;background:#1a1200;display:block;">';
+  var initials = String(name||'?').split(' ').map(function(w){ return w[0]||''; }).slice(0,2).join('').toUpperCase();
+  return '<div style="'+base+'background:linear-gradient(135deg,#1a1200,#2a1f00);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:'+Math.round(sz/3)+'px;color:#FFD700;">'+_escHtml(initials)+'</div>';
+}
+function _msgAvatarSlot(email, name, size){
+  var e = String(email||'').toLowerCase();
+  return '<span data-av-email="'+_escHtml(e)+'" data-av-name="'+_escHtml(name||'')+'" data-av-size="'+(size||48)+'" style="display:inline-flex;flex-shrink:0;">'+_msgAvatarHtml(_msgAvatarCache[e], name, size)+'</span>';
+}
+function _msgApplyAvatars(root){
+  if(!root || !root.querySelectorAll) return;
+  Array.prototype.forEach.call(root.querySelectorAll('[data-av-email]'), function(el){
+    var ph = _msgAvatarCache[el.getAttribute('data-av-email')];
+    if(ph && !el.querySelector('img')) el.innerHTML = _msgAvatarHtml(ph, el.getAttribute('data-av-name'), parseInt(el.getAttribute('data-av-size'),10) || 48);
+  });
+}
+function _msgLoadAvatars(side, emails, root){
+  var missing = [];
+  (emails||[]).forEach(function(e){ e = String(e||'').toLowerCase(); if(e && !(e in _msgAvatarCache) && missing.indexOf(e) === -1) missing.push(e); });
+  if(!missing.length){ _msgApplyAvatars(root); return; }
+  var req;
+  if(side === 'partner'){
+    if(typeof _ptnrFetch !== 'function') return;
+    req = _ptnrFetch('/api/partner/inbox/avatars', 'POST', {emails: missing});
+  } else {
+    if(!USER || !USER._token) return;
+    req = fetch((window.FA_GENESIS_API||API)+'/api/messages/avatars', {method:'POST', headers:{'Authorization':'Bearer '+USER._token, 'Content-Type':'application/json'}, body: JSON.stringify({emails: missing})}).then(function(r){ return r.json(); });
+  }
+  req.then(function(d){
+    if(!d || !d.avatars) return;
+    missing.forEach(function(e){ _msgAvatarCache[e] = d.avatars[e] || null; });
+    _msgApplyAvatars(root);
+  }).catch(function(){});
 }
 
 function _startMsgWithPartner(partnerId, partnerName, partnerEmail){
@@ -15882,7 +15930,6 @@ function _ptnrCancelSeance(id){
 }
 
 // ── MESSAGES ──
-var _ptnrCurrentAttachments = []; // pièces jointes en attente d'envoi dans la conversation actuellement ouverte
 var _ptnrLastSentMsgAt = 0; // horodatage du dernier envoi local — évite de dupliquer l'écho WebSocket de mon propre message
 var _ptnrPendingScrollThread = null; // email du client dont la conversation doit s'ouvrir directement après le prochain chargement des messages
 
@@ -16069,7 +16116,6 @@ function _ptnrLoadMessages(_isRetry, showArchived){
     var html = '';
     threads.forEach(function(thread){
       var last = thread.messages[thread.messages.length-1];
-      var initials = (thread.name||'?').split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();
       var preview = last.deleted_for_everyone ? 'Message supprimé' : (last.content||'Photo').substring(0,55);
       var dt = new Date(last.created_at), now = new Date();
       var timeStr = (now-dt)<86400000
@@ -16085,7 +16131,7 @@ function _ptnrLoadMessages(_isRetry, showArchived){
         +'</div>'
         +'<div class="swipe-row-fg" style="display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(255,255,255,.06);background:var(--bg);">'
         +'<div onclick="_ptnrOpenConversation(\''+safeEmail+'\',\''+safeName+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex:1;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);">'
-        +'<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a1200,#2a1f00);border:2px solid #FFD700;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#FFD700;flex-shrink:0;">'+initials+'</div>'
+        +_msgAvatarSlot(thread.email, thread.name, 48)
         +'<div style="flex:1;min-width:0;">'
           +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
             +'<div style="font-weight:900;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+_escHtml(thread.name)+'</div>'
@@ -16109,6 +16155,7 @@ function _ptnrLoadMessages(_isRetry, showArchived){
         onMore: function(){ _ptnrOpenConvMore(email, name); }
       });
     });
+    _msgLoadAvatars('partner', threads.map(function(t){ return t.email; }), el);
   }).catch(function(err){
     console.log('[GENESIS_NOTIFICATION] navigation_failed messages_load_error', (err && err.message) || err);
     // Un échec juste après un démarrage à froid (ex: via notification) est souvent transitoire
@@ -16148,24 +16195,22 @@ function _ptnrOpenConversation(email, name){
   listEl.innerHTML = '<div class="chat-view">'
     +'<div class="chat-back-bar">'
     +'<button class="chat-back-btn" onclick="_ptnrCloseConversation()">&#8249;</button>'
-    +'<div style="font-size:16px;line-height:1;margin-right:6px;"><i class="fa-solid fa-user-tie"></i></div>'
+    +_msgAvatarSlot(email, name||'Client', 34)
     +'<div class="chat-conv-name">'+_escHtml(name||'Client')+'</div>'
     +'<button class="chat-back-btn" style="margin-left:auto;" onclick="_convSafetyMenu(\'client\',\''+String(email).replace(/\'/g,"\\\'")+'\',\''+String(name||'').replace(/\'/g,"\\\'")+'\',_ptnrToken)"><i class="fa-solid fa-ellipsis-vertical"></i></button>'
     +'</div>'
     +'<div class="chat-messages" id="ptnr-chat-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>'
-    +'<div id="ptnr-chat-att-preview" style="display:flex;gap:6px;flex-wrap:wrap;padding:0 12px;"></div>'
     // Bandeau "en train de répondre à..." (façon Instagram) — masqué tant qu'aucun message n'est
     // ciblé (voir _ptnrSetReplyTarget/_ptnrRenderReplyPreview), déclenché par glissement d'une
     // bulle vers la droite ou depuis le menu d'appui long (_ptnrOpenMessageActions).
     +'<div id="ptnr-chat-reply-preview" style="display:none;align-items:center;background:#0d0d0d;border-top:1px solid #1a1a1a;padding:6px 8px;"></div>'
     +'<div class="chat-compose">'
-    +'<input type="file" id="ptnr-chat-reply-file" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple style="display:none;" onchange="_ptnrAttachFiles(this.files)">'
-    +'<button type="button" onclick="document.getElementById(\'ptnr-chat-reply-file\').click()" style="flex:0 0 auto;background:transparent;border:none;cursor:pointer;color:#888;font-size:18px;" title="Joindre un fichier"><i class="fa-solid fa-paperclip"></i></button>'
     +'<input id="ptnr-chat-input" class="chat-text-input" type="text" placeholder="Répondre..." onkeydown="if(event.key===\'Enter\'||event.keyCode===13)_ptnrSendConvReply()">'
     +'<button class="chat-send-btn" id="ptnr-chat-send-btn" onclick="_ptnrSendConvReply()">&#8593;</button>'
     +'</div>'
     +'</div>';
   _ptnrLoadConversationMessages(email);
+  _msgLoadAvatars('partner', [email], listEl);
   // Marque côté serveur les messages de ce client comme lus, UNE SEULE FOIS à l'ouverture (et
   // non plus à chaque affichage de la liste comme dans l'ancienne structure) — fait redescendre
   // immédiatement le badge "messages non lus" (façon Instagram/Messenger).
@@ -16435,35 +16480,16 @@ function _ptnrDeleteConversation(clientEmail, clientName){
   });
 }
 
-// Pièces jointes pour la conversation actuellement ouverte (_ptnrCurrentConvEmail) — une seule
-// zone de composition à la fois désormais (plus besoin d'un index par fil, voir _ptnrSendConvReply).
-function _ptnrAttachFiles(fileList){
-  var files = Array.prototype.slice.call(fileList||[]).slice(0, 3);
-  if(!files.length) return;
-  var preview = document.getElementById('ptnr-chat-att-preview');
-  Promise.all(files.map(function(f){
-    var isImg = f.type && f.type.indexOf('image/')===0;
-    var p = isImg ? _ptnrImageFileToCompressedBase64(f, 1280, 0.82) : _ptnrFileToBase64(f);
-    return p.then(function(dataUrl){ return { name: f.name, type: f.type||'', dataUrl: dataUrl }; });
-  })).then(function(atts){
-    _ptnrCurrentAttachments = atts;
-    if(preview){
-      preview.innerHTML = atts.map(function(a){ return '<span style="font-size:12px;background:rgba(255,255,255,.08);padding:4px 8px;border-radius:6px;color:#ccc;"><i class="fa-solid fa-paperclip"></i> '+_escHtml(a.name)+'</span>'; }).join('');
-    }
-  });
-}
-
 // Envoi d'une réponse dans la conversation actuellement ouverte — miroir de sendChatMessage
 // côté client (affichage optimiste immédiat + dédoublonnage de l'écho WebSocket via
-// _ptnrLastSentMsgAt), avec en plus la prise en charge des pièces jointes déjà existante côté
-// prestataire (images/fichiers) que le flux client n'a pas.
+// _ptnrLastSentMsgAt). Texte seulement, comme côté client : les fichiers passent par les
+// livrables de la mission (voir PEER_ATTACHMENTS_MESSAGE côté serveur).
 function _ptnrSendConvReply(){
   var inp = document.getElementById('ptnr-chat-input');
   var btn = document.getElementById('ptnr-chat-send-btn');
   if(!inp || !_ptnrCurrentConvEmail) return;
   var msg = inp.value.trim();
-  var atts = _ptnrCurrentAttachments || [];
-  if(!msg && !atts.length) return;
+  if(!msg) return;
   var toEmail = _ptnrCurrentConvEmail, toName = _ptnrCurrentConvName;
   var replyToId = _ptnrReplyTarget ? _ptnrReplyTarget.id : null;
   var replyQuoteHtml = '';
@@ -16479,15 +16505,13 @@ function _ptnrSendConvReply(){
   _ptnrCancelReply();
   _ptnrLastSentMsgAt = Date.now();
   var msgsEl = document.getElementById('ptnr-chat-msgs');
-  if(msgsEl && msg){
+  if(msgsEl){
     var em = msgsEl.querySelector('.chat-empty-state'); if(em) em.remove();
     var d = document.createElement('div'); d.className = 'chat-bubble chat-bubble-mine';
     d.innerHTML = replyQuoteHtml + '<div>'+_escHtml(msg)+'</div>';
     msgsEl.appendChild(d); msgsEl.scrollTop = msgsEl.scrollHeight;
   }
-  var preview = document.getElementById('ptnr-chat-att-preview'); if(preview) preview.innerHTML = '';
-  _ptnrCurrentAttachments = [];
-  _ptnrFetch('/api/partner/inbox/reply','POST',{to_email:toEmail, content:msg, to_name:toName, attachments:atts, reply_to_id:replyToId}).then(function(data){
+  _ptnrFetch('/api/partner/inbox/reply','POST',{to_email:toEmail, content:msg, to_name:toName, reply_to_id:replyToId}).then(function(data){
     if(btn) btn.disabled = false;
     if(data && data.error){
       if(msgsEl && d && d.parentNode) d.remove();
@@ -21794,14 +21818,18 @@ function _ptnrProfilEditResponseTime(){
 // dès qu'il y propose au moins une prestation (voir partnerListedInType côté serveur).
 var _PTNR_SECONDARY_MAX = 2;
 var _ptnrMetiersSel = [];
+var _ptnrMetierOtherTxt = '';
+// « Autre métier » (le prestataire l'écrit lui-même) en dernier ; absent si son métier principal
+// est déjà « Autre ».
 function _ptnrSecondaryChoices(){
   var primary = _ptnrSession && _ptnrSession.partner_type;
-  return Object.keys(PARTNER_TYPE_LABELS_DIR).filter(function(t){ return t!=='other' && t!=='coworking' && t!==primary; });
+  return Object.keys(PARTNER_TYPE_LABELS_DIR).filter(function(t){ return t!=='coworking' && t!==primary; });
 }
 function _ptnrProfilEditMetiers(){
   var c = document.getElementById('ptnr-profil-content');
   if(!c || !_ptnrSession) return;
   _ptnrMetiersSel = (Array.isArray(_ptnrSession.secondary_types) ? _ptnrSession.secondary_types : []).slice(0, _PTNR_SECONDARY_MAX);
+  _ptnrMetierOtherTxt = _ptnrSession.secondary_type_other || '';
   var primaryLbl = partnerTypeLabel({partner_type:_ptnrSession.partner_type, partner_type_other:_ptnrSession.partner_type_other});
   c.innerHTML = '<div class="plus-subpage">'
     +'<div class="plus-back-bar">'
@@ -21815,6 +21843,10 @@ function _ptnrProfilEditMetiers(){
     +'<div style="font-size:11px;color:#777;line-height:1.5;margin-top:6px;">Pour changer de métier principal, contactez l\'assistance.</div>'
     +'<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin:16px 0 6px;">Métiers secondaires (2 maximum)</div>'
     +'<div id="ptnr-metiers-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>'
+    +'<div id="ptnr-metier-other-wrap" style="display:none;margin-top:10px;">'
+    +'<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:6px;">Votre autre métier</div>'
+    +'<input class="ptnr-input" id="ptnr-metier-other" type="text" maxlength="40" placeholder="Ex. : Traducteur, Coach sportif, Monteur vidéo" style="margin-bottom:0;" oninput="_ptnrMetierOtherTxt=this.value">'
+    +'</div>'
     +'<div style="font-size:11px;color:#888;line-height:1.5;margin-top:12px;">Vous apparaissez dans la catégorie d\'un métier secondaire dès que vous y proposez au moins une prestation : choisissez le métier de chaque prestation dans « Mes tarifs et prestations ».</div>'
     +'<div style="font-size:11px;color:#888;line-height:1.5;margin-top:6px;">Un seul compte pour tous vos métiers : vos avis, vos badges, vos gains et vos messages restent au même endroit.</div>'
     +'<button class="ptnr-login-btn" id="ptnr-metiers-btn" style="margin-top:14px;" onclick="_ptnrSaveMetiers()">Enregistrer</button>'
@@ -21827,8 +21859,14 @@ function _ptnrRenderMetiersChips(){
   if(!wrap) return;
   wrap.innerHTML = _ptnrSecondaryChoices().map(function(t){
     var on = _ptnrMetiersSel.indexOf(t) !== -1;
-    return '<button type="button" onclick="_ptnrToggleMetier(\''+t+'\')" style="padding:7px 11px;border-radius:10px;font-size:12px;font-weight:'+(on?'900':'600')+';cursor:pointer;font-family:inherit;border:1.5px solid '+(on?'#FFD700':'#2a2a2a')+';background:'+(on?'rgba(255,215,0,.12)':'#141414')+';color:'+(on?'#FFD700':'#aaa')+';">'+(on?'<i class="fa-solid fa-check" style="margin-right:5px;"></i>':'')+PARTNER_TYPE_LABELS_DIR[t]+'</button>';
+    var ico = on ? '<i class="fa-solid fa-check" style="margin-right:5px;"></i>' : (t==='other' ? '<i class="fa-solid fa-pen" style="margin-right:5px;font-size:10px;"></i>' : '');
+    return '<button type="button" onclick="_ptnrToggleMetier(\''+t+'\')" style="padding:7px 11px;border-radius:10px;font-size:12px;font-weight:'+(on?'900':'600')+';cursor:pointer;font-family:inherit;border:1.5px '+(t==='other'&&!on?'dashed':'solid')+' '+(on?'#FFD700':'#2a2a2a')+';background:'+(on?'rgba(255,215,0,.12)':'#141414')+';color:'+(on?'#FFD700':'#aaa')+';">'+ico+(t==='other' ? 'Autre métier' : PARTNER_TYPE_LABELS_DIR[t])+'</button>';
   }).join('');
+  var ow = document.getElementById('ptnr-metier-other-wrap');
+  var oi = document.getElementById('ptnr-metier-other');
+  var otherOn = _ptnrMetiersSel.indexOf('other') !== -1;
+  if(ow) ow.style.display = otherOn ? 'block' : 'none';
+  if(oi && oi.value !== _ptnrMetierOtherTxt) oi.value = _ptnrMetierOtherTxt;
 }
 function _ptnrToggleMetier(t){
   var i = _ptnrMetiersSel.indexOf(t);
@@ -21836,15 +21874,23 @@ function _ptnrToggleMetier(t){
   else if(_ptnrMetiersSel.length >= _PTNR_SECONDARY_MAX){ showToast('2 métiers secondaires maximum', 'Retirez-en un pour en choisir un autre.', 'info'); return; }
   else _ptnrMetiersSel.push(t);
   _ptnrRenderMetiersChips();
+  if(t==='other' && _ptnrMetiersSel.indexOf('other') !== -1){ var oi=document.getElementById('ptnr-metier-other'); if(oi) try{ oi.focus(); }catch(e){} }
 }
 function _ptnrSaveMetiers(){
   var msgEl = document.getElementById('ptnr-metiers-msg');
   var btnEl = document.getElementById('ptnr-metiers-btn');
-  if(btnEl){ btnEl.disabled=true; btnEl.textContent='Enregistrement...'; }
+  var otherTxt = String(_ptnrMetierOtherTxt||'').replace(/\s+/g,' ').trim();
   if(msgEl){ msgEl.className='ptnr-login-err'; msgEl.textContent=''; }
-  _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {secondary_types: _ptnrMetiersSel}).then(function(data){
+  if(_ptnrMetiersSel.indexOf('other') !== -1 && otherTxt.length < 2){
+    if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Précisez votre autre métier.'; msgEl.className='ptnr-login-err on'; }
+    var oi=document.getElementById('ptnr-metier-other'); if(oi) try{ oi.focus(); }catch(e){}
+    return;
+  }
+  if(btnEl){ btnEl.disabled=true; btnEl.textContent='Enregistrement...'; }
+  _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {secondary_types: _ptnrMetiersSel, secondary_type_other: _ptnrMetiersSel.indexOf('other') !== -1 ? otherTxt : ''}).then(function(data){
     if(data && data.success){
       _ptnrSession.secondary_types = data.partner.secondary_types || [];
+      _ptnrSession.secondary_type_other = data.partner.secondary_type_other || '';
       if(Array.isArray(data.partner.services)) _ptnrSession.services = data.partner.services;
       _ptnrSaveToCache(_ptnrSession);
       var dt = document.getElementById('ptnr-display-type'); if(dt) dt.innerHTML = partnerTypesLabelHtml(_ptnrSession);
@@ -22217,12 +22263,6 @@ function _ptnrLoadLivrables() {
       + '<div style="font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-file-invoice" style="margin-right:6px;"></i>Mes factures</div>';
     html += '<div id="ptnr-invoices-wrap"><div style="text-align:center;padding:16px;color:#444;font-size:11px;">Chargement…</div></div>';
     html += '</div>';
-
-    // ── Info push ──
-    html += '<div style="margin:0 16px 16px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:12px 14px;">'
-      + '<div style="font-size:11px;color:#60a5fa;font-weight:700;margin-bottom:3px;"><i class="fa-solid fa-bell" style="margin-right:6px;"></i>Notifications activées</div>'
-      + '<div style="font-size:11px;color:#666;line-height:1.55;">Vous recevrez une notification push dès qu\'un client signe un contrat de prestation.</div>'
-      + '</div>';
 
     c.innerHTML = html;
     _ptnrLoadInvoicesInto('ptnr-invoices-wrap');
@@ -22670,9 +22710,8 @@ function _ptnrSvcCategorySelectHtml(service){
   var cur = types.indexOf(service.category) !== -1 ? service.category : types[0];
   return '<div style="font-size:8.5px;font-weight:900;text-transform:uppercase;color:#555;letter-spacing:.4px;margin:6px 0 3px;">Métier</div>'
     + '<select class="ptnr-svc-category" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,215,0,.3);border-radius:7px;color:#FFD700;font-size:11px;font-weight:700;padding:5px 8px;outline:none;font-family:inherit;">'
-    + types.map(function(t, i){
-        var lbl = (i===0 && t==='other') ? (_ptnrSession.partner_type_other || 'Autre') : (PARTNER_TYPE_LABELS_DIR[t] || t);
-        return '<option value="'+t+'"'+(t===cur?' selected':'')+'>'+lbl+'</option>';
+    + types.map(function(t){
+        return '<option value="'+t+'"'+(t===cur?' selected':'')+'>'+_escHtml(partnerTypeLabelOf(_ptnrSession, t))+'</option>';
       }).join('')
     + '</select>';
 }
