@@ -2549,19 +2549,19 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261106a"></script>
-<script src="app-i18n-es.js?v=20261106a"></script>
-<script src="app-i18n-hi.js?v=20261106a"></script>
-<script src="app-i18n-pt.js?v=20261106a"></script>
-<script src="app-i18n-ja.js?v=20261106a"></script>
-<script src="app-i18n-zh.js?v=20261106a"></script>
-<script src="app-i18n-ar.js?v=20261106a"></script>
-<script src="app-i18n-it.js?v=20261106a"></script>
-<script src="app-i18n-de.js?v=20261106a"></script>
+<script src="app-i18n-en.js?v=20261106b"></script>
+<script src="app-i18n-es.js?v=20261106b"></script>
+<script src="app-i18n-hi.js?v=20261106b"></script>
+<script src="app-i18n-pt.js?v=20261106b"></script>
+<script src="app-i18n-ja.js?v=20261106b"></script>
+<script src="app-i18n-zh.js?v=20261106b"></script>
+<script src="app-i18n-ar.js?v=20261106b"></script>
+<script src="app-i18n-it.js?v=20261106b"></script>
+<script src="app-i18n-de.js?v=20261106b"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
-<script src="server/link-guard.js?v=20261030a"></script>
+<script src="server/link-guard.js?v=20261106a"></script>
 </head>
 <body>
 
@@ -19726,12 +19726,20 @@ function _ptnrRenderMissionsList(){
 function _ptnrJeremieBriefHtml(r){
   var b = r.jeremie_brief || {};
   var clarify = (b.to_clarify || []);
+  // Résumé rédigé par l'IA (serveur : generateQuoteTransferSummaries), déjà dans la langue du
+  // prestataire — jamais retraduit. Absent (pas encore prêt, ou IA indisponible) : la carte garde
+  // l'analyse par règles, « À préciser avec le client ».
+  var aiSummary = String(b.ai_summary || '').trim();
   return '<div style="display:flex;gap:9px;align-items:flex-start;background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);border-radius:10px;padding:9px 10px;margin:8px 0;">'
     + '<img src="assets/images/jeremie-avatar.png?v='+JEREMIE_AVATAR_V+'" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#0d1730;">'
     + '<div style="font-size:11.5px;color:#ccc;line-height:1.5;">'
+      + (aiSummary
+        ? '<div style="font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;color:#FFD700;margin-bottom:3px;"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:4px;"></i>Résumé de la demande par Jérémie IA</div>'
+          + '<div class="ptnr-ai-summary" data-i18n-skip style="color:#eee;white-space:pre-line;margin-bottom:6px;">'+_escHtml(aiSummary)+'</div>'
+        : '')
       + '<span>Le prestataire contacté en premier n\'a pas pu prendre cette demande. Je vous l\'ai transmise car vous faites partie des prestataires les plus réactifs de ce secteur.</span>'
       + ' <span>Le client choisira parmi les prestataires qui acceptent.</span>'
-      + (clarify.length ? '<div style="margin-top:4px;color:#FFD700;"><span>À préciser avec le client :</span> '+clarify.map(function(x){ return '<span>'+x+'</span>'; }).join(', ')+'</div>' : '')
+      + (!aiSummary && clarify.length ? '<div style="margin-top:4px;color:#FFD700;"><span>À préciser avec le client :</span> '+clarify.map(function(x){ return '<span>'+x+'</span>'; }).join(', ')+'</div>' : '')
     + '</div>'
   + '</div>';
 }

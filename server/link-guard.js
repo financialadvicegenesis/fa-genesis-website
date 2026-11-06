@@ -125,6 +125,20 @@
         return true;
     }
 
+    // E-mail repéré : version raccourcie jusqu'à la dernière extension connue (« .com »), ou null.
+    var EMAIL_LAST_PART_RE = /\s{0,2}(?:\.|[\[\(\{]\s?(?:dot|point)\s?[\]\)\}]|\s(?:dot|point)\s)\s{0,2}[a-z]{2,12}$/;
+    var EMAIL_HAS_DOMAIN_RE = /(?:@|[\[\(\{]\s?(?:at|arobase)\s?[\]\)\}]|\s(?:at|arobase)\s)\s{0,2}[a-z0-9-]+\s{0,2}(?:\.|[\[\(\{]\s?(?:dot|point)\s?[\]\)\}]|\s(?:dot|point)\s)/;
+    function trimEmailToTld(candidate) {
+        while (candidate && EMAIL_HAS_DOMAIN_RE.test(candidate)) {
+            var tail = candidate.replace(/\s/g, '').split(/\.|\]|\)|\}|dot|point/).pop();
+            if (TLDS[tail] || PATH_ONLY_TLDS[tail]) return candidate;
+            var shorter = candidate.replace(EMAIL_LAST_PART_RE, '');
+            if (shorter === candidate) return null;
+            candidate = shorter;
+        }
+        return null;
+    }
+
     // Toutes les portions suspectes : [{ start, end, kind: 'link'|'contact' }].
     function scan(text) {
         if (!text || typeof text !== 'string') return [];
@@ -149,7 +163,16 @@
                         start = m.index + lead.length;
                         matchText = m[0].slice(lead.length);
                     }
-                    if (!acceptMatch(p, m, m.index, offsetMap ? str : original)) {
+                    if (p.check === 'email') {
+                        // BUG CORRIGÉ (2026-11-06) : l'e-mail avalait le mot suivant une fin de phrase
+                        // (« nom@gmail.com. Merci » → « gmail.com.merci »), dont la fin n'est pas une
+                        // extension : tout le match était rejeté, l'adresse passait. On raccourcit à
+                        // la dernière extension valide au lieu de rejeter.
+                        var emailText = trimEmailToTld(matchText);
+                        if (!emailText) { p.re.lastIndex = m.index + 1; continue; }
+                        matchText = emailText;
+                        p.re.lastIndex = m.index + emailText.length;
+                    } else if (!acceptMatch(p, m, m.index, offsetMap ? str : original)) {
                         p.re.lastIndex = m.index + 1;
                         continue;
                     }

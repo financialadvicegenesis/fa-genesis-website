@@ -64,7 +64,61 @@ function askJeremie(systemPrompt, history, userMessage) {
     });
 }
 
+// ============================================================
+// RÉSUMÉ D'UNE DEMANDE DE DEVIS (Jérémie, transfert automatique — voir server.js : DEVIS NON
+// PRIS EN CHARGE). SDK officiel Anthropic : délai court, une seule nouvelle tentative, effort
+// « low » (un résumé de quelques phrases), repli automatique sur un autre modèle si le modèle
+// principal refuse la demande (fallbacks: 'default').
+// ============================================================
+var Anthropic = (function() {
+    try { var sdk = require('@anthropic-ai/sdk'); return sdk.Anthropic || sdk.default || sdk; }
+    catch (e) { return null; }
+})();
+var QUOTE_SUMMARY_MODEL = 'claude-opus-5-5';
+var _anthropicClient = null;
+function _getAnthropicClient() {
+    if (!_anthropicClient && Anthropic && ANTHROPIC_API_KEY) {
+        _anthropicClient = new Anthropic({ apiKey: ANTHROPIC_API_KEY, timeout: 30000, maxRetries: 1 });
+    }
+    return _anthropicClient;
+}
+
+/**
+ * @param {string} systemPrompt - consignes (langue, longueur, données à ne jamais reprendre)
+ * @param {string} requestText - la demande du client, présentée comme une donnée à résumer
+ * @returns {Promise<Object>} { success, summary } ou { success:false, unavailable, retryable, error }
+ */
+function summarizeQuoteRequest(systemPrompt, requestText) {
+    var client = _getAnthropicClient();
+    if (!client) return Promise.resolve({ success: false, unavailable: true, error: 'Clé API Claude absente.' });
+    return client.beta.messages.create({
+        model: QUOTE_SUMMARY_MODEL,
+        max_tokens: 4000,
+        output_config: { effort: 'low' },
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        system: systemPrompt,
+        messages: [{ role: 'user', content: String(requestText || '') }]
+    }).then(function(response) {
+        if (response.stop_reason === 'refusal') return { success: false, retryable: false, error: 'refusal' };
+        var text = (response.content || []).filter(function(b) { return b.type === 'text'; })
+            .map(function(b) { return b.text; }).join('\n').trim();
+        if (!text) return { success: false, retryable: true, error: 'réponse vide (' + response.stop_reason + ')' };
+        return { success: true, summary: text, model: response.model };
+    }).catch(function(err) {
+        // Requête invalide, clé refusée, accès interdit : inutile de réessayer. Limite de débit,
+        // erreur serveur, coupure réseau ou délai dépassé : nouvelle tentative plus tard.
+        var permanent = Anthropic && (err instanceof Anthropic.BadRequestError
+            || err instanceof Anthropic.AuthenticationError
+            || err instanceof Anthropic.PermissionDeniedError
+            || err instanceof Anthropic.NotFoundError);
+        var label = (Anthropic && err instanceof Anthropic.APIError && err.status) ? 'API ' + err.status + ' : ' : '';
+        return { success: false, retryable: !permanent, error: label + ((err && err.message) || String(err)) };
+    });
+}
+
 module.exports = {
     askJeremie: askJeremie,
-    isJeremieAvailable: isJeremieAvailable
+    isJeremieAvailable: isJeremieAvailable,
+    summarizeQuoteRequest: summarizeQuoteRequest
 };
