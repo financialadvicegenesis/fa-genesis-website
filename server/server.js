@@ -4529,7 +4529,8 @@ app.post('/api/orders/create', (req, res) => {
                 var psiService = (psiPartner.services || []).find(function(s) { return s.id === psiItem.serviceId && s.active !== false; });
                 if (!psiService) return res.status(404).json({ error: 'Prestation non trouvée chez ' + (psiPartner.prenom||'') });
 
-                var psiTotal = parseFloat(psiService.price);
+                // Prix remisé si le prestataire a mis une remise sur cette prestation.
+                var psiTotal = serviceCurrentPrice(psiService);
                 var psiFullPrice = psiTotal;
                 var psiWelcomeAmt = 0;
                 // Avantage bienvenue : s'applique sur la première commande, une seule fois au total
@@ -4785,7 +4786,7 @@ app.post('/api/orders/create', (req, res) => {
             // retourner cet ordre plutôt que d'en créer un doublon.
             // On compare aussi le total_amount : si le prix a changé depuis la création de l'ordre,
             // on ne réutilise pas l'ordre obsolète (nouveau calcul avec le prix actuel).
-            var _currentServicePrice = parseFloat(service.price) || 0;
+            var _currentServicePrice = serviceCurrentPrice(service);
             var _existingPso = loadOrders().find(function(o) {
                 return o.status === 'pending_deposit'
                     && !o.deposit_paid
@@ -4803,7 +4804,10 @@ app.post('/api/orders/create', (req, res) => {
             // Le paiement n'est autorisé qu'après acceptation explicite du partenaire ET signature
             // du contrat (proposition structurée + signature électronique, GENESIS CONTRACT™) :
             // le client doit d'abord avoir une demande au statut 'signed' pour ce couple partenaire/prestation.
-            var psoTotal = parseFloat(service.price);
+            // Prix remisé si le prestataire a mis une remise sur cette prestation (serviceCurrentPrice) :
+            // le versement au prestataire se calcule sur ce prix, c'est lui qui finance sa remise.
+            var psoPartnerDiscountPct = serviceDiscountPct(service);
+            var psoTotal = serviceCurrentPrice(service);
             var psoFullPrice = psoTotal;
             var psoWelcomeDiscountAmount = 0;
             // Avantage bienvenue -10% : s'applique automatiquement à toute première commande,
@@ -4913,6 +4917,8 @@ app.post('/api/orders/create', (req, res) => {
                     client_type: clientInfo.clientType || 'particulier'
                 },
                 total_amount: psoTotal,
+                partner_discount_pct: psoPartnerDiscountPct || 0,
+                price_before_partner_discount: psoPartnerDiscountPct ? parseFloat(service.price) : null,
                 welcome_discount_pct: psoWelcomeDiscountAmount > 0 ? psoDiePct : 0,
                 welcome_discount_amount: psoWelcomeDiscountAmount,
                 deposit_amount: psoDeposit,
@@ -14059,118 +14065,20 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
 });
 
 // ============================================================
-// ROUTES - MESSAGERIE ENTRE COLLÈGUES PARTENAIRES (P2P)
+// MESSAGERIE ENTRE COLLÈGUES PARTENAIRES (P2P) — RETIRÉE (2026-11-06)
 // ============================================================
-
-/**
- * GET /api/partner/peers — Partenaires actifs de même catégorie (hors soi-même)
- */
-app.get('/api/partner/peers', authenticatePartner, function(req, res) {
-    try {
-        var partner = req.partner;
-        var peers = loadPartners().filter(function(p) {
-            return p.id !== partner.id &&
-                   p.partner_type === partner.partner_type &&
-                   p.accountStatus === 'active' &&
-                   p.contract_signed === true;
-        }).map(function(p) {
-            var ratingSummary = getPartnerRatingSummary(p.id);
-            var badge = getPartnerBadge(p, ratingSummary);
-            var missionsCompleted = getPartnerMissionsCompleted(p.id);
-            return {
-                id:                p.id,
-                prenom:            p.prenom || '',
-                nom:               p.nom || '',
-                email:             p.email || '',
-                photo:             p.photo || null,
-                city:              p.city || '',
-                bio:               publicText(p.bio || '').slice(0, 120),
-                partner_type:      p.partner_type || '',
-                badge:             badge,
-                founderBadge:      p.founderBadge || false,
-                rating:            ratingSummary,
-                missionsCompleted: missionsCompleted,
-                services:          (p.services || []).filter(function(s){ return s.active !== false; }).slice(0,3).map(function(s){ return { label: s.label, price: s.price }; })
-            };
-        });
-        res.json({ ok: true, peers: peers });
-    } catch(err) {
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
-
-/**
- * GET /api/partner/peer-inbox — Conversations P2P impliquant ce partenaire
- */
-app.get('/api/partner/peer-inbox', authenticatePartner, function(req, res) {
-    try {
-        var partner = req.partner;
-        var msgs = loadChat().filter(function(m) {
-            return m.from_type === 'partner' && m.to_type === 'partner' &&
-                   (m.from_email === partner.email || m.to_email === partner.email);
-        });
-        msgs.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
-        res.json({ ok: true, messages: msgs });
-    } catch(err) {
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
-
-/**
- * POST /api/partner/peer-message — Envoyer un message à un collègue de même catégorie
- */
-app.post('/api/partner/peer-message', authenticatePartner, function(req, res) {
-    try {
-        var partner = req.partner;
-        var toPartnerId = (req.body.to_partner_id || '').trim();
-        var content     = (req.body.content || '').trim();
-        if (!toPartnerId || !content) {
-            return res.status(400).json({ error: 'to_partner_id et content requis' });
-        }
-        var allPartners = loadPartners();
-        var pIndex = allPartners.findIndex(function(p) { return p.id === partner.id; });
-        if (pIndex !== -1 && allPartners[pIndex].messagingBlocked) {
-            return res.status(403).json({ error: 'messaging_suspended', message: MESSAGING_SUSPENDED_MESSAGE });
-        }
-        if (detectContournement(content)) {
-            if (pIndex !== -1) {
-                var warnings = registerContournementViolation(allPartners[pIndex]);
-                savePartners(allPartners);
-                logContournementAttempt('partner', partner.id || partner.email, ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email, content, 'confrère ' + toPartnerId, warnings);
-                if (allPartners[pIndex].messagingBlocked) {
-                    return res.status(403).json({ error: 'messaging_suspended', message: MESSAGING_SUSPENDED_MESSAGE });
-                }
-                return res.status(400).json({ error: 'contournement', message: CONTOURNEMENT_MESSAGE, warnings: warnings });
-            }
-            return res.status(400).json({ error: 'contournement', message: CONTOURNEMENT_MESSAGE });
-        }
-        var toPeer = allPartners.find(function(p) { return p.id === toPartnerId; });
-        if (!toPeer) return res.status(404).json({ error: 'Collègue introuvable' });
-        if (toPeer.partner_type !== partner.partner_type) {
-            return res.status(403).json({ error: 'Messagerie disponible uniquement entre partenaires de même catégorie' });
-        }
-        var msg = {
-            id:           'MSG-' + uuidv4().split('-')[0].toUpperCase(),
-            from_email:   partner.email,
-            from_name:    ((partner.prenom || '') + ' ' + (partner.nom || '')).trim(),
-            from_type:    'partner',
-            to_type:      'partner',
-            to_email:     toPeer.email,
-            to_name:      ((toPeer.prenom || '') + ' ' + (toPeer.nom || '')).trim(),
-            to_partner_id: toPartnerId,
-            content:      content,
-            attachments:  [],
-            created_at:   new Date().toISOString(),
-            read_at:      null
-        };
-        var msgs = loadChat();
-        msgs.push(msg);
-        saveChat(msgs);
-        res.json({ ok: true, message: msg });
-    } catch(err) {
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
+// « Explorer GENESIS » côté prestataire listait les prestataires concurrents de la même catégorie
+// (photo, ville, note, prestations ET prix) avec une messagerie entre eux : retiré à la demande du
+// métier pour éviter toute concurrence déloyale. Un client non pris en charge est désormais
+// orienté automatiquement par Jérémie (voir DEVIS NON PRIS EN CHARGE), plus par un confrère.
+// Routes conservées pour répondre proprement à une ancienne version de l'app ; anciens messages
+// laissés en base (chat.json), plus jamais servis.
+function _peerFeatureRemoved(req, res) {
+    res.status(410).json({ ok: false, error: 'feature_removed', message: 'Cette fonctionnalité n\'est plus disponible.' });
+}
+app.get('/api/partner/peers', authenticatePartner, _peerFeatureRemoved);
+app.get('/api/partner/peer-inbox', authenticatePartner, _peerFeatureRemoved);
+app.post('/api/partner/peer-message', authenticatePartner, _peerFeatureRemoved);
 
 // ============================================================
 // ROUTES - GESTION DES SEANCES (Admin)
@@ -15404,6 +15312,28 @@ app.get('/api/partner/services', authenticatePartner, (req, res) => {
 // Segments client pour les prestations (tarifs differencies)
 const SERVICE_AUDIENCES = ['etudiant', 'particulier', 'entreprise', 'promo'];
 
+// Remise sur une prestation existante (étudiant, particulier, entreprise) : activée directement
+// sur la prestation, sans créer d'offre dans la catégorie « Promo » (qui reste disponible).
+// Pourcentage de 5 à 90 %, date de fin facultative (fin de journée, heure de Paris). Le prix
+// remisé est celui que paie le client ET celui sur lequel le prestataire est rémunéré : c'est lui
+// qui finance sa remise. L'avantage bienvenue GENESIS s'applique ensuite sur ce prix remisé.
+var SERVICE_DISCOUNT_MIN_PCT = 5, SERVICE_DISCOUNT_MAX_PCT = 90;
+function serviceDiscountPct(s, now) {
+    if (!s || s.pricing_type === 'quote' || s.audience === 'promo') return 0;
+    var pct = Number(s.discount_pct);
+    if (!Number.isFinite(pct) || pct < SERVICE_DISCOUNT_MIN_PCT || pct > SERVICE_DISCOUNT_MAX_PCT) return 0;
+    var base = Number(s.price);
+    if (!Number.isFinite(base) || base <= 0) return 0;
+    if (s.discount_ends_at && new Date(s.discount_ends_at).getTime() < (now || Date.now())) return 0;
+    return pct;
+}
+// Prix payé aujourd'hui pour une prestation à prix fixe (remise comprise).
+function serviceCurrentPrice(s, now) {
+    var base = parseFloat(s && s.price) || 0;
+    var pct = serviceDiscountPct(s, now);
+    return pct ? Math.round(base * (1 - pct / 100) * 100) / 100 : base;
+}
+
 // Remplacer la liste de mes prestations (partenaire connecté)
 app.put('/api/partner/services', authenticatePartner, async (req, res) => {
     try {
@@ -15446,6 +15376,29 @@ app.put('/api/partner/services', authenticatePartner, async (req, res) => {
             var installmentCount = (paymentMode === 'installments' && rawInstCnt != null && Number.isFinite(rawInstCnt))
                 ? Math.max(2, Math.min(8, Math.round(rawInstCnt)))
                 : null;
+            // Remise (voir serviceDiscountPct) : prestations à prix fixe hors catégorie « Promo ».
+            var discountPct = null, discountEndsAt = null, discountSince = null;
+            var _audIn = SERVICE_AUDIENCES.indexOf(s.audience) !== -1 ? s.audience : 'particulier';
+            if (!isQuote && _audIn !== 'promo' && s.discount_pct != null && s.discount_pct !== '' && Number(s.discount_pct) !== 0) {
+                var _dPct = Math.round(Number(s.discount_pct));
+                if (!Number.isFinite(_dPct) || _dPct < SERVICE_DISCOUNT_MIN_PCT || _dPct > SERVICE_DISCOUNT_MAX_PCT) {
+                    return res.status(400).json({ error: 'La remise de « ' + s.label.trim() + ' » doit être comprise entre ' + SERVICE_DISCOUNT_MIN_PCT + ' % et ' + SERVICE_DISCOUNT_MAX_PCT + ' %.', field: 'service_discount', serviceId: s.id || null });
+                }
+                if (price * (1 - _dPct / 100) < 0.5) {
+                    return res.status(400).json({ error: 'Le prix remisé de « ' + s.label.trim() + ' » doit être d\'au moins 0,50 €.', field: 'service_discount', serviceId: s.id || null });
+                }
+                if (s.discount_ends_at) {
+                    if (isNaN(new Date(s.discount_ends_at).getTime())) {
+                        return res.status(400).json({ error: 'Date de fin de remise invalide.', field: 'service_discount', serviceId: s.id || null });
+                    }
+                    discountEndsAt = promoDateBound(s.discount_ends_at, true);
+                    if (new Date(discountEndsAt) <= new Date() && discountEndsAt !== prevSvc.discount_ends_at) {
+                        return res.status(400).json({ error: 'La date de fin de la remise de « ' + s.label.trim() + ' » est déjà passée.', field: 'service_discount', serviceId: s.id || null });
+                    }
+                }
+                discountPct = _dPct;
+                discountSince = (prevSvc.discount_pct === _dPct && prevSvc.discount_since) ? prevSvc.discount_since : new Date().toISOString();
+            }
             cleaned.push({
                 id: s.id || ('SVC-' + uuidv4().split('-')[0]),
                 category: serviceCategoryOf(s, req.partner),
@@ -15454,7 +15407,10 @@ app.put('/api/partner/services', authenticatePartner, async (req, res) => {
                 price: price,
                 pricing_type: isQuote ? 'quote' : 'fixed',
                 active: s.active !== false,
-                audience: SERVICE_AUDIENCES.indexOf(s.audience) !== -1 ? s.audience : 'particulier',
+                audience: _audIn,
+                discount_pct: discountPct,
+                discount_ends_at: discountEndsAt,
+                discount_since: discountSince,
                 image: typeof s.image === 'string' ? s.image : '',
                 features: Array.isArray(s.features)
                     ? s.features.filter(f => typeof f === 'string' && f.trim()).map(f => f.trim()).slice(0, 12)
@@ -15708,7 +15664,7 @@ function getPartnerFromPrice(partner) {
     // qu'il soit tagué 'fixed' ou 'quote' en base (données legacy). Les vrais "devis" ont price:0.
     const activePrices = (partner.services || [])
         .filter(s => s.active !== false)
-        .map(s => parseFloat(s.price))
+        .map(s => serviceCurrentPrice(s))
         .filter(p => !isNaN(p) && isFinite(p) && p > 0);
     return activePrices.length ? Math.min(...activePrices) : null;
 }
@@ -16936,8 +16892,17 @@ function buildJeremieSystemPrompt(person, personType, language) {
         'categories de clients : Etudiant (visible uniquement par les etudiants verifies), Particulier (tarif par defaut), ' +
         'Entreprise (clients professionnels), Promo (offre limitee mise en avant dans Offres Promo de l\'annuaire). Il doit ' +
         'toujours toucher "Enregistrer mes prestations" apres un ajout ou une modification, sinon rien n\'est sauvegarde. ' +
-        'Il peut recadrer lui-meme ses photos (profil, portfolio, prestations) au moment de l\'envoi. Explorer GENESIS ' +
-        '(Profil) lui permet de retrouver ses collegues prestataires et de s\'inscrire aux evenements.');
+        'Il peut recadrer lui-meme ses photos (profil, portfolio, prestations) au moment de l\'envoi. Sur une prestation ' +
+        'a prix fixe Etudiant, Particulier ou Entreprise, il peut aussi activer une remise (de 5 a 90 %, avec une date de ' +
+        'fin facultative) sans creer d\'offre Promo : le client voit le prix barre, paie le prix remise, et la prestation ' +
+        'apparait dans les Offres promotionnelles. C\'est le prestataire qui finance sa remise. Evenements GENESIS ' +
+        '(Profil) lui permet de s\'inscrire aux evenements. Il n\'a pas acces a la liste des autres prestataires.');
+    lines.push('DEMANDES DE DEVIS NON PRISES EN CHARGE : si le prestataire contacte refuse une demande de devis ou ne ' +
+        'repond pas a temps (son temps de reponse annonce, 24 h par defaut, jamais moins de 6 h ni plus de 48 h), ' +
+        'Jeremie la transmet automatiquement a ' + QUOTE_TRANSFER_MAX_CANDIDATES + ' prestataires au plus du meme secteur, choisis surtout pour ' +
+        'leur reactivite, et previent le client. Les prestataires contactes ont ' + QUOTE_TRANSFER_ROUND_HOURS + ' h pour accepter. Le client ' +
+        'choisit ensuite dans Mes reservations > Demandes en attente le prestataire avec qui travailler (ou refuse ' +
+        'celui propose) ; les autres acceptations sont alors annulees. Disponible pour tous les clients, quel que soit leur niveau.');
     lines.push('REGLE DE MESSAGERIE : avant la signature du contrat, il est interdit de partager des coordonnees ' +
         'personnelles (telephone, email, reseaux sociaux) dans la messagerie ; au 3e avertissement, la messagerie du ' +
         'prestataire est suspendue. Rappelle-le si on te demande comment contacter quelqu\'un hors de l\'application.');
@@ -17120,7 +17085,7 @@ function buildJeremieSystemPrompt(person, personType, language) {
                         'revenus percus au total : ' + _pRevenue.toFixed(2) + ' EUR' +
                         (missionsCompleted ? ', soit ' + (_pRevenue / missionsCompleted).toFixed(2) + ' EUR par mission realisee en moyenne' : '') + '. ' +
                         'Prestations en ligne : ' + (_pSvcs.length ? _pSvcs.map(function(s) {
-                            return s.label + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : s.price + ' EUR') + ', ' + (s.audience || 'particulier') + ')';
+                            return s.label + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : s.price + ' EUR' + (serviceDiscountPct(s) ? ', remise -' + serviceDiscountPct(s) + ' % en cours' : '')) + ', ' + (s.audience || 'particulier') + ')';
                         }).join(' ; ') : 'aucune') + '. Portfolio : ' + ((person.portfolio || []).length) + ' element(s).');
                     lines.push('Donne des strategies de developpement personnalisees a partir de ces chiffres : prix et categories ' +
                         'de clients (Etudiant/Particulier/Entreprise/Promo), offres a creer, portfolio, reactivite, et comment ' +
@@ -17305,7 +17270,8 @@ function buildPartnerContextForJeremie(message, audience) {
             if (resp !== null) parts.push('répond en ' + (resp >= 60 ? Math.round(resp / 60) + ' h' : resp + ' min') + ' environ');
             parts.push('portfolio : ' + (p.portfolio || []).filter(function(it) { return !isPortfolioExternalLink(it) && imageIsPublic(it.moderation); }).slice(0, PORTFOLIO_MAX_ITEMS).length + ' élément(s)');
             if (svcs.length) parts.push('prestations : ' + svcs.slice(0, 4).map(function(s) {
-                return (publicText(s.label) || 'Prestation') + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : s.price + ' €') + ')';
+                var _jd = serviceDiscountPct(s);
+                return (publicText(s.label) || 'Prestation') + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : (_jd ? serviceCurrentPrice(s) + ' € au lieu de ' + s.price + ' €, remise -' + _jd + ' %' : s.price + ' €')) + ')';
             }).join(', '));
             if (modes.length) parts.push('modes de paiement : ' + modes.join(', '));
             if (p.bio && publicText(p.bio)) parts.push('présentation : ' + publicText(String(p.bio)).replace(/\s+/g, ' ').substring(0, 160));
@@ -17884,7 +17850,9 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 var isValidPrice = !isNaN(sPrice) && isFinite(sPrice) && sPrice > 0;
                 // pricing_type 'quote' uniquement si explicitement défini ET pas de prix valide
                 var pricingType = (s.pricing_type === 'quote' && !isValidPrice) ? 'quote' : (isValidPrice ? 'fixed' : 'quote');
-                return { id: s.id, category: serviceCategoryOf(s, partner), label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: imageIsPublic(s.image_moderation) ? (s.image || '') : '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
+                // Remise en cours : price = prix remisé (celui facturé), prix d'origine à part.
+                var sDisc = isValidPrice ? serviceDiscountPct(s) : 0;
+                return { id: s.id, category: serviceCategoryOf(s, partner), label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? (sDisc ? serviceCurrentPrice(s) : sPrice) : null, price_before_discount: sDisc ? sPrice : null, discount_pct: sDisc || null, discount_ends_at: sDisc ? (s.discount_ends_at || null) : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: imageIsPublic(s.image_moderation) ? (s.image || '') : '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
             });
         // Liens externes et images non validées retirés D'ABORD, puis 5 médias max : un
         // prestataire dont les 5 premiers éléments sont d'anciens liens doit quand même voir ses
@@ -18129,34 +18097,54 @@ app.get('/api/partners/recommended', (req, res) => {
     }
 });
 
-// Offres promotionnelles publiques : toutes les prestations audience=promo des partenaires actifs
+// Offres promotionnelles publiques : prestations de la catégorie « Promo » ET prestations
+// remisées (voir serviceDiscountPct) des prestataires actifs. Un client connecté ne voit que les
+// remises de sa catégorie (étudiant, particulier, entreprise) ; les offres « Promo » restent
+// visibles de tous. BUG CORRIGÉ : le filtre portait sur p.published, champ qu'aucun prestataire
+// n'a — la liste « Offres promotionnelles » de l'Explorer était donc toujours vide.
 app.get('/api/partners/promo-services', (req, res) => {
     try {
         var results = [];
+        var aud = clientAudienceOf(req);
         loadPartners()
-            .filter(function(p){ return p.published && (p.services || []).some(function(s){ return s.audience === 'promo' && s.active !== false; }); })
+            .filter(function(p){ return p.accountStatus === 'active'; })
             .forEach(function(p){
                 var partnerName = ((p.prenom || '') + ' ' + (p.nom || '')).trim();
+                var rating = getPartnerRatingSummary(p.id);
                 (p.services || [])
-                    .filter(function(s){ return s.audience === 'promo' && s.active !== false; })
+                    .filter(function(s){
+                        if (!s || s.active === false) return false;
+                        if (s.audience === 'promo') return true;
+                        return serviceDiscountPct(s) > 0 && serviceVisibleFor(s, aud);
+                    })
                     .forEach(function(s){
+                        var dPct = serviceDiscountPct(s);
                         results.push({
                             partner_id: p.id,
                             partner_name: partnerName,
                             partner_photo: p.photo || null,
-                            partner_type: p.type || null,
-                            partner_rating: typeof p.rating === 'number' ? p.rating : null,
+                            partner_type: p.partner_type || null,
+                            partner_rating: rating.count ? rating.average : null,
                             service_id: s.id,
                             label: publicText(s.label) || 'Prestation',
                             description: publicText(s.description || ''),
-                            price: s.price,
+                            price: dPct ? serviceCurrentPrice(s) : s.price,
+                            price_before_discount: dPct ? s.price : null,
+                            discount_pct: dPct || null,
+                            discount_ends_at: dPct ? (s.discount_ends_at || null) : null,
                             pricing_type: s.pricing_type,
                             image: imageIsPublic(s.image_moderation) ? (s.image || null) : null,
                             features: (s.features || []).map(publicText).filter(Boolean)
                         });
                     });
             });
-        results.sort(function(a, b){ return (b.partner_rating || 0) - (a.partner_rating || 0); });
+        // Remise qui se termine bientôt d'abord, puis les mieux notés.
+        results.sort(function(a, b){
+            var ea = a.discount_ends_at ? new Date(a.discount_ends_at).getTime() : Infinity;
+            var eb = b.discount_ends_at ? new Date(b.discount_ends_at).getTime() : Infinity;
+            if (ea !== eb) return ea - eb;
+            return (b.partner_rating || 0) - (a.partner_rating || 0);
+        });
         res.json({ promo_services: results.slice(0, 24) });
     } catch (error) {
         console.error('[PROMO-SERVICES] Erreur:', error);
@@ -18966,7 +18954,7 @@ app.post('/api/partner-requests', function(req, res) {
         var requests = loadPartnerRequests();
         var alreadyActive = requests.some(function(r) {
             return r.client_email === user.email && r.partner_id === partnerId && r.service_id === serviceId
-                && r.status !== 'declined' && r.status !== 'completed' && r.status !== 'reviewed' && r.status !== 'cancelled_by_client';
+                && ['declined', 'completed', 'reviewed', 'cancelled_by_client', 'expired', 'transfer_closed', 'transfer_refused'].indexOf(r.status) === -1;
         });
         if (alreadyActive) {
             return res.status(409).json({ error: 'Vous avez déjà une demande ou commande active pour cette prestation auprès de ce partenaire.' });
@@ -18979,7 +18967,7 @@ app.post('/api/partner-requests', function(req, res) {
             partner_id: partnerId,
             service_id: serviceId,
             service_label: service.label,
-            price: service.price,
+            price: serviceCurrentPrice(service),
             budget_note: (req.body.budgetNote || '').toString().substring(0, 300),
             desired_date: req.body.desiredDate || null,
             location: (req.body.location || '').toString().substring(0, 200),
@@ -19011,12 +18999,17 @@ app.get('/api/my-requests', function(req, res) {
         var allOrdersForRequests = loadOrders();
         var allLivrablesForRequests = loadLivrables();
         var allReviewsForRequests = loadPartnerReviews();
-        var requests = loadPartnerRequests()
+        var allPartnerRequests = loadPartnerRequests();
+        var requests = allPartnerRequests
             .filter(function(r) { return r.client_email === user.email; })
+            // Demandes transmises par Jérémie : invisibles tant que le client n'a pas retenu ce
+            // prestataire (elles apparaissent dans la carte de la demande d'origine, voir transfer).
+            .filter(function(r) { return !r.transferred_from || ['accepted', 'proposed', 'signed', 'completed', 'reviewed', 'cancelled_by_client'].indexOf(r.status) !== -1; })
             .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })
             .map(function(r) {
                 var partner = getPartnerById(r.partner_id);
                 var out = JSON.parse(JSON.stringify(r));
+                if (r.transfer) out.transfer = quoteTransferClientView(allPartnerRequests, r);
                 out.partner_name = partner ? (partner.prenom ? (partner.prenom + ' ' + (partner.nom || '')) : partner.company || partner.email) : 'Partenaire';
                 out.partner_email = partner ? (partner.email || partner.contact_email || null) : null;
                 var dispatchForReq = null;
@@ -19164,9 +19157,11 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
                 // pas à masquer l'historique des missions déjà réalisées.
                 // hidden_by_partner : masquage volontaire par le prestataire lui-même (bouton
                 // "Supprimer" sur une mission terminée) — ne touche à aucune donnée réelle.
+                // 'transfer_accepted' : demande transmise par Jérémie, acceptée, en attente du
+                // choix du client.
                 return r.partner_id === req.partner.id
                     && r.hidden_by_partner !== true
-                    && ['pending', 'accepted', 'proposed', 'signed', 'completed'].indexOf(r.status) !== -1;
+                    && ['pending', 'transfer_accepted', 'accepted', 'proposed', 'signed', 'completed'].indexOf(r.status) !== -1;
             })
             .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); })
             .map(function(r) {
@@ -19249,7 +19244,27 @@ app.post('/api/partner/requests/:id/accept', authenticatePartner, function(req, 
             return res.status(403).json({ error: 'Cette demande ne vous concerne pas.' });
         }
         if (requests[idx].status !== 'pending') {
-            return res.status(409).json({ error: 'Cette demande n\'est plus en attente (statut: ' + requests[idx].status + ').' });
+            return res.status(409).json({ error: _requestNotPendingMessage(requests[idx]) });
+        }
+
+        // Demande transmise par Jérémie : l'acceptation attend le choix du client (voir
+        // DEVIS NON PRIS EN CHARGE plus bas) — rien à proposer tant qu'il ne l'a pas retenu.
+        if (requests[idx].transferred_from) {
+            requests[idx].status = 'transfer_accepted';
+            requests[idx].responded_at = new Date().toISOString();
+            var _taOrigIdx = requests.findIndex(function(r) { return r.id === requests[idx].transferred_from; });
+            var _taClosed = null, _taFirst = false;
+            if (_taOrigIdx !== -1) {
+                var _taOrig = requests[_taOrigIdx];
+                if (_quoteTransferAllResponded(requests, _taOrig)) _taClosed = closeQuoteTransferRound(requests, _taOrigIdx);
+                else if (_taOrig.transfer && !_taOrig.transfer.accepted_notified) { _taOrig.transfer.accepted_notified = 1; _taFirst = true; }
+            }
+            savePartnerRequests(requests);
+            if (_taOrigIdx !== -1) {
+                if (_taClosed) notifyQuoteTransferRoundClosed(_taClosed);
+                else notifyQuoteTransferAccepted(requests, requests[_taOrigIdx], _taFirst);
+            }
+            return res.json({ success: true, transfer: true, message: 'Acceptation envoyée. Le client choisit parmi les prestataires qui ont accepté : vous serez notifié s\'il vous retient.' });
         }
 
         requests[idx].status = 'accepted';
@@ -19278,18 +19293,450 @@ app.post('/api/partner/requests/:id/decline', authenticatePartner, function(req,
             return res.status(403).json({ error: 'Cette demande ne vous concerne pas.' });
         }
         if (requests[idx].status !== 'pending') {
-            return res.status(409).json({ error: 'Cette demande n\'est plus en attente (statut: ' + requests[idx].status + ').' });
+            return res.status(409).json({ error: _requestNotPendingMessage(requests[idx]) });
         }
 
         requests[idx].status = 'declined';
         requests[idx].responded_at = new Date().toISOString();
+
+        // Demande transmise par Jérémie : un refus parmi d'autres, le client est prévenu à la
+        // fin du tour (closeQuoteTransferRound), pas à chaque refus.
+        if (requests[idx].transferred_from) {
+            var _tdOrigIdx = requests.findIndex(function(r) { return r.id === requests[idx].transferred_from; });
+            var _tdClosed = (_tdOrigIdx !== -1 && _quoteTransferAllResponded(requests, requests[_tdOrigIdx])) ? closeQuoteTransferRound(requests, _tdOrigIdx) : null;
+            savePartnerRequests(requests);
+            if (_tdClosed) notifyQuoteTransferRoundClosed(_tdClosed);
+            return res.json({ success: true, message: 'Demande refusée.' });
+        }
+
+        // Demande refusée : Jérémie la transmet à d'autres prestataires du même secteur.
+        var _tStart = _quoteTransferEligible(requests[idx]) ? startQuoteTransfer(requests, idx, 'declined') : null;
         savePartnerRequests(requests);
 
-        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande refusée', 'Le prestataire n\'est pas disponible pour : ' + requests[idx].service_label + '. Vous pouvez en choisir un autre dans l\'annuaire.', '/app.html#open-prestataires');
+        if (_tStart) notifyQuoteTransferStarted(_tStart);
+        else notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande refusée', 'Le prestataire n\'est pas disponible pour : ' + requests[idx].service_label + '. Vous pouvez en choisir un autre dans l\'annuaire.', '/app.html#open-prestataires');
 
         res.json({ success: true, message: 'Demande refusée.' });
     } catch(e) {
         console.error('[PARTNER-REQUEST] Erreur decline:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+//  DEVIS NON PRIS EN CHARGE — transfert automatique par Jérémie IA
+// ============================================================
+// Quand le prestataire sollicité refuse une demande ou ne répond pas à temps, Jérémie la
+// transmet à quelques prestataires du même secteur, choisis surtout pour leur réactivité, et
+// prévient le client. Ceux qui acceptent attendent le choix du client ('transfer_accepted') ; dès
+// qu'il en retient un, sa demande repasse dans le flux normal ('accepted' → proposition → contrat
+// → paiement) et les autres sont annulées ('transfer_closed'). Disponible pour tous les clients,
+// quel que soit leur niveau. Tout reste dans partner_requests (aucune nouvelle collection) :
+//   demande d'origine : transfer = { status, reason, category, started_at, deadline_at,
+//                       candidates: [{ partner_id, request_id }], chosen_request_id, ... }
+//     status : open (prestataires en train de répondre) → awaiting_choice (au moins une
+//     acceptation, au client de choisir) / none_accepted / no_candidates → chosen, none_selected
+//     ou cancelled.
+//   demandes transmises : transferred_from (id d'origine) + jeremie_brief (analyse de la demande).
+// Règles déterministes, comme les rappels de délai de Jérémie (checkDelayedMissions) : instantané,
+// gratuit et prévisible, sans appel au modèle de langage.
+var QUOTE_TRANSFER_START = '2026-11-06T00:00:00.000Z'; // demandes plus anciennes : jamais transmises
+var QUOTE_TRANSFER_MAX_CANDIDATES = 3;
+var QUOTE_TRANSFER_ROUND_HOURS = 24;
+// Délai de réponse du prestataire sollicité : son temps de réponse annoncé, 24 h sans engagement,
+// jamais moins de 6 h (un engagement « 30 min » ne doit pas lui retirer la demande la nuit) ni
+// plus de 48 h.
+var QUOTE_RESPONSE_DEFAULT_MIN = 1440, QUOTE_RESPONSE_FLOOR_MIN = 360, QUOTE_RESPONSE_CEIL_MIN = 2880;
+var QUOTE_TRANSFER_ACTIVE_STATUSES = ['pending', 'transfer_accepted', 'accepted', 'proposed', 'signed'];
+
+function quoteResponseDeadlineMinutes(partner) {
+    var c = (partner && typeof partner.responseTimeCommitmentMinutes === 'number') ? partner.responseTimeCommitmentMinutes : QUOTE_RESPONSE_DEFAULT_MIN;
+    return Math.max(QUOTE_RESPONSE_FLOOR_MIN, Math.min(QUOTE_RESPONSE_CEIL_MIN, c));
+}
+function _quoteTransferEligible(r) {
+    return !!r && !r.transferred_from && !r.transfer && !!r.created_at && new Date(r.created_at) >= new Date(QUOTE_TRANSFER_START);
+}
+function _requestNotPendingMessage(r) {
+    if (r.status === 'transfer_closed') return 'Le client a choisi un autre prestataire pour cette demande.';
+    if (r.status === 'expired') return 'Cette demande a expiré : le délai de réponse est dépassé.';
+    if (r.status === 'transfer_accepted') return 'Vous avez déjà accepté cette demande : le client fait son choix.';
+    if (r.status === 'cancelled_by_client') return 'Le client a annulé cette demande.';
+    return 'Cette demande n\'est plus en attente (statut: ' + r.status + ').';
+}
+function _partnerDisplayName(p) {
+    return p ? ((((p.prenom || '') + ' ' + (p.nom || '')).trim()) || p.company || 'Prestataire') : 'Prestataire';
+}
+// Réactivité historique d'un prestataire sur les demandes : délai moyen entre la réception et sa
+// réponse (acceptation ou refus) et nombre de demandes laissées sans réponse.
+function partnerQuoteReactivity(partnerId, requests) {
+    var times = [], expired = 0;
+    (requests || []).forEach(function(r) {
+        if (!r || r.partner_id !== partnerId) return;
+        if (r.responded_at && r.created_at) {
+            var m = (new Date(r.responded_at) - new Date(r.created_at)) / 60000;
+            if (m >= 0) times.push(m);
+        } else if (r.status === 'expired') {
+            expired++;
+        }
+    });
+    return {
+        avgMinutes: times.length ? times.reduce(function(a, b) { return a + b; }, 0) / times.length : null,
+        samples: times.length,
+        expired: expired
+    };
+}
+// Prestataires adéquats : actifs, du même secteur, avec au moins une prestation pour la catégorie
+// du client (étudiant, particulier, entreprise), sans demande déjà en cours avec ce client. Classés
+// d'abord par réactivité (réponses aux demandes, sinon réponses dans la messagerie, sinon temps de
+// réponse annoncé), pénalisés pour les demandes laissées sans réponse, puis par note et par
+// compatibilité de lieu.
+function findQuoteTransferCandidates(request, origin, clientUser, category, requests) {
+    var aud = clientAudienceOfUser(clientUser);
+    var clientEmail = String(request.client_email || '').toLowerCase();
+    var busy = {};
+    (requests || []).forEach(function(r) {
+        if (r && String(r.client_email || '').toLowerCase() === clientEmail && QUOTE_TRANSFER_ACTIVE_STATUSES.indexOf(r.status) !== -1) busy[r.partner_id] = true;
+    });
+    var loc = String(request.location || '').toLowerCase();
+    return loadPartners().filter(function(p) {
+        return p && p.id !== (origin && origin.id) && p.accountStatus === 'active' && !p.messagingBlocked && !busy[p.id]
+            && partnerListedInType(p, category)
+            && (p.services || []).some(function(s) { return s && s.active !== false && serviceVisibleFor(s, aud); });
+    }).map(function(p) {
+        var st = partnerQuoteReactivity(p.id, requests);
+        var minutes = st.samples ? st.avgMinutes
+            : (typeof p.avgResponseMinutes === 'number' ? p.avgResponseMinutes
+            : (typeof p.responseTimeCommitmentMinutes === 'number' ? p.responseTimeCommitmentMinutes : null));
+        var reactivity = minutes === null ? 15 : 50 / (1 + Math.max(0, minutes) / 180);
+        var rating = getPartnerRatingSummary(p.id);
+        var place = (p.serviceMode === 'remote' || p.serviceMode === 'both' || (p.city && loc && loc.indexOf(String(p.city).toLowerCase()) !== -1)) ? 10 : 0;
+        return {
+            partner: p,
+            minutes: minutes,
+            score: reactivity - Math.min(30, st.expired * 8) + (rating.count ? rating.average * 4 : 8) + place
+        };
+    }).sort(function(a, b) { return b.score - a.score; }).slice(0, QUOTE_TRANSFER_MAX_CANDIDATES);
+}
+// Analyse de la demande pour les prestataires qui la reçoivent : secteur, raison du transfert,
+// informations à préciser avec le client.
+function buildJeremieQuoteBrief(request, origin, category, reason) {
+    var missing = [];
+    if (!String(request.description || '').trim()) missing.push('le besoin détaillé');
+    if (!String(request.budget_note || '').trim()) missing.push('le budget');
+    if (!request.desired_date) missing.push('la date souhaitée');
+    return {
+        category: category,
+        category_label: partnerTypeLabelFor(origin, category),
+        reason: reason,
+        to_clarify: missing,
+        created_at: new Date().toISOString()
+    };
+}
+function _quoteTransferChildren(requests, origin) {
+    var ids = ((origin && origin.transfer && origin.transfer.candidates) || []).map(function(c) { return c.request_id; });
+    return (requests || []).filter(function(r) { return r && ids.indexOf(r.id) !== -1; });
+}
+function _quoteTransferAllResponded(requests, origin) {
+    if (!origin || !origin.transfer || origin.transfer.status !== 'open') return false;
+    return _quoteTransferChildren(requests, origin).every(function(c) { return c.status !== 'pending'; });
+}
+// Lance le transfert (modifie requests ; l'appelant sauvegarde puis appelle
+// notifyQuoteTransferStarted). Renvoie null si aucun secteur n'est connu.
+function startQuoteTransfer(requests, idx, reason) {
+    var r = requests[idx];
+    var origin = getPartnerById(r.partner_id) || {};
+    var clientEmail = String(r.client_email || '').toLowerCase();
+    var clientUser = loadUsers().find(function(u) { return (u.email || '').toLowerCase() === clientEmail; }) || null;
+    var service = (origin.services || []).find(function(s) { return s && s.id === r.service_id; });
+    var category = service ? serviceCategoryOf(service, origin) : (origin.partner_type || '');
+    if (!category) return null;
+    var picks = findQuoteTransferCandidates(r, origin, clientUser, category, requests);
+    var brief = buildJeremieQuoteBrief(r, origin, category, reason);
+    var nowIso = new Date().toISOString();
+    r.transfer = {
+        status: picks.length ? 'open' : 'no_candidates',
+        reason: reason,
+        category: category,
+        category_label: brief.category_label,
+        started_at: nowIso,
+        deadline_at: picks.length ? new Date(Date.now() + QUOTE_TRANSFER_ROUND_HOURS * 3600000).toISOString() : null,
+        candidates: [],
+        chosen_request_id: null,
+        accepted_notified: 0
+    };
+    picks.forEach(function(pick) {
+        var child = {
+            id: 'PREQ-' + uuidv4().split('-')[0].toUpperCase(),
+            client_email: r.client_email,
+            client_name: r.client_name,
+            partner_id: pick.partner.id,
+            service_id: null,
+            service_label: r.service_label,
+            price: null,
+            budget_note: r.budget_note || '',
+            desired_date: r.desired_date || null,
+            location: r.location || '',
+            description: r.description || '',
+            files: Array.isArray(r.files) ? r.files.slice(0, 5) : [],
+            status: 'pending',
+            created_at: nowIso,
+            responded_at: null,
+            transferred_from: r.id,
+            jeremie_brief: brief
+        };
+        requests.push(child);
+        r.transfer.candidates.push({ partner_id: pick.partner.id, request_id: child.id });
+    });
+    console.log('[JEREMIE-DEVIS] Demande ' + r.id + ' (' + reason + ') transmise à ' + picks.length + ' prestataire(s) du secteur ' + category);
+    return { request: r, picks: picks };
+}
+function notifyQuoteTransferStarted(info) {
+    var r = info.request, picks = info.picks;
+    var label = '« ' + (r.service_label || 'votre demande') + ' »';
+    var why = r.transfer.reason === 'no_response'
+        ? 'Le prestataire que vous avez contacté n\'a pas répondu à temps pour ' + label + '.'
+        : 'Le prestataire que vous avez contacté n\'est pas disponible pour ' + label + '.';
+    if (!picks.length) {
+        notifyUser(r.client_email, 'client', 'jeremie_devis', 'Jérémie IA',
+            why + ' Je n\'ai pas trouvé d\'autre prestataire disponible dans ce secteur pour le moment. Vous pouvez en choisir un dans l\'annuaire.',
+            '/app.html#open-prestataires');
+        return;
+    }
+    notifyUser(r.client_email, 'client', 'jeremie_devis', 'Jérémie IA',
+        why + ' Votre demande ne reste pas sans réponse : je l\'ai transmise à ' + picks.length
+        + (picks.length > 1 ? ' prestataires du même secteur. Je vous préviens dès qu\'ils répondent.' : ' prestataire du même secteur. Je vous préviens dès qu\'il répond.'),
+        '/app.html#client:proposal:' + r.id);
+    picks.forEach(function(pick, i) {
+        notifyUser(pick.partner.email, 'partner', 'partner-request', 'Nouvelle demande de devis',
+            'Jérémie IA vous transmet la demande de ' + (r.client_name || 'un client') + ' : ' + r.service_label + '. Le client choisira parmi les prestataires qui acceptent.',
+            '#partner:mission:' + r.transfer.candidates[i].request_id);
+    });
+}
+// Un prestataire contacté accepte : le client peut déjà le retenir. Une seule notification
+// poussée (la première) ; les acceptations suivantes mettent à jour la même notification.
+// firstPush : décidé par l'appelant AVANT la sauvegarde (transfer.accepted_notified passé à 1).
+function notifyQuoteTransferAccepted(requests, origin, firstPush) {
+    var acc = _quoteTransferChildren(requests, origin).filter(function(c) { return c.status === 'transfer_accepted'; });
+    if (!acc.length) return;
+    var label = '« ' + (origin.service_label || 'votre demande') + ' »';
+    var link = '/app.html#client:proposal:' + origin.id;
+    if (firstPush) {
+        notifyUser(origin.client_email, 'client', 'jeremie_devis', 'Jérémie IA',
+            'Un prestataire a accepté votre demande ' + label + '. Vous pouvez le retenir dès maintenant ou attendre les autres réponses.', link);
+        return;
+    }
+    _mergeIntoRecentNotif(origin.client_email, ['jeremie_devis'], link, QUOTE_TRANSFER_ROUND_HOURS * 3600000, function(n) {
+        n.body = acc.length + ' prestataires ont accepté votre demande ' + label + '. Choisissez celui avec qui vous souhaitez travailler.';
+        n.created_at = new Date().toISOString();
+    });
+}
+// Fin du tour : les demandes sans réponse expirent, puis Jérémie informe le client du résultat.
+// Modifie requests (l'appelant sauvegarde puis appelle notifyQuoteTransferRoundClosed).
+function closeQuoteTransferRound(requests, origIdx) {
+    var origin = requests[origIdx];
+    if (!origin || !origin.transfer || origin.transfer.status !== 'open') return null;
+    var nowIso = new Date().toISOString();
+    var children = _quoteTransferChildren(requests, origin);
+    children.forEach(function(c) {
+        if (c.status === 'pending') { c.status = 'expired'; c.expired_at = nowIso; }
+    });
+    var acc = children.filter(function(c) { return c.status === 'transfer_accepted'; });
+    origin.transfer.status = acc.length ? 'awaiting_choice' : 'none_accepted';
+    origin.transfer.closed_at = nowIso;
+    return { origin: origin, accepted: acc };
+}
+function notifyQuoteTransferRoundClosed(info) {
+    if (!info) return;
+    var origin = info.origin, acc = info.accepted;
+    var label = '« ' + (origin.service_label || 'votre demande') + ' »';
+    var link = '/app.html#client:proposal:' + origin.id;
+    if (!acc.length) {
+        notifyUser(origin.client_email, 'client', 'jeremie_devis', 'Jérémie IA',
+            'Aucun des prestataires contactés n\'a accepté votre demande ' + label + '. Vous pouvez en choisir un autre dans l\'annuaire.',
+            '/app.html#open-prestataires');
+        return;
+    }
+    var body = acc.length === 1
+        ? 'Un seul prestataire a accepté votre demande ' + label + ' : ' + _partnerDisplayName(getPartnerById(acc[0].partner_id)) + '. À vous de l\'accepter ou de le refuser.'
+        : acc.length + ' prestataires ont accepté votre demande ' + label + '. Choisissez celui avec qui vous souhaitez travailler : les autres acceptations seront annulées.';
+    // Le client a déjà été prévenu de cette unique acceptation : on met la notification à jour
+    // (texte final) sans pousser une seconde fois la même nouvelle.
+    if (acc.length === 1 && origin.transfer.accepted_notified
+        && _mergeIntoRecentNotif(origin.client_email, ['jeremie_devis'], link, 7 * 24 * 3600000, function(n) { n.body = body; })) return;
+    notifyUser(origin.client_email, 'client', 'jeremie_devis', 'Jérémie IA', body, link);
+}
+
+// Délais : demande sans réponse du prestataire sollicité → transfert ; tour de transfert arrivé
+// à échéance → résultat communiqué au client.
+function processQuoteRequestDeadlines() {
+    try {
+        var requests = loadPartnerRequests();
+        var now = Date.now(), nowIso = new Date(now).toISOString();
+        var started = [], keptOpen = [], expiredOrigins = [], closed = [], changed = false;
+        var n = requests.length;
+        for (var i = 0; i < n; i++) {
+            var r = requests[i];
+            if (!r || r.status !== 'pending' || r.no_transfer_candidates_at || !_quoteTransferEligible(r)) continue;
+            var partner = getPartnerById(r.partner_id);
+            if (now < new Date(r.created_at).getTime() + quoteResponseDeadlineMinutes(partner) * 60000) continue;
+            var st = startQuoteTransfer(requests, i, 'no_response');
+            changed = true;
+            if (st && st.picks.length) {
+                r.status = 'expired';
+                r.expired_at = nowIso;
+                started.push(st);
+                expiredOrigins.push({ request: r, partner: partner });
+            } else {
+                // Personne d'autre dans ce secteur : la demande reste ouverte chez le prestataire.
+                delete r.transfer;
+                r.no_transfer_candidates_at = nowIso;
+                keptOpen.push(r);
+            }
+        }
+        requests.forEach(function(r, idx) {
+            if (r && r.transfer && r.transfer.status === 'open' && r.transfer.deadline_at && new Date(r.transfer.deadline_at).getTime() <= now) {
+                closed.push(closeQuoteTransferRound(requests, idx));
+                changed = true;
+            }
+        });
+        if (!changed) return;
+        savePartnerRequests(requests);
+        started.forEach(notifyQuoteTransferStarted);
+        expiredOrigins.forEach(function(x) {
+            if (x.partner) notifyUser(x.partner.email, 'partner', 'partner-request', 'Demande expirée',
+                'Vous n\'avez pas répondu à temps à la demande de ' + (x.request.client_name || 'un client') + ' pour : ' + x.request.service_label + '. Elle a été proposée à d\'autres prestataires.',
+                '#partner:missions', { push: false });
+        });
+        keptOpen.forEach(function(r) {
+            notifyUser(r.client_email, 'client', 'jeremie_devis', 'Jérémie IA',
+                'Le prestataire n\'a pas encore répondu à votre demande « ' + r.service_label + ' ». Je n\'ai pas trouvé d\'autre prestataire disponible dans ce secteur : votre demande reste ouverte auprès de lui.',
+                '/app.html#open-prestataires');
+        });
+        closed.forEach(notifyQuoteTransferRoundClosed);
+    } catch (e) {
+        console.error('[JEREMIE-DEVIS] Erreur processQuoteRequestDeadlines:', e);
+    }
+}
+setInterval(processQuoteRequestDeadlines, 10 * 60 * 1000);
+setTimeout(processQuoteRequestDeadlines, 60 * 1000);
+
+// Vue client d'un transfert (carte « Jérémie IA » de Mes réservations).
+function quoteTransferClientView(requests, origin) {
+    var t = origin.transfer;
+    var children = _quoteTransferChildren(requests, origin);
+    var count = function(st) { return children.filter(function(c) { return st.indexOf(c.status) !== -1; }).length; };
+    return {
+        status: t.status,
+        reason: t.reason,
+        category_label: t.category_label || '',
+        started_at: t.started_at,
+        deadline_at: t.deadline_at,
+        closed_at: t.closed_at || null,
+        contacted: children.length,
+        waiting: count(['pending']),
+        declined: count(['declined', 'expired']),
+        chosen_request_id: t.chosen_request_id || null,
+        accepted: children.filter(function(c) { return c.status === 'transfer_accepted'; }).map(function(c) {
+            var p = getPartnerById(c.partner_id);
+            return {
+                request_id: c.id,
+                partner_id: c.partner_id,
+                partner_name: _partnerDisplayName(p),
+                partner_photo: p ? (p.photo || null) : null,
+                partner_city: p ? (p.city || '') : '',
+                partner_types: p ? partnerTypesOf(p) : [],
+                partner_type: p ? (p.partner_type || null) : null,
+                partner_type_other: p ? (p.partner_type_other || '') : '',
+                rating: p ? getPartnerRatingSummary(p.id) : null,
+                badge: p ? getPartnerBadge(p) : null,
+                accepted_at: c.responded_at || null
+            };
+        })
+    };
+}
+function _loadClientTransfer(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return null;
+    var requests = loadPartnerRequests();
+    var oi = requests.findIndex(function(r) { return r.id === req.params.id; });
+    if (oi === -1) { res.status(404).json({ error: 'Demande introuvable' }); return null; }
+    var origin = requests[oi];
+    if (String(origin.client_email || '').toLowerCase() !== String(user.email || '').toLowerCase()) { res.status(403).json({ error: 'Accès non autorisé' }); return null; }
+    if (!origin.transfer) { res.status(409).json({ error: 'Cette demande n\'a pas été transmise à d\'autres prestataires.' }); return null; }
+    return { user: user, requests: requests, origin: origin };
+}
+function _closeOtherTransferCandidates(requests, origin, keepId) {
+    var nowIso = new Date().toISOString(), informed = [];
+    _quoteTransferChildren(requests, origin).forEach(function(c) {
+        if (c.id === keepId) return;
+        if (c.status === 'transfer_accepted') informed.push(c);
+        if (c.status === 'pending' || c.status === 'transfer_accepted') { c.status = 'transfer_closed'; c.closed_at = nowIso; }
+    });
+    return informed;
+}
+
+// POST /api/my-requests/:id/transfer/choose { request_id } — le client retient un prestataire
+// qui a accepté. Sa demande passe en 'accepted' (il prépare sa proposition), les autres
+// acceptations sont annulées.
+app.post('/api/my-requests/:id/transfer/choose', function(req, res) {
+    try {
+        var ctx = _loadClientTransfer(req, res);
+        if (!ctx) return;
+        var t = ctx.origin.transfer;
+        if (['open', 'awaiting_choice'].indexOf(t.status) === -1) {
+            return res.status(409).json({ error: t.status === 'chosen' ? 'Vous avez déjà choisi un prestataire pour cette demande.' : 'Cette demande n\'attend plus de choix.' });
+        }
+        var childId = String((req.body && req.body.request_id) || '');
+        var child = _quoteTransferChildren(ctx.requests, ctx.origin).find(function(c) { return c.id === childId; });
+        if (!child || child.status !== 'transfer_accepted') return res.status(409).json({ error: 'Ce prestataire n\'est plus disponible pour cette demande.' });
+        var nowIso = new Date().toISOString();
+        child.status = 'accepted';
+        child.chosen_by_client_at = nowIso;
+        var informed = _closeOtherTransferCandidates(ctx.requests, ctx.origin, child.id);
+        t.status = 'chosen';
+        t.chosen_request_id = child.id;
+        t.chosen_at = nowIso;
+        savePartnerRequests(ctx.requests);
+        var chosenPartner = getPartnerById(child.partner_id);
+        if (chosenPartner) {
+            notifyUser(chosenPartner.email, 'partner', 'partner-request', 'Le client vous a choisi ✅',
+                (child.client_name || 'Le client') + ' vous a retenu pour : ' + child.service_label + '. Envoyez-lui votre proposition (prix, délai, modalités).',
+                '#partner:mission:' + child.id);
+        }
+        informed.forEach(function(c) {
+            var p = getPartnerById(c.partner_id);
+            if (p) notifyUser(p.email, 'partner', 'partner-request', 'Demande attribuée à un autre prestataire',
+                'Le client a choisi un autre prestataire pour : ' + c.service_label + '.', '#partner:missions', { push: false });
+        });
+        res.json({ success: true, request_id: child.id, partner_name: _partnerDisplayName(chosenPartner) });
+    } catch (e) {
+        console.error('[JEREMIE-DEVIS] Erreur choix client:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/my-requests/:id/transfer/refuse { request_id } — le client refuse un prestataire
+// proposé par Jérémie.
+app.post('/api/my-requests/:id/transfer/refuse', function(req, res) {
+    try {
+        var ctx = _loadClientTransfer(req, res);
+        if (!ctx) return;
+        var t = ctx.origin.transfer;
+        if (['open', 'awaiting_choice'].indexOf(t.status) === -1) return res.status(409).json({ error: 'Cette demande n\'attend plus de choix.' });
+        var childId = String((req.body && req.body.request_id) || '');
+        var child = _quoteTransferChildren(ctx.requests, ctx.origin).find(function(c) { return c.id === childId; });
+        if (!child || child.status !== 'transfer_accepted') return res.status(409).json({ error: 'Ce prestataire n\'est plus disponible pour cette demande.' });
+        child.status = 'transfer_refused';
+        child.closed_at = new Date().toISOString();
+        var stillAccepted = _quoteTransferChildren(ctx.requests, ctx.origin).some(function(c) { return c.status === 'transfer_accepted'; });
+        if (t.status === 'awaiting_choice' && !stillAccepted) t.status = 'none_selected';
+        savePartnerRequests(ctx.requests);
+        var p = getPartnerById(child.partner_id);
+        if (p) notifyUser(p.email, 'partner', 'partner-request', 'Demande non retenue',
+            'Le client n\'a pas retenu votre acceptation pour : ' + child.service_label + '.', '#partner:missions', { push: false });
+        res.json({ success: true, transfer: quoteTransferClientView(ctx.requests, ctx.origin) });
+    } catch (e) {
+        console.error('[JEREMIE-DEVIS] Erreur refus client:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -19519,6 +19966,21 @@ app.post('/api/my-requests/:id/cancel', function(req, res) {
         if (idx === -1) return res.status(404).json({ error: 'Demande introuvable' });
         var r = requests[idx];
         if (r.client_email !== user.email) return res.status(403).json({ error: 'Accès non autorisé' });
+        // Demande transmise par Jérémie, pas encore attribuée : annule toutes les demandes
+        // transmises (les prestataires qui avaient accepté sont informés).
+        if (r.transfer && ['open', 'awaiting_choice'].indexOf(r.transfer.status) !== -1) {
+            var _tcInformed = _closeOtherTransferCandidates(requests, r, null);
+            r.transfer.status = 'cancelled';
+            r.transfer.cancelled_at = new Date().toISOString();
+            r.cancel_reason = (req.body && req.body.reason ? String(req.body.reason) : '').trim().substring(0, 500);
+            savePartnerRequests(requests);
+            _tcInformed.forEach(function(c) {
+                var _tcP = getPartnerById(c.partner_id);
+                if (_tcP) notifyUser(_tcP.email, 'partner', 'partner-request', 'Demande annulée',
+                    (c.client_name || 'Le client') + ' a annulé sa demande pour : ' + c.service_label + '.', '#partner:missions', { push: false });
+            });
+            return res.json({ success: true, request: r });
+        }
         if (['pending', 'accepted', 'proposed', 'signed'].indexOf(r.status) === -1) {
             return res.status(409).json({ error: 'Cette demande ne peut plus être annulée ici (statut : ' + r.status + ').' });
         }

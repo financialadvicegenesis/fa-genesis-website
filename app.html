@@ -1618,6 +1618,9 @@ a{text-decoration:none;color:inherit}
 .ptnr-aud-promo{color:#FFD700 !important;border-color:#FFD700 !important}
 .ptnr-aud-promo.on{background:#FFD700 !important;color:#000 !important}
 
+/* Remise sur une prestation (prix barré + étiquette -X %) */
+.svc-old-price{text-decoration:line-through;color:#777;font-weight:600;font-size:.8em;margin-right:5px;}
+.svc-disc-tag{display:inline-flex;align-items:center;gap:4px;margin-top:5px;background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.35);color:#FFD700;font-size:10px;font-weight:800;border-radius:6px;padding:2px 7px;}
 /* Offres Promo (Explorer) */
 .p-dir-promo-row{display:flex;flex-wrap:wrap;gap:10px;padding:0 16px 16px}
 .p-promo-card{display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid #FFD700;
@@ -2546,15 +2549,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261105c"></script>
-<script src="app-i18n-es.js?v=20261105c"></script>
-<script src="app-i18n-hi.js?v=20261105c"></script>
-<script src="app-i18n-pt.js?v=20261105c"></script>
-<script src="app-i18n-ja.js?v=20261105c"></script>
-<script src="app-i18n-zh.js?v=20261105c"></script>
-<script src="app-i18n-ar.js?v=20261105c"></script>
-<script src="app-i18n-it.js?v=20261105c"></script>
-<script src="app-i18n-de.js?v=20261105c"></script>
+<script src="app-i18n-en.js?v=20261106a"></script>
+<script src="app-i18n-es.js?v=20261106a"></script>
+<script src="app-i18n-hi.js?v=20261106a"></script>
+<script src="app-i18n-pt.js?v=20261106a"></script>
+<script src="app-i18n-ja.js?v=20261106a"></script>
+<script src="app-i18n-zh.js?v=20261106a"></script>
+<script src="app-i18n-ar.js?v=20261106a"></script>
+<script src="app-i18n-it.js?v=20261106a"></script>
+<script src="app-i18n-de.js?v=20261106a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3600,9 +3603,9 @@ function _genesisVersionFooter(){
           <div id="ptnr-livrables-content" style="padding:0 0 80px;"></div>
         </div>
 
-        <!-- Sub-screen: Collègues (messagerie P2P même catégorie) -->
-        <div class="ptnr-screen" id="ptnr-screen-collegues">
-          <div id="ptnr-collegues-content" style="padding-bottom:80px;"></div>
+        <!-- Sub-screen: Événements GENESIS (remplace Explorer GENESIS / Collègues, retiré) -->
+        <div class="ptnr-screen" id="ptnr-screen-evenements">
+          <div id="ptnr-evenements-content" style="padding-bottom:80px;"></div>
         </div>
       </div>
     </div>
@@ -3977,7 +3980,7 @@ function _clientAudience(){
   if(!window.fetch || window.__faAudienceFetch) return;
   window.__faAudienceFetch = true;
   var _origFetch = window.fetch;
-  var _partnerListRe = /\/api\/partners\/(directory|top|featured|new|recommended|[^\/?]+\/reviews)(\?|$)/;
+  var _partnerListRe = /\/api\/partners\/(directory|top|featured|new|recommended|promo-services|[^\/?]+\/reviews)(\?|$)/;
   window.fetch = function(input, init){
     try{
       var url = typeof input === 'string' ? input : (input && input.url) || '';
@@ -6775,11 +6778,15 @@ function loadPromoServices(){
         : (s.partner_photo ? '<img src="'+s.partner_photo+'" alt="" loading="lazy">' : '<div class="p-promo-card-img-ph"><i class="fa-solid fa-tag"></i></div>');
       var priceHtml = s.pricing_type === 'quote'
         ? '<div class="p-promo-card-price">Sur devis</div>'
-        : '<div class="p-promo-card-price">'+Number(s.price).toFixed(2)+' <span style="font-size:10px;font-weight:500">€</span></div>';
+        : '<div class="p-promo-card-price">'+_svcOldPriceHtml(s)+Number(s.price).toFixed(2)+' <span style="font-size:10px;font-weight:500">€</span></div>';
+      // Prestation remisée (étudiant/particulier/entreprise) : « -X % » à la place de PROMO.
+      var badgeHtml = (s.discount_pct && s.price_before_discount)
+        ? '<div class="p-promo-badge"><i class="fa-solid fa-tag"></i> <span data-i18n-skip>-'+s.discount_pct+' %</span></div>'
+        : '<div class="p-promo-badge"><i class="fa-solid fa-tag"></i> PROMO</div>';
       html += '<div class="p-promo-card" onclick="openPartnerDetail(\''+s.partner_id+'\')">'
         +'<div class="p-promo-card-photo">'+imgHtml+'</div>'
         +'<div class="p-promo-card-body">'
-        +'<div class="p-promo-badge"><i class="fa-solid fa-tag"></i> PROMO</div>'
+        +badgeHtml
         +'<div class="p-promo-card-label">'+s.label+'</div>'
         +'<div class="p-promo-card-partner">'+s.partner_name+'</div>'
         +priceHtml
@@ -6902,6 +6909,18 @@ var SVC_AUDIENCE_LABELS = {particulier:'Particuliers', entreprise:'Entreprises',
 // Panier multi-prestations (Phase 9) : sélection de plusieurs prestations du MÊME partenaire
 // avant d'envoyer une seule demande groupée — façon Uber Eats "ajouter au panier".
 var _partnerCartSelection = {};
+// Remise en cours sur une prestation (le serveur envoie price = prix remisé, price_before_discount
+// = prix d'origine) : prix barré + étiquette « -X % jusqu'au JJ/MM ».
+function _svcHasDiscount(s){ return !!(s && s.discount_pct && s.price_before_discount); }
+function _svcOldPriceHtml(s){
+  return _svcHasDiscount(s) ? '<span class="svc-old-price" data-i18n-skip>'+Number(s.price_before_discount).toFixed(2).replace('.00','')+' €</span>' : '';
+}
+function _svcDiscountTagHtml(s){
+  if(!_svcHasDiscount(s)) return '';
+  var end = '';
+  if(s.discount_ends_at){ try{ end = new Date(s.discount_ends_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',timeZone:'Europe/Paris'}); }catch(e){} }
+  return '<div><span class="svc-disc-tag"><i class="fa-solid fa-tag"></i><span data-i18n-skip>-'+s.discount_pct+' %</span>'+(end?'<span>jusqu\'au</span><span data-i18n-skip>'+end+'</span>':'')+'</span></div>';
+}
 function _ptnrRenderServiceCards(services, audience, p){
   var filtered = services.filter(function(s){ return (s.audience||'particulier')===audience; });
   if(!filtered.length) return '<div class="p-dir-review-empty">Aucune prestation dans cette catégorie.</div>';
@@ -6913,7 +6932,7 @@ function _ptnrRenderServiceCards(services, audience, p){
     var isQuote = s.pricing_type === 'quote';
     var priceHtml = isQuote
       ? '<div class="p-svc-quote-tag"><i class="fa-solid fa-file-lines"></i> Sur devis</div>'
-      : '<div class="p-svc-card-price">'+s.price+' €</div>';
+      : '<div class="p-svc-card-price">'+_svcOldPriceHtml(s)+s.price+' €</div>'+_svcDiscountTagHtml(s);
     return '<div class="p-svc-card" onclick="openServiceDetail(\''+p.id+'\',\''+s.id+'\')">'
       +'<div class="p-svc-card-photo">'+imgHtml
       +'<div class="p-svc-card-cta"><i class="fa-solid '+(isQuote?'fa-file-lines':'fa-plus')+'"></i></div></div>'
@@ -6945,7 +6964,7 @@ function _ptnrRenderProfileSvcCards(services, audience, p){
     var isQuote = s.pricing_type === 'quote';
     var priceHtml = isQuote
       ? '<div class="pf-svc-quote"><i class="fa-solid fa-file-lines"></i> Sur devis</div>'
-      : '<div class="pf-svc-price">'+s.price+' €</div>';
+      : '<div class="pf-svc-price">'+_svcOldPriceHtml(s)+s.price+' €</div>'+_svcDiscountTagHtml(s);
     var featHtml = (s.features && s.features.length)
       ? '<div class="pf-svc-feats">'+s.features.slice(0,3).map(function(f){ return '<div class="pf-svc-feat"><i class="fa-solid fa-check"></i>'+f+'</div>'; }).join('')+'</div>'
       : '';
@@ -7173,7 +7192,7 @@ function openServiceDetail(partnerId, serviceId){
   }
   var priceHtml = isQuote
     ? '<div class="svc-detail-price quote"><i class="fa-solid fa-file-lines"></i> Tarif sur devis — personnalisé selon votre besoin</div>'+_sdQuotePay
-    : '<div class="svc-detail-price">'+Number(service.price).toFixed(2)+' €</div>'+_sdPayBadge;
+    : '<div class="svc-detail-price">'+_svcOldPriceHtml(service)+Number(service.price).toFixed(2)+' €</div>'+_svcDiscountTagHtml(service)+_sdPayBadge;
   var ctaHtml = isQuote
     ? '<button class="svc-detail-cta secondary" onclick="closeServiceDetail();openPartnerRequest(\''+partnerId+'\',\''+serviceId+'\')"><i class="fa-solid fa-paper-plane"></i> Demander un devis</button>'
     : '<button class="svc-detail-cta" onclick="addServiceToMainCart(\''+partnerId+'\',\''+serviceId+'\')"><i class="fa-solid fa-cart-shopping"></i> Ajouter au panier</button>';
@@ -7293,7 +7312,7 @@ function renderResaTab(){
   // formulaire de signature.
   var _resaProposalsPromise = fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
-    .then(function(d){ return (d&&Array.isArray(d.requests)) ? d.requests.filter(function(r){ return r.status==='accepted'||r.status==='proposed'||(r.status==='signed'&&!r.order_id); }) : []; })
+    .then(function(d){ return (d&&Array.isArray(d.requests)) ? d.requests.filter(function(r){ return r.status==='accepted'||r.status==='proposed'||(r.status==='signed'&&!r.order_id)||_transferCardVisible(r); }) : []; })
     .catch(function(){ return []; });
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
@@ -7310,7 +7329,7 @@ function renderResaTab(){
       var el = document.getElementById('resaList');
       if(!el) return;
       var proposalsHtml = proposals.length
-        ? '<div style="margin-bottom:20px;"><div class="detail-feats-title" style="margin:0 0 10px;color:var(--yellow);"><i class="fa-solid fa-file-signature"></i> '+_tr('Demandes en attente')+' ('+proposals.length+')</div>'+proposals.map(renderProposalCard).join('')+'</div>'
+        ? '<div style="margin-bottom:20px;"><div class="detail-feats-title" style="margin:0 0 10px;color:var(--yellow);"><i class="fa-solid fa-file-signature"></i> '+_tr('Demandes en attente')+' ('+proposals.length+')</div>'+proposals.map(function(r){ return r.transfer ? renderTransferCard(r) : renderProposalCard(r); }).join('')+'</div>'
         : '';
       function _resaScrollToPendingProposal(){
         if(!_pendingScrollProposalId) return;
@@ -7448,6 +7467,133 @@ function renderProposalCard(r){
       +_devisCancelLink(r)
       +'</div>';
   return '<div class="resa-card" id="prop-card-'+r.id+'">'+bodyHtml+actionHtml+'</div>';
+}
+
+// ── Demande transmise par Jérémie IA (devis refusé ou resté sans réponse, voir le serveur :
+// DEVIS NON PRIS EN CHARGE) : où en est la recherche, puis choix du prestataire par le client.
+// La carte garde l'id de la demande d'origine (prop-card-<id>) : les notifications de Jérémie
+// (#client:proposal:<id>) y mènent directement.
+var _TRANSFER_SHOW_CLOSED_MS = 7 * 24 * 3600000;
+function _transferCardVisible(r){
+  var t = r && r.transfer;
+  if(!t) return false;
+  if(t.status === 'open' || t.status === 'awaiting_choice') return true;
+  if(['none_accepted','no_candidates','none_selected'].indexOf(t.status) === -1) return false;
+  return Date.now() - new Date(t.closed_at || t.started_at || 0).getTime() < _TRANSFER_SHOW_CLOSED_MS;
+}
+function _transferDateLabel(iso){
+  try{ return new Date(iso).toLocaleString('fr-FR',{weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Paris'}); }catch(e){ return ''; }
+}
+function renderTransferCard(r){
+  var t = r.transfer || {};
+  var acc = t.accepted || [];
+  var n = acc.length;
+  var why = t.reason === 'no_response'
+    ? '<span>Le prestataire contacté n\'a pas répondu à temps.</span>'
+    : '<span>Le prestataire contacté n\'était pas disponible.</span>';
+  var chip, msg;
+  if(n){
+    chip = n > 1 ? '✋ <span>À vous de choisir</span>' : '✋ <span>Prestataire disponible</span>';
+    if(n > 1) msg = '<strong data-i18n-skip>'+n+'</strong> <span>prestataires ont accepté votre demande. Choisissez celui avec qui vous souhaitez travailler : les autres acceptations seront annulées.</span>';
+    else if(t.status === 'open') msg = '<span>Un prestataire a accepté votre demande. Vous pouvez le retenir dès maintenant ou attendre les autres réponses.</span>';
+    else msg = '<span>Un seul prestataire a accepté votre demande. À vous de l\'accepter ou de le refuser.</span>';
+    if(t.status === 'open' && t.waiting) msg += '<div style="margin-top:6px;color:#888;font-size:12px;"><span>Réponses encore attendues :</span> <span data-i18n-skip>'+t.waiting+'</span></div>';
+  } else if(t.status === 'open'){
+    chip = '⏳ <span>Recherche en cours</span>';
+    msg = why+' <span>Votre demande ne reste pas sans réponse : je l\'ai transmise à</span> <strong data-i18n-skip>'+(t.contacted||0)+'</strong> <span>'+((t.contacted||0) > 1 ? 'prestataires du même secteur.' : 'prestataire du même secteur.')+'</span>'
+      +'<div style="margin-top:6px;color:#888;font-size:12px;"><span>Réponses attendues avant :</span> <span data-i18n-skip>'+_transferDateLabel(t.deadline_at)+'</span></div>';
+  } else if(t.status === 'no_candidates'){
+    chip = '<span>Aucun prestataire disponible</span>';
+    msg = why+' <span>Je n\'ai pas trouvé d\'autre prestataire disponible dans ce secteur pour le moment.</span>';
+  } else if(t.status === 'none_selected'){
+    chip = '<span>Aucun prestataire retenu</span>';
+    msg = '<span>Vous n\'avez retenu aucun des prestataires qui avaient accepté votre demande.</span>';
+  } else {
+    chip = '<span>Aucune acceptation</span>';
+    msg = '<span>Aucun des prestataires contactés n\'a accepté votre demande.</span>';
+  }
+  var rows = acc.map(function(c){
+    var ini = ((c.partner_name||'P')[0]||'P').toUpperCase();
+    var av = c.partner_photo
+      ? '<img src="'+c.partner_photo+'" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;">'
+      : '<div style="width:44px;height:44px;border-radius:50%;background:rgba(255,215,0,.08);border:1.5px solid rgba(255,215,0,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;color:var(--yellow);font-size:16px;" data-i18n-skip>'+_escHtml(ini)+'</div>';
+    var stars = (c.rating && c.rating.count)
+      ? '<i class="fa-solid fa-star" style="color:var(--yellow)"></i> <span data-i18n-skip>'+c.rating.average+' ('+c.rating.count+')</span>'
+      : '<span>Nouveau</span>';
+    var typeLbl = partnerTypeLabel({partner_type:c.partner_type, partner_type_other:c.partner_type_other});
+    return '<div style="margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.02);">'
+      + '<div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="openPartnerDetail(\''+c.partner_id+'\')">'+av
+        + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:14px;font-weight:800;color:#fff;"><span data-i18n-skip>'+_escHtml(c.partner_name)+'</span> '+tierBadgeHtml(c.badge)+'</div>'
+          + '<div style="font-size:11px;color:var(--muted);"><span>'+typeLbl+'</span>'+(c.partner_city?' · <span data-i18n-skip>'+_escHtml(c.partner_city)+'</span>':'')+'</div>'
+          + '<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+stars+'</div>'
+        + '</div>'
+        + '<i class="fa-solid fa-chevron-right" style="color:#444;font-size:12px;"></i>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;margin-top:10px;">'
+        + '<button class="resa-action-btn rab-primary" style="flex:1;" onclick="_transferChoose(\''+r.id+'\',\''+c.request_id+'\',this)"><i class="fa-solid fa-check mr-1"></i> '+(n > 1 ? 'Choisir' : 'Accepter')+'</button>'
+        + '<button class="resa-action-btn rab-ghost" style="flex:0 0 auto;" onclick="_transferRefuse(\''+r.id+'\',\''+c.request_id+'\',this)"><i class="fa-solid fa-xmark mr-1"></i> Refuser</button>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+  var closedOut = ['none_accepted','no_candidates','none_selected'].indexOf(t.status) !== -1;
+  var actions = closedOut
+    ? '<button class="resa-action-btn rab-primary" style="width:100%;margin-top:12px;" onclick="nav(\'prestataires\')"><i class="fa-solid fa-magnifying-glass mr-1"></i> Trouver un prestataire</button>'
+    : '<button class="resa-action-btn rab-ghost" style="width:100%;margin-top:10px;color:#f87171;border-color:rgba(248,113,113,.35);" onclick="_cancelTransferRequest(\''+r.id+'\')"><i class="fa-solid fa-ban mr-1"></i> Annuler la demande</button>';
+  return '<div class="resa-card" id="prop-card-'+r.id+'">'
+    + '<div class="resa-top"><div class="resa-name" data-i18n-skip>'+_escHtml(r.service_label||'Demande')+'</div><span class="resa-status s-pending">'+chip+'</span></div>'
+    + '<div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;">'
+      + '<img src="assets/images/jeremie-avatar.png?v='+JEREMIE_AVATAR_V+'" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#0d1730;">'
+      + '<div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:800;color:var(--yellow);margin-bottom:3px;">Jérémie IA</div><div style="font-size:13px;color:#ddd;line-height:1.5;">'+msg+'</div></div>'
+    + '</div>'
+    + rows
+    + actions
+  + '</div>';
+}
+function _transferPost(originId, action, body){
+  return fetch((window.FA_GENESIS_API||API)+'/api/my-requests/'+originId+'/'+action,{
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body: JSON.stringify(body||{})
+  }).then(function(r){ return r.json(); });
+}
+function _transferChoose(originId, childId, btn){
+  if(!USER||GUEST) return;
+  showConfirmModal('Travailler avec ce prestataire ? Les autres acceptations seront annulées.', {confirmLabel:'Confirmer'}).then(function(ok){
+    if(!ok) return;
+    if(btn) btn.disabled = true;
+    _transferPost(originId, 'transfer/choose', {request_id: childId}).then(function(d){
+      if(d && d.success){
+        showToast('Prestataire retenu','Il prépare sa proposition : vous serez notifié dès qu\'elle sera prête.','success');
+        _pendingScrollProposalId = d.request_id;
+      } else {
+        showToast('Choix impossible',(d&&d.error)||'Réessayez dans un instant.','error');
+      }
+      renderResaTab();
+    }).catch(function(){ if(btn) btn.disabled = false; showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
+  });
+}
+function _transferRefuse(originId, childId, btn){
+  if(!USER||GUEST) return;
+  showConfirmModal('Refuser ce prestataire ?', {confirmLabel:'Refuser'}).then(function(ok){
+    if(!ok) return;
+    if(btn) btn.disabled = true;
+    _transferPost(originId, 'transfer/refuse', {request_id: childId}).then(function(d){
+      if(d && d.success) showToast('Prestataire refusé','Il en est informé.','info');
+      else showToast('Refus impossible',(d&&d.error)||'Réessayez dans un instant.','error');
+      renderResaTab();
+    }).catch(function(){ if(btn) btn.disabled = false; showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
+  });
+}
+function _cancelTransferRequest(originId){
+  if(!USER||GUEST) return;
+  showConfirmModal('Annuler votre demande ? Elle sera retirée auprès de tous les prestataires contactés par Jérémie.', {confirmLabel:'Annuler la demande'}).then(function(ok){
+    if(!ok) return;
+    _transferPost(originId, 'cancel', {}).then(function(d){
+      if(d && d.success) showToast('Demande annulée','Aucun paiement n\'a été effectué.','info');
+      else showToast('Annulation impossible',(d&&d.error)||'Réessayez dans un instant.','error');
+      renderResaTab();
+    }).catch(function(){ showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
+  });
 }
 
 // Déclenche le paiement GENESIS SAFE™ d'une demande de devis déjà signée ("Lu et approuvé") —
@@ -15684,7 +15830,7 @@ function _ptnrNav(screen){
   _ptnrCloseDrawer();
   // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
   var _cEl = document.getElementById('content');
-  var _ptnrSubScreens = ['collegues','reputation','palmares','seances','promotions','portfolio','livrables'];
+  var _ptnrSubScreens = ['evenements','reputation','palmares','seances','promotions','portfolio','livrables'];
   if(_ptnrSubScreens.indexOf(screen) !== -1 && _cEl){
     _ptnrProfilScrollPos = _cEl.scrollTop;
     _cEl.scrollTop = 0;
@@ -15692,7 +15838,7 @@ function _ptnrNav(screen){
   document.querySelectorAll('.ptnr-snbtn').forEach(function(b){b.className='ptnr-snbtn';});
   document.querySelectorAll('.ptnr-screen').forEach(function(s){s.className='ptnr-screen';});
   // Mettre à jour le bouton actif dans la nav bas partenaire
-  // Les sous-sections (collegues, etc.) gardent l'onglet "profil" actif
+  // Les sous-sections (evenements, etc.) gardent l'onglet "profil" actif
   var _ptnrNavBottomTab = (_ptnrSubScreens.indexOf(screen) !== -1) ? 'profil' : screen;
   document.querySelectorAll('.ptnr-nav').forEach(function(b){b.className='nav-btn ptnr-nav';});
   var pnb = document.getElementById('pnb-'+_ptnrNavBottomTab);
@@ -15728,7 +15874,7 @@ function _ptnrNav(screen){
       setTimeout(function(){ if(_cEl.scrollTop < _savedScroll - 30) _cEl.scrollTop = _savedScroll; }, 150);
     }
   }
-  if(screen==='collegues')   _ptnrLoadCollegues();
+  if(screen==='evenements')  _ptnrLoadEvenements();
 }
 
 function _ptnrFmt(dateStr){
@@ -19463,7 +19609,7 @@ function _ptnrRenderMissionsList(){
     if(filterEl) filterEl.innerHTML = '';
     _setBadgeMissions(0); return;
   }
-  var needsAction = items.filter(function(r){ return r.status==='pending'||r.status==='accepted'||r.status==='proposed'; });
+  var needsAction = items.filter(function(r){ return r.status==='pending'||r.status==='transfer_accepted'||r.status==='accepted'||r.status==='proposed'; });
   // 'completed' inclus pour que les missions terminées restent visibles (historique) au lieu
   // de disparaître — _ptnrRenderEngagedMissionCard affiche déjà le trophée "Projet terminé"
   // via display_status.key==='completed'/'reviewed'.
@@ -19525,12 +19671,19 @@ function _ptnrRenderMissionsList(){
   needsAction.forEach(function(r){
     if(r.status === 'accepted'){ html += _ptnrRenderProposalForm(r); return; }
     if(r.status === 'proposed'){ html += _ptnrRenderProposalSentCard(r); return; }
+    if(r.status === 'transfer_accepted'){ html += _ptnrRenderTransferWaitingCard(r); return; }
     html += '<div class="dispatch-card new-card" id="request-'+r.id+'">';
-    html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Nouvelle demande</div>';
+    html += r.transferred_from
+      ? '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Transmise par Jérémie IA</div>'
+      : '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Nouvelle demande</div>';
     html += '<div class="dispatch-title">'+_tr(r.client_name)+' — '+r.service_label+'</div>';
     html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(r.created_at)+'</div>';
+    if(r.transferred_from) html += _ptnrJeremieBriefHtml(r);
     html += '<div class="dispatch-avail">';
-    html += '<strong>Prix de la prestation :</strong> '+r.price+' €<br>';
+    // Demande transmise par Jérémie : pas de prestation de votre catalogue, prix à fixer dans la proposition.
+    html += (r.price == null)
+      ? '<strong>Tarif :</strong> <span>sur devis, à fixer dans votre proposition</span><br>'
+      : '<strong>Prix de la prestation :</strong> '+r.price+' €<br>';
     if(r.desired_date) html += '<strong>Date souhaitée :</strong> '+_ptnrFmt(r.desired_date)+'<br>';
     if(r.location) html += '<strong>Lieu :</strong> '+r.location+'<br>';
     if(r.budget_note) html += '<strong>Budget :</strong> '+r.budget_note+'<br>';
@@ -19566,6 +19719,28 @@ function _ptnrRenderMissionsList(){
   var needsActionCount = items.filter(function(r){ return r.status === 'pending' || r.status === 'accepted'; }).length
     + (_ptnrPendingDispatchesCache || []).length;
   _setBadgeMissions(needsActionCount);
+}
+
+// Demande transmise par Jérémie IA (le prestataire sollicité en premier a refusé ou n'a pas
+// répondu) : pourquoi ce prestataire la reçoit, et ce qu'il reste à préciser avec le client.
+function _ptnrJeremieBriefHtml(r){
+  var b = r.jeremie_brief || {};
+  var clarify = (b.to_clarify || []);
+  return '<div style="display:flex;gap:9px;align-items:flex-start;background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);border-radius:10px;padding:9px 10px;margin:8px 0;">'
+    + '<img src="assets/images/jeremie-avatar.png?v='+JEREMIE_AVATAR_V+'" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#0d1730;">'
+    + '<div style="font-size:11.5px;color:#ccc;line-height:1.5;">'
+      + '<span>Le prestataire contacté en premier n\'a pas pu prendre cette demande. Je vous l\'ai transmise car vous faites partie des prestataires les plus réactifs de ce secteur.</span>'
+      + ' <span>Le client choisira parmi les prestataires qui acceptent.</span>'
+      + (clarify.length ? '<div style="margin-top:4px;color:#FFD700;"><span>À préciser avec le client :</span> '+clarify.map(function(x){ return '<span>'+x+'</span>'; }).join(', ')+'</div>' : '')
+    + '</div>'
+  + '</div>';
+}
+function _ptnrRenderTransferWaitingCard(r){
+  return '<div class="dispatch-card" id="request-'+r.id+'">'
+    + '<div class="dispatch-badge" style="background:rgba(167,139,250,.12);color:#a78bfa;"><span class="dispatch-badge-dot" style="background:#a78bfa;"></span>Acceptée — choix du client en attente</div>'
+    + '<div class="dispatch-title">'+_tr(r.client_name)+' — '+r.service_label+'</div>'
+    + '<div style="font-size:12px;color:#aaa;margin-top:6px;line-height:1.5;">Le client choisit parmi les prestataires qui ont accepté sa demande. Vous serez notifié s\'il vous retient : vous pourrez alors lui envoyer votre proposition.</div>'
+  + '</div>';
 }
 
 function _ptnrAcceptDispatch(dispatchId, btn){
@@ -19631,7 +19806,10 @@ function _acceptPartnerRequest(id){
   if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
   haptic(15);
   _ptnrFetch('/api/partner/requests/'+id+'/accept','POST',{}).then(function(res){
-    if(res.success){
+    if(res.success && res.transfer){
+      showToast('Acceptation envoyée','Le client choisit parmi les prestataires qui ont accepté : vous serez notifié s\'il vous retient.','success');
+      _ptnrLoadMissions(); _ptnrRefreshBadges();
+    } else if(res.success){
       launchConfetti();
       showToast('Demande acceptée !','Envoyez maintenant votre proposition au client.','success');
       haptic([50,30,100,30,150]);
@@ -21579,11 +21757,10 @@ function _ptnrLoadProfil(){
     +bioRowHtml
     +'</div></div>';
 
-  var colleguesLabel = typeLabel.replace(/teur$/,'teurs').replace(/ste$/,'stes').replace(/er$/,'ers');
   var reseau = '<div class="plus-section">'
     +'<div class="plus-section-title">MON RÉSEAU</div>'
     +'<div class="plus-group">'
-    +pli('<i class="fa-solid fa-compass"></i>','#001a1a','Explorer GENESIS',null,"_ptnrNav('collegues')")
+    +pli('<i class="fa-solid fa-champagne-glasses"></i>','#001a1a','Événements GENESIS',null,"_ptnrNav('evenements')")
     +'</div></div>';
 
   var deleteBtn = '<div style="margin:20px 16px 4px;">'
@@ -22394,106 +22571,20 @@ function _ptnrDownloadContract(contractId) {
   _blobDownload(_ptnrApiUrl() + '/api/contracts/' + contractId + '/pdf?lang=' + _ctLang, 'contrat-' + contractId + '.pdf');
 }
 
-// ── MESSAGERIE COLLÈGUES (P2P même catégorie) ────────────────
-function _ptnrLoadCollegues(){
-  var c = document.getElementById('ptnr-collegues-content');
+// ── ÉVÉNEMENTS GENESIS (prestataire) ────────────────
+// Remplace « Explorer GENESIS » (2026-11-06) : son onglet Collègues (liste des prestataires
+// concurrents de la même catégorie, avec leurs prix, et une messagerie entre eux) a été retiré
+// pour éviter toute concurrence déloyale — le serveur ne sert plus ces données. Un client non pris
+// en charge est désormais orienté par Jérémie IA. Seuls les événements restent.
+function _ptnrLoadEvenements(){
+  var c = document.getElementById('ptnr-evenements-content');
   if(!c) return;
-  c.innerHTML = '<div class="ptnr-back-bar" style="margin-bottom:0;">'
+  c.innerHTML = '<div class="ptnr-back-bar" style="margin-bottom:12px;">'
     +'<button class="ptnr-back-btn" onclick="_ptnrNav(\'profil\')">&#8249;</button>'
-    +'<span class="ptnr-back-bar-title">Explorer</span>'
+    +'<span class="ptnr-back-bar-title">Événements GENESIS</span>'
     +'</div>'
-    +'<div style="display:flex;border-bottom:1px solid #1a1a1a;margin-bottom:12px;">'
-    +'<button id="ptnr-exp-tab-collegues" onclick="_ptnrExplorerTab(\'collegues\')" style="flex:1;background:none;border:none;border-bottom:2px solid #FFD700;padding:12px 4px;font-size:12px;font-weight:700;color:#FFD700;cursor:pointer;"><i class="fa-solid fa-users-between-lines" style="margin-right:5px;"></i>Collègues</button>'
-    +'<button id="ptnr-exp-tab-events" onclick="_ptnrExplorerTab(\'events\')" style="flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:12px 4px;font-size:12px;font-weight:700;color:#444;cursor:pointer;"><i class="fa-solid fa-champagne-glasses" style="margin-right:5px;"></i>Événements</button>'
-    +'</div>'
-    +'<div id="ptnr-exp-content-collegues" style="padding-bottom:80px;"></div>'
-    +'<div id="ptnr-exp-content-events" style="display:none;padding-bottom:80px;"></div>';
-  _ptnrLoadColleguesList();
-}
-
-function _ptnrExplorerTab(tab){
-  var tabC = document.getElementById('ptnr-exp-tab-collegues');
-  var tabE = document.getElementById('ptnr-exp-tab-events');
-  var conC = document.getElementById('ptnr-exp-content-collegues');
-  var conE = document.getElementById('ptnr-exp-content-events');
-  if(!tabC||!tabE||!conC||!conE) return;
-  var onStyle  = 'flex:1;background:none;border:none;border-bottom:2px solid #FFD700;padding:12px 4px;font-size:12px;font-weight:700;color:#FFD700;cursor:pointer;';
-  var offStyle = 'flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:12px 4px;font-size:12px;font-weight:700;color:#444;cursor:pointer;';
-  if(tab === 'collegues'){
-    tabC.style.cssText = onStyle; tabE.style.cssText = offStyle;
-    conC.style.display = 'block'; conE.style.display = 'none';
-  } else {
-    tabC.style.cssText = offStyle; tabE.style.cssText = onStyle;
-    conC.style.display = 'none'; conE.style.display = 'block';
-    if(!conE.dataset.loaded){ conE.dataset.loaded = '1'; _ptnrLoadEventsList(); }
-  }
-}
-
-function _ptnrLoadColleguesList(){
-  var listWrap = document.getElementById('ptnr-exp-content-collegues');
-  if(!listWrap) return;
-  listWrap.innerHTML = '<div style="font-size:11px;color:#555;line-height:1.5;margin-bottom:12px;">Échangez avec des prestataires de votre catégorie — renvoyez un client vers un collègue en cas d\'indisponibilité.</div>'
-    +'<div id="ptnr-collegues-list"><div style="color:#555;font-size:12px;padding:12px 0;">Chargement…</div></div>';
-  var listEl = document.getElementById('ptnr-collegues-list');
-  Promise.all([
-    _ptnrFetch('/api/partner/peers'),
-    _ptnrFetch('/api/partner/peer-inbox')
-  ]).then(function(results){
-    var peers = (results[0] && results[0].peers) || [];
-    var msgs  = (results[1] && results[1].messages) || [];
-    if(!listEl) return;
-    if(!peers.length){
-      listEl.innerHTML = '<div style="text-align:center;color:#444;font-size:13px;padding:32px 0;"><i class="fa-solid fa-user-group" style="font-size:28px;color:#2a2a2a;display:block;margin-bottom:10px;"></i>Aucun autre prestataire actif dans votre catégorie pour l\'instant.</div>';
-      return;
-    }
-    var partner = _ptnrSession || {};
-    var lastMsgByPeer = {};
-    msgs.forEach(function(m){
-      var peerEmail = (m.from_email === partner.email) ? m.to_email : m.from_email;
-      if(!lastMsgByPeer[peerEmail] || new Date(m.created_at) > new Date(lastMsgByPeer[peerEmail].created_at)){
-        lastMsgByPeer[peerEmail] = m;
-      }
-    });
-    var _badgeLbl = {bronze:'Bronze',argent:'Argent',or:'Or',elite:'Élite',fondateur:'Fondateur'};
-    var _badgeClr = {bronze:'#cd7f32',argent:'#aaa',or:'#FFD700',elite:'#a78bfa',fondateur:'#FFD700'};
-    var html = '<div style="font-size:11px;color:#555;margin-bottom:10px;">'+peers.length+' '+_tr(peers.length>1?'collègues':'collègue')+' '+_tr(peers.length>1?'actifs':'actif')+' '+_tr('dans votre catégorie')+'</div>';
-    peers.forEach(function(peer){
-      var nm = ((peer.prenom||'')+ ' '+(peer.nom||'')).trim() || 'Collègue';
-      var ini = (nm[0]||'?').toUpperCase();
-      var avatarHtml = peer.photo
-        ? '<img src="'+peer.photo+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #2a2a2a;flex-shrink:0;">'
-        : '<div style="width:44px;height:44px;border-radius:50%;background:#1a1a1a;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#FFD700;flex-shrink:0;">'+ini+'</div>';
-      var last = lastMsgByPeer[peer.email];
-      var previewHtml = last
-        ? '<div style="font-size:11px;color:#555;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+last.content.slice(0,50)+'</div>'
-        : '<div style="font-size:11px;color:#333;margin-top:3px;font-style:italic;">Aucun échange</div>';
-      var badgeKey = peer.founderBadge ? 'fondateur' : peer.badge;
-      var badgeHtml = badgeKey
-        ? '<span style="font-size:9px;font-weight:800;color:'+(_badgeClr[badgeKey]||'#888')+';background:rgba(255,255,255,.04);border:1px solid '+(_badgeClr[badgeKey]||'#333')+'33;border-radius:20px;padding:1px 6px;margin-left:5px;">'+(_badgeLbl[badgeKey]||badgeKey)+'</span>'
-        : '';
-      var ratingHtml = (peer.rating && peer.rating.count > 0)
-        ? '<span style="font-size:10px;color:#FFD700;font-weight:700;margin-left:4px;"><i class="fa-solid fa-star" style="font-size:8px;"></i> '+peer.rating.average.toFixed(1)+'</span>'
-        : '';
-      var svcHtml = (peer.services && peer.services.length)
-        ? '<div style="font-size:10px;color:#444;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+peer.services.map(function(s){ return s.label+(s.price?' ('+s.price+'€)':''); }).join(' · ')+'</div>'
-        : '';
-      html += '<div onclick="_ptnrCollegueThread(\''+peer.id+'\',\''+nm.replace(/'/g,'\\\'').replace(/"/g,'&quot;')+'\',\''+peer.email+'\')" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #1a1a1a;cursor:pointer;">'
-        +avatarHtml
-        +'<div style="flex:1;min-width:0;">'
-        +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;">'
-        +'<span style="font-size:13px;font-weight:900;color:#fff;">'+nm+'</span>'+badgeHtml+ratingHtml
-        +'</div>'
-        +(peer.city ? '<div style="font-size:10px;color:#555;margin-top:1px;"><i class="fa-solid fa-location-dot" style="font-size:8px;"></i> '+peer.city+'</div>' : '')
-        +svcHtml
-        +previewHtml
-        +'</div>'
-        +'<i class="fa-solid fa-chevron-right" style="color:#333;font-size:14px;"></i>'
-        +'</div>';
-    });
-    listEl.innerHTML = html;
-  }).catch(function(){
-    if(listEl) listEl.innerHTML = '<div style="color:#ef4444;font-size:12px;padding:12px 0;">Erreur de chargement. Vérifiez votre connexion.</div>';
-  });
+    +'<div id="ptnr-exp-content-events" style="padding-bottom:80px;"></div>';
+  _ptnrLoadEventsList();
 }
 
 function _ptnrLoadEventsList(){
@@ -22561,78 +22652,6 @@ function _ptnrRsvpEvent(eventId){
   });
 }
 
-function _ptnrCollegueThread(peerId, peerName, peerEmail){
-  var c = document.getElementById('ptnr-collegues-content');
-  if(!c) return;
-  c.innerHTML = '<div class="plus-back-bar" style="margin-bottom:0;">'
-    +'<button class="plus-back-btn" onclick="_ptnrLoadCollegues()">&#8249;</button>'
-    +'<div class="plus-sub-title">'+peerName+'</div>'
-    +'</div>'
-    +'<div id="ptnr-peer-thread" style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;min-height:200px;"></div>'
-    +'<div style="display:flex;gap:8px;padding:10px 16px;border-top:1px solid #1a1a1a;position:sticky;bottom:0;background:#0d0d0d;">'
-    +'<input type="text" id="ptnr-peer-msg-input" class="ptnr-input" placeholder="Votre message…" style="flex:1;margin:0;" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_ptnrSendCollegueMsg(\''+peerId+'\',\''+peerEmail+'\',\''+peerName.replace(/'/g,'\\\'').replace(/"/g,'&quot;')+'\');}">'
-    +'<button onclick="_ptnrSendCollegueMsg(\''+peerId+'\',\''+peerEmail+'\',\''+peerName.replace(/'/g,'\\\'').replace(/"/g,'&quot;')+'\')" style="background:#FFD700;border:none;border-radius:12px;padding:0 16px;color:#000;font-weight:900;font-size:18px;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-paper-plane"></i></button>'
-    +'</div>';
-
-  _ptnrFetch('/api/partner/peer-inbox').then(function(data){
-    var msgs  = (data && data.messages) || [];
-    var partner = _ptnrSession || {};
-    var thread  = msgs.filter(function(m){
-      return (m.from_email===partner.email && m.to_email===peerEmail) ||
-             (m.from_email===peerEmail && m.to_email===partner.email);
-    });
-    var threadEl = document.getElementById('ptnr-peer-thread');
-    if(!threadEl) return;
-    if(!thread.length){
-      threadEl.innerHTML = '<div style="text-align:center;color:#333;font-size:12px;padding:24px 0;font-style:italic;">Commencez la conversation…</div>';
-      return;
-    }
-    threadEl.innerHTML = thread.map(function(m){
-      var isMe = m.from_email === partner.email;
-      return '<div style="display:flex;flex-direction:'+(isMe?'row-reverse':'row')+';gap:8px;align-items:flex-end;">'
-        +'<div style="max-width:78%;background:'+(isMe?'#FFD700':'#1a1a1a')+';color:'+(isMe?'#000':'#fff')+';border-radius:'+(isMe?'16px 16px 4px 16px':'16px 16px 16px 4px')+';padding:10px 14px;font-size:13px;line-height:1.45;">'+m.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'
-        +'</div>';
-    }).join('');
-    threadEl.scrollTop = threadEl.scrollHeight;
-  }).catch(function(){});
-
-  var inp = document.getElementById('ptnr-peer-msg-input');
-  if(inp) inp.focus();
-}
-
-function _ptnrSendCollegueMsg(peerId, toEmail, toName){
-  var inp = document.getElementById('ptnr-peer-msg-input');
-  if(!inp) return;
-  var content = inp.value.trim();
-  if(!content) return;
-  inp.value = '';
-  inp.disabled = true;
-
-  _ptnrFetch('/api/partner/peer-message','POST',{to_partner_id: peerId, content: content}).then(function(data){
-    inp.disabled = false;
-    if(data && data.ok){
-      // Ajouter la bulle localement
-      var threadEl = document.getElementById('ptnr-peer-thread');
-      if(threadEl){
-        var ghost = threadEl.querySelector('[style*="font-style:italic"]');
-        if(ghost) ghost.remove();
-        var bbl = document.createElement('div');
-        bbl.style.cssText = 'display:flex;flex-direction:row-reverse;gap:8px;align-items:flex-end;';
-        bbl.innerHTML = '<div style="max-width:78%;background:#FFD700;color:#000;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:13px;line-height:1.45;">'+content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
-        threadEl.appendChild(bbl);
-        threadEl.scrollTop = threadEl.scrollHeight;
-      }
-    } else {
-      inp.value = content;
-      var errMsg = (data && data.message) || 'Erreur d\'envoi.';
-      showToast('Envoi impossible', errMsg, 'error');
-    }
-  }).catch(function(){
-    inp.disabled = false;
-    inp.value = content;
-    showToast('Erreur','Connexion au serveur impossible.','error');
-  });
-}
 function _ptnrSaveIdentity(){
   var prenomInp = document.getElementById('ptnr-identity-prenom');
   var nomInp = document.getElementById('ptnr-identity-nom');
@@ -22701,7 +22720,7 @@ function _ptnrRenderServiceItemRow(service){
     : '<div class="ptnr-svc-card-photo-ph"><i class="fa-solid fa-image"></i></div>';
   var pricingHtml = isQuote
     ? '<span class="ptnr-svc-quote-show">Sur devis</span>'
-    : '<input type="number" class="ptnr-svc-price" placeholder="Prix €" value="'+(service.price||'')+'" min="0" step="0.01">';
+    : '<input type="number" class="ptnr-svc-price" placeholder="Prix €" value="'+(service.price||'')+'" min="0" step="0.01" oninput="_ptnrUpdateDiscountPreview(this)">';
   return '<div class="ptnr-svc-card" data-service-id="'+(service.id||'')+'" data-service-image="'+(service.image?encodeURIComponent(service.image):'')+'">'
     + '<div class="ptnr-svc-card-photo" onclick="this.nextElementSibling.click()" title="Changer la photo">'
       + imgInner
@@ -22724,6 +22743,7 @@ function _ptnrRenderServiceItemRow(service){
         + '<button type="button" class="ptnr-svc-ptg-mini" onclick="_ptnrSelectPricingMode(this,\'quote\')" style="'+(isQuote?'background:#FFD700;color:#000;border-color:#FFD700;':'')+'">Devis</button>'
         + '<input type="hidden" class="ptnr-svc-pricing-type" value="'+(isQuote?'quote':'fixed')+'">'
       + '</div>'
+      + _ptnrSvcDiscountHtml(service, isQuote)
       // Modalité de paiement : aussi pour une prestation « sur devis » (affichée au client sur la
       // fiche, et pré-remplie dans chaque proposition de devis, où elle reste modifiable).
       + ('<div style="margin-top:10px;">'
@@ -22752,6 +22772,72 @@ function _ptnrRenderServiceItemRow(service){
     + '</div>'
   + '</div>';
 }
+// Remise sur une prestation existante (étudiant, particulier, entreprise) — sans passer par la
+// catégorie « Promo », qui reste disponible pour créer une offre à part. Prestations à prix fixe
+// uniquement ; même règles que le serveur (serviceDiscountPct) : 5 à 90 %, date de fin
+// facultative, prix remisé d'au moins 0,50 €.
+var SVC_DISCOUNT_MIN = 5, SVC_DISCOUNT_MAX = 90;
+function _ptnrDiscountEndDateValue(iso){
+  if(!iso) return '';
+  try{ return new Date(iso).toLocaleDateString('en-CA', {timeZone:'Europe/Paris'}); }catch(e){ return ''; }
+}
+function _ptnrSvcDiscountHtml(service, isQuote){
+  if((service.audience||'particulier') === 'promo') return '';
+  var pct = Number(service.discount_pct) || 0;
+  var has = pct >= SVC_DISCOUNT_MIN && pct <= SVC_DISCOUNT_MAX;
+  return '<div class="ptnr-svc-discount" style="display:'+(isQuote?'none':'block')+';margin-top:10px;">'
+    + '<button type="button" class="ptnr-svc-discount-add" onclick="_ptnrToggleDiscount(this,true)" style="display:'+(has?'none':'flex')+';align-items:center;gap:6px;width:100%;background:transparent;border:1px dashed rgba(255,215,0,.35);border-radius:8px;color:#FFD700;font-size:10px;font-weight:800;padding:7px 9px;cursor:pointer;font-family:inherit;"><i class="fa-solid fa-tag"></i><span>Ajouter une remise</span></button>'
+    + '<div class="ptnr-svc-discount-body" style="display:'+(has?'block':'none')+';background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.25);border-radius:8px;padding:8px 9px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;">'
+        + '<span style="font-size:8.5px;font-weight:900;text-transform:uppercase;color:#FFD700;letter-spacing:.4px;"><i class="fa-solid fa-tag" style="margin-right:3px;"></i>Remise</span>'
+        + '<button type="button" onclick="_ptnrToggleDiscount(this,false)" style="background:none;border:none;color:#888;font-size:9.5px;font-weight:700;cursor:pointer;font-family:inherit;padding:0;">Retirer la remise</button>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+        + '<input type="number" class="ptnr-svc-discount-pct" min="'+SVC_DISCOUNT_MIN+'" max="'+SVC_DISCOUNT_MAX+'" step="1" placeholder="10" value="'+(has?pct:'')+'" oninput="_ptnrUpdateDiscountPreview(this)" style="width:56px;background:#1a1a1a;border:1px solid rgba(255,215,0,.3);border-radius:7px;color:#FFD700;font-size:12px;font-weight:900;padding:5px 8px;outline:none;font-family:inherit;text-align:center;">'
+        + '<span style="font-size:11px;color:#FFD700;font-weight:900;">%</span>'
+        + '<span style="font-size:10px;color:#888;margin-left:4px;">jusqu\'au</span>'
+        + '<input type="date" class="ptnr-svc-discount-end" value="'+(has?_ptnrDiscountEndDateValue(service.discount_ends_at):'')+'" oninput="_ptnrUpdateDiscountPreview(this)" style="flex:1;min-width:110px;background:#1a1a1a;border:1px solid rgba(255,215,0,.3);border-radius:7px;color:#ddd;font-size:11px;padding:4px 6px;outline:none;font-family:inherit;color-scheme:dark;">'
+      + '</div>'
+      + '<div style="font-size:9px;color:#666;margin-top:4px;">Date facultative : sans date, la remise reste active jusqu\'à ce que vous la retiriez.</div>'
+      + '<div class="ptnr-svc-discount-preview" style="font-size:10.5px;color:#ddd;margin-top:6px;line-height:1.4;">'+_ptnrDiscountPreviewText(service.price, has?pct:0, has?_ptnrDiscountEndDateValue(service.discount_ends_at):'')+'</div>'
+    + '</div>'
+  + '</div>';
+}
+function _ptnrDiscountPreviewText(price, pct, endDate){
+  price = parseFloat(price); pct = parseInt(pct, 10);
+  if(!price || price <= 0 || !pct) return '<span>Le client verra votre prix barré et le prix remisé.</span>';
+  if(pct < SVC_DISCOUNT_MIN || pct > SVC_DISCOUNT_MAX) return '<span style="color:#ef4444;">Remise entre '+SVC_DISCOUNT_MIN+' % et '+SVC_DISCOUNT_MAX+' %.</span>';
+  var after = Math.round(price * (1 - pct/100) * 100) / 100;
+  var ended = endDate && endDate < new Date().toLocaleDateString('en-CA', {timeZone:'Europe/Paris'});
+  return '<span>Prix remisé :</span> <strong style="color:#FFD700;" data-i18n-skip>'+after.toFixed(2).replace('.', ',')+' €</strong> <span>au lieu de</span> <span style="text-decoration:line-through;color:#777;" data-i18n-skip>'+price.toFixed(2).replace('.', ',')+' €</span>'
+    + (ended ? '<div style="color:#f59e0b;margin-top:2px;">Cette remise est terminée : changez la date ou retirez-la.</div>' : '');
+}
+function _ptnrUpdateDiscountPreview(el){
+  var card = el && el.closest('.ptnr-svc-card');
+  if(!card) return;
+  var prev = card.querySelector('.ptnr-svc-discount-preview');
+  if(!prev) return;
+  var priceEl = card.querySelector('.ptnr-svc-price'), pctEl = card.querySelector('.ptnr-svc-discount-pct'), endEl = card.querySelector('.ptnr-svc-discount-end');
+  prev.innerHTML = _ptnrDiscountPreviewText(priceEl ? priceEl.value : 0, pctEl ? pctEl.value : 0, endEl ? endEl.value : '');
+}
+function _ptnrToggleDiscount(btn, on){
+  var wrap = btn.closest('.ptnr-svc-discount');
+  if(!wrap) return;
+  var body = wrap.querySelector('.ptnr-svc-discount-body'), add = wrap.querySelector('.ptnr-svc-discount-add');
+  if(body) body.style.display = on ? 'block' : 'none';
+  if(add) add.style.display = on ? 'none' : 'flex';
+  if(on){ var pctEl = wrap.querySelector('.ptnr-svc-discount-pct'); if(pctEl){ if(!pctEl.value) pctEl.value = '10'; pctEl.focus(); } }
+  _ptnrUpdateDiscountPreview(btn);
+}
+// Remise lue dans la carte : null si aucune (bloc masqué ou vide).
+function _ptnrCollectDiscount(card){
+  var body = card.querySelector('.ptnr-svc-discount-body');
+  var pctEl = card.querySelector('.ptnr-svc-discount-pct');
+  if(!body || body.style.display === 'none' || !pctEl || !pctEl.value) return null;
+  var endEl = card.querySelector('.ptnr-svc-discount-end');
+  return { pct: parseInt(pctEl.value, 10), ends: endEl && endEl.value ? endEl.value : null };
+}
+
 // Métier de la prestation : affiché seulement pour un prestataire à plusieurs métiers (sinon,
 // toujours son métier principal, rien à choisir).
 function _ptnrSvcCategorySelectHtml(service){
@@ -22802,6 +22888,9 @@ function _ptnrSelectPricingMode(btn, mode){
   if(ctaEl) ctaEl.className='fa-solid '+(mode==='quote'?'fa-file-lines':'fa-plus');
   var quoteHint = card.querySelector('.ptnr-svc-quote-pay-hint');
   if(quoteHint) quoteHint.style.display = mode==='quote' ? 'block' : 'none';
+  // Remise : prix fixe uniquement (un devis est chiffré au cas par cas).
+  var discWrap = card.querySelector('.ptnr-svc-discount');
+  if(discWrap) discWrap.style.display = mode==='quote' ? 'none' : 'block';
   if(mode==='quote'){
     if(priceEl){ priceEl.value=''; priceEl.remove(); }
     if(!quoteEl && pricingRow){
@@ -22815,6 +22904,7 @@ function _ptnrSelectPricingMode(btn, mode){
     if(!priceEl && pricingRow){
       var inp = document.createElement('input');
       inp.type='number'; inp.className='ptnr-svc-price'; inp.placeholder='Prix €'; inp.min='0'; inp.step='0.01';
+      inp.oninput = function(){ _ptnrUpdateDiscountPreview(inp); };
       pricingRow.insertBefore(inp, pricingRow.firstChild);
     }
   }
@@ -22965,6 +23055,7 @@ function _ptnrCollectServiceItems(audience){
     }
     var catEl = cards[i].querySelector('.ptnr-svc-category');
     var prevSvc = ((_ptnrSession && _ptnrSession.services) || []).filter(function(ps){ return ps && serviceId && ps.id === serviceId; })[0];
+    var disc = (!isQuote && audience !== 'promo') ? _ptnrCollectDiscount(cards[i]) : null;
     services.push({
       id: serviceId,
       // Sans sélecteur (un seul métier) : métier déjà enregistré conservé, sinon métier principal (serveur).
@@ -22980,6 +23071,8 @@ function _ptnrCollectServiceItems(audience){
       features: features,
       active: true,
       audience: audience,
+      discount_pct: disc ? disc.pct : null,
+      discount_ends_at: disc ? disc.ends : null,
       image: imageAttr ? decodeURIComponent(imageAttr) : ''
     });
   }
@@ -23348,7 +23441,7 @@ var _TUTO_P = [
      +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-bolt" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Missions</span><div style="font-size:10px;color:#555;">Demandes clients, acceptation, suivi</div></div></div>'
      +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-comment" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Messages</span><div style="font-size:10px;color:#555;">Messagerie sécurisée avec vos clients</div></div></div>'
      +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-sack-dollar" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Portefeuille</span><div style="font-size:10px;color:#555;">Fonds GENESIS SAFE™ et versements</div></div></div>'
-     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-user" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Profil</span><div style="font-size:10px;color:#555;">Infos, portfolio, badges, Explorer GENESIS</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-user" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Profil</span><div style="font-size:10px;color:#555;">Infos, portfolio, badges, événements</div></div></div>'
      +'</div>'},
   {ico:'<i class="fa-solid fa-tags"></i>', title:'Vos tarifs selon le client',
    html:'<div style="font-size:12px;color:#888;text-align:center;margin-bottom:10px;">Dans "Mes tarifs &amp; prestations" (Accueil), chaque prestation que vous créez peut avoir un prix différent selon 4 catégories de clients.</div>'
@@ -23372,8 +23465,8 @@ var _TUTO_P = [
    desc:'Recevez les demandes de clients, acceptez ou déclinez. Chaque mission complétée avec une bonne note renforce votre réputation.', pnav:'missions'},
   {ico:'<i class="fa-solid fa-sack-dollar"></i>', title:'Portefeuille GENESIS SAFE™',
    desc:'Vos fonds sont sécurisés en escrow jusqu\'à la livraison, puis versés sur votre compte. Configurez PayPal ou virement bancaire dans cet espace.', pnav:'versements'},
-  {ico:'<i class="fa-solid fa-compass"></i>', title:'Explorer GENESIS',
-   desc:'Retrouvez vos collègues prestataires pour les référer à des clients indisponibles, et inscrivez-vous aux événements FA GENESIS.', pnav:'collegues'},
+  {ico:'<i class="fa-solid fa-champagne-glasses"></i>', title:'Événements GENESIS',
+   desc:'Inscrivez-vous aux événements GENESIS pour élargir votre réseau et rencontrer la communauté.', pnav:'evenements'},
   {ico:'<i class="fa-solid fa-arrow-trend-up"></i>', title:'Comment progresser ?',
    html:'<div style="font-size:12px;color:#888;text-align:center;margin-bottom:10px;">Complétez des missions et obtenez de bonnes notes pour débloquer des badges et des avantages.</div>'
      +'<div style="display:flex;flex-direction:column;gap:5px;">'
