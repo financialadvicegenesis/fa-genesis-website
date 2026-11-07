@@ -4685,6 +4685,7 @@ app.post('/api/orders/create', (req, res) => {
             if (!pdsRequest.client_email || !clientInfo.email || pdsRequest.client_email.toLowerCase() !== clientInfo.email.toLowerCase()) {
                 return res.status(403).json({ error: 'Accès non autorisé' });
             }
+            if (_ordUser && rejectRequestAudience(res, pdsRequest, _ordUser, pdsRequests)) return;
             if (pdsRequest.status !== 'signed') {
                 return res.status(409).json({ error: 'Le contrat doit être signé avant de pouvoir payer (statut actuel : ' + pdsRequest.status + ').' });
             }
@@ -15378,7 +15379,10 @@ app.put('/api/partner/services', authenticatePartner, async (req, res) => {
                 : null;
             // Remise (voir serviceDiscountPct) : prestations à prix fixe hors catégorie « Promo ».
             var discountPct = null, discountEndsAt = null, discountSince = null;
-            var _audIn = SERVICE_AUDIENCES.indexOf(s.audience) !== -1 ? s.audience : 'particulier';
+            if (SERVICE_AUDIENCES.indexOf(s.audience) === -1) {
+                return res.status(400).json({ error: 'Choisissez la catégorie de clients de la prestation « ' + s.label.trim() + ' » : Étudiant, Particulier, Entreprise ou Promo.', field: 'service_audience', serviceId: s.id || null });
+            }
+            var _audIn = s.audience;
             if (!isQuote && _audIn !== 'promo' && s.discount_pct != null && s.discount_pct !== '' && Number(s.discount_pct) !== 0) {
                 var _dPct = Math.round(Number(s.discount_pct));
                 if (!Number.isFinite(_dPct) || _dPct < SERVICE_DISCOUNT_MIN_PCT || _dPct > SERVICE_DISCOUNT_MAX_PCT) {
@@ -15631,8 +15635,67 @@ function serviceVisibleFor(s, aud) {
     var a = serviceAudiences(s);
     return a.indexOf(aud) !== -1 || a.indexOf('promo') !== -1;
 }
+// Compte client sans statut (ancien compte, inscription sans choix de profil) : traité comme
+// Particulier, le profil par défaut de l'app (décision du 2026-11-07 — avant, il voyait et pouvait
+// demander toutes les catégories). Pas de compte (visiteur, prestataire) : null, rien n'est filtré.
 function clientAudienceOfUser(user) {
-    return user && CLIENT_AUDIENCES.indexOf(user.accountType) !== -1 ? user.accountType : null;
+    if (!user) return null;
+    return CLIENT_AUDIENCES.indexOf(user.accountType) !== -1 ? user.accountType : 'particulier';
+}
+
+// ── Catégorie d'un devis (demande partner_requests) ──
+// Enregistrée à la création (audience : etudiant | particulier | entreprise | promo, celle de la
+// prestation demandée) ; une demande transmise par Jérémie hérite de celle de la demande d'origine ;
+// une ancienne demande la retrouve depuis sa prestation. Un client ne voit et ne fait avancer QUE
+// les devis de sa catégorie (Promo : tous les clients) — contrôlé ici, côté serveur, à chaque
+// accès (liste, détail, contrat, signature, paiement, choix d'un prestataire), jamais d'après une
+// valeur envoyée par l'app. Un devis déjà payé est une commande sous contrat : il reste toujours
+// accessible (suivi, livrables, remboursement), quelle que soit la catégorie.
+var REQUEST_AUDIENCES = ['etudiant', 'particulier', 'entreprise', 'promo'];
+function audienceForServiceRequest(service, clientAud) {
+    var a = serviceAudiences(service);
+    if (a.indexOf('promo') !== -1) return 'promo';
+    if (clientAud && a.indexOf(clientAud) !== -1) return clientAud;
+    return REQUEST_AUDIENCES.indexOf(a[0]) !== -1 ? a[0] : 'particulier';
+}
+function requestAudience(r, requests) {
+    if (!r) return null;
+    if (REQUEST_AUDIENCES.indexOf(r.audience) !== -1) return r.audience;
+    if (r.transferred_from) {
+        var origin = (requests || loadPartnerRequests()).find(function(x) { return x.id === r.transferred_from; });
+        return origin && origin.id !== r.id ? requestAudience(origin, requests) : null;
+    }
+    var partner = r.partner_id ? getPartnerById(r.partner_id) : null;
+    var service = partner && (partner.services || []).find(function(s) { return s && s.id === r.service_id; });
+    return service ? audienceForServiceRequest(service, null) : null;
+}
+function _requestIsPaid(r) {
+    if (!r || !r.order_id) return false;
+    if (['completed', 'reviewed'].indexOf(r.status) !== -1) return true;
+    return _requestOrderIsPaid(getOrderById(r.order_id));
+}
+function requestVisibleToClient(r, user, requests) {
+    if (_requestIsPaid(r)) return true;
+    var ra = requestAudience(r, requests);
+    if (!ra || ra === 'promo') return true; // catégorie inconnue (prestation supprimée avant la mise à jour) : non vérifiable
+    return ra === clientAudienceOfUser(user);
+}
+var REQUEST_AUDIENCE_MISMATCH = 'Ce devis est réservé à une autre catégorie de clients.';
+// true (réponse 403 envoyée) si le client n'a pas accès à ce devis.
+function rejectRequestAudience(res, r, user, requests) {
+    if (requestVisibleToClient(r, user, requests)) return false;
+    var aud = clientAudienceOfUser(user);
+    res.status(403).json({ error: REQUEST_AUDIENCE_MISMATCH + ' Votre compte donne accès aux offres pour les ' + (CLIENT_AUDIENCE_LABELS[aud] || 'particuliers') + '.', code: 'audience_mismatch' });
+    return true;
+}
+// Côté prestataire : un devis qui ne correspond pas à la catégorie de son client ne peut plus avancer
+// (aucune proposition ni notification envoyée à un client qui ne pourrait pas la voir).
+function rejectPartnerRequestAudience(res, r, requests) {
+    var email = String(r.client_email || '').toLowerCase();
+    var user = loadUsers().find(function(u) { return (u.email || '').toLowerCase() === email; });
+    if (!user || requestVisibleToClient(r, user, requests)) return false;
+    res.status(409).json({ error: 'Ce devis concerne une catégorie de clients qui ne correspond pas au profil du client : il ne peut pas aller plus loin.', code: 'audience_mismatch' });
+    return true;
 }
 function clientAudienceOf(req) {
     var h = (req && req.headers && req.headers.authorization) || '';
@@ -18967,6 +19030,8 @@ app.post('/api/partner-requests', function(req, res) {
             partner_id: partnerId,
             service_id: serviceId,
             service_label: service.label,
+            // Catégorie du devis, figée à la création (voir requestAudience).
+            audience: audienceForServiceRequest(service, _reqAud),
             price: serviceCurrentPrice(service),
             budget_note: (req.body.budgetNote || '').toString().substring(0, 300),
             desired_date: req.body.desiredDate || null,
@@ -19005,6 +19070,8 @@ app.get('/api/my-requests', function(req, res) {
             // Demandes transmises par Jérémie : invisibles tant que le client n'a pas retenu ce
             // prestataire (elles apparaissent dans la carte de la demande d'origine, voir transfer).
             .filter(function(r) { return !r.transferred_from || ['accepted', 'proposed', 'signed', 'completed', 'reviewed', 'cancelled_by_client'].indexOf(r.status) !== -1; })
+            // Devis d'une autre catégorie que celle du client : jamais listé (requestVisibleToClient).
+            .filter(function(r) { return requestVisibleToClient(r, user, allPartnerRequests); })
             .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })
             .map(function(r) {
                 var partner = getPartnerById(r.partner_id);
@@ -19149,7 +19216,8 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
         var allOrdersForPtnr = loadOrders();
         var allLivrablesForPtnr = loadLivrables();
         var allReviewsForPtnr = loadPartnerReviews();
-        var requests = loadPartnerRequests()
+        var allRequestsForPtnr = loadPartnerRequests();
+        var requests = allRequestsForPtnr
             .filter(function(r) {
                 // 'completed' inclus : une mission validée/payée ne doit pas disparaître de la
                 // liste du prestataire — 'completed' ne sert qu'à débloquer une future commande
@@ -19174,6 +19242,7 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
                 // en attente et non payée — un prestataire pouvait le lire et contacter le client hors
                 // GENESIS. L'app prestataire ne s'en sert pas : retiré.
                 delete out.client_email;
+                out.audience = requestAudience(r, allRequestsForPtnr);
                 out.dispatch_id = dispatchForReq ? dispatchForReq.id : null;
                 out.payment_tier = orderForReq ? (orderForReq.payment_tier || null) : null;
                 out.delivery_confirmed = orderForReq ? (!!orderForReq.delivery_confirmed) : false;
@@ -19246,6 +19315,7 @@ app.post('/api/partner/requests/:id/accept', authenticatePartner, function(req, 
         if (requests[idx].status !== 'pending') {
             return res.status(409).json({ error: _requestNotPendingMessage(requests[idx]) });
         }
+        if (rejectPartnerRequestAudience(res, requests[idx], requests)) return;
 
         // Demande transmise par Jérémie : l'acceptation attend le choix du client (voir
         // DEVIS NON PRIS EN CHARGE plus bas) — rien à proposer tant qu'il ne l'a pas retenu.
@@ -19391,7 +19461,9 @@ function partnerQuoteReactivity(partnerId, requests) {
 // réponse annoncé), pénalisés pour les demandes laissées sans réponse, puis par note et par
 // compatibilité de lieu.
 function findQuoteTransferCandidates(request, origin, clientUser, category, requests) {
-    var aud = clientAudienceOfUser(clientUser);
+    // Catégorie du devis (Étudiant, Particulier, Entreprise) ; devis Promo : celle du client.
+    var reqAud = requestAudience(request, requests);
+    var aud = (reqAud && reqAud !== 'promo') ? reqAud : clientAudienceOfUser(clientUser);
     var clientEmail = String(request.client_email || '').toLowerCase();
     var busy = {};
     (requests || []).forEach(function(r) {
@@ -19472,6 +19544,7 @@ function startQuoteTransfer(requests, idx, reason) {
             partner_id: pick.partner.id,
             service_id: null,
             service_label: r.service_label,
+            audience: requestAudience(r, requests) || clientAudienceOfUser(clientUser) || 'particulier',
             price: null,
             budget_note: r.budget_note || '',
             desired_date: r.desired_date || null,
@@ -19759,6 +19832,7 @@ function _loadClientTransfer(req, res) {
     var origin = requests[oi];
     if (String(origin.client_email || '').toLowerCase() !== String(user.email || '').toLowerCase()) { res.status(403).json({ error: 'Accès non autorisé' }); return null; }
     if (!origin.transfer) { res.status(409).json({ error: 'Cette demande n\'a pas été transmise à d\'autres prestataires.' }); return null; }
+    if (rejectRequestAudience(res, origin, user, requests)) return null;
     return { user: user, requests: requests, origin: origin };
 }
 function _closeOtherTransferCandidates(requests, origin, keepId) {
@@ -19852,6 +19926,7 @@ app.get('/api/my-requests/:id', function(req, res) {
         var found = requests.find(function(r) { return r.id === req.params.id; });
         if (!found) return res.status(404).json({ error: 'Demande introuvable' });
         if (found.client_email !== user.email) return res.status(403).json({ error: 'Accès non autorisé' });
+        if (rejectRequestAudience(res, found, user, requests)) return;
 
         var partner = getPartnerById(found.partner_id);
         var out = JSON.parse(JSON.stringify(found));
@@ -19909,6 +19984,7 @@ app.post('/api/partner/requests/:id/propose', authenticatePartner, function(req,
         if (requests[idx].status !== 'accepted') {
             return res.status(409).json({ error: 'Cette demande ne peut pas recevoir de proposition (statut: ' + requests[idx].status + ').' });
         }
+        if (rejectPartnerRequestAudience(res, requests[idx], requests)) return;
 
         // Échéancier réel (montants en euros, pas juste des %), pour l'affichage côté client ET
         // comme source de vérité reprise telle quelle à la création de la commande au paiement
@@ -19994,6 +20070,7 @@ app.get('/api/my-requests/:id/contract-preview', function(req, res) {
         var r = loadPartnerRequests().find(function(x) { return x.id === req.params.id; });
         if (!r) return res.status(404).json({ error: 'Demande introuvable' });
         if (r.client_email !== user.email) return res.status(403).json({ error: 'Accès non autorisé' });
+        if (rejectRequestAudience(res, r, user)) return;
         if (r.contract_html) return res.json({ html: r.contract_html, signed: true });
         var signedLegacy = !!(r.contract_signed && r.proposal);
         if (!signedLegacy && (r.status !== 'proposed' || !r.proposal)) return res.status(409).json({ error: 'Aucune proposition à consulter pour le moment.' });
@@ -20020,6 +20097,7 @@ app.post('/api/my-requests/:id/decline-proposal', function(req, res) {
         if (idx === -1) return res.status(404).json({ error: 'Demande introuvable' });
         var r = requests[idx];
         if (r.client_email !== user.email) return res.status(403).json({ error: 'Accès non autorisé' });
+        if (rejectRequestAudience(res, r, user, requests)) return;
         if (r.status !== 'proposed' || !r.proposal) return res.status(409).json({ error: 'Aucune proposition à refuser pour le moment.' });
         var reason = (req.body && req.body.reason ? String(req.body.reason) : '').trim().substring(0, 500);
         var declined = Object.assign({}, r.proposal, { declined_at: new Date().toISOString(), decline_reason: reason });
@@ -20062,6 +20140,7 @@ app.post('/api/my-requests/:id/cancel', function(req, res) {
         if (idx === -1) return res.status(404).json({ error: 'Demande introuvable' });
         var r = requests[idx];
         if (r.client_email !== user.email) return res.status(403).json({ error: 'Accès non autorisé' });
+        if (rejectRequestAudience(res, r, user, requests)) return;
         // Demande transmise par Jérémie, pas encore attribuée : annule toutes les demandes
         // transmises (les prestataires qui avaient accepté sont informés).
         if (r.transfer && ['open', 'awaiting_choice'].indexOf(r.transfer.status) !== -1) {
@@ -20133,6 +20212,7 @@ app.post('/api/my-requests/:id/sign-contract', function(req, res) {
         if (requests[idx].client_email !== user.email) {
             return res.status(403).json({ error: 'Accès non autorisé' });
         }
+        if (rejectRequestAudience(res, requests[idx], user, requests)) return;
         if (requests[idx].status !== 'proposed') {
             return res.status(409).json({ error: 'Aucune proposition à signer pour le moment (statut: ' + requests[idx].status + ').' });
         }

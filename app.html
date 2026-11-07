@@ -2549,15 +2549,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261106b"></script>
-<script src="app-i18n-es.js?v=20261106b"></script>
-<script src="app-i18n-hi.js?v=20261106b"></script>
-<script src="app-i18n-pt.js?v=20261106b"></script>
-<script src="app-i18n-ja.js?v=20261106b"></script>
-<script src="app-i18n-zh.js?v=20261106b"></script>
-<script src="app-i18n-ar.js?v=20261106b"></script>
-<script src="app-i18n-it.js?v=20261106b"></script>
-<script src="app-i18n-de.js?v=20261106b"></script>
+<script src="app-i18n-en.js?v=20261107a"></script>
+<script src="app-i18n-es.js?v=20261107a"></script>
+<script src="app-i18n-hi.js?v=20261107a"></script>
+<script src="app-i18n-pt.js?v=20261107a"></script>
+<script src="app-i18n-ja.js?v=20261107a"></script>
+<script src="app-i18n-zh.js?v=20261107a"></script>
+<script src="app-i18n-ar.js?v=20261107a"></script>
+<script src="app-i18n-it.js?v=20261107a"></script>
+<script src="app-i18n-de.js?v=20261107a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3974,7 +3974,9 @@ var API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 // carte, fiche) qui ne l'envoyaient pas, sans toucher à chacun d'eux. Visiteur : rien ne change.
 var _CLIENT_AUDIENCES = ['etudiant', 'particulier', 'entreprise'];
 function _clientAudience(){
-  return (USER && !GUEST && USER._token && _CLIENT_AUDIENCES.indexOf(USER.accountType) !== -1) ? USER.accountType : null;
+  // Compte sans statut : Particulier, comme le serveur (clientAudienceOfUser).
+  if(!(USER && !GUEST && USER._token)) return null;
+  return _CLIENT_AUDIENCES.indexOf(USER.accountType) !== -1 ? USER.accountType : 'particulier';
 }
 (function(){
   if(!window.fetch || window.__faAudienceFetch) return;
@@ -19680,6 +19682,8 @@ function _ptnrRenderMissionsList(){
     html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(r.created_at)+'</div>';
     if(r.transferred_from) html += _ptnrJeremieBriefHtml(r);
     html += '<div class="dispatch-avail">';
+    // Catégorie du devis (fixée par le serveur à la création) : le client a ce profil.
+    if(r.audience && _PTNR_REQ_AUD_LABELS[r.audience]) html += '<strong>Catégorie :</strong> <span>'+_PTNR_REQ_AUD_LABELS[r.audience]+'</span><br>';
     // Demande transmise par Jérémie : pas de prestation de votre catalogue, prix à fixer dans la proposition.
     html += (r.price == null)
       ? '<strong>Tarif :</strong> <span>sur devis, à fixer dans votre proposition</span><br>'
@@ -19721,6 +19725,7 @@ function _ptnrRenderMissionsList(){
   _setBadgeMissions(needsActionCount);
 }
 
+var _PTNR_REQ_AUD_LABELS = {etudiant:'Étudiant', particulier:'Particulier', entreprise:'Entreprise', promo:'Promo'};
 // Demande transmise par Jérémie IA (le prestataire sollicité en premier a refusé ou n'a pas
 // répondu) : pourquoi ce prestataire la reçoit, et ce qu'il reste à préciser avec le client.
 function _ptnrJeremieBriefHtml(r){
