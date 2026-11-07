@@ -2409,6 +2409,23 @@ function getUserLanguage(email, role) {
         return 'fr';
     }
 }
+// Anglais : les traductions mélangeaient « », " et “ ” autour d'un même nom (« Logo " : …).
+// Tous les guillemets d'un texte de notification sont remis par paires typographiques “…”.
+// Jamais appliqué aux contrats (HTML : les guillemets des attributs doivent rester intacts).
+function _normalizeQuotesEn(text) {
+    var marks = String(text).match(/[«»“”"]/g);
+    if (!marks || marks.length % 2) return text; // non apparié : on ne touche à rien
+    var n = 0;
+    var out = String(text).replace(/\s*[«»“”"]\s*/g, function(m) {
+        var opening = (n++ % 2) === 0;
+        return opening ? (/^\s/.test(m) ? ' ' : '') + '\u201c' : '\u201d' + (/\s$/.test(m) ? ' ' : '');
+    });
+    return out.replace(/\u201d\s+([:;,.!?])/g, '\u201d$1').replace(/^\s+/, '');
+}
+function translateNotifText(text, lang) {
+    var t = translateServerText(text, lang);
+    return (lang === 'en' && t) ? _normalizeQuotesEn(t) : t;
+}
 function translateServerText(text, lang) {
     if (!text || lang === 'fr') return text;
     var dict = _loadServerI18nDict(lang);
@@ -2487,7 +2504,7 @@ function _resourceFromLink(link) {
 function jeremieMessageView(m, lang) {
     return {
         id: m.id, event: m.event,
-        text: translateServerText(m.text, lang || 'fr'),
+        text: translateNotifText(m.text, lang || 'fr'),
         action_label: m.action_label || null, link: m.link || null,
         resource_type: m.resource_type || null, resource_id: m.resource_id || null,
         important: !!m.important, created_at: m.created_at,
@@ -2543,6 +2560,13 @@ var JEREMIE_COMPANION_RULES = {
         mission_accepted: function(n) { return { text: n.body, action_label: 'Suivre ma commande' }; },
         mission_declined: function(n) { return { text: n.body, action_label: 'Voir ma commande', important: true }; },
         livrable_published: function(n) { return { text: n.body + ' Vérifiez-les, puis validez la livraison ou demandez une modification.', action_label: 'Voir mes livrables', important: true }; },
+        'litige-ouvert': function(n) { return { text: n.body, action_label: 'Voir le litige', important: true }; },
+        'litige-resolu': function(n) { return { text: n.body + ' Consultez la décision dans le fil du litige.', action_label: 'Voir le litige', important: true }; },
+        'installment-overdue': function(n) { return { text: n.body, action_label: 'Régler ma mensualité', important: true }; },
+        'installment-reminder': function(n) { return { text: n.body, action_label: 'Voir mes paiements' }; },
+        auto_release: function(n) { return { text: n.body, action_label: 'Voir ma commande' }; },
+        prestation_delivered: function(n) { return { text: n.body, action_label: 'Valider la livraison', important: true }; },
+        prestation_complete: function(n) { return { text: n.body, action_label: 'Valider la livraison', important: true }; },
         jeremie_devis: function(n) {
             var choose = /accepté/.test(n.body) && !/Aucun/.test(n.body);
             var find = /open-prestataires/.test(n.link || '');
@@ -2551,6 +2575,13 @@ var JEREMIE_COMPANION_RULES = {
     },
     partner: {
         mission_pending: function(n) { return { text: n.body, action_label: 'Voir la commande', important: true }; },
+        mission_cancelled: function(n) { return { text: n.body, action_label: 'Voir la mission', important: true }; },
+        mission_declined: function(n) { return { text: n.body, action_label: 'Voir mes missions' }; },
+        'litige-ouvert': function(n) { return { text: n.body, action_label: 'Voir le litige', important: true }; },
+        'litige-resolu': function(n) { return { text: n.body + ' Consultez la décision dans le fil du litige.', action_label: 'Voir le litige', important: true }; },
+        wallet_credited: function(n) { return /Litige/.test(n.title) ? { text: n.body, action_label: 'Voir mon Wallet' } : null; },
+        // Compte de paiement Stripe (type 'stripe_account_<statut>', voir _jeremieCompanionFor).
+        'stripe_account_*': function(n) { return { text: n.body, action_label: 'Voir mon espace paiements', important: n.type !== 'stripe_account_active' }; },
         delivery_validated: function(n) { return { text: n.body, action_label: 'Voir mes gains' }; }
     }
 };
@@ -2559,7 +2590,8 @@ function _jeremieCompanionFor(notif, opts) {
     if (opts && opts.jeremie === false) return;
     var spec = (opts && opts.jeremie) || null;
     if (!spec) {
-        var rule = (JEREMIE_COMPANION_RULES[notif.role] || {})[notif.type];
+        var _rules = JEREMIE_COMPANION_RULES[notif.role] || {};
+        var rule = _rules[notif.type] || (String(notif.type).indexOf('stripe_account_') === 0 ? _rules['stripe_account_*'] : null);
         spec = rule ? rule(notif) : null;
     }
     if (!spec || !spec.text) return;
@@ -2568,6 +2600,14 @@ function _jeremieCompanionFor(notif, opts) {
         link: spec.link || notif.link, notif_id: notif.id, important: !!spec.important,
         dedupe_key: spec.dedupe_key || (notif.type + '|' + (notif.link || '') + '|' + notif.title)
     });
+}
+
+// Prénom seul du client pour les notifications envoyées au prestataire (push compris) : jamais
+// son nom complet, ni son e-mail (client_name vaut l'e-mail quand le client n'a pas de nom).
+function _clientFirstName(fullName, fallback) {
+    var n = String(fullName || '').trim();
+    if (!n || n.indexOf('@') !== -1) return fallback;
+    return n.split(/\s+/)[0];
 }
 
 function notifyUser(email, role, type, title, body, link, opts) {
@@ -2599,8 +2639,8 @@ function notifyUser(email, role, type, title, body, link, opts) {
         // reste de l'interface (voir app-i18n.js). Seul le texte envoyé au système de
         // notification natif (ci-dessous) a besoin d'être traduit ici.
         var _pushLang = getUserLanguage(email, role);
-        var _pushTitle = translateServerText(title, _pushLang) || 'FA GENESIS';
-        var _pushBody = translateServerText(body, _pushLang) || '';
+        var _pushTitle = translateNotifText(title, _pushLang) || 'FA GENESIS';
+        var _pushBody = translateNotifText(body, _pushLang) || '';
         var pushPayload = {
             title: _pushTitle,
             body: _pushBody,
@@ -2892,6 +2932,29 @@ app.post('/api/disputes', function(req, res) {
         var disputes = loadDisputes();
         disputes.push(dispute);
         saveDisputes(disputes);
+
+        // L'autre partie est prévenue (avant : seul l'admin l'était) ; Jérémie confirme à
+        // l'auteur que son litige est bien ouvert.
+        try {
+            var _dOrder = dispatch.order_id ? getOrderById(dispatch.order_id) : null;
+            var _dLabel = (_dOrder && _dOrder.product_name) || dispatch.offer_name || 'votre mission';
+            if (identity.role === 'client') {
+                var _dPartner = getPartnerById(dispatch.claimed_by_partner_id);
+                if (_dPartner) notifyUser(_dPartner.email, 'partner', 'litige-ouvert', 'Litige ouvert',
+                    'Le client a ouvert un litige sur « ' + _dLabel + ' ». L\'équipe FA GENESIS l\'examine : vous pouvez y répondre dans le fil du litige.',
+                    '/app.html#partner:litige-' + dispute.id);
+            } else if (dispatch.client_email) {
+                notifyUser(dispatch.client_email, 'client', 'litige-ouvert', 'Litige ouvert',
+                    'Le prestataire a ouvert un litige sur « ' + _dLabel + ' ». L\'équipe FA GENESIS l\'examine : vous pouvez y répondre dans le fil du litige.',
+                    '/app.html#litige-' + dispute.id);
+            }
+            jeremieSay(identity.role, identity.email, {
+                event: 'litige_ouvert',
+                text: 'Votre litige sur « ' + _dLabel + ' » est bien ouvert. L\'équipe FA GENESIS l\'examine sous ' + GENESIS_DISPUTE_SLA_LABEL + ' et je vous préviens dès qu\'il est résolu.',
+                action_label: 'Voir le litige', link: (identity.role === 'partner' ? '/app.html#partner:litige-' : '/app.html#litige-') + dispute.id,
+                dedupe_key: 'litige_ouvert|' + dispute.id
+            });
+        } catch (e) { console.error('[DISPUTE] Notification ouverture:', e.message); }
 
         var notifyAdminNewDispute = function() {
             notifyUser(null, 'admin', 'litige', 'Nouveau litige ouvert', fromName + ' a ouvert un litige (' + dispute.category + ')', '/admin.html#open-disputes');
@@ -3269,9 +3332,9 @@ app.post('/api/admin/disputes/:id/resolve', function(req, res) {
         saveDisputes(disputes);
 
         var partner = getPartnerById(dispute.partner_id);
-        notifyUser(dispute.client_email, 'client', 'litige-resolu', 'Litige resolu', 'Votre litige a ete resolu par notre equipe.', '/app.html#litige-' + dispute.id);
+        notifyUser(dispute.client_email, 'client', 'litige-resolu', 'Litige résolu', 'Votre litige a été résolu par notre équipe.', '/app.html#litige-' + dispute.id);
         if (partner && partner.email) {
-            notifyUser(partner.email, 'partner', 'litige-resolu', 'Litige resolu', 'Le litige avec votre client a ete resolu par notre equipe.', '/app.html#partner:litige-' + dispute.id);
+            notifyUser(partner.email, 'partner', 'litige-resolu', 'Litige résolu', 'Le litige avec votre client a été résolu par notre équipe.', '/app.html#partner:litige-' + dispute.id);
         }
 
         // CRITIQUE : ne libérer le versement en attente (on_hold) QUE si le verdict est en
@@ -19263,7 +19326,7 @@ app.post('/api/partner-requests', function(req, res) {
 
         var _nrDetails = (newRequest.budget_note ? ' Budget indiqué : ' + newRequest.budget_note + '.' : '')
             + (newRequest.desired_date ? ' Date souhaitée : ' + new Date(newRequest.desired_date).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' }) + '.' : '');
-        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', newRequest.client_name + ' souhaite vous engager pour : ' + service.label, '#partner:mission:' + newRequest.id, {
+        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', _clientFirstName(newRequest.client_name, 'Un client') + ' souhaite vous engager pour : ' + service.label, '#partner:mission:' + newRequest.id, {
             jeremie: { text: 'Nouvelle opportunité : ' + (user.prenom || 'un client') + ' souhaite vous confier « ' + service.label + ' ».' + _nrDetails + ' Consultez les détails pour accepter ou refuser.', action_label: 'Voir l\'opportunité', important: true }
         });
         // Confirmation au client par Jérémie (sa propre action : pas de notification système ni de push).
@@ -19567,7 +19630,7 @@ app.post('/api/partner/requests/:id/accept', authenticatePartner, function(req, 
         requests[idx].responded_at = new Date().toISOString();
         savePartnerRequests(requests);
 
-        var partnerName = req.partner.prenom || req.partner.email;
+        var partnerName = req.partner.prenom || _partnerDisplayName(req.partner);
         // Le prestataire n'a encore rien proposé (prix, délai, modalités) : aucun paiement n'est
         // possible à ce stade — avant, ce message invitait à tort à « payer l'acompte ».
         notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande acceptée ✅', partnerName + ' a accepté votre demande pour : ' + requests[idx].service_label + '. Il prépare sa proposition : vous serez notifié dès qu\'elle sera prête.', '/app.html#client:proposal:' + requests[idx].id, {
@@ -19811,7 +19874,7 @@ function notifyQuoteTransferStarted(info) {
         '/app.html#client:proposal:' + r.id);
     picks.forEach(function(pick, i) {
         notifyUser(pick.partner.email, 'partner', 'partner-request', 'Nouvelle demande de devis',
-            'Jérémie IA vous transmet la demande de ' + (r.client_name || 'un client') + ' : ' + r.service_label + '. Le client choisira parmi les prestataires qui acceptent.',
+            'Jérémie IA vous transmet la demande de ' + _clientFirstName(r.client_name, 'un client') + ' : ' + r.service_label + '. Le client choisira parmi les prestataires qui acceptent.',
             '#partner:mission:' + r.transfer.candidates[i].request_id, {
                 jeremie: { text: 'Nouvelle opportunité : je vous transmets la demande « ' + r.service_label + ' », que le premier prestataire contacté n\'a pas pu prendre. Consultez les détails pour accepter ou refuser.', action_label: 'Voir l\'opportunité', important: true }
             });
@@ -20005,7 +20068,7 @@ function processQuoteRequestDeadlines() {
         started.forEach(notifyQuoteTransferStarted);
         expiredOrigins.forEach(function(x) {
             if (x.partner) notifyUser(x.partner.email, 'partner', 'partner-request', 'Demande expirée',
-                'Vous n\'avez pas répondu à temps à la demande de ' + (x.request.client_name || 'un client') + ' pour : ' + x.request.service_label + '. Elle a été proposée à d\'autres prestataires.',
+                'Vous n\'avez pas répondu à temps à la demande de ' + _clientFirstName(x.request.client_name, 'un client') + ' pour : ' + x.request.service_label + '. Elle a été proposée à d\'autres prestataires.',
                 '#partner:missions', { push: false });
         });
         keptOpen.forEach(function(r) {
@@ -20102,7 +20165,7 @@ app.post('/api/my-requests/:id/transfer/choose', function(req, res) {
         var chosenPartner = getPartnerById(child.partner_id);
         if (chosenPartner) {
             notifyUser(chosenPartner.email, 'partner', 'partner-request', 'Le client vous a choisi ✅',
-                (child.client_name || 'Le client') + ' vous a retenu pour : ' + child.service_label + '. Envoyez-lui votre proposition (prix, délai, modalités).',
+                _clientFirstName(child.client_name, 'Le client') + ' vous a retenu pour : ' + child.service_label + '. Envoyez-lui votre proposition (prix, délai, modalités).',
                 '#partner:mission:' + child.id, {
                     jeremie: { text: 'Bonne nouvelle ! Le client vous a retenu pour « ' + child.service_label + ' ». Envoyez-lui votre proposition (prix, délai, modalités) pour avancer.', action_label: 'Préparer ma proposition', important: true }
                 });
@@ -20350,7 +20413,7 @@ app.post('/api/my-requests/:id/decline-proposal', function(req, res) {
         var partner = getPartnerById(r.partner_id);
         if (partner) {
             notifyUser(partner.email, 'partner', 'partner-request', 'Proposition refusée',
-                (r.client_name || 'Le client') + ' a refusé votre proposition pour : ' + r.service_label + '.' + (reason ? ' Motif : ' + reason + (/[.!?…]$/.test(reason) ? '' : '.') : '') + ' Vous pouvez lui envoyer une nouvelle proposition.',
+                _clientFirstName(r.client_name, 'Le client') + ' a refusé votre proposition pour : ' + r.service_label + '.' + (reason ? ' Motif : ' + reason + (/[.!?…]$/.test(reason) ? '' : '.') : '') + ' Vous pouvez lui envoyer une nouvelle proposition.',
                 '#partner:mission:' + r.id, {
                     jeremie: { text: 'Le client n\'a pas retenu votre proposition pour « ' + r.service_label + ' ».' + (reason ? ' Motif : ' + reason + (/[.!?…]$/.test(reason) ? '' : '.') : '') + ' Vous pouvez lui en envoyer une nouvelle.', action_label: 'Envoyer une nouvelle proposition', dedupe_key: 'proposal_declined|' + r.id + '|' + declined.declined_at }
                 });
@@ -20394,7 +20457,7 @@ app.post('/api/my-requests/:id/cancel', function(req, res) {
             _tcInformed.forEach(function(c) {
                 var _tcP = getPartnerById(c.partner_id);
                 if (_tcP) notifyUser(_tcP.email, 'partner', 'partner-request', 'Demande annulée',
-                    (c.client_name || 'Le client') + ' a annulé sa demande pour : ' + c.service_label + '.', '#partner:missions', { push: false });
+                    _clientFirstName(c.client_name, 'Le client') + ' a annulé sa demande pour : ' + c.service_label + '.', '#partner:missions', { push: false });
             });
             return res.json({ success: true, request: r });
         }
@@ -20424,7 +20487,7 @@ app.post('/api/my-requests/:id/cancel', function(req, res) {
         var partner = getPartnerById(r.partner_id);
         if (partner) {
             notifyUser(partner.email, 'partner', 'partner-request', 'Demande annulée',
-                (r.client_name || 'Le client') + ' a annulé sa demande pour : ' + r.service_label + '.'
+                _clientFirstName(r.client_name, 'Le client') + ' a annulé sa demande pour : ' + r.service_label + '.'
                 + (wasSigned ? ' Le contrat avait été signé, mais aucun paiement n\'avait été effectué.' : '')
                 + (reason ? ' Motif : ' + reason + (/[.!?…]$/.test(reason) ? '' : '.') : ''),
                 '#partner:missions');
@@ -21417,7 +21480,7 @@ app.post('/api/partner/orders/:orderId/unlock-balance', authenticatePartner, fun
             emailService.sendAccompanimentEndNotification(
                 clientEmail,
                 clientName,
-                partnerName,
+                ((partner.prenom || '') + ' ' + (partner.nom || partner.name || '')).trim() || 'Votre prestataire',
                 updatedOrder.product_name || '',
                 updatedOrder.balance_amount || 0
             ).catch(function(e) {
@@ -21514,7 +21577,7 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, functio
         if (clientEmail) {
             notifyUser(clientEmail, 'client', 'prestation_complete',
                 'Prestation terminée — action requise',
-                partnerName + ' a déclaré votre prestation « ' + productName + ' » terminée. Validez la livraison pour finaliser.',
+                (((partner.prenom || '') + ' ' + (partner.nom || partner.name || '')).trim() || 'Votre prestataire') + ' a déclaré votre prestation « ' + productName + ' » terminée. Validez la livraison pour finaliser.',
                 '/app.html#client:order:' + orderId
             );
         }
@@ -22702,7 +22765,7 @@ app.post('/api/contracts/:id/client-sign', function(req, res) {
         // Notifier le partenaire
         notifyUser(contract.partner_email, 'partner', 'contract_signed',
             'Contrat signé ✅',
-            contract.client_name + ' a signé le contrat pour la mission ' + contract.order_id + '. Retrouvez-la dans Mes livrables.',
+            _clientFirstName(contract.client_name, 'Le client') + ' a signé le contrat pour la mission ' + contract.order_id + '. Retrouvez-la dans Mes livrables.',
             '#partner:contract:' + contract.id);
 
         console.log('[CONTRACT] Client a signé le contrat:', contract.id, '→', user.email);
@@ -22740,7 +22803,7 @@ app.post('/api/contracts/:id/client-refuse', function(req, res) {
         // Notifier le partenaire
         notifyUser(contract.partner_email, 'partner', 'contract_refused',
             'Contrat refusé ❌',
-            contract.client_name + ' a refusé le contrat pour la commande ' + contract.order_id + (reason ? ' — Motif : ' + reason : '') + '.',
+            _clientFirstName(contract.client_name, 'Le client') + ' a refusé le contrat pour la commande ' + contract.order_id + (reason ? ' — Motif : ' + reason : '') + '.',
             '/app.html#partner:contract:' + contract.id);
 
         console.log('[CONTRACT] Client a refusé le contrat:', contract.id);
@@ -24918,7 +24981,7 @@ function runDiscoveryPushes(opts) {
                 var lang = it.recipient.lang || 'fr';
                 sendFcmToUser(it.recipient.fcmUserId, { data: {
                     url: link, type: type, channelId: 'genesis_general',
-                    title: translateServerText(it.msg.title, lang) || 'GENESIS', body: translateServerText(it.msg.body, lang) || ''
+                    title: translateNotifText(it.msg.title, lang) || 'GENESIS', body: translateNotifText(it.msg.body, lang) || ''
                 } });
             }
             log.push({ id: id, recipient: it.recipient.key, recipient_type: it.recipient.type, kind: it.msg.kind, partner_id: it.msg.partner_id, promo_id: it.msg.promo_id, sent_at: new Date(now).toISOString(), opened_at: null });
