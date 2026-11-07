@@ -2213,9 +2213,7 @@ a{text-decoration:none;color:inherit}
 .jeremie-emotion-badge-lg{width:30px;height:30px;font-size:20px;}
 .jeremie-greet-avatar{position:relative;width:64px;height:64px;border-radius:50%;margin:0 auto 12px;overflow:hidden;background:radial-gradient(circle at 30% 24%,#1c2c52,#0d1730 60%,#05070f 100%);box-shadow:0 0 18px rgba(255,215,0,.5),0 0 0 1px rgba(255,215,0,.35);}
 #jeremie-sheet .chat-messages{position:relative;z-index:1;}
-/* Bulle de Jérémie (message spontané près de l'avatar) + pastille de non-lus */
-.jeremie-fab-unread{position:absolute;top:-4px;left:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;display:none;align-items:center;justify-content:center;border:2px solid #0d0d0d;z-index:3;pointer-events:none;font-family:inherit;}
-.jeremie-fab-unread.on{display:flex;}
+/* Bulle de Jérémie (message spontané près de l'avatar) */
 /* Bulle de dialogue (façon bande dessinée) : le fond et le contour sont UN SEUL tracé SVG continu,
    pointe comprise, dessiné à la taille réelle du message et orienté vers l'avatar
    (_jerDrawBubbleShape). La pointe fait partie de la forme, ce n'est pas un triangle ajouté. */
@@ -2234,18 +2232,6 @@ a{text-decoration:none;color:inherit}
 .jer-bubble-close{position:absolute !important;top:8px;right:10px;width:28px;height:28px;border:none;background:none;color:#777;font-size:14px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .jer-bubble-close:focus-visible,.jer-bubble-cta:focus-visible{outline:2px solid #FFD700;outline-offset:2px;}
 @media (prefers-reduced-motion: reduce){ #jeremie-bubble{transition:none;transform:none;} }
-/* Onglets Discussion / Messages dans la fenêtre de Jérémie */
-.jeremie-tabs{position:relative;z-index:1;display:flex;border-bottom:1px solid #1a1a1a;flex-shrink:0;}
-.jeremie-tabs button{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:#666;font-size:12px;font-weight:800;padding:10px 6px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;}
-.jeremie-tabs button.on{color:#FFD700;border-bottom-color:#FFD700;}
-.jer-tab-badge{min-width:16px;height:16px;border-radius:8px;background:#ef4444;color:#fff;font-size:9px;font-weight:900;padding:0 4px;display:none;align-items:center;justify-content:center;}
-.jer-tab-badge.on{display:inline-flex;}
-.jer-inbox-item{padding:12px 14px;border-bottom:1px solid #1a1a1a;position:relative;}
-.jer-inbox-item.unread{background:rgba(255,215,0,.04);}
-.jer-inbox-item.unread::before{content:'';position:absolute;left:5px;top:18px;width:6px;height:6px;border-radius:50%;background:#FFD700;}
-.jer-inbox-date{font-size:10px;color:#666;margin-bottom:4px;}
-.jer-inbox-text{font-size:13px;line-height:1.5;color:#ddd;}
-.jer-inbox-cta{margin-top:8px;background:transparent;border:1px solid rgba(255,215,0,.4);color:#FFD700;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;}
 #jeremie-sheet .chat-compose{position:relative;z-index:1;padding-bottom:calc(10px + var(--safe));align-items:flex-end;}
 #jeremie-sheet .chat-text-input{border-radius:22px;padding:11px 16px;resize:none;max-height:120px;min-height:42px;line-height:1.35;overflow-y:auto;}
 #jeremie-sheet .chat-send-btn{width:38px;height:38px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -3687,7 +3673,6 @@ function _genesisVersionFooter(){
   <button class="jeremie-fab" id="jeremie-fab" onclick="openJeremieChat()" aria-label="Parler à Jérémie">
     <span class="jeremie-avatar-clip" id="jeremie-fab-avatar"></span>
     <span class="jeremie-emotion-badge" id="jeremie-fab-emotion"></span>
-    <span class="jeremie-fab-unread" id="jeremie-fab-unread" aria-hidden="true"></span>
   </button>
   <!-- Bulle de Jérémie : message spontané lié à un vrai événement (voir _jerShowNext) -->
   <div id="jeremie-bubble" role="status" aria-live="polite"></div>
@@ -3710,12 +3695,7 @@ function _genesisVersionFooter(){
         <span class="jeremie-avatar-clip jeremie-avatar-clip-lg" id="jeremie-immersive-avatar-inner"></span>
         <span class="jeremie-emotion-badge jeremie-emotion-badge-lg" id="jeremie-immersive-emotion"></span>
       </div>
-      <div class="jeremie-tabs" role="tablist">
-        <button type="button" id="jer-tab-chat" class="on" role="tab" onclick="_jerSwitchTab('chat')">Discussion</button>
-        <button type="button" id="jer-tab-msgs" role="tab" onclick="_jerSwitchTab('msgs')"><span>Messages</span><span class="jer-tab-badge" id="jer-tab-badge"></span></button>
-      </div>
       <div class="chat-messages" id="jeremie-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>
-      <div class="chat-messages" id="jeremie-inbox" style="display:none;padding:0;"></div>
       <div class="chat-compose" id="jeremie-compose">
         <!-- Pas de bouton micro personnalisé : la dictée vocale passe par le micro du clavier
              Android lui-même (Gboard, à côté de la barre d'espace) directement dans ce champ de
@@ -11663,26 +11643,12 @@ function openJeremieChat(){
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); },20);
   _jerHideBubble(false);
-  _jerSwitchTab(_jerOpenTab === 'msgs' ? 'msgs' : 'chat');
-  _jerOpenTab = null;
   loadJeremieHistory();
 }
-var _jerOpenTab = null;
 // Jeton de la session réellement affichée (client OU prestataire), comme le WebSocket.
 function _jerChatToken(){
   var id = (typeof _genesisActiveChatIdentity==='function') ? _genesisActiveChatIdentity() : null;
   return id ? id.token : null;
-}
-function _jerSwitchTab(tab){
-  var isMsgs = tab === 'msgs';
-  var tc=document.getElementById('jer-tab-chat'), tm=document.getElementById('jer-tab-msgs');
-  var chat=document.getElementById('jeremie-msgs'), inbox=document.getElementById('jeremie-inbox'), comp=document.getElementById('jeremie-compose');
-  if(tc) tc.className = isMsgs ? '' : 'on';
-  if(tm) tm.className = isMsgs ? 'on' : '';
-  if(chat) chat.style.display = isMsgs ? 'none' : '';
-  if(comp) comp.style.display = isMsgs ? 'none' : '';
-  if(inbox) inbox.style.display = isMsgs ? '' : 'none';
-  if(isMsgs) _jerRenderInbox(true);
 }
 // Affiche Jeremie automatiquement, une fois par session, juste apres l'entree dans
 // l'app (inscription, connexion ou mode invite) - cf showApp().
@@ -11733,7 +11699,7 @@ function _jerResetIfIdentityChanged(){
   var id = _jerIdentity(), key = id ? id.key : null;
   if(key === _jerIdentityKey) return !!key;
   _jerIdentityKey = key; _jerMsgs = []; _jerQueue = []; _jerSeen = {};
-  _jerHideBubble(false); _jerUpdateUnread();
+  _jerHideBubble(false);
   if(id) _jerScheduleGreeting(id);
   return !!key;
 }
@@ -11797,22 +11763,11 @@ function _jerIngest(list, firstLoad){
   list.forEach(function(m){ if(m && m.id) _jerSeen[m.id] = true; });
   if(firstLoad && fresh.length > JER_BUBBLE_MAX_AT_START) fresh = fresh.slice(-JER_BUBBLE_MAX_AT_START);
   fresh.forEach(function(m){ if(!_jerQueue.some(function(q){ return q.id === m.id; })) _jerQueue.push(m); });
-  _jerUpdateUnread();
-  var inbox = document.getElementById('jeremie-inbox');
-  if(inbox && inbox.style.display !== 'none') _jerRenderInbox(false);
   _jerShowNext();
 }
 function _jerOnLiveMessage(m){
   if(!m || !m.id || !_jerResetIfIdentityChanged()) return;
   _jerIngest([m], false);
-}
-function _jerUnreadCount(){ return _jerMsgs.filter(function(m){ return !m.read; }).length; }
-function _jerUpdateUnread(){
-  var n = _jerUnreadCount();
-  var b = document.getElementById('jeremie-fab-unread'), t = document.getElementById('jer-tab-badge');
-  [b, t].forEach(function(el){ if(!el) return; el.textContent = n > 9 ? '9+' : String(n); el.classList.toggle('on', n > 0); });
-  var fab = document.getElementById('jeremie-fab');
-  if(fab) fab.setAttribute('aria-label', n > 0 ? 'Parler à Jérémie ('+n+' message'+(n>1?'s':'')+' non lu'+(n>1?'s':'')+')' : 'Parler à Jérémie');
 }
 function _jerFabUsable(){
   var fab = document.getElementById('jeremie-fab');
@@ -11930,7 +11885,7 @@ function _jerShowNext(){
     // Pas de mini-avatar dans la bulle : sa pointe désigne le vrai avatar de Jérémie.
     + '<div class="jer-bubble-hdr"><span class="jer-bubble-name">Jérémie</span>'
       + (more ? '<span class="jer-bubble-more"><span data-i18n-skip>+'+more+'</span></span>' : '') + '</div>'
-    + '<div class="jer-bubble-text" data-i18n-skip onclick="'+(current.local ? '_jerAct(\''+current.id+'\')' : '_jerOpenInbox()')+'">'+_escHtml(current.text||'')+'</div>'
+    + '<div class="jer-bubble-text" data-i18n-skip onclick="_jerAct(\''+current.id+'\')">'+_escHtml(current.text||'')+'</div>'
     + ((current.link || current.local) && current.action_label ? '<div class="jer-bubble-actions"><button type="button" class="jer-bubble-cta" onclick="_jerAct(\''+current.id+'\')"><span>'+_escHtml(current.action_label)+'</span></button></div>' : '');
   el.classList.add('on');
   _jerPositionBubble(el, r);
@@ -11962,7 +11917,6 @@ function _jerHideBubble(next){
 }
 function _jerMarkLocal(id, field){
   _jerMsgs.forEach(function(m){ if(id === 'all' ? !m.read : m.id === id){ m[field] = true; if(field === 'read') m.dismissed = true; } });
-  _jerUpdateUnread();
 }
 function _jerDismiss(id){
   _jerMarkLocal(id, 'dismissed');
@@ -11984,8 +11938,9 @@ function _jerGo(link){
 }
 function _jerAct(id){
   var m = _jerMsgs.filter(function(x){ return x.id === id; })[0] || (_jerShown && _jerShown.id === id ? _jerShown : null);
-  // Bonjour de Jérémie : ouvre la discussion (rien à marquer côté serveur).
-  if(m && m.local){
+  // Bonjour de Jérémie, ou message sans page associée : ouvre la discussion.
+  if(m && (m.local || !m.link)){
+    if(!m.local) _jerMarkRead(id);
     if(_jerShown && _jerShown.id === id) _jerHideBubble(false);
     openJeremieChat();
     return;
@@ -11994,37 +11949,6 @@ function _jerAct(id){
   if(_jerShown && _jerShown.id === id) _jerHideBubble(true);
   if(document.getElementById('jeremie-overlay') && document.getElementById('jeremie-overlay').classList.contains('open')) closeJeremieChat();
   if(m && m.link) _jerGo(m.link);
-}
-function _jerOpenInbox(){
-  _jerOpenTab = 'msgs';
-  if(_jerShown) _jerHideBubble(false);
-  openJeremieChat();
-}
-// Onglet « Messages » : historique des messages de Jérémie (date, lu/non lu, accès à la ressource).
-function _jerRenderInbox(markRead){
-  var box = document.getElementById('jeremie-inbox'); if(!box) return;
-  if(!_jerIdentity()){
-    box.innerHTML = '<div class="chat-empty-state"><span>Connectez-vous pour retrouver les messages de Jérémie.</span></div>';
-    return;
-  }
-  if(!_jerMsgs.length){
-    box.innerHTML = '<div class="chat-empty-state"><span>Aucun message pour le moment. Je vous écrirai ici à chaque étape importante de vos demandes.</span></div>';
-  } else {
-    box.innerHTML = _jerMsgs.map(function(m){
-      var d = '';
-      try{ d = new Date(m.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){}
-      return '<div class="jer-inbox-item'+(m.read?'':' unread')+'">'
-        + '<div class="jer-inbox-date" data-i18n-skip>'+d+'</div>'
-        + '<div class="jer-inbox-text" data-i18n-skip>'+_escHtml(m.text||'')+'</div>'
-        + (m.link && m.action_label ? '<button type="button" class="jer-inbox-cta" onclick="_jerAct(\''+m.id+'\')"><span>'+_escHtml(m.action_label)+'</span></button>' : '')
-        + '</div>';
-    }).join('');
-  }
-  // Consultés : lus (le point « non lu » reste visible jusqu'au prochain affichage).
-  if(markRead && _jerUnreadCount() > 0){
-    _jerMarkLocal('all', 'read');
-    _jerApi('/api/jeremie/messages/all/read', 'POST').then(function(){ if(typeof loadNotifInbox==='function') loadNotifInbox(); }).catch(function(){});
-  }
 }
 // Récupération : retour au premier plan, onglet de nouveau visible, et filet de sécurité toutes
 // les 2 minutes si le WebSocket est indisponible.
