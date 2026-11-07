@@ -2232,6 +2232,64 @@ a{text-decoration:none;color:inherit}
 .jer-bubble-close{position:absolute !important;top:8px;right:10px;width:28px;height:28px;border:none;background:none;color:#777;font-size:14px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .jer-bubble-close:focus-visible,.jer-bubble-cta:focus-visible{outline:2px solid #FFD700;outline-offset:2px;}
 @media (prefers-reduced-motion: reduce){ #jeremie-bubble{transition:none;transform:none;} }
+/* ── Découverte interactive des professionnels (cartes à faire glisser) ── */
+#jer-discover{position:fixed;inset:0;z-index:9700;background:radial-gradient(120% 80% at 50% 0%,#1a1608 0%,#0a0a0a 55%);display:none;flex-direction:column;align-items:center;padding:calc(10px + env(safe-area-inset-top,0px)) 14px calc(14px + env(safe-area-inset-bottom,0px));color:#eee;}
+#jer-discover.on{display:flex;}
+.jd-top{width:100%;max-width:440px;display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.jd-top .jeremie-avatar-clip{width:34px;height:34px;flex-shrink:0;box-shadow:0 0 10px rgba(255,215,0,.45);}
+.jd-titles{flex:1;min-width:0;}
+.jd-title{font-family:'Unbounded',cursive;font-size:12.5px;font-weight:900;color:#fff;}
+.jd-sub{font-size:11px;color:#9a9a9a;line-height:1.35;margin-top:2px;}
+.jd-close{width:38px;height:38px;border-radius:50%;border:1px solid #2a2a2a;background:#141414;color:#bbb;font-size:15px;cursor:pointer;flex-shrink:0;}
+.jd-progress{width:100%;max-width:440px;display:flex;gap:4px;margin-bottom:10px;}
+.jd-progress span{flex:1;height:3px;border-radius:2px;background:#2a2a2a;}
+.jd-progress span.done{background:#FFD700;}
+.jd-stage{position:relative;width:100%;max-width:440px;flex:1;min-height:0;max-height:680px;}
+.jd-card{position:absolute;inset:0;border-radius:24px;overflow:hidden;background:#151515;border:1px solid rgba(255,215,0,.22);box-shadow:0 18px 40px rgba(0,0,0,.6);touch-action:pan-y;user-select:none;-webkit-user-select:none;will-change:transform;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .32s;}
+.jd-card.dragging{transition:none;}
+.jd-card.under{transform:scale(.95) translateY(10px);opacity:.55;pointer-events:none;}
+.jd-media{position:absolute;inset:0;background:#0d0d0d;}
+.jd-media img,.jd-media video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
+.jd-media-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',cursive;font-size:64px;font-weight:900;color:rgba(255,215,0,.35);background:radial-gradient(circle at 30% 20%,#2a2410,#0d0d0d 70%);}
+.jd-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 38%,rgba(0,0,0,.82) 66%,rgba(0,0,0,.96) 100%);pointer-events:none;}
+.jd-chip{position:absolute;top:14px;left:14px;right:14px;display:flex;flex-wrap:wrap;gap:6px;}
+.jd-chip span{background:rgba(10,10,10,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,215,0,.35);color:#FFD700;font-size:10.5px;font-weight:800;border-radius:20px;padding:5px 10px;}
+.jd-chip span.ok{border-color:rgba(74,222,128,.5);color:#4ade80;}
+.jd-chip span.wait{border-color:rgba(167,139,250,.5);color:#c4b5fd;}
+.jd-info{position:absolute;left:0;right:0;bottom:0;padding:16px 18px 18px;}
+.jd-name{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:900;color:#fff;line-height:1.15;}
+.jd-name img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,215,0,.6);flex-shrink:0;}
+.jd-meta{font-size:12.5px;color:#d6d6d6;margin-top:5px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;}
+.jd-meta .jd-star{color:#FFD700;font-weight:800;}
+.jd-bio{font-size:12.5px;color:#bdbdbd;line-height:1.45;margin-top:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.jd-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;}
+.jd-price{font-size:14px;font-weight:900;color:#FFD700;white-space:nowrap;}
+.jd-thumbs{display:flex;gap:6px;}
+.jd-thumbs img{width:40px;height:40px;border-radius:9px;object-fit:cover;border:1px solid rgba(255,255,255,.18);}
+.jd-stamp{position:absolute;top:70px;font-family:'Unbounded',cursive;font-size:20px;font-weight:900;padding:6px 14px;border-radius:12px;border:3px solid;opacity:0;pointer-events:none;letter-spacing:1px;}
+.jd-stamp.pass{right:18px;color:#f87171;border-color:#f87171;transform:rotate(12deg);}
+.jd-stamp.keep{left:18px;color:#FFD700;border-color:#FFD700;transform:rotate(-12deg);}
+.jd-actions{width:100%;max-width:440px;display:flex;justify-content:center;align-items:center;gap:14px;margin-top:12px;}
+.jd-btn{width:56px;height:56px;border-radius:50%;border:1px solid #2c2c2c;background:#141414;color:#ddd;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .12s;}
+.jd-btn:active{transform:scale(.92);}
+.jd-btn.sm{width:46px;height:46px;font-size:16px;color:#999;}
+.jd-btn.pass{color:#f87171;border-color:rgba(248,113,113,.35);}
+.jd-btn.keep{color:#FFD700;border-color:rgba(255,215,0,.45);width:62px;height:62px;font-size:23px;}
+.jd-btn.keep.on{background:#FFD700;color:#000;}
+.jd-btn:disabled{opacity:.3;cursor:default;}
+.jd-btn:focus-visible,.jd-cta:focus-visible,.jd-link:focus-visible,.jd-close:focus-visible{outline:2px solid #FFD700;outline-offset:2px;}
+.jd-cta{width:100%;max-width:440px;margin-top:12px;background:#FFD700;color:#000;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;}
+.jd-link{background:none;border:none;color:#bbb;font-size:12px;font-weight:700;margin-top:8px;cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:3px;}
+.jd-toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:#141414;border:1px solid rgba(255,215,0,.45);color:#eee;font-size:12px;border-radius:14px;padding:9px 12px;max-width:min(360px,calc(100vw - 40px));z-index:5;line-height:1.4;opacity:0;transition:opacity .2s;pointer-events:none;}
+.jd-toast.on{opacity:1;}
+.jd-end{width:100%;max-width:440px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:0 10px;}
+.jd-end .jeremie-avatar-clip{width:84px;height:84px;box-shadow:0 0 22px rgba(255,215,0,.45);}
+.jd-end-title{font-family:'Unbounded',cursive;font-size:15px;font-weight:900;color:#fff;line-height:1.35;}
+.jd-end-text{font-size:13px;color:#aaa;line-height:1.5;}
+.jd-end .jd-cta{margin-top:6px;}
+.jd-end .jd-ghost{width:100%;background:transparent;border:1px solid #333;color:#ddd;border-radius:14px;padding:13px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;}
+.jer-discover-cta{display:flex;align-items:center;justify-content:center;gap:8px;margin:6px 0 10px;background:#FFD700;color:#000;border:none;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;align-self:flex-start;}
+@media (prefers-reduced-motion: reduce){ .jd-card{transition:none;} }
 #jeremie-sheet .chat-compose{position:relative;z-index:1;padding-bottom:calc(10px + var(--safe));align-items:flex-end;}
 #jeremie-sheet .chat-text-input{border-radius:22px;padding:11px 16px;resize:none;max-height:120px;min-height:42px;line-height:1.35;overflow-y:auto;}
 #jeremie-sheet .chat-send-btn{width:38px;height:38px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -2568,15 +2626,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261107d"></script>
-<script src="app-i18n-es.js?v=20261107d"></script>
-<script src="app-i18n-hi.js?v=20261107d"></script>
-<script src="app-i18n-pt.js?v=20261107d"></script>
-<script src="app-i18n-ja.js?v=20261107d"></script>
-<script src="app-i18n-zh.js?v=20261107d"></script>
-<script src="app-i18n-ar.js?v=20261107d"></script>
-<script src="app-i18n-it.js?v=20261107d"></script>
-<script src="app-i18n-de.js?v=20261107d"></script>
+<script src="app-i18n-en.js?v=20261107e"></script>
+<script src="app-i18n-es.js?v=20261107e"></script>
+<script src="app-i18n-hi.js?v=20261107e"></script>
+<script src="app-i18n-pt.js?v=20261107e"></script>
+<script src="app-i18n-ja.js?v=20261107e"></script>
+<script src="app-i18n-zh.js?v=20261107e"></script>
+<script src="app-i18n-ar.js?v=20261107e"></script>
+<script src="app-i18n-it.js?v=20261107e"></script>
+<script src="app-i18n-de.js?v=20261107e"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3676,6 +3734,8 @@ function _genesisVersionFooter(){
   </button>
   <!-- Bulle de Jérémie : message spontané lié à un vrai événement (voir _jerShowNext) -->
   <div id="jeremie-bubble" role="status" aria-live="polite"></div>
+  <!-- Découverte interactive des professionnels trouvés par Jérémie (voir _jdOpen) -->
+  <div id="jer-discover" role="dialog" aria-modal="true" aria-label="Professionnels proposés par Jérémie"></div>
   <div id="jeremie-overlay" onclick="if(event.target===this && !_jerOpenedViaTouch)closeJeremieChat()">
     <div id="jeremie-sheet">
       <div class="jeremie-hdr">
@@ -7314,6 +7374,8 @@ function _cartPayPartnerService(idx){
 
 function closeDetail(){
   document.getElementById('detail-sheet').className='';
+  // Profil ouvert depuis la découverte des professionnels : on y revient, à la même carte.
+  if(typeof _jdResumeAfterProfile==='function') _jdResumeAfterProfile();
 }
 
 // ── RÉSERVATIONS (créneaux coworking + places événements) ──────
@@ -7570,9 +7632,13 @@ function renderTransferCard(r){
     + '</div>';
   }).join('');
   var closedOut = ['none_accepted','no_candidates','none_selected'].indexOf(t.status) !== -1;
+  // Découverte en cartes des professionnels contactés (état réel : a accepté / en attente).
+  var discoverBtn = (!closedOut && (n || t.waiting))
+    ? '<button class="resa-action-btn '+(n ? 'rab-ghost' : 'rab-primary')+'" style="width:100%;margin-top:10px;" onclick="_jdOpenTransfer(\''+r.id+'\')"><i class="fa-solid fa-layer-group mr-1"></i> '+_tr('Découvrir les professionnels')+'</button>'
+    : '';
   var actions = closedOut
     ? '<button class="resa-action-btn rab-primary" style="width:100%;margin-top:12px;" onclick="nav(\'prestataires\')"><i class="fa-solid fa-magnifying-glass mr-1"></i> Trouver un prestataire</button>'
-    : '<button class="resa-action-btn rab-ghost" style="width:100%;margin-top:10px;color:#f87171;border-color:rgba(248,113,113,.35);" onclick="_cancelTransferRequest(\''+r.id+'\')"><i class="fa-solid fa-ban mr-1"></i> Annuler la demande</button>';
+    : discoverBtn + '<button class="resa-action-btn rab-ghost" style="width:100%;margin-top:10px;color:#f87171;border-color:rgba(248,113,113,.35);" onclick="_cancelTransferRequest(\''+r.id+'\')"><i class="fa-solid fa-ban mr-1"></i> Annuler la demande</button>';
   return '<div class="resa-card" id="prop-card-'+r.id+'">'
     + '<div class="resa-top"><div class="resa-name" data-i18n-skip>'+_escHtml(r.service_label||'Demande')+'</div><span class="resa-status s-pending">'+chip+'</span></div>'
     + '<div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;">'
@@ -11664,8 +11730,12 @@ function closeJeremieChat(){
   if(!sheet||!overlay) return;
   sheet.classList.remove('up');
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
-  // Messages de Jérémie en attente pendant que la fenêtre était ouverte : ils reprennent.
-  setTimeout(function(){ if(typeof _jerShowNext==='function') _jerShowNext(); }, 800);
+  // Messages de Jérémie en attente pendant que la fenêtre était ouverte : ils reprennent (dont la
+  // proposition de découverte des professionnels si elle n'a pas été utilisée).
+  setTimeout(function(){
+    if(_jerPendingDiscovery && typeof _jerDiscoveryReminder==='function') _jerDiscoveryReminder();
+    else if(typeof _jerShowNext==='function') _jerShowNext();
+  }, 800);
   setTimeout(function(){
     overlay.classList.remove('open');
     // Sans ça, une fois agrandie, la conversation se rouvrait toujours en plein écran.
@@ -11938,6 +12008,12 @@ function _jerGo(link){
 }
 function _jerAct(id){
   var m = _jerMsgs.filter(function(x){ return x.id === id; })[0] || (_jerShown && _jerShown.id === id ? _jerShown : null);
+  // Proposition de découverte des professionnels (après une recherche dans la conversation).
+  if(m && m.local && m.discovery){
+    if(_jerShown && _jerShown.id === id) _jerHideBubble(true);
+    _jdOpen({ mode: 'search', ids: m.discovery.ids, label: m.discovery.label });
+    return;
+  }
   // Bonjour de Jérémie, ou message sans page associée : ouvre la discussion.
   if(m && (m.local || !m.link)){
     if(!m.local) _jerMarkRead(id);
@@ -11950,6 +12026,284 @@ function _jerAct(id){
   if(document.getElementById('jeremie-overlay') && document.getElementById('jeremie-overlay').classList.contains('open')) closeJeremieChat();
   if(m && m.link) _jerGo(m.link);
 }
+// Proposition de découverte après une réponse de Jérémie : bouton dans la conversation ; si la
+// fenêtre est fermée sans l'avoir utilisé, Jérémie le repropose dans sa bulle.
+var _jerPendingDiscovery = null;
+function _jerOfferDiscovery(disc, msgs){
+  _jerPendingDiscovery = { ids: disc.partner_ids, label: disc.label || '' };
+  var n = disc.partner_ids.length;
+  var btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'jer-discover-cta';
+  btn.innerHTML = '<i class="fa-solid fa-layer-group"></i><span>'+_tr('Découvrir les professionnels')+'</span> <span data-i18n-skip>('+n+')</span>';
+  btn.onclick = function(){ var d = _jerPendingDiscovery || { ids: disc.partner_ids, label: disc.label }; _jerPendingDiscovery = null; closeJeremieChat(); _jdOpen({ mode: 'search', ids: d.ids, label: d.label }); };
+  setTimeout(function(){ if(msgs){ msgs.appendChild(btn); msgs.scrollTop = msgs.scrollHeight; } }, 400);
+}
+function _jerDiscoveryReminder(){
+  var d = _jerPendingDiscovery; if(!d) return;
+  _jerPendingDiscovery = null;
+  var id = _jerIdentity(); if(!id || id.role !== 'client') return;
+  _jerQueue.unshift({ id: 'local-discover-' + Date.now(), local: true, important: true, discovery: d,
+    text: _tr('J’ai trouvé des professionnels qui pourraient correspondre à votre besoin ! Découvrez leurs profils et choisissez ceux qui vous intéressent.'),
+    action_label: _tr('Découvrir les professionnels'), created_at: new Date().toISOString() });
+  _jerShowNext();
+}
+
+// ── DÉCOUVERTE INTERACTIVE DES PROFESSIONNELS (cartes à faire glisser) ──────────
+// Ouverte depuis Jérémie, uniquement avec de VRAIS prestataires :
+//  - 'search'   : ceux que Jérémie a trouvés pour le métier demandé dans la conversation
+//                 (réponse de POST /api/jeremie/chat → discovery.partner_ids) ;
+//  - 'transfer' : ceux à qui Jérémie a transmis une demande de devis (#client:discover:<id>),
+//                 avec leur état réel (en attente de réponse / a accepté).
+// Gauche = passer (rien ne change pour le prestataire) ; droite = ajouter à ma sélection (les
+// favoris existants : ni commande, ni demande). Boutons équivalents toujours visibles. Profil,
+// contact et devis passent par les écrans existants ; « Choisir ce prestataire » réutilise la
+// demande déjà transmise (aucune nouvelle demande). Fiches lues via /api/partners/:id/reviews
+// (filtrées par catégorie de client, comme l'annuaire).
+var _jd = null; // { mode, originId, label, cards:[p], states:{pid:{state, request_id}}, idx, kept:0, history:[] }
+var _jdSuspended = false;
+function _jdEl(){ return document.getElementById('jer-discover'); }
+function _jdOpen(opts){
+  var el = _jdEl(); if(!el) return;
+  if(!USER || GUEST){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
+  _jd = { mode: opts.mode, originId: opts.originId || null, label: opts.label || '', ids: (opts.ids || []).slice(0, 12), states: opts.states || {}, cards: [], idx: 0, kept: 0, history: [] };
+  if(typeof _jerShown !== 'undefined' && _jerShown) _jerHideBubble(false);
+  el.innerHTML = '<div class="jd-end"><span class="jeremie-avatar-clip">'+_jeremieAvatarMarkup()+'</span><div class="jd-end-text">'+_tr('Je prépare les profils…')+'</div></div>';
+  el.classList.add('on');
+  document.body.style.overflow = 'hidden';
+  var ids = _jd.ids, token = _jd;
+  Promise.all(ids.map(function(id){
+    return fetch((window.FA_GENESIS_API||API)+'/api/partners/'+encodeURIComponent(id)+'/reviews', {headers:{'Authorization':'Bearer '+USER._token}})
+      .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  })).then(function(results){
+    if(_jd !== token) return;
+    results.forEach(function(d){
+      if(d && d.success && d.partner){ _dirPartnerCache[d.partner.id] = d.partner; _jd.cards.push(d.partner); }
+    });
+    _jdRender();
+  });
+}
+function _jdClose(){
+  var el = _jdEl(); if(el){ el.classList.remove('on'); el.innerHTML = ''; }
+  document.body.style.overflow = '';
+  _jd = null; _jdSuspended = false;
+  document.removeEventListener('keydown', _jdKey);
+}
+function _jdKey(e){
+  if(!_jd || _jdSuspended) return;
+  if(e.key === 'ArrowLeft') _jdPass();
+  else if(e.key === 'ArrowRight') _jdKeep();
+  else if(e.key === 'Escape') _jdClose();
+}
+function _jdSubtitle(){
+  if(_jd.mode === 'transfer') return _tr('Sélectionnés par Jérémie pour leur réactivité, dans le même secteur que votre demande.');
+  return _tr('Sélectionnés par Jérémie dans votre catégorie, les mieux notés en premier.') + (_jd.label ? ' <span data-i18n-skip>('+_escHtml(_jd.label)+')</span>' : '');
+}
+function _jdIsFav(pid){ return !!(USER && USER.favoris && USER.favoris.indexOf(pid) !== -1); }
+function _jdQuoteService(p){ return (p.services || []).filter(function(s){ return s.pricing_type === 'quote'; })[0] || null; }
+function _jdMainMedia(p){
+  var pf = (p.portfolio || []).filter(function(it){ return it && it.url && (it.type === 'photo' || it.type === 'video_upload'); });
+  if(pf.length) return pf[0];
+  return p.photo ? { type: 'photo', url: p.photo } : null;
+}
+function _jdCardHtml(p, under){
+  var name = ((p.prenom || '') + ' ' + (p.nom || '')).trim() || _tr('Prestataire');
+  var media = _jdMainMedia(p);
+  var mediaHtml = !media ? '<div class="jd-media-ph" data-i18n-skip>'+_escHtml((name[0] || 'P').toUpperCase())+'</div>'
+    : (media.type === 'video_upload' ? '<video src="'+media.url+'" muted autoplay loop playsinline></video>' : '<img src="'+media.url+'" alt="">');
+  var st = _jd.states[p.id] || null, chips = [];
+  if(st && st.state === 'accepted') chips.push('<span class="ok"><i class="fa-solid fa-check"></i> '+_tr('A accepté votre demande')+'</span>');
+  else if(st && st.state === 'waiting') chips.push('<span class="wait"><i class="fa-regular fa-clock"></i> '+_tr('Demande transmise — en attente de sa réponse')+'</span>');
+  if(_jdIsFav(p.id)) chips.push('<span><i class="fa-solid fa-star"></i> '+_tr('Dans votre sélection')+'</span>');
+  var place = _partnerPlaceLabel(p);
+  var meta = '<span>'+partnerTypesLabelHtml(p)+'</span>'
+    + (place ? '<span><i class="fa-solid fa-location-dot"></i> <span data-i18n-skip>'+_escHtml(place)+'</span></span>' : '')
+    + (_partnerIsRemote(p) ? '<span style="color:#4ade80;"><i class="fa-solid fa-laptop"></i> '+_tr('À distance')+'</span>' : '')
+    + ((p.rating && p.rating.count) ? '<span class="jd-star"><i class="fa-solid fa-star"></i> <span data-i18n-skip>'+p.rating.average+' ('+p.rating.count+')</span></span>' : '');
+  var price = (p.fromPrice !== null && p.fromPrice !== undefined) ? ('<span>'+_tr('dès')+'</span> <span data-i18n-skip>'+p.fromPrice+' €</span>') : (_jdQuoteService(p) ? _tr('Sur devis') : '');
+  var thumbs = (p.portfolio || []).filter(function(it){ return it && it.type === 'photo' && it.url && (!media || it.url !== media.url); }).slice(0, 3)
+    .map(function(it){ return '<img src="'+it.url+'" alt="">'; }).join('');
+  var avatar = (p.photo && media && media.url !== p.photo) ? '<img src="'+p.photo+'" alt="">' : '';
+  return '<div class="jd-card'+(under?' under':'')+'" data-pid="'+p.id+'">'
+    + '<div class="jd-media">'+mediaHtml+'</div><div class="jd-shade"></div>'
+    + (chips.length ? '<div class="jd-chip">'+chips.join('')+'</div>' : '')
+    + '<div class="jd-stamp pass">'+_tr('PASSER')+'</div><div class="jd-stamp keep">'+_tr('SÉLECTION')+'</div>'
+    + '<div class="jd-info">'
+      + '<div class="jd-name">'+avatar+'<span data-i18n-skip>'+_escHtml(name)+'</span> '+verifiedBadgeHtml(p)+'</div>'
+      + '<div class="jd-meta">'+meta+'</div>'
+      + (p.bio ? '<div class="jd-bio" data-i18n-skip>'+_escHtml(p.bio)+'</div>' : '')
+      + ((price || thumbs) ? '<div class="jd-row"><div class="jd-price">'+price+'</div><div class="jd-thumbs">'+thumbs+'</div></div>' : '')
+    + '</div></div>';
+}
+function _jdHeaderHtml(){
+  var n = _jd.cards.length, prog = '';
+  for(var i = 0; i < n; i++) prog += '<span class="'+(i < _jd.idx ? 'done' : '')+'"></span>';
+  return '<div class="jd-top"><span class="jeremie-avatar-clip">'+_jeremieAvatarMarkup()+'</span>'
+    + '<div class="jd-titles"><div class="jd-title">'+_tr('Professionnels proposés par Jérémie')+'</div><div class="jd-sub">'+_jdSubtitle()+'</div></div>'
+    + '<button type="button" class="jd-close" onclick="_jdClose()" aria-label="'+_tr('Fermer')+'"><i class="fa-solid fa-xmark"></i></button></div>'
+    + (n ? '<div class="jd-progress" aria-hidden="true">'+prog+'</div>' : '');
+}
+function _jdCtaFor(p){
+  var st = _jd.states[p.id] || null;
+  if(st && st.state === 'accepted') return { label: _tr('Choisir ce prestataire'), fn: '_jdChoose()' };
+  if(st && st.state === 'waiting') return { label: _tr('Contacter le professionnel'), fn: '_jdContact()' };
+  if(_jdQuoteService(p)) return { label: _tr('Demander un devis'), fn: '_jdQuote()', secondary: true };
+  return { label: _tr('Voir ses prestations'), fn: '_jdProfile()', secondary: true };
+}
+function _jdRender(){
+  var el = _jdEl(); if(!el || !_jd) return;
+  document.removeEventListener('keydown', _jdKey);
+  document.addEventListener('keydown', _jdKey);
+  if(!_jd.cards.length){
+    el.innerHTML = _jdHeaderHtml() + '<div class="jd-end"><span class="jeremie-avatar-clip">'+_jeremieAvatarMarkup()+'</span>'
+      + '<div class="jd-end-title">'+_tr('Aucun professionnel disponible pour le moment')+'</div>'
+      + '<div class="jd-end-text">'+_tr('Aucun professionnel ne correspond à ces critères pour l’instant. Élargissez la recherche dans l’annuaire ou précisez votre besoin à Jérémie.')+'</div>'
+      + '<button type="button" class="jd-cta" onclick="_jdClose();nav(\'prestataires\')">'+_tr('Élargir la recherche')+'</button>'
+      + '<button type="button" class="jd-ghost" onclick="_jdClose();openJeremieChat()">'+_tr('Parler à Jérémie')+'</button></div>';
+    return;
+  }
+  if(_jd.idx >= _jd.cards.length){
+    el.innerHTML = _jdHeaderHtml() + '<div class="jd-end"><span class="jeremie-avatar-clip">'+_jeremieAvatarMarkup()+'</span>'
+      + '<div class="jd-end-title">'+_tr('Vous avez découvert tous les professionnels correspondant à votre recherche.')+'</div>'
+      + '<div class="jd-end-text">'+(_jd.kept ? _tr('Ils vous attendent dans votre sélection : contactez-les ou demandez un devis quand vous êtes prêt.') : _tr('Retrouvez votre sélection ou poursuivez votre exploration.'))+'</div>'
+      + '<button type="button" class="jd-cta" onclick="_jdClose();navToFavoris()">'+_tr('Voir ma sélection')+'</button>'
+      + '<button type="button" class="jd-ghost" onclick="_jdRestart()">'+_tr('Revoir les professionnels')+'</button>'
+      + '<button type="button" class="jd-ghost" onclick="_jdClose();nav(\'prestataires\')">'+_tr('Continuer à explorer')+'</button></div>';
+    return;
+  }
+  var p = _jd.cards[_jd.idx], next = _jd.cards[_jd.idx + 1];
+  var cta = _jdCtaFor(p), fav = _jdIsFav(p.id);
+  el.innerHTML = _jdHeaderHtml()
+    + '<div class="jd-stage"><div class="jd-toast" id="jd-toast" role="status" aria-live="polite"></div>'
+      + (next ? _jdCardHtml(next, true) : '') + _jdCardHtml(p, false) + '</div>'
+    + '<div class="jd-actions">'
+      + '<button type="button" class="jd-btn sm" onclick="_jdBack()" aria-label="'+_tr('Profil précédent')+'"'+(_jd.history.length ? '' : ' disabled')+'><i class="fa-solid fa-rotate-left"></i></button>'
+      + '<button type="button" class="jd-btn pass" onclick="_jdPass()" aria-label="'+_tr('Passer')+'"><i class="fa-solid fa-xmark"></i></button>'
+      + '<button type="button" class="jd-btn keep'+(fav?' on':'')+'" onclick="_jdKeep()" aria-label="'+_tr('Ajouter à ma sélection')+'"><i class="fa-solid fa-star"></i></button>'
+      + '<button type="button" class="jd-btn sm" onclick="_jdProfile()" aria-label="'+_tr('Voir le profil complet')+'"><i class="fa-solid fa-user"></i></button>'
+    + '</div>'
+    + '<button type="button" class="jd-cta" onclick="'+cta.fn+'">'+cta.label+'</button>'
+    + (cta.secondary ? '<button type="button" class="jd-link" onclick="_jdContact()">'+_tr('Contacter le professionnel')+'</button>' : '');
+  _jdBindSwipe(el.querySelector('.jd-card:not(.under)'));
+}
+function _jdToast(text){
+  var t = document.getElementById('jd-toast'); if(!t) return;
+  t.textContent = text; t.classList.add('on');
+  clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('on'); }, 3200);
+}
+function _jdAdvance(dir){
+  if(!_jd || _jd.idx >= _jd.cards.length) return;
+  var card = _jdEl().querySelector('.jd-card:not(.under)');
+  _jd.history.push(_jd.idx);
+  _jd.idx++;
+  if(card){
+    card.style.transform = 'translateX('+(dir * window.innerWidth)+'px) rotate('+(dir * 18)+'deg)';
+    card.style.opacity = '0';
+    var under = _jdEl().querySelector('.jd-card.under');
+    if(under) under.classList.remove('under');
+    setTimeout(_jdRender, 260);
+  } else _jdRender();
+}
+function _jdPass(){ _jdAdvance(-1); }
+function _jdKeep(){
+  if(!_jd || _jd.idx >= _jd.cards.length) return;
+  var p = _jd.cards[_jd.idx];
+  if(!_jdIsFav(p.id)){ toggleFavorite(p.id); _jd.kept++; }
+  var name = (p.prenom || _tr('Ce professionnel'));
+  _jdAdvance(1);
+  setTimeout(function(){ _jdToast(name + ' ' + _tr('est dans votre sélection. Ce n’est pas une demande : contactez-le ou demandez un devis quand vous êtes prêt.')); }, 280);
+}
+function _jdBack(){
+  if(!_jd || !_jd.history.length) return;
+  _jd.idx = _jd.history.pop();
+  _jdRender();
+}
+function _jdRestart(){ if(!_jd) return; _jd.idx = 0; _jd.history = []; _jdRender(); }
+function _jdCurrent(){ return (_jd && _jd.idx < _jd.cards.length) ? _jd.cards[_jd.idx] : null; }
+// Profil complet par-dessus la découverte : la découverte reprend à la même carte à la fermeture.
+function _jdProfile(){
+  var p = _jdCurrent(); if(!p) return;
+  _jdSuspended = true;
+  var el = _jdEl(); if(el) el.classList.remove('on');
+  openPartnerDetail(p.id);
+}
+function _jdResumeAfterProfile(){
+  if(!_jd || !_jdSuspended) return;
+  _jdSuspended = false;
+  var el = _jdEl(); if(el){ el.classList.add('on'); _jdRender(); }
+}
+function _jdContact(){
+  var p = _jdCurrent(); if(!p) return;
+  var name = ((p.prenom || '') + ' ' + (p.nom || '')).trim();
+  _jdClose();
+  _startMsgWithPartner(p.id, name);
+}
+function _jdQuote(){
+  var p = _jdCurrent(); if(!p) return;
+  var svc = _jdQuoteService(p); if(!svc){ _jdProfile(); return; }
+  _jdClose();
+  openPartnerRequest(p.id, svc.id);
+}
+// Demande déjà transmise et acceptée : on retient CE prestataire sur la même demande (aucune nouvelle).
+function _jdChoose(){
+  var p = _jdCurrent(); if(!p || !_jd) return;
+  var st = _jd.states[p.id]; if(!st || st.state !== 'accepted') return;
+  var origin = _jd.originId;
+  _jdClose();
+  _transferChoose(origin, st.request_id);
+}
+function _jdBindSwipe(card){
+  if(!card) return;
+  var startX = 0, startY = 0, dx = 0, active = false, horiz = null;
+  var stampPass = card.querySelector('.jd-stamp.pass'), stampKeep = card.querySelector('.jd-stamp.keep');
+  card.addEventListener('pointerdown', function(e){
+    if(e.target.closest('button, a')) return;
+    active = true; horiz = null; dx = 0; startX = e.clientX; startY = e.clientY;
+  });
+  card.addEventListener('pointermove', function(e){
+    if(!active) return;
+    var mx = e.clientX - startX, my = e.clientY - startY;
+    if(horiz === null && (Math.abs(mx) > 8 || Math.abs(my) > 8)){
+      horiz = Math.abs(mx) > Math.abs(my);
+      if(horiz){ card.classList.add('dragging'); try{ card.setPointerCapture(e.pointerId); }catch(err){} }
+    }
+    if(!horiz) return;
+    dx = mx;
+    card.style.transform = 'translateX('+dx+'px) rotate('+(dx / 22)+'deg)';
+    var k = Math.min(1, Math.abs(dx) / 110);
+    if(stampKeep) stampKeep.style.opacity = dx > 0 ? k : 0;
+    if(stampPass) stampPass.style.opacity = dx < 0 ? k : 0;
+  });
+  var end = function(){
+    if(!active) return;
+    active = false;
+    card.classList.remove('dragging');
+    if(horiz && Math.abs(dx) > 100){ if(dx > 0) _jdKeep(); else _jdPass(); return; }
+    card.style.transform = '';
+    if(stampKeep) stampKeep.style.opacity = 0;
+    if(stampPass) stampPass.style.opacity = 0;
+  };
+  card.addEventListener('pointerup', end);
+  card.addEventListener('pointercancel', end);
+}
+// Découverte d'une demande transmise par Jérémie (#client:discover:<id>) : prestataires qui ont
+// accepté d'abord, puis ceux qui n'ont pas encore répondu — chacun avec son état réel.
+function _jdOpenTransfer(originId){
+  if(!USER || !USER._token){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
+  fetch((window.FA_GENESIS_API||API)+'/api/my-requests', {headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var r = ((d && d.requests) || []).filter(function(x){ return x.id === originId; })[0];
+      var t = r && r.transfer;
+      var states = {}, ids = [];
+      if(t && (t.status === 'open' || t.status === 'awaiting_choice')){
+        (t.accepted || []).forEach(function(a){ states[a.partner_id] = { state: 'accepted', request_id: a.request_id }; ids.push(a.partner_id); });
+        (t.waiting_partner_ids || []).forEach(function(pid){ if(!states[pid]){ states[pid] = { state: 'waiting' }; ids.push(pid); } });
+      }
+      _jdOpen({ mode: 'transfer', originId: originId, ids: ids, states: states });
+    })
+    .catch(function(){ showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
+}
+
 // Récupération : retour au premier plan, onglet de nouveau visible, et filet de sécurité toutes
 // les 2 minutes si le WebSocket est indisponible.
 document.addEventListener('fagmobile:resumed', function(){ _jerFetchMessages(true); });
@@ -12052,6 +12406,10 @@ function sendJeremieMessage(){
       _jeremieSetEmotion(res&&res.success?'💡':'🤔');
       var inner=_jeremieBubble('assistant','',msgs);
       _jeremieTypewriter(inner,reply,msgs);
+      // Jérémie a trouvé de vrais professionnels du métier demandé : découverte en cartes.
+      if(res && res.success && res.discovery && res.discovery.partner_ids && res.discovery.partner_ids.length){
+        _jerOfferDiscovery(res.discovery, msgs);
+      }
     }
   }).catch(function(){
     if(btn){btn.disabled=false;btn.textContent='↑';}
@@ -17400,6 +17758,12 @@ function _handleNotifHash(hash, _retryCount){
   // Demande directe à un partenaire précise côté client (acceptée, proposition reçue) → ouvre
   // directement l'onglet où elle apparaît (voir renderResaTab/renderProposalCard) et la met en
   // évidence, plutôt que de laisser le client la chercher.
+  // Découverte des professionnels à qui Jérémie a transmis une demande de devis.
+  var clientDiscoverMatch = hash.match(/^client:discover:(.+)$/);
+  if(clientDiscoverMatch){
+    if(typeof _jdOpenTransfer==='function') _jdOpenTransfer(decodeURIComponent(clientDiscoverMatch[1]));
+    return;
+  }
   var clientProposalMatch = hash.match(/^client:proposal:(.+)$/);
   if(clientProposalMatch){
     _pendingScrollProposalId = decodeURIComponent(clientProposalMatch[1]);

@@ -2570,6 +2570,10 @@ var JEREMIE_COMPANION_RULES = {
         jeremie_devis: function(n) {
             var choose = /accepté/.test(n.body) && !/Aucun/.test(n.body);
             var find = /open-prestataires/.test(n.link || '');
+            // Demande transmise ou acceptations : les professionnels identifiés se découvrent en cartes.
+            var discover = !find && (choose || /je l'ai transmise/.test(n.body));
+            var m = String(n.link || '').match(/client:proposal:(.+)$/);
+            if (discover && m) return { text: n.body, action_label: 'Découvrir les professionnels', link: '/app.html#client:discover:' + m[1], important: choose };
             return { text: n.body, action_label: choose ? 'Choisir mon prestataire' : (find ? 'Trouver un prestataire' : 'Suivre ma demande'), important: choose };
         }
     },
@@ -17523,7 +17527,11 @@ function detectPartnerSearchIntent(message) {
     return keywords.some(function(kw) { return lc.indexOf(kw) !== -1; });
 }
 
-function buildPartnerContextForJeremie(message, audience) {
+// out (facultatif) : reçoit les prestataires réellement retenus — { ids, matched, label } — pour la
+// découverte interactive (cartes « Découvrir les professionnels »). matched = au moins un métier
+// reconnu dans le message ET des prestataires de ce métier : sans cela, la liste n'est qu'un
+// classement général, jamais présenté comme « correspondant à votre besoin ».
+function buildPartnerContextForJeremie(message, audience, out) {
     try {
         // Mêmes prestataires que l'annuaire (accountStatus === 'active') : l'ancien filtre
         // isActive !== false laissait passer des comptes en attente de validation ou désactivés.
@@ -17560,12 +17568,12 @@ function buildPartnerContextForJeremie(message, audience) {
             redaction: ['media', 'community_manager', 'marketer'], developpement: ['developpeur_web'],
             coaching: ['consultant', 'animateur_evenementiel']
         };
-        var filtered = allPartners;
+        var filtered = allPartners, _matchedTypes = [];
         if (detectedCats.length) {
             var wanted = [];
             detectedCats.forEach(function(cat) { (catToTypes[cat] || []).forEach(function(t) { if (wanted.indexOf(t) === -1) wanted.push(t); }); });
             var byType = allPartners.filter(function(p) { return wanted.some(function(t) { return partnerListedInType(p, t); }); });
-            if (byType.length) filtered = byType;
+            if (byType.length) { filtered = byType; _matchedTypes = wanted; }
         }
 
         // Trier par note décroissante
@@ -17579,6 +17587,11 @@ function buildPartnerContextForJeremie(message, audience) {
 
         var top = filtered.slice(0, 8);
         if (!top.length) return '';
+        if (out) {
+            out.ids = top.map(function(p) { return p.id; });
+            out.matched = _matchedTypes.length > 0;
+            out.label = _matchedTypes.map(function(t) { return partnerTypeLabelFor(null, t); }).join(', ');
+        }
 
         var lines = [
             'PRESTATAIRES GENESIS DISPONIBLES (données temps réel — utilise cette liste pour tes recommandations) :',
@@ -17729,13 +17742,14 @@ app.post('/api/jeremie/chat', function(req, res) {
         // "Jérémie IA — Suggestions personnalisées selon vos habitudes" promis au niveau Créateur dans
         // Mes niveaux GENESIS ; il n'était débloqué qu'à Bâtisseur, laissant le Créateur sans rien de plus
         // qu'un Explorateur.
+        var _jerDiscovery = {};
         if (personType === 'client' && detectPartnerSearchIntent(message)) {
             try {
                 var _cOrders = getClientCompletedOrders(person.email);
                 var _cPoints = getClientGenesisPoints(person, _cOrders);
                 var _cBadge  = getClientQGBadge(_cPoints);
                 if (['bronze', 'argent', 'or', 'elite'].indexOf(_cBadge) !== -1) {
-                    var _pCtx = buildPartnerContextForJeremie(message, clientAudienceOfUser(person));
+                    var _pCtx = buildPartnerContextForJeremie(message, clientAudienceOfUser(person), _jerDiscovery);
                     if (_pCtx) systemPrompt += '\n\n' + _pCtx;
                 }
             } catch (pCtxErr) {
@@ -17754,7 +17768,10 @@ app.post('/api/jeremie/chat', function(req, res) {
             entry.updatedAt = new Date().toISOString();
             memory[person.id] = entry;
             saveJeremieMemory(memory);
-            res.json({ success: true, reply: result.reply });
+            // Découverte interactive : uniquement de vrais prestataires du métier demandé.
+            var _disc = (_jerDiscovery.matched && _jerDiscovery.ids && _jerDiscovery.ids.length)
+                ? { partner_ids: _jerDiscovery.ids, label: _jerDiscovery.label || '' } : null;
+            res.json({ success: true, reply: result.reply, discovery: _disc });
         }).catch(function(err) {
             console.error('[JEREMIE] Erreur askJeremie:', err);
             res.status(500).json({ error: 'Erreur serveur' });
@@ -20106,6 +20123,8 @@ function quoteTransferClientView(requests, origin) {
         waiting: count(['pending']),
         declined: count(['declined', 'expired']),
         chosen_request_id: t.chosen_request_id || null,
+        // Prestataires contactés qui n'ont pas encore répondu (identifiés, PAS acceptés).
+        waiting_partner_ids: children.filter(function(c) { return c.status === 'pending'; }).map(function(c) { return c.partner_id; }),
         accepted: children.filter(function(c) { return c.status === 'transfer_accepted'; }).map(function(c) {
             var p = getPartnerById(c.partner_id);
             return {
