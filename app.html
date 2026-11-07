@@ -2216,19 +2216,24 @@ a{text-decoration:none;color:inherit}
 /* Bulle de Jérémie (message spontané près de l'avatar) + pastille de non-lus */
 .jeremie-fab-unread{position:absolute;top:-4px;left:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;display:none;align-items:center;justify-content:center;border:2px solid #0d0d0d;z-index:3;pointer-events:none;font-family:inherit;}
 .jeremie-fab-unread.on{display:flex;}
-#jeremie-bubble{position:fixed;z-index:9290;width:min(300px, calc(100vw - 32px));background:#121212;border:1px solid rgba(255,215,0,.45);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.55),0 0 0 1px rgba(255,215,0,.08);padding:12px 12px 11px;display:none;opacity:0;transform:translateY(8px) scale(.97);transition:opacity .22s ease,transform .22s ease;color:#e5e5e5;}
+/* Bulle de dialogue (façon bande dessinée) : le fond et le contour sont UN SEUL tracé SVG continu,
+   pointe comprise, dessiné à la taille réelle du message et orienté vers l'avatar
+   (_jerDrawBubbleShape). La pointe fait partie de la forme, ce n'est pas un triangle ajouté. */
+#jeremie-bubble{position:fixed;z-index:9290;width:min(300px, calc(100vw - 32px));background:none;border:none;padding:14px 20px 14px 18px;display:none;opacity:0;transform:scale(.86);transition:opacity .2s ease,transform .28s cubic-bezier(.34,1.45,.64,1);color:#e5e5e5;}
 #jeremie-bubble.on{display:block;}
 #jeremie-bubble.visible{opacity:1;transform:none;}
-.jer-bubble-hdr{display:flex;align-items:center;gap:8px;margin-bottom:6px;padding-right:22px;}
-.jer-bubble-hdr .jeremie-avatar-clip{width:26px;height:26px;flex-shrink:0;box-shadow:0 0 8px rgba(255,215,0,.45);}
+#jeremie-bubble > :not(.jer-bubble-shape){position:relative;z-index:1;}
+.jer-bubble-shape{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:0;filter:drop-shadow(0 10px 22px rgba(0,0,0,.55));}
+.jer-bubble-shape path{fill:#121212;stroke:rgba(255,215,0,.7);stroke-width:1.5;stroke-linejoin:round;}
+.jer-bubble-hdr{display:flex;align-items:center;gap:8px;margin-bottom:5px;padding-right:26px;}
 .jer-bubble-name{font-size:11px;font-weight:900;color:#FFD700;letter-spacing:.3px;}
 .jer-bubble-more{font-size:10px;color:#777;margin-left:auto;white-space:nowrap;}
 .jer-bubble-text{font-size:13px;line-height:1.5;color:#e5e5e5;cursor:pointer;max-height:42vh;overflow-y:auto;}
 .jer-bubble-actions{display:flex;gap:8px;margin-top:10px;}
 .jer-bubble-cta{flex:1;background:#FFD700;color:#000;border:none;border-radius:10px;padding:9px 10px;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;}
-.jer-bubble-close{position:absolute;top:6px;right:6px;width:28px;height:28px;border:none;background:none;color:#777;font-size:14px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.jer-bubble-close{position:absolute !important;top:8px;right:10px;width:28px;height:28px;border:none;background:none;color:#777;font-size:14px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .jer-bubble-close:focus-visible,.jer-bubble-cta:focus-visible{outline:2px solid #FFD700;outline-offset:2px;}
-@media (prefers-reduced-motion: reduce){ #jeremie-bubble{transition:none;} }
+@media (prefers-reduced-motion: reduce){ #jeremie-bubble{transition:none;transform:none;} }
 /* Onglets Discussion / Messages dans la fenêtre de Jérémie */
 .jeremie-tabs{position:relative;z-index:1;display:flex;border-bottom:1px solid #1a1a1a;flex-shrink:0;}
 .jeremie-tabs button{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:#666;font-size:12px;font-weight:800;padding:10px 6px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;}
@@ -11600,6 +11605,11 @@ function _initJeremieDrag(){
     var nt = Math.max(-10, Math.min(window.innerHeight - 48, startT + dy));
     fab.style.left = nl + 'px';
     fab.style.top  = nt + 'px';
+    // Bulle de Jérémie affichée : elle suit l'avatar, pointe toujours dirigée vers lui.
+    if(typeof _jerShown !== 'undefined' && _jerShown){
+      var _jb = document.getElementById('jeremie-bubble'), _jr = fab.getBoundingClientRect();
+      if(_jb) _jerPositionBubble(_jb, _jr);
+    }
   }
   function onEnd(){
     if(!dragging) return;
@@ -11820,13 +11830,87 @@ function _jerFabUsable(){
 }
 // Bulle au-dessus de l'avatar (ou en dessous s'il est tout en haut), alignée sur le côté de
 // l'écran où se trouve l'avatar, toujours à 16 px des bords (aucun débordement sur mobile).
+var JER_TAIL = 16, JER_TAIL_BASE = 22; // pointe : longueur et largeur à la base (px)
+// Place la bulle près de l'avatar (r = son rectangle à l'écran) puis dessine sa forme. Ordinateur
+// (≥ 768 px) : à côté de l'avatar, côté centre de l'écran ; mobile : au-dessus (sinon en dessous).
+// Toujours à 16 px des bords. La pointe vise le centre de l'avatar.
 function _jerPositionBubble(el, r){
   var vw = window.innerWidth, vh = window.innerHeight, w = el.offsetWidth, h = el.offsetHeight, m = 16;
-  var left = (r.left + r.width/2 > vw/2) ? (r.right - w) : r.left;
-  left = Math.max(m, Math.min(vw - w - m, left));
-  var top = (r.top - h - 10 >= m) ? (r.top - h - 10) : (r.bottom + 10);
-  top = Math.max(m, Math.min(vh - h - m, top));
+  var gap = JER_TAIL + 4, cx = r.left + r.width/2, cy = r.top + r.height/2;
+  var clamp = function(v, a, b){ return Math.max(a, Math.min(b, v)); };
+  var fits = {
+    above: r.top - h - gap >= m,
+    below: r.bottom + gap + h <= vh - m,
+    leftOf: r.left - w - gap >= m,
+    rightOf: r.right + gap + w <= vw - m
+  };
+  var sideFirst = cx > vw/2 ? 'leftOf' : 'rightOf';
+  var order = vw >= 768 ? [sideFirst, 'above', 'below'] : ['above', 'below', sideFirst];
+  var place = order.filter(function(p){ return fits[p]; })[0] || 'above';
+  var left, top, tailSide;
+  if(place === 'above' || place === 'below'){
+    left = clamp(cx > vw/2 ? r.right - w : r.left, m, vw - w - m);
+    top = place === 'above' ? r.top - h - gap : r.bottom + gap;
+    tailSide = place === 'above' ? 'bottom' : 'top';
+  } else {
+    left = place === 'leftOf' ? r.left - w - gap : r.right + gap;
+    top = clamp(cy - h/2, m, vh - h - m);
+    tailSide = place === 'leftOf' ? 'right' : 'left';
+  }
+  top = clamp(top, m, vh - h - m);
   el.style.left = left + 'px'; el.style.top = top + 'px';
+  _jerDrawBubbleShape(el, w, h, tailSide, cx - left, cy - top);
+}
+// Contour continu de la bulle : rectangle aux angles très arrondis dont UN des côtés intègre la
+// pointe (tracé unique, fermé). ax/ay = centre de l'avatar dans le repère de la bulle.
+function _jerDrawBubbleShape(el, w, h, side, ax, ay){
+  var svg = el.querySelector('.jer-bubble-shape');
+  if(!svg){
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'jer-bubble-shape'); svg.setAttribute('aria-hidden', 'true');
+    svg.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+    el.insertBefore(svg, el.firstChild);
+  }
+  svg.setAttribute('width', w); svg.setAttribute('height', h);
+  var T = JER_TAIL, B = JER_TAIL_BASE;
+  var vertical = side === 'top' || side === 'bottom';
+  var r = Math.max(8, Math.min(26, (vertical ? w : h) / 2 - B/2 - 4, (vertical ? h : w) / 2));
+  var clamp = function(v, a, b){ return Math.max(a, Math.min(b, v)); };
+  var arc = function(x, y){ return ' A' + r + ',' + r + ' 0 0 1 ' + x + ',' + y; };
+  var d, tipX, tipY;
+  if(vertical){
+    var bx = clamp(ax, r + B/2 + 2, w - r - B/2 - 2), x1 = bx - B/2, x2 = bx + B/2;
+    tipX = clamp(ax, x1 - 10, x2 + 10);
+    if(side === 'bottom'){
+      tipY = h + T;
+      d = 'M' + r + ',0 H' + (w - r) + arc(w, r) + ' V' + (h - r) + arc(w - r, h)
+        + ' H' + x2 + ' L' + tipX + ',' + tipY + ' L' + x1 + ',' + h
+        + ' H' + r + arc(0, h - r) + ' V' + r + arc(r, 0) + ' Z';
+    } else {
+      tipY = -T;
+      d = 'M' + r + ',0 H' + x1 + ' L' + tipX + ',' + tipY + ' L' + x2 + ',0'
+        + ' H' + (w - r) + arc(w, r) + ' V' + (h - r) + arc(w - r, h)
+        + ' H' + r + arc(0, h - r) + ' V' + r + arc(r, 0) + ' Z';
+    }
+  } else {
+    var by = clamp(ay, r + B/2 + 2, h - r - B/2 - 2), y1 = by - B/2, y2 = by + B/2;
+    tipY = clamp(ay, y1 - 10, y2 + 10);
+    if(side === 'left'){
+      tipX = -T;
+      d = 'M' + r + ',0 H' + (w - r) + arc(w, r) + ' V' + (h - r) + arc(w - r, h)
+        + ' H' + r + arc(0, h - r) + ' V' + y2 + ' L' + tipX + ',' + tipY + ' L0,' + y1
+        + ' V' + r + arc(r, 0) + ' Z';
+    } else {
+      tipX = w + T;
+      d = 'M' + r + ',0 H' + (w - r) + arc(w, r) + ' V' + y1 + ' L' + tipX + ',' + tipY + ' L' + w + ',' + y2
+        + ' V' + (h - r) + arc(w - r, h) + ' H' + r + arc(0, h - r) + ' V' + r + arc(r, 0) + ' Z';
+    }
+  }
+  svg.firstChild.setAttribute('d', d);
+  // La bulle « sort » de la pointe : l'animation part de là.
+  el.style.transformOrigin = tipX + 'px ' + tipY + 'px';
+  el.setAttribute('data-tail', side);
+  el.setAttribute('data-tip', Math.round(parseFloat(el.style.left) + tipX) + ',' + Math.round(parseFloat(el.style.top) + tipY));
 }
 function _jerShowNext(){
   if(_jerShown || _jerGreetingPending || !_jerQueue.length) return;
@@ -11843,7 +11927,8 @@ function _jerShowNext(){
   var el = document.getElementById('jeremie-bubble'); if(!el) return;
   var more = _jerQueue.length;
   el.innerHTML = '<button type="button" class="jer-bubble-close" onclick="_jerCloseBubble()" aria-label="Fermer le message"><i class="fa-solid fa-xmark"></i></button>'
-    + '<div class="jer-bubble-hdr"><span class="jeremie-avatar-clip">'+(typeof _jeremieAvatarMarkup==='function'?_jeremieAvatarMarkup():'')+'</span><span class="jer-bubble-name">Jérémie</span>'
+    // Pas de mini-avatar dans la bulle : sa pointe désigne le vrai avatar de Jérémie.
+    + '<div class="jer-bubble-hdr"><span class="jer-bubble-name">Jérémie</span>'
       + (more ? '<span class="jer-bubble-more"><span data-i18n-skip>+'+more+'</span></span>' : '') + '</div>'
     + '<div class="jer-bubble-text" data-i18n-skip onclick="'+(current.local ? '_jerAct(\''+current.id+'\')' : '_jerOpenInbox()')+'">'+_escHtml(current.text||'')+'</div>'
     + ((current.link || current.local) && current.action_label ? '<div class="jer-bubble-actions"><button type="button" class="jer-bubble-cta" onclick="_jerAct(\''+current.id+'\')"><span>'+_escHtml(current.action_label)+'</span></button></div>' : '');
@@ -11851,7 +11936,10 @@ function _jerShowNext(){
   _jerPositionBubble(el, r);
   // Seulement si elle est toujours d'actualité à l'image suivante (fenêtre de Jérémie ouverte
   // entre-temps, message lu sur un autre appareil…).
-  requestAnimationFrame(function(){ if(_jerShown === current) el.classList.add('visible'); });
+  // Filet à 60 ms : une image peut ne jamais être dessinée (app en arrière-plan à cet instant).
+  var reveal = function(){ if(_jerShown === current) el.classList.add('visible'); };
+  requestAnimationFrame(reveal);
+  setTimeout(reveal, 60);
   if(_jerHideTimer){ clearTimeout(_jerHideTimer); _jerHideTimer = null; }
   if(!current.important){
     // Durée selon la longueur du texte (8 à 20 s), puis rangé dans l'historique, toujours non lu.
