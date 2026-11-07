@@ -66,7 +66,11 @@ var COLLECTIONS = [
     'prospects',
     // Notifications d'offres : état du passage quotidien + journal (plafonds, mesure des ouvertures)
     'discovery_push',
-    'discovery_push_log'
+    'discovery_push_log',
+    // Jérémie : messages de la bulle (historique) + conversation (avant : jamais persistée,
+    // effacée à chaque redéploiement)
+    'jeremie_messages',
+    'jeremie_memory'
 ];
 
 /**

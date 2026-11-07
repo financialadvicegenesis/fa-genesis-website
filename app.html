@@ -2213,6 +2213,34 @@ a{text-decoration:none;color:inherit}
 .jeremie-emotion-badge-lg{width:30px;height:30px;font-size:20px;}
 .jeremie-greet-avatar{position:relative;width:64px;height:64px;border-radius:50%;margin:0 auto 12px;overflow:hidden;background:radial-gradient(circle at 30% 24%,#1c2c52,#0d1730 60%,#05070f 100%);box-shadow:0 0 18px rgba(255,215,0,.5),0 0 0 1px rgba(255,215,0,.35);}
 #jeremie-sheet .chat-messages{position:relative;z-index:1;}
+/* Bulle de Jérémie (message spontané près de l'avatar) + pastille de non-lus */
+.jeremie-fab-unread{position:absolute;top:-4px;left:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;display:none;align-items:center;justify-content:center;border:2px solid #0d0d0d;z-index:3;pointer-events:none;font-family:inherit;}
+.jeremie-fab-unread.on{display:flex;}
+#jeremie-bubble{position:fixed;z-index:9290;width:min(300px, calc(100vw - 32px));background:#121212;border:1px solid rgba(255,215,0,.45);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.55),0 0 0 1px rgba(255,215,0,.08);padding:12px 12px 11px;display:none;opacity:0;transform:translateY(8px) scale(.97);transition:opacity .22s ease,transform .22s ease;color:#e5e5e5;}
+#jeremie-bubble.on{display:block;}
+#jeremie-bubble.visible{opacity:1;transform:none;}
+.jer-bubble-hdr{display:flex;align-items:center;gap:8px;margin-bottom:6px;padding-right:22px;}
+.jer-bubble-hdr .jeremie-avatar-clip{width:26px;height:26px;flex-shrink:0;box-shadow:0 0 8px rgba(255,215,0,.45);}
+.jer-bubble-name{font-size:11px;font-weight:900;color:#FFD700;letter-spacing:.3px;}
+.jer-bubble-more{font-size:10px;color:#777;margin-left:auto;white-space:nowrap;}
+.jer-bubble-text{font-size:13px;line-height:1.5;color:#e5e5e5;cursor:pointer;max-height:42vh;overflow-y:auto;}
+.jer-bubble-actions{display:flex;gap:8px;margin-top:10px;}
+.jer-bubble-cta{flex:1;background:#FFD700;color:#000;border:none;border-radius:10px;padding:9px 10px;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;}
+.jer-bubble-close{position:absolute;top:6px;right:6px;width:28px;height:28px;border:none;background:none;color:#777;font-size:14px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.jer-bubble-close:focus-visible,.jer-bubble-cta:focus-visible{outline:2px solid #FFD700;outline-offset:2px;}
+@media (prefers-reduced-motion: reduce){ #jeremie-bubble{transition:none;} }
+/* Onglets Discussion / Messages dans la fenêtre de Jérémie */
+.jeremie-tabs{position:relative;z-index:1;display:flex;border-bottom:1px solid #1a1a1a;flex-shrink:0;}
+.jeremie-tabs button{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:#666;font-size:12px;font-weight:800;padding:10px 6px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;}
+.jeremie-tabs button.on{color:#FFD700;border-bottom-color:#FFD700;}
+.jer-tab-badge{min-width:16px;height:16px;border-radius:8px;background:#ef4444;color:#fff;font-size:9px;font-weight:900;padding:0 4px;display:none;align-items:center;justify-content:center;}
+.jer-tab-badge.on{display:inline-flex;}
+.jer-inbox-item{padding:12px 14px;border-bottom:1px solid #1a1a1a;position:relative;}
+.jer-inbox-item.unread{background:rgba(255,215,0,.04);}
+.jer-inbox-item.unread::before{content:'';position:absolute;left:5px;top:18px;width:6px;height:6px;border-radius:50%;background:#FFD700;}
+.jer-inbox-date{font-size:10px;color:#666;margin-bottom:4px;}
+.jer-inbox-text{font-size:13px;line-height:1.5;color:#ddd;}
+.jer-inbox-cta{margin-top:8px;background:transparent;border:1px solid rgba(255,215,0,.4);color:#FFD700;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;}
 #jeremie-sheet .chat-compose{position:relative;z-index:1;padding-bottom:calc(10px + var(--safe));align-items:flex-end;}
 #jeremie-sheet .chat-text-input{border-radius:22px;padding:11px 16px;resize:none;max-height:120px;min-height:42px;line-height:1.35;overflow-y:auto;}
 #jeremie-sheet .chat-send-btn{width:38px;height:38px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -2549,15 +2577,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261107a"></script>
-<script src="app-i18n-es.js?v=20261107a"></script>
-<script src="app-i18n-hi.js?v=20261107a"></script>
-<script src="app-i18n-pt.js?v=20261107a"></script>
-<script src="app-i18n-ja.js?v=20261107a"></script>
-<script src="app-i18n-zh.js?v=20261107a"></script>
-<script src="app-i18n-ar.js?v=20261107a"></script>
-<script src="app-i18n-it.js?v=20261107a"></script>
-<script src="app-i18n-de.js?v=20261107a"></script>
+<script src="app-i18n-en.js?v=20261107b"></script>
+<script src="app-i18n-es.js?v=20261107b"></script>
+<script src="app-i18n-hi.js?v=20261107b"></script>
+<script src="app-i18n-pt.js?v=20261107b"></script>
+<script src="app-i18n-ja.js?v=20261107b"></script>
+<script src="app-i18n-zh.js?v=20261107b"></script>
+<script src="app-i18n-ar.js?v=20261107b"></script>
+<script src="app-i18n-it.js?v=20261107b"></script>
+<script src="app-i18n-de.js?v=20261107b"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3654,7 +3682,10 @@ function _genesisVersionFooter(){
   <button class="jeremie-fab" id="jeremie-fab" onclick="openJeremieChat()" aria-label="Parler à Jérémie">
     <span class="jeremie-avatar-clip" id="jeremie-fab-avatar"></span>
     <span class="jeremie-emotion-badge" id="jeremie-fab-emotion"></span>
+    <span class="jeremie-fab-unread" id="jeremie-fab-unread" aria-hidden="true"></span>
   </button>
+  <!-- Bulle de Jérémie : message spontané lié à un vrai événement (voir _jerShowNext) -->
+  <div id="jeremie-bubble" role="status" aria-live="polite"></div>
   <div id="jeremie-overlay" onclick="if(event.target===this && !_jerOpenedViaTouch)closeJeremieChat()">
     <div id="jeremie-sheet">
       <div class="jeremie-hdr">
@@ -3674,8 +3705,13 @@ function _genesisVersionFooter(){
         <span class="jeremie-avatar-clip jeremie-avatar-clip-lg" id="jeremie-immersive-avatar-inner"></span>
         <span class="jeremie-emotion-badge jeremie-emotion-badge-lg" id="jeremie-immersive-emotion"></span>
       </div>
+      <div class="jeremie-tabs" role="tablist">
+        <button type="button" id="jer-tab-chat" class="on" role="tab" onclick="_jerSwitchTab('chat')">Discussion</button>
+        <button type="button" id="jer-tab-msgs" role="tab" onclick="_jerSwitchTab('msgs')"><span>Messages</span><span class="jer-tab-badge" id="jer-tab-badge"></span></button>
+      </div>
       <div class="chat-messages" id="jeremie-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>
-      <div class="chat-compose">
+      <div class="chat-messages" id="jeremie-inbox" style="display:none;padding:0;"></div>
+      <div class="chat-compose" id="jeremie-compose">
         <!-- Pas de bouton micro personnalisé : la dictée vocale passe par le micro du clavier
              Android lui-même (Gboard, à côté de la barre d'espace) directement dans ce champ de
              texte standard — gratuit, sans clé API, et confirmé fiable sur appareil réel, là où
@@ -7314,7 +7350,7 @@ function renderResaTab(){
   // formulaire de signature.
   var _resaProposalsPromise = fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
-    .then(function(d){ return (d&&Array.isArray(d.requests)) ? d.requests.filter(function(r){ return r.status==='accepted'||r.status==='proposed'||(r.status==='signed'&&!r.order_id)||_transferCardVisible(r); }) : []; })
+    .then(function(d){ return (d&&Array.isArray(d.requests)) ? d.requests.filter(function(r){ return (r.status==='pending'&&!r.transfer)||r.status==='accepted'||r.status==='proposed'||(r.status==='signed'&&!r.order_id)||_transferCardVisible(r); }) : []; })
     .catch(function(){ return []; });
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
@@ -7412,6 +7448,16 @@ function _devisCancelLink(r){
   return '<button class="resa-action-btn rab-ghost" style="width:100%;margin-top:8px;color:#f87171;border-color:rgba(248,113,113,.35);" onclick="cancelDevisRequest(\''+r.id+'\',\''+r.status+'\')"><i class="fa-solid fa-ban mr-1"></i> '+(r.status==='signed'?'Annuler la prestation':'Annuler la demande')+'</button>';
 }
 function renderProposalCard(r){
+  // Demande envoyée, le prestataire n'a pas encore répondu (destination de « Suivre ma demande »
+  // dans les messages de Jérémie ; avant, une demande en attente n'apparaissait nulle part).
+  if(r.status === 'pending'){
+    return '<div class="resa-card" id="prop-card-'+r.id+'">'
+      +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Demande')+'</div>'
+      +'<span class="resa-status s-pending">⏳ <span>En attente de réponse</span></span></div>'
+      +'<div class="resa-date"><i class="fa-solid fa-user"></i> '+(r.partner_name||'')+'</div>'
+      +'<div style="font-size:13px;color:var(--muted);line-height:1.5;margin-top:8px;"><span>Le prestataire a bien reçu votre demande. Vous serez prévenu dès qu\'il l\'accepte ou la refuse.</span></div>'
+      +_devisCancelLink(r)+'</div>';
+  }
   // Demande acceptée, proposition pas encore envoyée : rien à signer ni à payer pour l'instant
   // (avant, la carte affichait à tort « Proposition reçue » + un formulaire de signature).
   if(r.status === 'accepted' || !r.proposal){
@@ -10750,6 +10796,8 @@ function _genesisActiveChatIdentity(){
 // la navigation biométrique/notification peut dépendre pour fonctionner.
 function _genesisConnectChatSocket(){
   try{
+    // Messages de Jérémie du compte affiché (déconnexion ou changement de compte : remis à zéro).
+    if(typeof _jerResetIfIdentityChanged==='function') _jerResetIfIdentityChanged();
     if(typeof WebSocket==='undefined') return;
     var identity = _genesisActiveChatIdentity();
     if(!identity) return;
@@ -10761,7 +10809,8 @@ function _genesisConnectChatSocket(){
     _genesisChatWsIdentity = identity.key;
     var ws = new WebSocket(_genesisChatWsUrl(identity.token));
     _genesisChatWs = ws;
-    ws.onopen = function(){ _genesisChatWsRetryMs = 1000; };
+    // (Re)connexion : récupère les messages de Jérémie arrivés pendant l'absence.
+    ws.onopen = function(){ _genesisChatWsRetryMs = 1000; if(typeof _jerFetchMessages==='function') _jerFetchMessages(true); };
     ws.onmessage = function(ev){
       try{ _genesisHandleChatWsMessage(JSON.parse(ev.data)); }catch(e){}
     };
@@ -10784,6 +10833,13 @@ function _genesisHandleChatWsMessage(data){
   if(!data || !data.type) return;
   var partnerTab = document.getElementById('tab-partner');
   var isPartnerActive = partnerTab && partnerTab.classList.contains('on');
+  // Message de Jérémie : bulle près de l'avatar. Notification système : cloche à jour en direct.
+  if(data.type === 'jeremie_message'){ if(typeof _jerOnLiveMessage==='function') _jerOnLiveMessage(data.message); return; }
+  if(data.type === 'notification'){
+    if(isPartnerActive){ if(typeof _ptnrRefreshBadges==='function') _ptnrRefreshBadges(); }
+    else if(typeof loadNotifInbox==='function') loadNotifInbox();
+    return;
+  }
   if(data.type === 'chat_message'){
     var m = data.message; if(!m) return;
     if(isPartnerActive){
@@ -11580,7 +11636,9 @@ function openJeremieChat(){
   if(_jerOpenedViaTouch) return;
   if(_jerMoved && (Date.now() - _jerMovedAt) < 1000){ _jerMoved = false; return; }
   _jerMoved = false;
-  if(!USER && !GUEST){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
+  // Prestataire connecté (sans session client) : Jérémie lui répond aussi (avant : le bouton
+  // ouvrait la connexion CLIENT, Jérémie était inutilisable côté prestataire).
+  if(!USER && !GUEST && !_jerChatToken()){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
   var overlay=document.getElementById('jeremie-overlay'); var sheet=document.getElementById('jeremie-sheet');
   if(!overlay||!sheet) return;
   // _showRoleChoiceAfterDelete() (fonction de déconnexion générale, cf bouton "Se déconnecter")
@@ -11594,7 +11652,27 @@ function openJeremieChat(){
   overlay.style.display='';
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); },20);
+  _jerHideBubble(false);
+  _jerSwitchTab(_jerOpenTab === 'msgs' ? 'msgs' : 'chat');
+  _jerOpenTab = null;
   loadJeremieHistory();
+}
+var _jerOpenTab = null;
+// Jeton de la session réellement affichée (client OU prestataire), comme le WebSocket.
+function _jerChatToken(){
+  var id = (typeof _genesisActiveChatIdentity==='function') ? _genesisActiveChatIdentity() : null;
+  return id ? id.token : null;
+}
+function _jerSwitchTab(tab){
+  var isMsgs = tab === 'msgs';
+  var tc=document.getElementById('jer-tab-chat'), tm=document.getElementById('jer-tab-msgs');
+  var chat=document.getElementById('jeremie-msgs'), inbox=document.getElementById('jeremie-inbox'), comp=document.getElementById('jeremie-compose');
+  if(tc) tc.className = isMsgs ? '' : 'on';
+  if(tm) tm.className = isMsgs ? 'on' : '';
+  if(chat) chat.style.display = isMsgs ? 'none' : '';
+  if(comp) comp.style.display = isMsgs ? 'none' : '';
+  if(inbox) inbox.style.display = isMsgs ? '' : 'none';
+  if(isMsgs) _jerRenderInbox(true);
 }
 // Affiche Jeremie automatiquement, une fois par session, juste apres l'entree dans
 // l'app (inscription, connexion ou mode invite) - cf showApp().
@@ -11618,6 +11696,209 @@ function closeJeremieChat(){
     if(btn) btn.innerHTML='<i class="fa-solid fa-expand"></i>';
   },460);
 }
+// ── MESSAGES DE JÉRÉMIE : bulle automatique près de l'avatar ─────────────────
+// Messages créés par le serveur sur de vrais événements (voir jeremieSay dans server.js), reçus
+// en direct par le WebSocket (type 'jeremie_message') ou relus via GET /api/jeremie/messages au
+// démarrage, à la reconnexion et au retour au premier plan. Distincts de la cloche : la cloche
+// garde le registre des événements, la bulle est la parole de Jérémie, avec un bouton vers la
+// ressource exacte. Une seule bulle à la fois (file d'attente), jamais par-dessus la fenêtre de
+// Jérémie. Fermer (×) = ne plus l'afficher, le message reste non lu dans l'onglet Messages ;
+// bouton ou consultation de l'onglet = lu (la notification liée aussi, côté serveur). Un message
+// important reste affiché jusqu'à ce que la personne agisse ; les autres se rangent seuls.
+var _jerMsgs = [];          // derniers messages connus, du plus récent au plus ancien
+var _jerQueue = [];         // messages à afficher dans la bulle, du plus ancien au plus récent
+var _jerSeen = {};          // ids déjà traités pendant cette session (pas de double bulle)
+var _jerShown = null;       // message actuellement dans la bulle
+var _jerHideTimer = null;
+var _jerRetryTimer = null;
+var _jerIdentityKey = null; // compte dont les messages sont chargés (changement → on repart de zéro)
+var _jerLastFetchAt = 0;
+var JER_BUBBLE_MAX_AT_START = 3; // au chargement, seulement les plus récents non vus (les autres : pastille)
+var JER_BUBBLE_RECENT_MS = 7 * 24 * 3600000;
+
+function _jerIdentity(){ return (typeof _genesisActiveChatIdentity==='function') ? _genesisActiveChatIdentity() : null; }
+function _jerResetIfIdentityChanged(){
+  var id = _jerIdentity(), key = id ? id.key : null;
+  if(key === _jerIdentityKey) return !!key;
+  _jerIdentityKey = key; _jerMsgs = []; _jerQueue = []; _jerSeen = {};
+  _jerHideBubble(false); _jerUpdateUnread();
+  return !!key;
+}
+function _jerApi(path, method){
+  var id = _jerIdentity(); if(!id) return Promise.reject(new Error('no session'));
+  return fetch((window.FA_GENESIS_API||API)+path, {method: method||'GET', headers:{'Authorization':'Bearer '+id.token}})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+}
+function _jerFetchMessages(force){
+  if(!_jerResetIfIdentityChanged()) return;
+  if(!force && Date.now() - _jerLastFetchAt < 15000) return;
+  _jerLastFetchAt = Date.now();
+  var key = _jerIdentityKey;
+  _jerApi('/api/jeremie/messages').then(function(d){
+    if(key !== _jerIdentityKey || !d || !Array.isArray(d.messages)) return;
+    var firstLoad = !_jerMsgs.length && !Object.keys(_jerSeen).length;
+    _jerIngest(d.messages, firstLoad);
+  }).catch(function(){});
+}
+// list : du plus récent au plus ancien (comme le serveur).
+function _jerIngest(list, firstLoad){
+  var byId = {}; _jerMsgs.forEach(function(m){ byId[m.id] = m; });
+  list.forEach(function(m){ if(m && m.id) byId[m.id] = m; });
+  _jerMsgs = Object.keys(byId).map(function(k){ return byId[k]; })
+    .sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); }).slice(0, 50);
+  var fresh = list.filter(function(m){
+    return m && m.id && !_jerSeen[m.id] && !m.read && !m.dismissed && (Date.now() - new Date(m.created_at).getTime()) < JER_BUBBLE_RECENT_MS;
+  }).sort(function(a,b){ return new Date(a.created_at) - new Date(b.created_at); });
+  list.forEach(function(m){ if(m && m.id) _jerSeen[m.id] = true; });
+  if(firstLoad && fresh.length > JER_BUBBLE_MAX_AT_START) fresh = fresh.slice(-JER_BUBBLE_MAX_AT_START);
+  fresh.forEach(function(m){ if(!_jerQueue.some(function(q){ return q.id === m.id; })) _jerQueue.push(m); });
+  _jerUpdateUnread();
+  var inbox = document.getElementById('jeremie-inbox');
+  if(inbox && inbox.style.display !== 'none') _jerRenderInbox(false);
+  _jerShowNext();
+}
+function _jerOnLiveMessage(m){
+  if(!m || !m.id || !_jerResetIfIdentityChanged()) return;
+  _jerIngest([m], false);
+}
+function _jerUnreadCount(){ return _jerMsgs.filter(function(m){ return !m.read; }).length; }
+function _jerUpdateUnread(){
+  var n = _jerUnreadCount();
+  var b = document.getElementById('jeremie-fab-unread'), t = document.getElementById('jer-tab-badge');
+  [b, t].forEach(function(el){ if(!el) return; el.textContent = n > 9 ? '9+' : String(n); el.classList.toggle('on', n > 0); });
+  var fab = document.getElementById('jeremie-fab');
+  if(fab) fab.setAttribute('aria-label', n > 0 ? 'Parler à Jérémie ('+n+' message'+(n>1?'s':'')+' non lu'+(n>1?'s':'')+')' : 'Parler à Jérémie');
+}
+function _jerFabUsable(){
+  var fab = document.getElementById('jeremie-fab');
+  if(!fab) return null;
+  var r = fab.getBoundingClientRect();
+  if(!r.width || !r.height || getComputedStyle(fab).display === 'none' || getComputedStyle(fab).visibility === 'hidden') return null;
+  var overlay = document.getElementById('jeremie-overlay');
+  if(overlay && overlay.classList.contains('open')) return null; // fenêtre de Jérémie ouverte : pas de bulle par-dessus
+  return r;
+}
+// Bulle au-dessus de l'avatar (ou en dessous s'il est tout en haut), alignée sur le côté de
+// l'écran où se trouve l'avatar, toujours à 16 px des bords (aucun débordement sur mobile).
+function _jerPositionBubble(el, r){
+  var vw = window.innerWidth, vh = window.innerHeight, w = el.offsetWidth, h = el.offsetHeight, m = 16;
+  var left = (r.left + r.width/2 > vw/2) ? (r.right - w) : r.left;
+  left = Math.max(m, Math.min(vw - w - m, left));
+  var top = (r.top - h - 10 >= m) ? (r.top - h - 10) : (r.bottom + 10);
+  top = Math.max(m, Math.min(vh - h - m, top));
+  el.style.left = left + 'px'; el.style.top = top + 'px';
+}
+function _jerShowNext(){
+  if(_jerShown || !_jerQueue.length) return;
+  if(!_jerIdentity()){ _jerQueue = []; return; }
+  var r = _jerFabUsable();
+  if(!r){ // fenêtre ouverte, écran d'accueil… : plus tard (un seul minuteur à la fois)
+    if(!_jerRetryTimer) _jerRetryTimer = setTimeout(function(){ _jerRetryTimer = null; _jerShowNext(); }, 4000);
+    return;
+  }
+  var m = _jerQueue.shift();
+  var current = _jerMsgs.filter(function(x){ return x.id === m.id; })[0] || m;
+  if(current.read || current.dismissed){ _jerShowNext(); return; }
+  _jerShown = current;
+  var el = document.getElementById('jeremie-bubble'); if(!el) return;
+  var more = _jerQueue.length;
+  el.innerHTML = '<button type="button" class="jer-bubble-close" onclick="_jerCloseBubble()" aria-label="Fermer le message"><i class="fa-solid fa-xmark"></i></button>'
+    + '<div class="jer-bubble-hdr"><span class="jeremie-avatar-clip">'+(typeof _jeremieAvatarMarkup==='function'?_jeremieAvatarMarkup():'')+'</span><span class="jer-bubble-name">Jérémie</span>'
+      + (more ? '<span class="jer-bubble-more"><span data-i18n-skip>+'+more+'</span></span>' : '') + '</div>'
+    + '<div class="jer-bubble-text" data-i18n-skip onclick="_jerOpenInbox()">'+_escHtml(current.text||'')+'</div>'
+    + (current.link && current.action_label ? '<div class="jer-bubble-actions"><button type="button" class="jer-bubble-cta" onclick="_jerAct(\''+current.id+'\')"><span>'+_escHtml(current.action_label)+'</span></button></div>' : '');
+  el.classList.add('on');
+  _jerPositionBubble(el, r);
+  // Seulement si elle est toujours d'actualité à l'image suivante (fenêtre de Jérémie ouverte
+  // entre-temps, message lu sur un autre appareil…).
+  requestAnimationFrame(function(){ if(_jerShown === current) el.classList.add('visible'); });
+  if(_jerHideTimer){ clearTimeout(_jerHideTimer); _jerHideTimer = null; }
+  if(!current.important){
+    // Durée selon la longueur du texte (8 à 20 s), puis rangé dans l'historique, toujours non lu.
+    var ms = Math.min(20000, 8000 + (current.text||'').length * 45);
+    _jerHideTimer = setTimeout(function(){ _jerDismiss(current.id); }, ms);
+  }
+}
+function _jerHideBubble(next){
+  if(_jerHideTimer){ clearTimeout(_jerHideTimer); _jerHideTimer = null; }
+  var el = document.getElementById('jeremie-bubble');
+  var wasShown = _jerShown;
+  _jerShown = null;
+  if(el){
+    el.classList.remove('visible');
+    setTimeout(function(){ if(!_jerShown){ el.classList.remove('on'); el.innerHTML=''; } }, 230);
+  }
+  // Masquée sans action (ouverture de la fenêtre de Jérémie) : elle repassera plus tard.
+  if(next === false && wasShown && !wasShown.read && !wasShown.dismissed) _jerQueue.unshift(wasShown);
+  if(next !== false) setTimeout(_jerShowNext, 700);
+}
+function _jerMarkLocal(id, field){
+  _jerMsgs.forEach(function(m){ if(id === 'all' ? !m.read : m.id === id){ m[field] = true; if(field === 'read') m.dismissed = true; } });
+  _jerUpdateUnread();
+}
+function _jerDismiss(id){
+  _jerMarkLocal(id, 'dismissed');
+  _jerApi('/api/jeremie/messages/'+encodeURIComponent(id)+'/dismiss', 'POST').catch(function(){});
+  if(_jerShown && _jerShown.id === id) _jerHideBubble(true);
+}
+function _jerCloseBubble(){ if(_jerShown) _jerDismiss(_jerShown.id); else _jerHideBubble(true); }
+function _jerMarkRead(id){
+  _jerMarkLocal(id, 'read');
+  return _jerApi('/api/jeremie/messages/'+encodeURIComponent(id)+'/read', 'POST')
+    .then(function(){ if(typeof loadNotifInbox==='function') loadNotifInbox(); if(typeof _ptnrRefreshBadges==='function' && _jerIdentity() && _jerIdentity().role==='partner') _ptnrRefreshBadges(); })
+    .catch(function(){});
+}
+// Bouton contextuel : ouvre la ressource exacte via le routeur unique des notifications.
+function _jerGo(link){
+  if(!link) return;
+  if(link.indexOf('#tab:') === 0){ if(typeof nav==='function') nav(link.replace('#tab:','')); return; }
+  if(typeof _handleNotifHash === 'function') _handleNotifHash(link.replace(/^\/?app\.html/,'').replace(/^#/,''));
+}
+function _jerAct(id){
+  var m = _jerMsgs.filter(function(x){ return x.id === id; })[0] || (_jerShown && _jerShown.id === id ? _jerShown : null);
+  _jerMarkRead(id);
+  if(_jerShown && _jerShown.id === id) _jerHideBubble(true);
+  if(document.getElementById('jeremie-overlay') && document.getElementById('jeremie-overlay').classList.contains('open')) closeJeremieChat();
+  if(m && m.link) _jerGo(m.link);
+}
+function _jerOpenInbox(){
+  _jerOpenTab = 'msgs';
+  if(_jerShown) _jerHideBubble(false);
+  openJeremieChat();
+}
+// Onglet « Messages » : historique des messages de Jérémie (date, lu/non lu, accès à la ressource).
+function _jerRenderInbox(markRead){
+  var box = document.getElementById('jeremie-inbox'); if(!box) return;
+  if(!_jerIdentity()){
+    box.innerHTML = '<div class="chat-empty-state"><span>Connectez-vous pour retrouver les messages de Jérémie.</span></div>';
+    return;
+  }
+  if(!_jerMsgs.length){
+    box.innerHTML = '<div class="chat-empty-state"><span>Aucun message pour le moment. Je vous écrirai ici à chaque étape importante de vos demandes.</span></div>';
+  } else {
+    box.innerHTML = _jerMsgs.map(function(m){
+      var d = '';
+      try{ d = new Date(m.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){}
+      return '<div class="jer-inbox-item'+(m.read?'':' unread')+'">'
+        + '<div class="jer-inbox-date" data-i18n-skip>'+d+'</div>'
+        + '<div class="jer-inbox-text" data-i18n-skip>'+_escHtml(m.text||'')+'</div>'
+        + (m.link && m.action_label ? '<button type="button" class="jer-inbox-cta" onclick="_jerAct(\''+m.id+'\')"><span>'+_escHtml(m.action_label)+'</span></button>' : '')
+        + '</div>';
+    }).join('');
+  }
+  // Consultés : lus (le point « non lu » reste visible jusqu'au prochain affichage).
+  if(markRead && _jerUnreadCount() > 0){
+    _jerMarkLocal('all', 'read');
+    _jerApi('/api/jeremie/messages/all/read', 'POST').then(function(){ if(typeof loadNotifInbox==='function') loadNotifInbox(); }).catch(function(){});
+  }
+}
+// Récupération : retour au premier plan, onglet de nouveau visible, et filet de sécurité toutes
+// les 2 minutes si le WebSocket est indisponible.
+document.addEventListener('fagmobile:resumed', function(){ _jerFetchMessages(true); });
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') _jerFetchMessages(false); });
+setInterval(function(){ if(document.visibilityState !== 'hidden' && !(_genesisChatWs && _genesisChatWs.readyState === 1)) _jerFetchMessages(true); }, 120000);
+window.addEventListener('resize', function(){ var el=document.getElementById('jeremie-bubble'); var r=_jerFabUsable(); if(_jerShown && el && r) _jerPositionBubble(el, r); });
+
 function _jeremieBubble(role,text,scrollEl){
   var isMine=(role==='user');
   var bubble=document.createElement('div');
@@ -11644,7 +11925,8 @@ function _jeremieTypewriter(el,fullText,scrollEl){
 }
 function loadJeremieHistory(){
   var msgs=document.getElementById('jeremie-msgs'); if(!msgs) return;
-  if(!USER || !USER._token){
+  var _jhTok=_jerChatToken();
+  if(!_jhTok){
     msgs.innerHTML='';
     var gEmpty=document.createElement('div'); gEmpty.className='chat-empty-state';
     var gAvatarWrap=document.createElement('div'); gAvatarWrap.className='jeremie-greet-avatar'; gAvatarWrap.innerHTML=_jeremieAvatarMarkup();
@@ -11658,14 +11940,15 @@ function loadJeremieHistory(){
   }
   msgs.innerHTML='<div class="chat-empty-state"><span>Chargement...</span></div>';
   fetch((window.FA_GENESIS_API||API)+'/api/jeremie/chat',{
-    headers:{'Authorization':'Bearer '+USER._token}
+    headers:{'Authorization':'Bearer '+_jhTok}
   }).then(function(r){return r.json();}).then(function(data){
     var list=(data&&data.messages)||[];
     if(!list.length){
       msgs.innerHTML='';
       var empty=document.createElement('div'); empty.className='chat-empty-state';
       var avatarWrap=document.createElement('div'); avatarWrap.className='jeremie-greet-avatar'; avatarWrap.innerHTML=_jeremieAvatarMarkup();
-      var fn=(USER&&USER.prenom)?USER.prenom:'';
+      var _jhId=_genesisActiveChatIdentity();
+      var fn=(_jhId&&_jhId.role==='partner') ? ((_ptnrSession&&_ptnrSession.prenom)||'') : ((USER&&USER.prenom)?USER.prenom:'');
       var hello=document.createElement('span'); hello.style.fontSize='16px'; hello.style.fontWeight='800'; hello.textContent='Bonjour'+(fn?' '+fn:'')+' 👋';
       var greet=document.createElement('span'); greet.textContent='Je suis Jérémie, votre conseiller intelligent FA GENESIS.';
       var sub=document.createElement('span'); sub.style.fontSize='12px'; sub.style.color='#222'; sub.textContent='Comment puis-je vous aider aujourd’hui ?';
@@ -11697,7 +11980,8 @@ function sendJeremieMessage(){
   }
   _jeremieSetEmotion('🤔');
   var jHeaders={'Content-Type':'application/json'};
-  if(USER && USER._token) jHeaders['Authorization']='Bearer '+USER._token;
+  var _sjTok=_jerChatToken();
+  if(_sjTok) jHeaders['Authorization']='Bearer '+_sjTok;
   fetch((window.FA_GENESIS_API||API)+'/api/jeremie/chat',{
     method:'POST',
     headers:jHeaders,
@@ -20384,7 +20668,7 @@ function _ptnrSubmitProposal(requestId){
     payment_mode: paymentMode, deposit_pct: depositPct, installment_count: installmentCount
   }).then(function(res){
     if(res.success){
-      showToast('Proposition envoyée !','Le client va recevoir le récapitulatif à signer.','success');
+      showToast('Proposition envoyée !','Votre proposition a bien été transmise au client. Vous serez informé de sa réponse.','success');
       haptic([50,30,100]);
       _ptnrLoadMissions(); _ptnrRefreshBadges();
     } else {

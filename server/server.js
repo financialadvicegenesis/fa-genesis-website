@@ -2446,8 +2446,133 @@ function _mergeIntoRecentNotif(email, types, link, withinMs, update) {
 
 // opts.push === false : la notification est enregistrée (liste des notifications de l'app) mais
 // aucun push n'est envoyé sur le téléphone (annonces pour qui n'a pas accepté « Nouveautés et promos »).
+// ════════════════════════════════════════════════════════════════════════════
+// MESSAGES DE JÉRÉMIE (bulle près de son avatar) — distincts des notifications système
+// ════════════════════════════════════════════════════════════════════════════
+// Deux mécanismes complémentaires :
+//   - notification système (notifyUser) : la cloche + le push sur le téléphone, registre des
+//     événements opérationnels ;
+//   - message de Jérémie (jeremieSay) : phrase personnalisée affichée dans une bulle près de son
+//     avatar, avec un bouton vers la ressource exacte, conservée dans son historique (onglet
+//     « Messages » de Jérémie). Jamais de push (le push est porté par la notification système).
+//     Lié à la notification du même événement (notif_id) : lire la bulle marque aussi la
+//     notification comme lue, pour ne pas montrer deux fois la même nouvelle.
+// Créés UNIQUEMENT par de vrais événements métier : soit via notifyUser(..., { jeremie: {...} })
+// au point exact de l'événement, soit par JEREMIE_COMPANION_RULES (même événement, même lien).
+// Envoyés en direct par le WebSocket existant (/ws/chat, type 'jeremie_message') et relus par
+// l'app au démarrage, à la reconnexion et au retour au premier plan (GET /api/jeremie/messages).
+const JEREMIE_MESSAGES_FILE = path.join(DATA_DIR, 'jeremie_messages.json');
+var JEREMIE_MAX_PER_USER = 100;
+function loadJeremieMessages() {
+    try {
+        if (!fs.existsSync(JEREMIE_MESSAGES_FILE)) return [];
+        var d = JSON.parse(fs.readFileSync(JEREMIE_MESSAGES_FILE, 'utf8'));
+        return Array.isArray(d) ? d : [];
+    } catch (e) { return []; }
+}
+function saveJeremieMessages(list) {
+    try { fs.writeFileSync(JEREMIE_MESSAGES_FILE, JSON.stringify(list, null, 2), 'utf8'); }
+    catch (e) { console.error('[JEREMIE-MSG] Erreur sauvegarde:', e); }
+    persistentStore.persistToCloud('jeremie_messages', list).catch(function() {});
+}
+// Ressource visée par un lien de notification (pour l'historique et les contrôles).
+function _resourceFromLink(link) {
+    var s = String(link || '').replace(/^\/?app\.html/, '').replace(/^#/, '');
+    var m;
+    if ((m = s.match(/^client:proposal:(.+)$/))) return { type: 'demande', id: decodeURIComponent(m[1]) };
+    if ((m = s.match(/^client:order:(.+)$/))) return { type: 'commande', id: decodeURIComponent(m[1]) };
+    if ((m = s.match(/^partner:mission:(.+)$/))) return { type: 'mission', id: decodeURIComponent(m[1]) };
+    return { type: null, id: null };
+}
+function jeremieMessageView(m, lang) {
+    return {
+        id: m.id, event: m.event,
+        text: translateServerText(m.text, lang || 'fr'),
+        action_label: m.action_label || null, link: m.link || null,
+        resource_type: m.resource_type || null, resource_id: m.resource_id || null,
+        important: !!m.important, created_at: m.created_at,
+        read: !!m.read_at, dismissed: !!m.dismissed_at
+    };
+}
+// m : { event, text, action_label, link, notif_id, important, dedupe_key }
+function jeremieSay(role, email, m) {
+    try {
+        if (!email || !m || !m.text || (role !== 'client' && role !== 'partner')) return null;
+        var em = String(email).toLowerCase();
+        var key = m.dedupe_key || ((m.event || 'info') + '|' + (m.link || '') + '|' + m.text);
+        var all = loadJeremieMessages();
+        // Même événement déjà annoncé (paiement confirmé par deux voies, double appel…) : rien.
+        if (all.some(function(x) { return x.email === em && x.role === role && x.dedupe_key === key; })) return null;
+        var res = _resourceFromLink(m.link);
+        var msg = {
+            id: 'JER-' + crypto.randomBytes(6).toString('hex').toUpperCase(),
+            role: role, email: em,
+            event: m.event || 'info',
+            text: String(m.text).substring(0, 600),
+            action_label: m.action_label || null,
+            link: m.link || null,
+            resource_type: res.type, resource_id: res.id,
+            notif_id: m.notif_id || null,
+            important: !!m.important,
+            dedupe_key: key,
+            created_at: new Date().toISOString(),
+            read_at: null, dismissed_at: null
+        };
+        all.push(msg);
+        var mine = all.filter(function(x) { return x.email === em && x.role === role; });
+        if (mine.length > JEREMIE_MAX_PER_USER) {
+            var drop = {};
+            mine.slice(0, mine.length - JEREMIE_MAX_PER_USER).forEach(function(x) { drop[x.id] = true; });
+            all = all.filter(function(x) { return !drop[x.id]; });
+        }
+        saveJeremieMessages(all);
+        try { sendToChatSocket(role, em, { type: 'jeremie_message', message: jeremieMessageView(msg, getUserLanguage(em, role)) }); } catch (e) {}
+        return msg;
+    } catch (e) {
+        console.error('[JEREMIE-MSG] jeremieSay:', e.message);
+        return null;
+    }
+}
+// Message de Jérémie qui accompagne une notification système, selon son type, quand l'appel ne
+// fournit pas le sien (opts.jeremie). Le texte reprend celui de la notification : il décrit donc
+// toujours un événement qui vient réellement d'avoir lieu. null = pas de bulle pour ce type.
+var JEREMIE_COMPANION_RULES = {
+    client: {
+        payment_success: function(n) { return { text: n.body + ' Je vous préviens dès que la mission démarre.', action_label: 'Suivre ma commande' }; },
+        paiement: function(n) { return { text: n.body, action_label: 'Suivre ma commande' }; },
+        mission_accepted: function(n) { return { text: n.body, action_label: 'Suivre ma commande' }; },
+        mission_declined: function(n) { return { text: n.body, action_label: 'Voir ma commande', important: true }; },
+        livrable_published: function(n) { return { text: n.body + ' Vérifiez-les, puis validez la livraison ou demandez une modification.', action_label: 'Voir mes livrables', important: true }; },
+        jeremie_devis: function(n) {
+            var choose = /accepté/.test(n.body) && !/Aucun/.test(n.body);
+            var find = /open-prestataires/.test(n.link || '');
+            return { text: n.body, action_label: choose ? 'Choisir mon prestataire' : (find ? 'Trouver un prestataire' : 'Suivre ma demande'), important: choose };
+        }
+    },
+    partner: {
+        mission_pending: function(n) { return { text: n.body, action_label: 'Voir la commande', important: true }; },
+        delivery_validated: function(n) { return { text: n.body, action_label: 'Voir mes gains' }; }
+    }
+};
+function _jeremieCompanionFor(notif, opts) {
+    if (!notif.email || (notif.role !== 'client' && notif.role !== 'partner')) return;
+    if (opts && opts.jeremie === false) return;
+    var spec = (opts && opts.jeremie) || null;
+    if (!spec) {
+        var rule = (JEREMIE_COMPANION_RULES[notif.role] || {})[notif.type];
+        spec = rule ? rule(notif) : null;
+    }
+    if (!spec || !spec.text) return;
+    jeremieSay(notif.role, notif.email, {
+        event: notif.type, text: spec.text, action_label: spec.action_label || null,
+        link: spec.link || notif.link, notif_id: notif.id, important: !!spec.important,
+        dedupe_key: spec.dedupe_key || (notif.type + '|' + (notif.link || '') + '|' + notif.title)
+    });
+}
+
 function notifyUser(email, role, type, title, body, link, opts) {
     try {
+        var _res = _resourceFromLink(link);
         var notif = {
             id: 'NOTIF-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
             email: email || null,
@@ -2456,13 +2581,18 @@ function notifyUser(email, role, type, title, body, link, opts) {
             title: title || '',
             body: body || '',
             link: link || null,
+            resource_type: _res.type,
+            resource_id: _res.id,
             read: false,
             created_at: new Date().toISOString()
         };
         var all = loadNotifications();
         all.push(notif);
         saveNotifications(all);
-        if (opts && opts.push === false) return;
+        // Cloche à jour en direct sur les appareils connectés (sinon : au prochain chargement).
+        if (email) { try { sendToChatSocket(notif.role, String(email).toLowerCase(), { type: 'notification', id: notif.id, notif_type: notif.type }); } catch (e) {} }
+        _jeremieCompanionFor(notif, opts);
+        if (opts && opts.push === false) return notif.id;
 
         // notif.title/notif.body ci-dessus restent en français : affichés dans la liste des
         // notifications DANS l'app, ils sont traduits automatiquement côté client comme le
@@ -2525,10 +2655,76 @@ function notifyUser(email, role, type, title, body, link, opts) {
         } else if (role) {
             sendFcmToRole(role, fcmPayload);
         }
+        return notif.id;
     } catch(e) {
         console.error('[NOTIFY] Erreur notifyUser:', e);
     }
 }
+
+// ── Historique et lecture des messages de Jérémie (client ou prestataire connecté) ──
+function _jeremieIdentity(req, res) {
+    var identity = resolveCurrentIdentity(req);
+    if (!identity || (identity.role !== 'client' && identity.role !== 'partner')) {
+        res.status(401).json({ error: 'Non autorise' });
+        return null;
+    }
+    identity.email = String(identity.email || '').toLowerCase();
+    return identity;
+}
+function _ownsJeremieMsg(m, identity) { return m && m.role === identity.role && m.email === identity.email; }
+app.get('/api/jeremie/messages', function(req, res) {
+    try {
+        var identity = _jeremieIdentity(req, res);
+        if (!identity) return;
+        var lang = getUserLanguage(identity.email, identity.role);
+        var mine = loadJeremieMessages().filter(function(m) { return _ownsJeremieMsg(m, identity); })
+            .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json({
+            ok: true,
+            messages: mine.slice(0, 50).map(function(m) { return jeremieMessageView(m, lang); }),
+            unread_count: mine.filter(function(m) { return !m.read_at; }).length
+        });
+    } catch (e) {
+        console.error('[JEREMIE-MSG] Erreur liste:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+// :action = read (consulté : bouton ou historique ; la notification liée est lue aussi) |
+// dismiss (bulle fermée : plus affichée d'elle-même, reste non lue dans l'historique).
+app.post('/api/jeremie/messages/:id/:action', function(req, res) {
+    try {
+        var identity = _jeremieIdentity(req, res);
+        if (!identity) return;
+        var action = req.params.action;
+        if (action !== 'read' && action !== 'dismiss') return res.status(400).json({ error: 'Action inconnue' });
+        var all = loadJeremieMessages();
+        var nowIso = new Date().toISOString();
+        var targets = req.params.id === 'all'
+            ? all.filter(function(m) { return _ownsJeremieMsg(m, identity) && !m.read_at; })
+            : all.filter(function(m) { return m.id === req.params.id; });
+        if (req.params.id !== 'all') {
+            if (!targets.length) return res.status(404).json({ error: 'Message introuvable' });
+            if (!_ownsJeremieMsg(targets[0], identity)) return res.status(403).json({ error: 'Acces non autorise' });
+        }
+        var notifIds = {};
+        targets.forEach(function(m) {
+            if (action === 'read') { if (!m.read_at) m.read_at = nowIso; if (m.notif_id) notifIds[m.notif_id] = true; }
+            if (!m.dismissed_at) m.dismissed_at = nowIso;
+        });
+        saveJeremieMessages(all);
+        if (Object.keys(notifIds).length) {
+            var notifs = loadNotifications(), changed = false;
+            notifs.forEach(function(n) {
+                if (notifIds[n.id] && !n.read && n.role === identity.role && String(n.email || '').toLowerCase() === identity.email) { n.read = true; changed = true; }
+            });
+            if (changed) saveNotifications(notifs);
+        }
+        res.json({ ok: true, updated: targets.length });
+    } catch (e) {
+        console.error('[JEREMIE-MSG] Erreur mise à jour:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
 
 // Sécurité anti-détournement de versement : à appeler chaque fois que les coordonnées de
 // versement d'un partenaire (RIB, PayPal, Wise) sont enregistrées ou modifiées, pour que le
@@ -10242,6 +10438,13 @@ function _purgeAccountData(opts) {
     } catch(e) { errs.push('notifications:' + e.message); }
 
     try {
+        // Messages de Jérémie (bulle / historique) adressés à ce compte
+        var jms = loadJeremieMessages();
+        var jmc = jms.filter(function(m) { return !(m.email && m.email.toLowerCase() === email); });
+        if (jmc.length !== jms.length) saveJeremieMessages(jmc);
+    } catch(e) { errs.push('jeremie_messages:' + e.message); }
+
+    try {
         // Tokens FCM
         var fcm = loadFcmTokens();
         var fc = fcm.filter(function(t) {
@@ -10689,10 +10892,20 @@ function saveMessages(messages) {
 
 // Memoire de Jeremie (IA conversationnelle) : historique de messages par personne
 // ({ [personId]: { messages: [{role, content, date}], updatedAt } }), cle = userId client ou partnerId.
+// Conversation avec Jérémie : objet { personId: { messages, updatedAt } } en mémoire. Persistée dans
+// MongoDB sous forme de tableau [{ personId, messages, updatedAt }] (avant : jamais envoyée à
+// MongoDB, toute la conversation disparaissait à chaque redéploiement Render). restoreAllFromCloud
+// réécrit le fichier au format tableau au démarrage : les deux formats sont acceptés à la lecture.
 function loadJeremieMemory() {
     try {
         if (fs.existsSync(JEREMIE_MEMORY_FILE)) {
-            return JSON.parse(fs.readFileSync(JEREMIE_MEMORY_FILE, 'utf8'));
+            var raw = JSON.parse(fs.readFileSync(JEREMIE_MEMORY_FILE, 'utf8'));
+            if (Array.isArray(raw)) {
+                var obj = {};
+                raw.forEach(function(e) { if (e && e.personId) obj[e.personId] = { messages: e.messages || [], updatedAt: e.updatedAt || null }; });
+                return obj;
+            }
+            return (raw && typeof raw === 'object') ? raw : {};
         }
     } catch (error) {
         console.error('Erreur lecture jeremie_memory:', error);
@@ -10701,11 +10914,14 @@ function loadJeremieMemory() {
 }
 
 function saveJeremieMemory(memory) {
+    var obj = (memory && typeof memory === 'object' && !Array.isArray(memory)) ? memory : {};
     try {
-        fs.writeFileSync(JEREMIE_MEMORY_FILE, JSON.stringify(memory, null, 2), 'utf8');
+        fs.writeFileSync(JEREMIE_MEMORY_FILE, JSON.stringify(obj, null, 2), 'utf8');
     } catch (error) {
         console.error('Erreur sauvegarde jeremie_memory:', error);
     }
+    var list = Object.keys(obj).map(function(id) { return { personId: id, messages: obj[id].messages || [], updatedAt: obj[id].updatedAt || null }; });
+    persistentStore.persistToCloud('jeremie_memory', list).catch(function() {});
 }
 
 /**
@@ -19045,7 +19261,17 @@ app.post('/api/partner-requests', function(req, res) {
         requests.push(newRequest);
         savePartnerRequests(requests);
 
-        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', newRequest.client_name + ' souhaite vous engager pour : ' + service.label, '#partner:mission:' + newRequest.id);
+        var _nrDetails = (newRequest.budget_note ? ' Budget indiqué : ' + newRequest.budget_note + '.' : '')
+            + (newRequest.desired_date ? ' Date souhaitée : ' + new Date(newRequest.desired_date).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' }) + '.' : '');
+        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', newRequest.client_name + ' souhaite vous engager pour : ' + service.label, '#partner:mission:' + newRequest.id, {
+            jeremie: { text: 'Nouvelle opportunité : ' + (user.prenom || 'un client') + ' souhaite vous confier « ' + service.label + ' ».' + _nrDetails + ' Consultez les détails pour accepter ou refuser.', action_label: 'Voir l\'opportunité', important: true }
+        });
+        // Confirmation au client par Jérémie (sa propre action : pas de notification système ni de push).
+        jeremieSay('client', user.email, {
+            event: 'request_created',
+            text: 'Votre demande « ' + service.label + ' » a bien été enregistrée et transmise à ' + _partnerDisplayName(partner) + '. Je vous préviens dès que ce prestataire répond.',
+            action_label: 'Suivre ma demande', link: '/app.html#client:proposal:' + newRequest.id, dedupe_key: 'request_created|' + newRequest.id
+        });
 
         res.json({ success: true, request: newRequest });
     } catch(e) {
@@ -19344,7 +19570,9 @@ app.post('/api/partner/requests/:id/accept', authenticatePartner, function(req, 
         var partnerName = req.partner.prenom || req.partner.email;
         // Le prestataire n'a encore rien proposé (prix, délai, modalités) : aucun paiement n'est
         // possible à ce stade — avant, ce message invitait à tort à « payer l'acompte ».
-        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande acceptée ✅', partnerName + ' a accepté votre demande pour : ' + requests[idx].service_label + '. Il prépare sa proposition : vous serez notifié dès qu\'elle sera prête.', '/app.html#client:proposal:' + requests[idx].id);
+        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande acceptée ✅', partnerName + ' a accepté votre demande pour : ' + requests[idx].service_label + '. Il prépare sa proposition : vous serez notifié dès qu\'elle sera prête.', '/app.html#client:proposal:' + requests[idx].id, {
+            jeremie: { text: _partnerDisplayName(req.partner) + ' a accepté votre demande « ' + requests[idx].service_label + ' » et prépare sa proposition (prix, délai, modalités). Je vous préviens dès qu\'elle arrive.', action_label: 'Suivre ma demande', dedupe_key: 'request_accepted|' + requests[idx].id }
+        });
 
         res.json({ success: true, message: 'Demande acceptée.' });
     } catch(e) {
@@ -19384,7 +19612,9 @@ app.post('/api/partner/requests/:id/decline', authenticatePartner, function(req,
         savePartnerRequests(requests);
 
         if (_tStart) notifyQuoteTransferStarted(_tStart);
-        else notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande refusée', 'Le prestataire n\'est pas disponible pour : ' + requests[idx].service_label + '. Vous pouvez en choisir un autre dans l\'annuaire.', '/app.html#open-prestataires');
+        else notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande refusée', 'Le prestataire n\'est pas disponible pour : ' + requests[idx].service_label + '. Vous pouvez en choisir un autre dans l\'annuaire.', '/app.html#open-prestataires', {
+            jeremie: { text: 'Ce prestataire n\'est pas disponible pour « ' + requests[idx].service_label + ' ». D\'autres professionnels peuvent vous aider : je vous laisse les découvrir dans l\'annuaire.', action_label: 'Trouver un prestataire', dedupe_key: 'request_declined|' + requests[idx].id }
+        });
 
         res.json({ success: true, message: 'Demande refusée.' });
     } catch(e) {
@@ -19582,7 +19812,9 @@ function notifyQuoteTransferStarted(info) {
     picks.forEach(function(pick, i) {
         notifyUser(pick.partner.email, 'partner', 'partner-request', 'Nouvelle demande de devis',
             'Jérémie IA vous transmet la demande de ' + (r.client_name || 'un client') + ' : ' + r.service_label + '. Le client choisira parmi les prestataires qui acceptent.',
-            '#partner:mission:' + r.transfer.candidates[i].request_id);
+            '#partner:mission:' + r.transfer.candidates[i].request_id, {
+                jeremie: { text: 'Nouvelle opportunité : je vous transmets la demande « ' + r.service_label + ' », que le premier prestataire contacté n\'a pas pu prendre. Consultez les détails pour accepter ou refuser.', action_label: 'Voir l\'opportunité', important: true }
+            });
     });
     generateQuoteTransferSummaries(r.id);
 }
@@ -19871,7 +20103,9 @@ app.post('/api/my-requests/:id/transfer/choose', function(req, res) {
         if (chosenPartner) {
             notifyUser(chosenPartner.email, 'partner', 'partner-request', 'Le client vous a choisi ✅',
                 (child.client_name || 'Le client') + ' vous a retenu pour : ' + child.service_label + '. Envoyez-lui votre proposition (prix, délai, modalités).',
-                '#partner:mission:' + child.id);
+                '#partner:mission:' + child.id, {
+                    jeremie: { text: 'Bonne nouvelle ! Le client vous a retenu pour « ' + child.service_label + ' ». Envoyez-lui votre proposition (prix, délai, modalités) pour avancer.', action_label: 'Préparer ma proposition', important: true }
+                });
         }
         informed.forEach(function(c) {
             var p = getPartnerById(c.partner_id);
@@ -20013,7 +20247,13 @@ app.post('/api/partner/requests/:id/propose', authenticatePartner, function(req,
         requests[idx].status = 'proposed';
         savePartnerRequests(requests);
 
-        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Proposition reçue 📋', (req.partner.prenom || 'Le prestataire') + ' vous a envoyé sa proposition pour : ' + requests[idx].service_label + '. Consultez-la pour l\'accepter ou la refuser.', '/app.html#client:proposal:' + requests[idx].id);
+        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Proposition reçue 📋', (req.partner.prenom || 'Le prestataire') + ' vous a envoyé sa proposition pour : ' + requests[idx].service_label + '. Consultez-la pour l\'accepter ou la refuser.', '/app.html#client:proposal:' + requests[idx].id, {
+            jeremie: {
+                text: 'Bonne nouvelle ! ' + _partnerDisplayName(req.partner) + ' vous a envoyé sa proposition pour « ' + requests[idx].service_label + ' » : ' + totalPrice + ' €' + (delayDays ? ', délai ' + delayDays + ' jour(s)' : '') + '. Consultez-la pour l\'accepter ou la refuser.',
+                action_label: 'Voir la proposition', important: true,
+                dedupe_key: 'proposal|' + requests[idx].id + '|' + requests[idx].proposal.created_at
+            }
+        });
 
         res.json({ success: true, message: 'Proposition envoyée avec succès', request: requests[idx] });
     } catch(e) {
@@ -20111,7 +20351,9 @@ app.post('/api/my-requests/:id/decline-proposal', function(req, res) {
         if (partner) {
             notifyUser(partner.email, 'partner', 'partner-request', 'Proposition refusée',
                 (r.client_name || 'Le client') + ' a refusé votre proposition pour : ' + r.service_label + '.' + (reason ? ' Motif : ' + reason + (/[.!?…]$/.test(reason) ? '' : '.') : '') + ' Vous pouvez lui envoyer une nouvelle proposition.',
-                '#partner:mission:' + r.id);
+                '#partner:mission:' + r.id, {
+                    jeremie: { text: 'Le client n\'a pas retenu votre proposition pour « ' + r.service_label + ' ».' + (reason ? ' Motif : ' + reason + (/[.!?…]$/.test(reason) ? '' : '.') : '') + ' Vous pouvez lui en envoyer une nouvelle.', action_label: 'Envoyer une nouvelle proposition', dedupe_key: 'proposal_declined|' + r.id + '|' + declined.declined_at }
+                });
         }
         res.json({ success: true, request: r });
     } catch (e) {
@@ -20232,6 +20474,12 @@ app.post('/api/my-requests/:id/sign-contract', function(req, res) {
         savePartnerRequests(requests);
 
         console.log('[CONTRACT] Signature client demande ' + requests[idx].id + ' par ' + user.email + ' (' + signIp + ')');
+        jeremieSay('client', user.email, {
+            event: 'contract_signed',
+            text: 'Contrat signé pour « ' + requests[idx].service_label + ' ». Dernière étape : le paiement sécurisé GENESIS SAFE™, conservé jusqu\'à la livraison.',
+            action_label: 'Payer en sécurité', link: '/app.html#client:proposal:' + requests[idx].id, important: true,
+            dedupe_key: 'contract_signed|' + requests[idx].id
+        });
         res.json({ success: true, message: 'Contrat signé avec succès', request: requests[idx] });
     } catch(e) {
         console.error('[PARTNER-REQUEST] Erreur sign-contract:', e);
