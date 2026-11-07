@@ -2577,15 +2577,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261107c"></script>
-<script src="app-i18n-es.js?v=20261107c"></script>
-<script src="app-i18n-hi.js?v=20261107c"></script>
-<script src="app-i18n-pt.js?v=20261107c"></script>
-<script src="app-i18n-ja.js?v=20261107c"></script>
-<script src="app-i18n-zh.js?v=20261107c"></script>
-<script src="app-i18n-ar.js?v=20261107c"></script>
-<script src="app-i18n-it.js?v=20261107c"></script>
-<script src="app-i18n-de.js?v=20261107c"></script>
+<script src="app-i18n-en.js?v=20261107d"></script>
+<script src="app-i18n-es.js?v=20261107d"></script>
+<script src="app-i18n-hi.js?v=20261107d"></script>
+<script src="app-i18n-pt.js?v=20261107d"></script>
+<script src="app-i18n-ja.js?v=20261107d"></script>
+<script src="app-i18n-zh.js?v=20261107d"></script>
+<script src="app-i18n-ar.js?v=20261107d"></script>
+<script src="app-i18n-it.js?v=20261107d"></script>
+<script src="app-i18n-de.js?v=20261107d"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -11688,6 +11688,8 @@ function closeJeremieChat(){
   if(!sheet||!overlay) return;
   sheet.classList.remove('up');
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  // Messages de Jérémie en attente pendant que la fenêtre était ouverte : ils reprennent.
+  setTimeout(function(){ if(typeof _jerShowNext==='function') _jerShowNext(); }, 800);
   setTimeout(function(){
     overlay.classList.remove('open');
     // Sans ça, une fois agrandie, la conversation se rouvrait toujours en plein écran.
@@ -11722,7 +11724,40 @@ function _jerResetIfIdentityChanged(){
   if(key === _jerIdentityKey) return !!key;
   _jerIdentityKey = key; _jerMsgs = []; _jerQueue = []; _jerSeen = {};
   _jerHideBubble(false); _jerUpdateUnread();
+  if(id) _jerScheduleGreeting(id);
   return !!key;
+}
+// Bonjour de Jérémie à l'entrée dans l'espace client ou prestataire (connexion, ouverture de l'app,
+// passage d'un espace à l'autre) : une fois par session et par espace, dans la bulle. Ce n'est pas
+// un événement : ni enregistré dans l'historique, ni compté comme non lu. Passe avant les messages
+// en attente, qui suivent dans la file.
+var _jerGreetingPending = false;
+function _jerScheduleGreeting(id){
+  var k = 'fa_jer_greeted_' + id.key;
+  try{ if(sessionStorage.getItem(k) === '1') return; sessionStorage.setItem(k, '1'); }catch(e){}
+  _jerGreetingPending = true;
+  setTimeout(function(){
+    _jerGreetingPending = false;
+    var cur = _jerIdentity();
+    if(cur && cur.key === id.key) _jerQueue.unshift(_jerGreetingMessage(cur));
+    _jerShowNext();
+  }, 900);
+}
+function _jerGreetingMessage(id){
+  var isPartner = id.role === 'partner';
+  var name = isPartner ? ((typeof _ptnrSession!=='undefined' && _ptnrSession && _ptnrSession.prenom) || '') : ((USER && USER.prenom) || '');
+  var h = new Date().getHours();
+  var hello = (h >= 18 || h < 5) ? _tr('Bonsoir') : _tr('Bonjour');
+  // Première rencontre sur cet appareil : « Bienvenue » ; ensuite : « Ravi de vous revoir ».
+  var metKey = 'fa_jer_met_' + id.key, first = true;
+  try{ first = localStorage.getItem(metKey) !== '1'; localStorage.setItem(metKey, '1'); }catch(e){}
+  var line1 = first ? _tr('Bienvenue sur GENESIS !') : _tr('Ravi de vous revoir.');
+  var line2 = isPartner
+    ? _tr('Je suis là pour vous aider à gérer vos demandes, vos missions et vos versements.')
+    : _tr('Je suis là pour vous aider à trouver le bon prestataire et à suivre vos demandes.');
+  return { id: 'local-greet-' + id.key, local: true, important: false,
+    text: hello + (name ? ' ' + name : '') + ' 👋 ' + line1 + ' ' + line2,
+    action_label: _tr('Discuter avec Jérémie'), created_at: new Date().toISOString() };
 }
 function _jerApi(path, method){
   var id = _jerIdentity(); if(!id) return Promise.reject(new Error('no session'));
@@ -11776,6 +11811,11 @@ function _jerFabUsable(){
   if(!r.width || !r.height || getComputedStyle(fab).display === 'none' || getComputedStyle(fab).visibility === 'hidden') return null;
   var overlay = document.getElementById('jeremie-overlay');
   if(overlay && overlay.classList.contains('open')) return null; // fenêtre de Jérémie ouverte : pas de bulle par-dessus
+  // Écran de déverrouillage biométrique ou tutoriel affiché : la bulle serait cachée dessous.
+  var locks = ['client-biolock-screen', 'ptnr-biolock-screen'];
+  for(var i = 0; i < locks.length; i++){ var lk = document.getElementById(locks[i]); if(lk && getComputedStyle(lk).display !== 'none') return null; }
+  var tuto = document.getElementById('tuto-overlay');
+  if(tuto && tuto.classList.contains('open')) return null;
   return r;
 }
 // Bulle au-dessus de l'avatar (ou en dessous s'il est tout en haut), alignée sur le côté de
@@ -11789,7 +11829,7 @@ function _jerPositionBubble(el, r){
   el.style.left = left + 'px'; el.style.top = top + 'px';
 }
 function _jerShowNext(){
-  if(_jerShown || !_jerQueue.length) return;
+  if(_jerShown || _jerGreetingPending || !_jerQueue.length) return;
   if(!_jerIdentity()){ _jerQueue = []; return; }
   var r = _jerFabUsable();
   if(!r){ // fenêtre ouverte, écran d'accueil… : plus tard (un seul minuteur à la fois)
@@ -11805,8 +11845,8 @@ function _jerShowNext(){
   el.innerHTML = '<button type="button" class="jer-bubble-close" onclick="_jerCloseBubble()" aria-label="Fermer le message"><i class="fa-solid fa-xmark"></i></button>'
     + '<div class="jer-bubble-hdr"><span class="jeremie-avatar-clip">'+(typeof _jeremieAvatarMarkup==='function'?_jeremieAvatarMarkup():'')+'</span><span class="jer-bubble-name">Jérémie</span>'
       + (more ? '<span class="jer-bubble-more"><span data-i18n-skip>+'+more+'</span></span>' : '') + '</div>'
-    + '<div class="jer-bubble-text" data-i18n-skip onclick="_jerOpenInbox()">'+_escHtml(current.text||'')+'</div>'
-    + (current.link && current.action_label ? '<div class="jer-bubble-actions"><button type="button" class="jer-bubble-cta" onclick="_jerAct(\''+current.id+'\')"><span>'+_escHtml(current.action_label)+'</span></button></div>' : '');
+    + '<div class="jer-bubble-text" data-i18n-skip onclick="'+(current.local ? '_jerAct(\''+current.id+'\')' : '_jerOpenInbox()')+'">'+_escHtml(current.text||'')+'</div>'
+    + ((current.link || current.local) && current.action_label ? '<div class="jer-bubble-actions"><button type="button" class="jer-bubble-cta" onclick="_jerAct(\''+current.id+'\')"><span>'+_escHtml(current.action_label)+'</span></button></div>' : '');
   el.classList.add('on');
   _jerPositionBubble(el, r);
   // Seulement si elle est toujours d'actualité à l'image suivante (fenêtre de Jérémie ouverte
@@ -11829,7 +11869,7 @@ function _jerHideBubble(next){
     setTimeout(function(){ if(!_jerShown){ el.classList.remove('on'); el.innerHTML=''; } }, 230);
   }
   // Masquée sans action (ouverture de la fenêtre de Jérémie) : elle repassera plus tard.
-  if(next === false && wasShown && !wasShown.read && !wasShown.dismissed) _jerQueue.unshift(wasShown);
+  if(next === false && wasShown && !wasShown.local && !wasShown.read && !wasShown.dismissed) _jerQueue.unshift(wasShown);
   if(next !== false) setTimeout(_jerShowNext, 700);
 }
 function _jerMarkLocal(id, field){
@@ -11838,7 +11878,7 @@ function _jerMarkLocal(id, field){
 }
 function _jerDismiss(id){
   _jerMarkLocal(id, 'dismissed');
-  _jerApi('/api/jeremie/messages/'+encodeURIComponent(id)+'/dismiss', 'POST').catch(function(){});
+  if(String(id).indexOf('local-') !== 0) _jerApi('/api/jeremie/messages/'+encodeURIComponent(id)+'/dismiss', 'POST').catch(function(){});
   if(_jerShown && _jerShown.id === id) _jerHideBubble(true);
 }
 function _jerCloseBubble(){ if(_jerShown) _jerDismiss(_jerShown.id); else _jerHideBubble(true); }
@@ -11856,6 +11896,12 @@ function _jerGo(link){
 }
 function _jerAct(id){
   var m = _jerMsgs.filter(function(x){ return x.id === id; })[0] || (_jerShown && _jerShown.id === id ? _jerShown : null);
+  // Bonjour de Jérémie : ouvre la discussion (rien à marquer côté serveur).
+  if(m && m.local){
+    if(_jerShown && _jerShown.id === id) _jerHideBubble(false);
+    openJeremieChat();
+    return;
+  }
   _jerMarkRead(id);
   if(_jerShown && _jerShown.id === id) _jerHideBubble(true);
   if(document.getElementById('jeremie-overlay') && document.getElementById('jeremie-overlay').classList.contains('open')) closeJeremieChat();
