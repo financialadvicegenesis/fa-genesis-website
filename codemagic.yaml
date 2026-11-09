@@ -181,9 +181,10 @@ workflows:
         # toujours re-vérifier le statut réel de la dernière version sur App Store Connect avant de
         # juste re-incrémenter à l'aveugle. 3e occurrence (build #36, 2026-10-27, erreur 90062 :
         # "must contain a higher version than that of the previously approved version [1.0.2]") —
-        # passé à 1.0.3. À chaque version approuvée par Apple, incrémenter ici AVANT le push suivant.
+        # passé à 1.0.3. 1.0.3 approuvée à son tour (confirmé par l'utilisateur le 2026-11-09) → 1.0.4.
+        # À chaque version approuvée par Apple, incrémenter ici AVANT le push suivant.
         script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.3" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.4" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
           # Déclare directement que l'app n'utilise que le chiffrement HTTPS standard du système
           # (aucun algorithme propriétaire/personnalisé) — évite la question de conformité export
@@ -195,6 +196,31 @@ workflows:
           # codé pour les deux plateformes dans app.html, n'était donc jamais proposé sur iOS.
           # Texte affiché par iOS dans la demande d'autorisation Face ID.
           /usr/libexec/PlistBuddy -c "Add :NSFaceIDUsageDescription string GENESIS utilise Face ID pour déverrouiller votre compte en toute sécurité." ios/App/App/Info.plist
+      - name: Declare app languages + camera / microphone / photos permissions
+        # LANGUES : iOS affiche ses propres menus (choix d'un fichier « Photothèque / Prendre une
+        # vidéo / Choisir des fichiers », feuilles de partage, boutons système) dans une langue que
+        # l'app DÉCLARE supporter. Le projet Capacitor ne déclarait que l'anglais
+        # (CFBundleDevelopmentRegion = en) : même sur un iPhone en français, ces menus restaient en
+        # anglais (« Photo Library / Take Video / Choose Files », signalé le 2026-11-09). On déclare
+        # les 10 langues de l'app ; iOS choisit celle du téléphone (ou celle réglée pour GENESIS dans
+        # Réglages > GENESIS > Langue), le français sinon.
+        # AUTORISATIONS : « Prendre une photo / une vidéo » ouvre la caméra (et le micro pour le son
+        # de la vidéo). Sans texte d'autorisation, iOS ferme l'app instantanément à ce moment-là.
+        script: |
+          PL=ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDevelopmentRegion fr" "$PL"
+          /usr/libexec/PlistBuddy -c "Delete :CFBundleLocalizations" "$PL" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleLocalizations array" "$PL"
+          for L in fr en es pt ar de zh-Hans it ja hi; do
+            /usr/libexec/PlistBuddy -c "Add :CFBundleLocalizations: string $L" "$PL"
+          done
+          for K in NSCameraUsageDescription NSMicrophoneUsageDescription NSPhotoLibraryUsageDescription; do
+            /usr/libexec/PlistBuddy -c "Delete :$K" "$PL" 2>/dev/null || true
+          done
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string GENESIS utilise l’appareil photo pour prendre des photos et des vidéos à ajouter à votre profil, à votre portfolio ou à vos messages." "$PL"
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string GENESIS utilise le micro pour enregistrer le son des vidéos que vous filmez pour votre portfolio." "$PL"
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string GENESIS accède aux photos et vidéos que vous choisissez pour les ajouter à votre profil ou à votre portfolio." "$PL"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleLocalizations" "$PL"
       - name: Apply GENESIS branding (icon + splash screen)
         # Parité avec Android : sans ceci, l'app iOS affiche l'icône et l'écran de démarrage
         # génériques par défaut de Capacitor (jamais remplacés jusqu'ici) au lieu du logo GENESIS.
