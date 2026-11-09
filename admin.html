@@ -699,6 +699,8 @@
         .gv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;}
         .gv-grid .gv-card{margin-bottom:0;}
         .gv-grid + .gv-card{margin-top:14px;}
+        .gv-before{border-style:dashed;border-color:rgba(255,255,255,.14);margin-top:22px;}
+        .gv-before h3{color:#bbb;}
         .gv-bar{display:grid;grid-template-columns:minmax(120px,1.6fr) 1fr 32px;align-items:center;gap:8px;font-size:12px;margin-bottom:7px;}
         .gv-bar .t{height:8px;background:#1a1a1a;border-radius:4px;overflow:hidden;}
         .gv-bar .t i{display:block;height:100%;background:var(--c-gold);border-radius:4px;}
@@ -7621,7 +7623,7 @@
                 .then(function(d) {
                     if (!d || !d.ok) { el.innerHTML = '<div style="color:#f03e3e;padding:12px;">Impossible de charger les visites invitées.</div>'; return; }
                     if (!d.total_devices) {
-                        el.innerHTML = '<div class="gv-empty"><i class="fas fa-user-clock" style="color:var(--c-gold);font-size:22px;display:block;margin-bottom:8px;"></i>Aucune visite invitée enregistrée pour l’instant.<br>Les prochaines entrées en invité dans l’app apparaîtront ici.</div>';
+                        el.innerHTML = '<div class="gv-empty"><i class="fas fa-user-clock" style="color:var(--c-gold);font-size:22px;display:block;margin-bottom:8px;"></i>Aucune visite invitée enregistrée pour l’instant.<br>Les prochaines entrées en invité dans l’app apparaîtront ici.</div>' + _gvBeforeHtml(d.before_measure);
                         return;
                     }
                     var su = d.summary, per = d.period_days;
@@ -7663,10 +7665,34 @@
                             + '</div>';
                     }).join('');
                     h += '</div>';
-                    el.innerHTML = h;
+                    el.innerHTML = h + _gvBeforeHtml(d.before_measure);
                 }).catch(function() {
                     el.innerHTML = '<div style="color:#f03e3e;padding:12px;">Erreur réseau. Réessayez.</div>';
                 });
+        }
+        // Avant le 9 novembre : appareils sans compte inscrits aux notifications d'offres (seule trace).
+        function _gvBeforeHtml(b) {
+            if (!b) return '';
+            var h = '<div class="gv-card gv-before"><h3>Avant le 9 novembre (trace partielle)</h3>'
+                + '<div style="font-size:12px;color:#888;line-height:1.6;margin-bottom:12px;max-width:760px;">Avant cette section, les visites invitées n’étaient pas enregistrées. Seule trace : les appareils de l’app mobile qui, sans compte, ont accepté les notifications « Nouveautés et promos » (depuis le 3 novembre). C’est donc une partie seulement des anciens invités, sans les écrans consultés ; certains n’ont peut-être pas dépassé l’écran d’accueil.</div>';
+            if (!b.devices) return h + '<div style="font-size:12px;color:#666;">Aucun appareil visiteur inscrit aux notifications.</div></div>';
+            var withAcc = b.list.filter(function(x) { return x.has_account; }).length;
+            var opened = b.list.filter(function(x) { return x.opened > 0; }).length;
+            h += '<div class="gv-kpis" style="margin-bottom:14px;">'
+                + '<div class="gv-kpi"><b>' + b.devices + '</b><span>Appareils visiteurs</span></div>'
+                + '<div class="gv-kpi"><b>' + opened + '</b><span>Ont ouvert une notification</span></div>'
+                + '<div class="gv-kpi"><b>' + withAcc + '</b><span>Connectés ensuite sur cet appareil</span></div>'
+                + '</div>';
+            h += '<div class="gv-grid" style="margin-bottom:14px;"><div><h3>Appareil</h3>' + _gvBars(b.by_platform, GV_PLATFORMS) + '</div><div><h3>Langue</h3>' + _gvBars(b.by_lang, GV_LANGS) + '</div></div>';
+            h += b.list.map(function(x) {
+                var pill = x.has_account ? '<span class="gv-pill in">Connecté ensuite (compte)</span>'
+                    : (x.offers ? '<span class="gv-pill no">Toujours sans compte</span>' : '<span class="gv-pill no">Notifications désactivées</span>');
+                return '<div class="gv-row"><div class="gv-row-top"><span class="gv-id">Visiteur ' + _escHtml(x.id) + '</span>' + pill + '</div>'
+                    + '<div class="gv-meta">' + _escHtml(GV_PLATFORMS[x.platform] || x.platform || '') + ' · ' + _escHtml(GV_LANGS[x.lang] || x.lang || '')
+                    + (x.registered_at ? ' · inscrit aux notifications le ' + _gvDate(x.registered_at) : '')
+                    + '<br>' + x.received + ' notification' + (x.received > 1 ? 's' : '') + ' reçue' + (x.received > 1 ? 's' : '') + ' · ' + x.opened + ' ouverte' + (x.opened > 1 ? 's' : '') + '</div></div>';
+            }).join('');
+            return h + '</div>';
         }
 
         // ── ERREURS APP (crash reporter JS) ─────────────────────────────

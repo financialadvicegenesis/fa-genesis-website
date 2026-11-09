@@ -13465,7 +13465,38 @@ app.get('/api/admin/guests', function(req, res) {
         var converted = newInPeriod.filter(function(g) { return g.outcome === 'signup_client' || g.outcome === 'signup_partner'; }).length;
         var recent = list.slice().sort(function(a, b) { return new Date(b.last_seen) - new Date(a.last_seen); }).slice(0, 200)
             .map(function(g) { var o = Object.assign({}, g); delete o.device; delete o.days; o.active_days = (g.days || []).length; return o; });
+        // Avant la mesure (9 novembre 2026) : seule trace existante = appareils sans compte inscrits
+        // aux notifications d'offres (depuis le 3 novembre). Ni jeton ni identité renvoyés ; « connecté
+        // ensuite » = le même appareil porte aussi un compte, sans dire lequel.
+        var before = null;
+        try {
+            var toks = loadFcmTokens();
+            var accountToks = {};
+            toks.forEach(function(t) { if (!t.guest) accountToks[t.token] = true; });
+            var plog = [];
+            try { plog = loadDiscoveryLog(); } catch (e) {}
+            var guestToks = toks.filter(function(t) { return t.guest; });
+            before = {
+                devices: guestToks.length,
+                by_platform: count(guestToks, function(t) { return t.platform; }),
+                by_lang: count(guestToks, function(t) { return t.lang || 'fr'; }),
+                list: guestToks.slice().sort(function(a, b) { return new Date(b.registered_at || 0) - new Date(a.registered_at || 0); }).slice(0, 200).map(function(t) {
+                    var mine = plog.filter(function(e) { return e.recipient === 'guest:' + t.userId; });
+                    return {
+                        id: 'APP-' + String(t.userId || '').slice(-8).toUpperCase(),
+                        registered_at: t.registered_at || null,
+                        platform: t.platform || null,
+                        lang: t.lang || 'fr',
+                        offers: t.offers !== false,
+                        received: mine.length,
+                        opened: mine.filter(function(e) { return e.opened_at; }).length,
+                        has_account: !!accountToks[t.token]
+                    };
+                })
+            };
+        } catch (e) { before = null; }
         res.json({
+            before_measure: before,
             ok: true,
             period_days: days,
             summary: {
