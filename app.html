@@ -2631,15 +2631,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261109a"></script>
-<script src="app-i18n-es.js?v=20261109a"></script>
-<script src="app-i18n-hi.js?v=20261109a"></script>
-<script src="app-i18n-pt.js?v=20261109a"></script>
-<script src="app-i18n-ja.js?v=20261109a"></script>
-<script src="app-i18n-zh.js?v=20261109a"></script>
-<script src="app-i18n-ar.js?v=20261109a"></script>
-<script src="app-i18n-it.js?v=20261109a"></script>
-<script src="app-i18n-de.js?v=20261109a"></script>
+<script src="app-i18n-en.js?v=20261109b"></script>
+<script src="app-i18n-es.js?v=20261109b"></script>
+<script src="app-i18n-hi.js?v=20261109b"></script>
+<script src="app-i18n-pt.js?v=20261109b"></script>
+<script src="app-i18n-ja.js?v=20261109b"></script>
+<script src="app-i18n-zh.js?v=20261109b"></script>
+<script src="app-i18n-ar.js?v=20261109b"></script>
+<script src="app-i18n-it.js?v=20261109b"></script>
+<script src="app-i18n-de.js?v=20261109b"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -24354,6 +24354,17 @@ var _TUTO_P = [
      +'</div>'
      +'<div style="font-size:10px;color:#555;text-align:center;margin-top:8px;padding:7px;background:rgba(255,215,0,.04);border-radius:8px;border:1px solid rgba(255,215,0,.1);">Une prestation peut exister dans une seule catégorie ou plusieurs à la fois — chaque client ne voit que celle qui correspond à son profil.</div>'
      +'<div style="font-size:10px;color:#000;text-align:center;margin-top:6px;padding:8px;background:#FFD700;border-radius:8px;font-weight:700;"><i class="fa-solid fa-floppy-disk" style="margin-right:5px;"></i>N\'oubliez pas de toucher <strong>"Enregistrer mes prestations"</strong> en bas de l\'écran après chaque ajout ou modification — sans ça, rien n\'est sauvegardé.</div>',
+   pnav:'home'},
+  // Photo de chaque prestation : demandé explicitement (2026-11-09) — une prestation sans photo
+  // s'affiche avec une simple icône chez le client.
+  {ico:'<i class="fa-solid fa-camera"></i>', title:'Une photo professionnelle pour chaque prestation',
+   html:'<div style="font-size:12px;color:#888;text-align:center;margin-bottom:10px;"><span>Les clients choisissent d’abord avec les yeux : une prestation illustrée par une vraie photo inspire confiance et reçoit plus de demandes.</span></div>'
+     +'<div style="display:flex;flex-direction:column;gap:5px;">'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-hand-pointer" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Comment l’ajouter</span><div style="font-size:10px;color:#555;">Dans « Mes tarifs &amp; prestations », touchez le carré photo (icône appareil photo) de chaque prestation.</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-circle-check" style="color:#4caf50;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Une photo réussie</span><div style="font-size:10px;color:#555;">Votre vrai travail ou vous en action, une image nette et bien éclairée, cadrée sur l’essentiel.</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-ban" style="color:#ef4444;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">À éviter</span><div style="font-size:10px;color:#555;">Aucun numéro, e-mail ni lien écrit sur l’image : elle serait refusée automatiquement.</div></div></div>'
+     +'</div>'
+     +'<div style="font-size:10px;color:#555;text-align:center;margin-top:8px;padding:7px;background:rgba(255,215,0,.04);border-radius:8px;border:1px solid rgba(255,215,0,.1);"><span>Sans photo, votre prestation s’affiche avec une simple icône et passe inaperçue.</span></div>',
    pnav:'home'},
   {ico:'<i class="fa-solid fa-chart-line"></i>', title:'Comprendre vos chiffres',
    html:'<div style="font-size:12px;color:#888;text-align:center;margin-bottom:10px;">Sur votre accueil, deux montants résument votre activité.</div>'
