@@ -4345,9 +4345,55 @@ function showApp(){
     }
   } catch(e){}
 }
+// ── Visites invitées : mesure d'audience anonyme (admin → « Invités ») ──
+// Identifiant aléatoire propre à l'appareil, créé seulement à l'entrée en invité. Aucune donnée
+// personnelle envoyée. Les envois sont enchaînés (l'entrée arrive toujours avant les écrans).
+var _gvActive = false, _gvLastScreen = null, _gvChain = null;
+function _gvDevice(create){
+  try{
+    var d = localStorage.getItem('fa_guest_device');
+    if(!d && create && window.crypto && window.crypto.getRandomValues){
+      var a = new Uint8Array(16); window.crypto.getRandomValues(a);
+      d = Array.prototype.map.call(a, function(x){ return ('0'+x.toString(16)).slice(-2); }).join('');
+      localStorage.setItem('fa_guest_device', d);
+    }
+    return d || null;
+  }catch(e){ return null; }
+}
+function _gvSend(ev, name, extra, token){
+  try{
+    var d = _gvDevice(ev === 'start'); if(!d) return;
+    var body = { device: d, event: ev, name: name || '' };
+    if(extra) for(var k in extra) body[k] = extra[k];
+    var h = {'Content-Type':'application/json'}; if(token) h['Authorization'] = 'Bearer '+token;
+    var go = function(){ return fetch((window.FA_GENESIS_API||API)+'/api/guest/visit', { method:'POST', headers:h, body:JSON.stringify(body), keepalive:true }).catch(function(){}); };
+    _gvChain = (_gvChain || Promise.resolve()).then(go, go);
+  }catch(e){}
+}
+function _gvStart(entry){
+  if(USER) return;
+  _gvActive = true; _gvLastScreen = null;
+  var plat = 'web';
+  try{ if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) plat = window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'android'; }catch(e){}
+  var lang = 'fr';
+  try{ lang = (window.AppI18n && AppI18n.getAppLanguage && AppI18n.getAppLanguage()) || document.documentElement.lang || 'fr'; }catch(e){}
+  _gvSend('start', '', { entry: entry, platform: plat, lang: String(lang).slice(0,2), appVersion: window._genesisAppVersion || '' });
+}
+function _gvTracking(){ return _gvActive && GUEST && !USER && !(typeof _ptnrToken !== 'undefined' && _ptnrToken); }
+function _gvScreen(tab){ if(!_gvTracking() || tab === _gvLastScreen) return; _gvLastScreen = tab; _gvSend('screen', tab); }
+function _gvAction(name){ if(_gvTracking()) _gvSend('action', name); }
+// Inscription / connexion depuis un appareil déjà venu en invité : une seule fois par issue.
+function _gvOutcome(name, token){
+  try{
+    if(!token || !localStorage.getItem('fa_guest_device') || localStorage.getItem('fa_guest_outcome_'+name)) return;
+    localStorage.setItem('fa_guest_outcome_'+name, '1');
+  }catch(e){ return; }
+  _gvActive = false;
+  _gvSend('outcome', name, null, token);
+}
 function goLogin(){ showLoginSheet(); }
-function goGuest(){ GUEST = true; showApp(); }
-function goPartner(){ GUEST = true; showApp(); nav('partner'); }
+function goGuest(){ GUEST = true; _gvStart('guest'); showApp(); _gvScreen(_navCurrentTab || 'home'); }
+function goPartner(){ GUEST = true; _gvStart('partner'); showApp(); nav('partner'); }
 function exitGuestMode(){ window.location.reload(); }
 
 // ── LAZY LOADING DES ONGLETS ─────────────────────────────────
@@ -4520,6 +4566,7 @@ function nav(tab){
   if(tab !== 'messages') _clearChatPoll();
   _prevNav={tab:_navCurrentTab,scrollTop:(document.getElementById('content')||{}).scrollTop||0};
   _navCurrentTab=tab;
+  _gvScreen(tab);
   try{sessionStorage.setItem('fa_nav_tab',tab);if(tab!=='profil'){sessionStorage.removeItem('fa_nav_section');sessionStorage.removeItem('fa_support_thread');}}catch(e){}
   haptic(8);
   document.querySelectorAll('.tab').forEach(function(t){t.className='tab';});
@@ -7090,6 +7137,7 @@ function _ptnrDetailSwitchAudience(aud, el){
   if(grid && p) grid.innerHTML = _ptnrRenderProfileSvcCards(p.services||[], aud, p);
 }
 function openPartnerDetail(partnerId){
+  _gvAction('provider_profile');
   var _opdHeaders = (USER && !GUEST && USER._token) ? {'Authorization':'Bearer '+USER._token} : {};
   fetch(API+'/api/partners/'+encodeURIComponent(partnerId)+'/reviews', {headers:_opdHeaders})
     .then(function(r){return r.json();})
@@ -11339,6 +11387,7 @@ function _msgLoadAvatars(side, emails, root){
 }
 
 function _startMsgWithPartner(partnerId, partnerName, partnerEmail){
+  _gvAction('contact_attempt');
   nav('messages');
   setTimeout(function(){ openConversation(partnerId,partnerName||'Prestataire','user-tie',partnerEmail||partnerId); }, 80);
 }
@@ -11686,6 +11735,7 @@ if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoad
 else { setTimeout(_initJeremieDrag, 0); }
 
 function openJeremieChat(){
+  _gvAction('jeremie');
   // Un tap tactile vient tout juste d'ouvrir le chat directement depuis onEnd() (voir
   // _initJeremieDrag) : si le navigateur envoie quand même un click synthétique juste après,
   // on l'ignore pour éviter un double appel (double fetch d'historique).
@@ -14624,6 +14674,7 @@ function register(userData){
         localStorage.setItem('fa_genesis_session',JSON.stringify(res.user||res));
         localStorage.setItem('fa_genesis_token',res.token);
       }catch(e){}
+      _gvOutcome('signup_client', res.token);
     }
     return res;
   });
@@ -14631,6 +14682,7 @@ function register(userData){
 
 // ── LOGIN OVERLAY ─────────────────────────────────────────────
 function showLoginSheet(){
+  _gvAction('login_opened');
   var overlay=document.getElementById('login-overlay');
   var sheet=document.getElementById('login-sheet');
   if(!overlay||!sheet) return;
@@ -14767,6 +14819,7 @@ function doAppLogin(){
   });
 }
 function _loOnLoginSuccess(res){
+  _gvOutcome('login', res && res.token);
   try{
     localStorage.setItem('fa_genesis_session',JSON.stringify(res.user||res));
     localStorage.setItem('fa_genesis_token',res.token);
@@ -15981,6 +16034,7 @@ function _ptnrLogin(){
       _ptnrSession = res.partner;
       localStorage.setItem('fa_genesis_partner_token', res.token);
       _ptnrSaveToCache(res.partner);
+      _gvOutcome('login', res.token);
       // Admin case → show admin screen
       if(res.role === 'admin' || (res.partner && res.partner.partner_type === 'admin')){
         _ptnrShowScreen('admin'); return;
@@ -16124,6 +16178,7 @@ function _ptnrRegSubmit(){
       _ptnrSession = res.partner;
       localStorage.setItem('fa_genesis_partner_token', res.token);
       _ptnrSaveToCache(res.partner);
+      _gvOutcome('signup_partner', res.token);
       _ptnrBioUnlocked = true; // vient de créer son compte à l'instant
       _ptnrOfferBiometricOptIn();
       _ptnrShowScreen('profiles');
@@ -17985,6 +18040,7 @@ var _pbRequestId = null;
 
 // Ouvre la modal en mode "demande" : le client décrit son besoin, sans payer (le partenaire doit d'abord accepter).
 function openPartnerRequest(partnerId, serviceId){
+  _gvAction('quote_attempt');
   var p = _dirPartnerCache[partnerId];
   if(!p) return;
   var service = (p.services||[]).find(function(s){ return s.id===serviceId; });
@@ -19098,6 +19154,7 @@ var regCurrentStep = 0;
 var regData = {};
 
 function showRegisterSheet(){
+  _gvAction('signup_opened');
   regCurrentStep = 1;
   regData = { _ft: Date.now() };
   if(_regStepTimer){ clearTimeout(_regStepTimer); _regStepTimer=null; }

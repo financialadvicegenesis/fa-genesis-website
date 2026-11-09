@@ -681,6 +681,40 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+    <style>
+        .gv-per{background:transparent;border:1.5px solid #333;color:#bbb;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:800;cursor:pointer;}
+        .gv-per.on{background:var(--c-gold);border-color:var(--c-gold);color:#000;}
+        .gv-per:focus-visible{outline:2px solid var(--c-gold);outline-offset:2px;}
+        .gv-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;}
+        .gv-kpi{background:#0d0d0d;border:1px solid rgba(255,215,0,.15);border-radius:12px;padding:14px 16px;}
+        .gv-kpi b{display:block;font-size:26px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;line-height:1.1;}
+        .gv-kpi span{display:block;font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:4px;}
+        .gv-kpi small{display:block;font-size:11px;color:#22c55e;font-weight:700;margin-top:2px;}
+        .gv-card{background:#0d0d0d;border:1px solid rgba(255,215,0,.12);border-radius:12px;padding:16px;margin-bottom:14px;}
+        .gv-card h3{font-size:12px;font-weight:900;color:var(--c-gold);text-transform:uppercase;letter-spacing:.5px;margin:0 0 12px;}
+        .gv-chart{display:flex;align-items:flex-end;gap:2px;height:120px;border-bottom:1px solid #222;}
+        .gv-chart i{flex:1;background:var(--c-gold);border-radius:3px 3px 0 0;min-height:2px;opacity:.85;}
+        .gv-chart i.zero{background:#222;}
+        .gv-axis{display:flex;justify-content:space-between;font-size:10px;color:#666;margin-top:6px;}
+        .gv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;}
+        .gv-grid .gv-card{margin-bottom:0;}
+        .gv-grid + .gv-card{margin-top:14px;}
+        .gv-bar{display:grid;grid-template-columns:minmax(120px,1.6fr) 1fr 32px;align-items:center;gap:8px;font-size:12px;margin-bottom:7px;}
+        .gv-bar .t{height:8px;background:#1a1a1a;border-radius:4px;overflow:hidden;}
+        .gv-bar .t i{display:block;height:100%;background:var(--c-gold);border-radius:4px;}
+        .gv-bar .n{text-align:right;color:#fff;font-weight:800;font-variant-numeric:tabular-nums;}
+        .gv-row{background:#0d0d0d;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+        .gv-row-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;}
+        .gv-id{font-weight:900;font-size:13px;color:#fff;}
+        .gv-meta{font-size:11px;color:#999;margin-top:4px;line-height:1.6;}
+        .gv-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+        .gv-chip{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:#1a1a1a;color:#ccc;}
+        .gv-pill{font-size:10.5px;font-weight:900;padding:3px 9px;border-radius:999px;}
+        .gv-pill.ok{background:rgba(34,197,94,.15);color:#4ade80;}
+        .gv-pill.in{background:rgba(0,185,255,.12);color:#5cc8ff;}
+        .gv-pill.no{background:#1a1a1a;color:#777;}
+        .gv-empty{padding:24px;text-align:center;color:#666;font-size:13px;border:1px solid rgba(255,215,0,.12);border-radius:10px;}
+    </style>
 </head>
 <body>
 
@@ -756,6 +790,9 @@
                 <div class="sheet-item" onclick="showSectionMobile('partenaires');closeAdminSheet()">
                     <i class="fas fa-handshake"></i><span>Prestataires</span>
                 </div>
+                <div class="sheet-item" onclick="showSectionMobile('invites');closeAdminSheet()">
+                    <i class="fas fa-user-clock"></i><span>Invités</span>
+                </div>
                 <div class="sheet-item" onclick="showSectionMobile('offerspush');closeAdminSheet()">
                     <i class="fas fa-bell"></i><span>Notif. d'offres</span>
                 </div>
@@ -819,6 +856,9 @@
                 </button>
                 <button class="sidebar-btn" data-section="clients" onclick="showSection('clients')">
                     <i class="fas fa-users"></i><span>Clients</span>
+                </button>
+                <button class="sidebar-btn" data-section="invites" onclick="showSection('invites')">
+                    <i class="fas fa-user-clock"></i><span>Invités</span>
                 </button>
                 <button class="sidebar-btn" data-section="etudiants" onclick="showSection('etudiants')">
                     <i class="fas fa-graduation-cap"></i><span>Étudiants</span>
@@ -1625,6 +1665,23 @@
                 </div>
             </div>
 
+            <!-- ===== SECTION INVITÉS (visites sans compte, mesure anonyme) ===== -->
+            <div id="invitesSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-2" style="font-family:'Playfair Display',serif;">
+                    <i class="fas fa-user-clock mr-3" style="color:var(--genesis-yellow);"></i>INVITÉS
+                </h2>
+                <div style="font-size:12px;color:#888;margin-bottom:18px;line-height:1.6;max-width:760px;">Appareils entrés dans l’app sans compte (« Continuer en tant qu’invité » ou « Je propose mes services »). Chaque appareil reçoit un identifiant anonyme : ni nom, ni e-mail, ni adresse IP ne sont enregistrés, même après une inscription. Les données sont effacées 13 mois après la dernière visite.</div>
+                <div id="gvPeriod" style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+                    <button type="button" class="gv-per" data-d="7" onclick="loadGuestVisits(7)">7 jours</button>
+                    <button type="button" class="gv-per" data-d="30" onclick="loadGuestVisits(30)">30 jours</button>
+                    <button type="button" class="gv-per" data-d="90" onclick="loadGuestVisits(90)">90 jours</button>
+                    <button type="button" class="gv-per gv-refresh" onclick="loadGuestVisits()"><i class="fas fa-rotate-right"></i> Actualiser</button>
+                </div>
+                <div id="guestVisitsBody" style="color:#e0e0e0;">
+                    <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
+                </div>
+            </div>
+
             <!-- ===== SECTION SUPPORT ===== (doit être HORS de litigesSection) -->
             <div id="supportSection" class="container mx-auto max-w-7xl" style="display: none;">
                 <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
@@ -2143,6 +2200,8 @@
             var nouvfonctEl = document.getElementById('nouvfonctSection');
             var niveauxEl = document.getElementById('niveauxSection');
             var etudiantsEl = document.getElementById('etudiantsSection');
+            var invitesEl = document.getElementById('invitesSection');
+            if (invitesEl) invitesEl.style.display = 'none';
             if (litigesEl) litigesEl.style.display = 'none';
             if (moderationEl) moderationEl.style.display = 'none';
             if (clienterrorsEl) clienterrorsEl.style.display = 'none';
@@ -2233,6 +2292,11 @@
             } else if (section === 'etudiants') {
                 if (etudiantsEl) etudiantsEl.style.display = 'block';
                 loadStudentsList();
+            } else if (section === 'invites') {
+                if (invitesEl) invitesEl.style.display = 'block';
+                // loadGuestVisits est définie dans le <script> plus tardif du document.
+                if (typeof loadGuestVisits === 'function') loadGuestVisits();
+                else setTimeout(function(){ if (typeof loadGuestVisits === 'function') loadGuestVisits(); }, 0);
             }
             // Mettre à jour l'élément actif dans la sidebar
             document.querySelectorAll('.sidebar-btn').forEach(function(b) {
@@ -7519,6 +7583,90 @@
                 if (btn) { btn.disabled = false; btn.textContent = 'Diagnostic (lecture seule)'; }
                 out.innerHTML = '<div style="color:#f03e3e;">Erreur réseau. Réessayez.</div>';
               });
+        }
+
+        // ── INVITÉS (visites sans compte) ───────────────────────────────
+        var _gvDays = 30;
+        var GV_SCREENS = { home: 'Accueil', explorer: 'Explorer', prestataires: 'Prestataires', reservations: 'Réservations', messages: 'Messages', profil: 'Profil', partner: 'Espace prestataire' };
+        var GV_ACTIONS = { provider_profile: 'Fiche prestataire ouverte', jeremie: 'Conversation avec Jérémie', quote_attempt: 'Demande de devis tentée', contact_attempt: 'Contact d’un prestataire tenté', signup_opened: 'Inscription ouverte', login_opened: 'Connexion ouverte' };
+        var GV_OUTCOMES = { signup_client: ['ok', 'Compte client créé'], signup_partner: ['ok', 'Compte prestataire créé'], login: ['in', 'S’est connecté (compte existant)'] };
+        var GV_PLATFORMS = { android: 'Android', ios: 'iPhone', web: 'Navigateur' };
+        var GV_ENTRIES = { guest: 'Invité', partner: 'Découverte prestataire' };
+        var GV_LANGS = { fr: 'Français', en: 'Anglais', es: 'Espagnol', pt: 'Portugais', ar: 'Arabe', de: 'Allemand', zh: 'Chinois', it: 'Italien', ja: 'Japonais', hi: 'Hindi' };
+        function _gvCountry(cc) {
+            if (!cc || cc === 'inconnu') return 'Non déterminé';
+            try { return new Intl.DisplayNames(['fr'], { type: 'region' }).of(cc) || cc; } catch (e) { return cc; }
+        }
+        function _gvDate(iso) {
+            return iso ? new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        }
+        function _gvBars(map, labels, fmt) {
+            var keys = Object.keys(map || {}).sort(function(a, b) { return map[b] - map[a]; });
+            if (!keys.length) return '<div style="font-size:12px;color:#666;">Pas encore de données.</div>';
+            var max = map[keys[0]] || 1;
+            return keys.map(function(k) {
+                var label = fmt ? fmt(k) : ((labels && labels[k]) || k);
+                return '<div class="gv-bar"><span>' + _escHtml(label) + '</span><span class="t"><i style="width:' + Math.max(3, Math.round(map[k] * 100 / max)) + '%"></i></span><span class="n">' + map[k] + '</span></div>';
+            }).join('');
+        }
+        function loadGuestVisits(days) {
+            if (days) _gvDays = days;
+            Array.prototype.forEach.call(document.querySelectorAll('#gvPeriod .gv-per[data-d]'), function(b) { b.classList.toggle('on', +b.getAttribute('data-d') === _gvDays); });
+            var el = document.getElementById('guestVisitsBody');
+            if (!el) return;
+            el.innerHTML = '<p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>';
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/guests?days=' + _gvDays, { headers: { 'Authorization': 'Bearer ' + tok } })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d || !d.ok) { el.innerHTML = '<div style="color:#f03e3e;padding:12px;">Impossible de charger les visites invitées.</div>'; return; }
+                    if (!d.total_devices) {
+                        el.innerHTML = '<div class="gv-empty"><i class="fas fa-user-clock" style="color:var(--c-gold);font-size:22px;display:block;margin-bottom:8px;"></i>Aucune visite invitée enregistrée pour l’instant.<br>Les prochaines entrées en invité dans l’app apparaîtront ici.</div>';
+                        return;
+                    }
+                    var su = d.summary, per = d.period_days;
+                    var h = '<div class="gv-kpis">'
+                        + '<div class="gv-kpi"><b>' + su.today + '</b><span>Aujourd’hui</span></div>'
+                        + '<div class="gv-kpi"><b>' + su.active + '</b><span>Appareils actifs (' + per + ' j)</span></div>'
+                        + '<div class="gv-kpi"><b>' + su.new_devices + '</b><span>Nouveaux appareils</span></div>'
+                        + '<div class="gv-kpi"><b>' + su.returning + '</b><span>Revenus au moins 2 jours</span></div>'
+                        + '<div class="gv-kpi"><b>' + su.visits + '</b><span>Entrées en invité</span></div>'
+                        + '<div class="gv-kpi"><b>' + su.signups + '</b><span>Inscriptions ensuite</span><small>' + String(su.conversion_rate).replace('.', ',') + ' % des nouveaux</small></div>'
+                        + '</div>';
+                    var max = Math.max.apply(null, d.series.map(function(x) { return x.devices; }).concat([1]));
+                    h += '<div class="gv-card"><h3>Appareils invités par jour</h3><div class="gv-chart">'
+                        + d.series.map(function(x) {
+                            var lbl = new Date(x.day + 'T12:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+                            return '<i class="' + (x.devices ? '' : 'zero') + '" style="height:' + Math.max(2, Math.round(x.devices * 100 / max)) + '%" title="' + lbl + ' : ' + x.devices + ' appareil' + (x.devices > 1 ? 's' : '') + '"></i>';
+                        }).join('')
+                        + '</div><div class="gv-axis"><span>' + new Date(d.series[0].day + 'T12:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + '</span><span>Aujourd’hui</span></div></div>';
+                    h += '<div class="gv-grid">'
+                        + '<div class="gv-card"><h3>Ce qu’ils regardent</h3>' + _gvBars(d.screens, GV_SCREENS) + '</div>'
+                        + '<div class="gv-card"><h3>Ce qu’ils font</h3>' + _gvBars(d.actions, GV_ACTIONS) + '</div>'
+                        + '<div class="gv-card"><h3>Appareil</h3>' + _gvBars(d.by_platform, GV_PLATFORMS) + '<h3 style="margin-top:16px;">Point d’entrée</h3>' + _gvBars(d.by_entry, GV_ENTRIES) + '</div>'
+                        + '<div class="gv-card"><h3>Langue</h3>' + _gvBars(d.by_lang, GV_LANGS) + '<h3 style="margin-top:16px;">Pays</h3>' + _gvBars(d.by_country, null, _gvCountry) + '</div>'
+                        + '</div>';
+                    h += '<div class="gv-card"><h3>Derniers appareils invités</h3>';
+                    h += (d.recent || []).map(function(g) {
+                        var oc = g.outcome && GV_OUTCOMES[g.outcome];
+                        var pill = oc ? '<span class="gv-pill ' + oc[0] + '">' + oc[1] + '</span>' : '<span class="gv-pill no">Pas encore de compte</span>';
+                        var screens = Object.keys(g.screens || {}).sort(function(a, b) { return g.screens[b] - g.screens[a]; })
+                            .map(function(k) { return '<span class="gv-chip">' + _escHtml(GV_SCREENS[k] || k) + ' · ' + g.screens[k] + '</span>'; }).join('');
+                        var acts = Object.keys(g.actions || {}).map(function(k) { return '<span class="gv-chip" style="color:var(--c-gold);">' + _escHtml(GV_ACTIONS[k] || k) + ' · ' + g.actions[k] + '</span>'; }).join('');
+                        return '<div class="gv-row"><div class="gv-row-top"><span class="gv-id">' + _escHtml(GV_ENTRIES[g.entry] || 'Invité') + ' ' + _escHtml(g.id) + '</span>' + pill + '</div>'
+                            + '<div class="gv-meta">' + _escHtml(GV_PLATFORMS[g.platform] || g.platform || '') + (g.app_version ? ' v' + _escHtml(g.app_version) : '')
+                            + ' · ' + _escHtml(GV_LANGS[g.lang] || g.lang || '') + ' · ' + _escHtml(_gvCountry(g.country))
+                            + '<br>Première visite ' + _gvDate(g.first_seen) + ' · dernière ' + _gvDate(g.last_seen)
+                            + ' · ' + (g.visits || 0) + ' entrée' + ((g.visits || 0) > 1 ? 's' : '') + ' sur ' + (g.active_days || 1) + ' jour' + ((g.active_days || 1) > 1 ? 's' : '')
+                            + (g.outcome_at ? '<br>' + _escHtml(oc ? oc[1] : '') + ' le ' + _gvDate(g.outcome_at) : '') + '</div>'
+                            + ((screens || acts) ? '<div class="gv-chips">' + screens + acts + '</div>' : '')
+                            + '</div>';
+                    }).join('');
+                    h += '</div>';
+                    el.innerHTML = h;
+                }).catch(function() {
+                    el.innerHTML = '<div style="color:#f03e3e;padding:12px;">Erreur réseau. Réessayez.</div>';
+                });
         }
 
         // ── ERREURS APP (crash reporter JS) ─────────────────────────────

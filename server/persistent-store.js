@@ -70,7 +70,9 @@ var COLLECTIONS = [
     // Jérémie : messages de la bulle (historique) + conversation (avant : jamais persistée,
     // effacée à chaque redéploiement)
     'jeremie_messages',
-    'jeremie_memory'
+    'jeremie_memory',
+    // Visites invitées (mesure d'audience anonyme, admin → « Invités »)
+    'guest_visits'
 ];
 
 /**

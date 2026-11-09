@@ -13343,6 +13343,156 @@ app.get('/api/admin/client-errors', function(req, res) {
     }
 });
 
+// ============================================================
+// VISITES INVITÉES — mesure d'audience anonyme (admin → « Invités »)
+// ============================================================
+// Un appareil qui entre dans l'app SANS compte (« Continuer en tant qu'invité » ou « Je propose
+// mes services ») reçoit un identifiant aléatoire local (32 hex, généré dans l'app). On ne garde
+// AUCUNE donnée personnelle : ni IP, ni navigateur complet, ni e-mail — même après inscription,
+// l'appareil est seulement marqué « a créé un compte », sans lien vers ce compte. Conservation
+// 13 mois après la dernière visite (cadre CNIL des mesures d'audience exemptées).
+var GUEST_VISITS_FILE = path.join(DATA_DIR, 'guest_visits.json');
+var GUEST_VISITS_KEEP_MS = 396 * 86400000;
+var GUEST_SCREENS = ['home', 'explorer', 'prestataires', 'reservations', 'messages', 'profil', 'partner'];
+var GUEST_ACTIONS = ['provider_profile', 'jeremie', 'quote_attempt', 'contact_attempt', 'signup_opened', 'login_opened'];
+var GUEST_OUTCOMES = ['signup_client', 'signup_partner', 'login'];
+var _guestVisits = null, _guestVisitsDirty = false, _guestVisitsTimer = null;
+function loadGuestVisits() {
+    if (_guestVisits) return _guestVisits;
+    try {
+        var d = fs.existsSync(GUEST_VISITS_FILE) ? JSON.parse(fs.readFileSync(GUEST_VISITS_FILE, 'utf8')) : [];
+        _guestVisits = Array.isArray(d) ? d : [];
+    } catch (e) { _guestVisits = []; }
+    return _guestVisits;
+}
+// Écriture groupée (une visite = plusieurs écrans) : au plus une sauvegarde toutes les 30 s.
+function flushGuestVisits() {
+    _guestVisitsTimer = null;
+    if (!_guestVisitsDirty || !_guestVisits) return;
+    _guestVisitsDirty = false;
+    var cutoff = Date.now() - GUEST_VISITS_KEEP_MS;
+    _guestVisits = _guestVisits.filter(function(g) { return new Date(g.last_seen).getTime() >= cutoff; });
+    try { fs.writeFileSync(GUEST_VISITS_FILE, JSON.stringify(_guestVisits, null, 2), 'utf8'); }
+    catch (e) { console.error('[GUEST-VISITS] Erreur écriture:', e.message); }
+    persistentStore.persistToCloud('guest_visits', _guestVisits).catch(function() {});
+}
+function _markGuestVisitsDirty() {
+    _guestVisitsDirty = true;
+    if (!_guestVisitsTimer) _guestVisitsTimer = setTimeout(flushGuestVisits, 30000);
+}
+function _guestDay(d) { return d.toISOString().slice(0, 10); }
+
+/**
+ * POST /api/guest/visit — non authentifié (un invité n'a pas de compte), best-effort.
+ * Corps : { device, event: 'start'|'screen'|'action'|'outcome', name, entry, platform, lang, appVersion }
+ * 'outcome' (inscription / connexion depuis un appareil invité) exige une session valide.
+ */
+app.post('/api/guest/visit', function(req, res) {
+    try {
+        var ip = req.ip || 'unknown';
+        if (!checkRateLimit(ip, 'guest_visit', 120, 600000)) return res.status(429).json({ ok: false });
+        var b = req.body || {};
+        var device = typeof b.device === 'string' && /^[a-f0-9]{32}$/.test(b.device) ? b.device : null;
+        var ev = ['start', 'screen', 'action', 'outcome'].indexOf(b.event) !== -1 ? b.event : null;
+        if (!device || !ev) return res.status(400).json({ ok: false });
+        var name = typeof b.name === 'string' ? b.name : '';
+        if (ev === 'screen' && GUEST_SCREENS.indexOf(name) === -1) return res.status(400).json({ ok: false });
+        if (ev === 'action' && GUEST_ACTIONS.indexOf(name) === -1) return res.status(400).json({ ok: false });
+        if (ev === 'outcome') {
+            if (GUEST_OUTCOMES.indexOf(name) === -1) return res.status(400).json({ ok: false });
+            var who = null;
+            try { who = resolveCurrentIdentity(req); } catch (e) {}
+            if (!who || (who.role !== 'client' && who.role !== 'partner')) return res.status(401).json({ ok: false });
+        }
+        var list = loadGuestVisits();
+        var g = list.find(function(x) { return x.device === device; });
+        var now = new Date();
+        if (!g) {
+            // Un appareil inconnu ne peut être créé que par une vraie entrée en invité.
+            if (ev !== 'start') return res.json({ ok: true, ignored: true });
+            g = { id: 'GV-' + crypto.randomBytes(6).toString('hex').toUpperCase(), device: device, entry: null, platform: 'web', lang: 'fr', country: null,
+                  app_version: null, first_seen: now.toISOString(), last_seen: now.toISOString(), visits: 0, days: [], screens: {}, actions: {}, outcome: null, outcome_at: null };
+            list.push(g);
+        }
+        g.last_seen = now.toISOString();
+        var day = _guestDay(now);
+        if (g.days.indexOf(day) === -1) { g.days.push(day); if (g.days.length > 400) g.days = g.days.slice(-400); }
+        if (ev === 'start') {
+            g.visits = (g.visits || 0) + 1;
+            g.entry = b.entry === 'partner' ? 'partner' : 'guest';
+            g.platform = ['android', 'ios', 'web'].indexOf(b.platform) !== -1 ? b.platform : 'web';
+            if (typeof b.lang === 'string' && /^[a-z]{2}$/.test(b.lang)) g.lang = b.lang;
+            if (typeof b.appVersion === 'string' && b.appVersion) g.app_version = b.appVersion.substring(0, 24);
+            // Pays seulement (en-tête Cloudflare s'il existe) — l'IP elle-même n'est jamais conservée.
+            var cc = String(req.headers['cf-ipcountry'] || '').toUpperCase();
+            if (/^[A-Z]{2}$/.test(cc) && cc !== 'XX' && cc !== 'T1') g.country = cc;
+        } else if (ev === 'screen') {
+            g.screens[name] = (g.screens[name] || 0) + 1;
+        } else if (ev === 'action') {
+            g.actions[name] = (g.actions[name] || 0) + 1;
+        } else if (ev === 'outcome') {
+            // Une inscription l'emporte sur une simple connexion (compte déjà existant).
+            if (!g.outcome || (g.outcome === 'login' && name !== 'login')) { g.outcome = name; g.outcome_at = now.toISOString(); }
+        }
+        _markGuestVisitsDirty();
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ ok: false });
+    }
+});
+
+/**
+ * GET /api/admin/guests — synthèse des visites invitées + liste des appareils récents.
+ * ?days=7|30|90 (période des indicateurs, défaut 30).
+ */
+app.get('/api/admin/guests', function(req, res) {
+    try {
+        var days = [7, 30, 90].indexOf(parseInt(req.query.days, 10)) !== -1 ? parseInt(req.query.days, 10) : 30;
+        var list = loadGuestVisits();
+        var now = Date.now();
+        var since = now - days * 86400000;
+        var today = _guestDay(new Date());
+        var inPeriod = list.filter(function(g) { return new Date(g.last_seen).getTime() >= since; });
+        var newInPeriod = list.filter(function(g) { return new Date(g.first_seen).getTime() >= since; });
+        function count(arr, fn) { var o = {}; arr.forEach(function(g) { var k = fn(g); if (k) o[k] = (o[k] || 0) + 1; }); return o; }
+        function sumMap(arr, field) { var o = {}; arr.forEach(function(g) { Object.keys(g[field] || {}).forEach(function(k) { o[k] = (o[k] || 0) + g[field][k]; }); }); return o; }
+        // Courbe jour par jour : appareils invités actifs ce jour-là.
+        var series = [];
+        for (var i = days - 1; i >= 0; i--) {
+            var d = _guestDay(new Date(now - i * 86400000));
+            series.push({ day: d, devices: list.filter(function(g) { return (g.days || []).indexOf(d) !== -1; }).length });
+        }
+        var converted = newInPeriod.filter(function(g) { return g.outcome === 'signup_client' || g.outcome === 'signup_partner'; }).length;
+        var recent = list.slice().sort(function(a, b) { return new Date(b.last_seen) - new Date(a.last_seen); }).slice(0, 200)
+            .map(function(g) { var o = Object.assign({}, g); delete o.device; delete o.days; o.active_days = (g.days || []).length; return o; });
+        res.json({
+            ok: true,
+            period_days: days,
+            summary: {
+                today: list.filter(function(g) { return (g.days || []).indexOf(today) !== -1; }).length,
+                active: inPeriod.length,
+                new_devices: newInPeriod.length,
+                returning: inPeriod.filter(function(g) { return (g.days || []).length > 1; }).length,
+                visits: inPeriod.reduce(function(t, g) { return t + (g.visits || 0); }, 0),
+                signups: converted,
+                conversion_rate: newInPeriod.length ? Math.round(converted * 1000 / newInPeriod.length) / 10 : 0,
+                logins: newInPeriod.filter(function(g) { return g.outcome === 'login'; }).length
+            },
+            by_platform: count(inPeriod, function(g) { return g.platform; }),
+            by_entry: count(inPeriod, function(g) { return g.entry; }),
+            by_lang: count(inPeriod, function(g) { return g.lang; }),
+            by_country: count(inPeriod, function(g) { return g.country || 'inconnu'; }),
+            screens: sumMap(inPeriod, 'screens'),
+            actions: sumMap(inPeriod, 'actions'),
+            series: series,
+            recent: recent,
+            total_devices: list.length
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 /**
  * GET /api/my-partners — Client recupere les partenaires assignes a sa commande
  * Utilise pour alimenter le selecteur de destinataires dans messagerie.html
