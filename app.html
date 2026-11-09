@@ -1288,6 +1288,11 @@ a{text-decoration:none;color:inherit}
 .ptnr-pf-item{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#0d0d0d;border:1.5px solid #1e1e1e;transition:border-color .2s,box-shadow .2s}
 .ptnr-pf-item:hover{border-color:rgba(255,215,0,.4);box-shadow:0 0 14px rgba(255,215,0,.12)}
 .ptnr-pf-item img{width:100%;height:100%;object-fit:cover;display:block}
+.ptnr-pf-upload{position:absolute;left:10px;right:10px;bottom:44px;z-index:2;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.ptnr-pf-upload-lbl{font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.ptnr-pf-upload-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.18);overflow:hidden}
+.ptnr-pf-upload-bar i{display:block;height:100%;background:#FFD700;border-radius:3px;transition:width .2s}
+.ptnr-pf-item.uploading .ptnr-pf-overlay{opacity:1}
 .ptnr-pf-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.72) 0%,transparent 55%);opacity:0;transition:opacity .2s;display:flex;align-items:flex-end;justify-content:space-between;padding:8px 10px}
 .ptnr-pf-item:hover .ptnr-pf-overlay{opacity:1}
 .ptnr-pf-del{background:rgba(200,30,30,.85);border:none;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;backdrop-filter:blur(4px);flex-shrink:0}
@@ -2626,15 +2631,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261107e"></script>
-<script src="app-i18n-es.js?v=20261107e"></script>
-<script src="app-i18n-hi.js?v=20261107e"></script>
-<script src="app-i18n-pt.js?v=20261107e"></script>
-<script src="app-i18n-ja.js?v=20261107e"></script>
-<script src="app-i18n-zh.js?v=20261107e"></script>
-<script src="app-i18n-ar.js?v=20261107e"></script>
-<script src="app-i18n-it.js?v=20261107e"></script>
-<script src="app-i18n-de.js?v=20261107e"></script>
+<script src="app-i18n-en.js?v=20261109a"></script>
+<script src="app-i18n-es.js?v=20261109a"></script>
+<script src="app-i18n-hi.js?v=20261109a"></script>
+<script src="app-i18n-pt.js?v=20261109a"></script>
+<script src="app-i18n-ja.js?v=20261109a"></script>
+<script src="app-i18n-zh.js?v=20261109a"></script>
+<script src="app-i18n-ar.js?v=20261109a"></script>
+<script src="app-i18n-it.js?v=20261109a"></script>
+<script src="app-i18n-de.js?v=20261109a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3657,6 +3662,7 @@ function _genesisVersionFooter(){
             </button>
           </div>
           <div id="ptnr-pf-count" style="font-size:11px;color:#888;margin:-4px 0 12px;line-height:1.5;">Jusqu'à 5 médias (photos ou vidéos).</div>
+          <div style="font-size:10px;color:#555;margin:-8px 0 8px;line-height:1.5;"><i class="fa-solid fa-video" style="margin-right:5px;color:#666;"></i><span>Vidéos : MP4 ou MOV, 95 Mo maximum (environ 1 minute en 1080p). Le Wi-Fi est conseillé pour l’envoi.</span></div>
           <div style="font-size:10px;color:#555;margin:-8px 0 12px;line-height:1.5;"><i class="fa-solid fa-shield-halved" style="margin-right:5px;color:#666;"></i><span>Vos photos sont vérifiées automatiquement sur les serveurs GENESIS avant publication (aucun service externe).</span></div>
           <input type="file" id="ptnr-pf-file-input" accept="image/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
           <input type="file" id="ptnr-pf-video-file-input" accept="video/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
@@ -6977,7 +6983,7 @@ function _pfOpenLightbox(idx){
   }
   var isVideo = item.type === 'video_upload';
   var mediaHtml = isVideo
-    ? '<video src="'+item.url+'" controls autoplay playsinline style="max-width:94vw;max-height:80vh;border-radius:8px;"></video>'
+    ? '<video src="'+item.url+'"'+(item.thumb ? ' poster="'+item.thumb+'"' : '')+' controls autoplay playsinline preload="metadata" style="max-width:94vw;max-height:80vh;border-radius:8px;"></video>'
     : '<img src="'+item.url+'" alt="" style="max-width:94vw;max-height:80vh;border-radius:8px;object-fit:contain;">';
   ov.innerHTML = '<button onclick="_pfCloseLightbox()" aria-label="Fermer" style="position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:18px;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center;">&#10005;</button>'
     + mediaHtml
@@ -7217,7 +7223,7 @@ function openPartnerDetail(partnerId){
               var extraCls = (isHero ? ' p-dir-pf-hero' : '');
               if(item.type === 'video_upload'){
                 return '<div class="p-dir-pf-item p-dir-pf-video-upload'+extraCls+'" onclick="_pfOpenLightbox('+i+')">'
-                  + '<video src="'+item.url+'" autoplay muted loop playsinline></video>'
+                  + '<video src="'+_pfVideoSrc(item)+'"'+(item.thumb ? ' poster="'+item.thumb+'"' : '')+' autoplay muted loop playsinline preload="metadata"></video>'
                   + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
                 + '</div>';
               }
@@ -12159,7 +12165,7 @@ function _jdCardHtml(p, under){
   var name = ((p.prenom || '') + ' ' + (p.nom || '')).trim() || _tr('Prestataire');
   var media = _jdMainMedia(p);
   var mediaHtml = !media ? '<div class="jd-media-ph" data-i18n-skip>'+_escHtml((name[0] || 'P').toUpperCase())+'</div>'
-    : (media.type === 'video_upload' ? '<video src="'+media.url+'" muted autoplay loop playsinline></video>' : '<img src="'+media.url+'" alt="">');
+    : (media.type === 'video_upload' ? '<video src="'+_pfVideoSrc(media)+'"'+(media.thumb ? ' poster="'+media.thumb+'"' : '')+' muted autoplay loop playsinline preload="metadata"></video>' : '<img src="'+media.url+'" alt="">');
   var st = _jd.states[p.id] || null, chips = [];
   if(st && st.state === 'accepted') chips.push('<span class="ok"><i class="fa-solid fa-check"></i> '+_tr('A accepté votre demande')+'</span>');
   else if(st && st.state === 'waiting') chips.push('<span class="wait"><i class="fa-regular fa-clock"></i> '+_tr('Demande transmise — en attente de sa réponse')+'</span>');
@@ -22276,9 +22282,18 @@ function _ptnrPfRender(){
     ? '<div style="grid-column:span 2;font-size:11px;line-height:1.5;color:#f59e0b;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:10px 12px;"><i class="fa-solid fa-eye-slash" style="margin-right:6px;"></i><span>Les liens externes ne sont plus visibles par les clients. Supprimez-les et ajoutez vos photos et vidéos directement sur GENESIS.</span></div>'
     : '';
   grid.innerHTML = hiddenNotice + _ptnrPfItems.map(function(item, idx){
+    if(item.type === 'video_upload' && item._uploading){
+      var pct = item._progress || 0;
+      return '<div class="ptnr-pf-item uploading" data-pf-idx="'+idx+'" data-pf-id="'+item.id+'">'
+        + (item.thumb ? '<img src="'+item.thumb+'" alt="" style="opacity:.55;">'
+          : (item._local ? '<video src="'+item._local+'" muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;opacity:.55;"></video>' : ''))
+        + '<div class="ptnr-pf-upload"><div class="ptnr-pf-upload-lbl">'+_ptnrPfUploadLabel(pct)+'</div><div class="ptnr-pf-upload-bar"><i style="width:'+pct+'%"></i></div></div>'
+        + '<div class="ptnr-pf-overlay"><span class="ptnr-pf-type-badge"><i class="fa-solid fa-video"></i> Vidéo</span><button class="ptnr-pf-del" type="button" aria-label="Annuler l’envoi" onclick="event.stopPropagation();_ptnrPfDelete('+idx+')"><i class="fa-solid fa-xmark"></i></button></div>'
+      + '</div>';
+    }
     if(item.type === 'video_upload'){
       return '<div class="ptnr-pf-item" data-pf-idx="'+idx+'">'
-        + '<video src="'+item.url+'" muted style="width:100%;height:100%;object-fit:cover;border-radius:10px;"></video>'
+        + '<video src="'+_pfVideoSrc(item)+'"'+(item.thumb ? ' poster="'+item.thumb+'"' : '')+' muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"></video>'
         + '<div class="ptnr-pf-overlay"><span class="ptnr-pf-type-badge"><i class="fa-solid fa-video"></i> Vidéo</span><button class="ptnr-pf-del" type="button" onclick="event.stopPropagation();_ptnrPfDelete('+idx+')"><i class="fa-solid fa-trash-can"></i></button></div>'
       + '</div>';
     }
@@ -22328,18 +22343,18 @@ function _ptnrPfProcessFilesQueue(files, idx, results){
   var file = files[idx];
   var isVideo = file.type.indexOf('video/') === 0;
   if(isVideo){
-    if(file.size > 50*1024*1024){
-      showToast('Fichier trop lourd','La vidéo "'+file.name+'" dépasse 50 Mo et ne peut pas être uploadée.','warning');
-      _ptnrPfProcessFilesQueue(files, idx+1, results);
-      return;
+    if(file.size > PTNR_PF_VIDEO_MAX){
+      showToast('Vidéo trop lourde','« '+file.name+' » dépasse 95 Mo. Choisissez une vidéo plus courte (moins d’une minute) ou filmée en 1080p plutôt qu’en 4K.','warning');
+    } else if(_ptnrPfMediaCount() < PTNR_PF_MAX){
+      // La vidéo part tout de suite, en fichier brut (barre de progression sur sa case) ; seule
+      // son adresse sera enregistrée avec le portfolio.
+      var vItem = { id: 'PF-' + Math.random().toString(36).slice(2,8), type: 'video_upload', url: '', caption: '', thumb: '', _uploading: true, _progress: 0, _local: '' };
+      try{ vItem._local = URL.createObjectURL(file); }catch(e){}
+      _ptnrPfItems.push(vItem);
+      _ptnrPfRender();
+      _ptnrPfUploadVideo(vItem, file);
     }
-    var reader = new FileReader();
-    reader.onload = function(e){
-      results.push({ type:'video_upload', dataUri: e.target.result });
-      _ptnrPfProcessFilesQueue(files, idx+1, results);
-    };
-    reader.onerror = function(){ _ptnrPfProcessFilesQueue(files, idx+1, results); };
-    reader.readAsDataURL(file);
+    _ptnrPfProcessFilesQueue(files, idx+1, results);
   } else {
     _openCropModal(file, 1200, 0.82, function(dataUri){
       // Photo refusée (coordonnées / redirection) : non ajoutée, le prestataire en choisit une autre.
@@ -22354,16 +22369,125 @@ function _ptnrPfProcessFilesQueue(files, idx, results){
     });
   }
 }
+// ── Vidéos du portfolio : envoi direct du fichier ──
+// Avant : vidéo lue en base64 puis envoyée DANS le JSON du portfolio → au-delà de 50 Mo le serveur
+// refusait (« Erreur de connexion au serveur ») et une vidéo en texte ne se lisait pas sur iPhone.
+var PTNR_PF_VIDEO_MAX = 95 * 1024 * 1024;
+function _pfVideoSrc(item){
+  // Sans image d'aperçu, « #t=0.1 » fait afficher la première image sur iPhone au lieu d'un carré noir.
+  var u = item.url || '';
+  return (!item.thumb && u && u.indexOf('#') === -1 && u.indexOf('data:') !== 0) ? u + '#t=0.1' : u;
+}
+function _ptnrPfUploadLabel(pct){
+  return pct >= 100 ? _tr('Finalisation…') : ('<span>' + _tr('Envoi de la vidéo…') + '</span> <b data-i18n-skip>' + pct + ' %</b>');
+}
+function _ptnrPfRenderUpload(item){
+  var el = document.querySelector('#ptnr-pf-grid [data-pf-id="'+item.id+'"]');
+  if(!el){ _ptnrPfRender(); return; }
+  var pct = item._progress || 0;
+  var lbl = el.querySelector('.ptnr-pf-upload-lbl'); if(lbl) lbl.innerHTML = _ptnrPfUploadLabel(pct);
+  var bar = el.querySelector('.ptnr-pf-upload-bar i'); if(bar) bar.style.width = pct + '%';
+}
+// Première image de la vidéo, réduite (640 px), comme aperçu — créée sur le téléphone.
+function _ptnrPfVideoPoster(file, cb){
+  var done = false, url = '', vid = null;
+  function fin(v){
+    if(done) return; done = true;
+    try{ if(vid){ vid.removeAttribute('src'); vid.load(); } }catch(e){}
+    try{ if(url) URL.revokeObjectURL(url); }catch(e){}
+    cb(v);
+  }
+  try{
+    url = URL.createObjectURL(file);
+    vid = document.createElement('video');
+    vid.muted = true; vid.playsInline = true; vid.setAttribute('playsinline', ''); vid.preload = 'auto';
+    vid.onloadeddata = function(){ try{ vid.currentTime = Math.min(0.5, (vid.duration || 1) / 2); }catch(e){ fin(null); } };
+    vid.onseeked = function(){
+      try{
+        var w = vid.videoWidth, h = vid.videoHeight;
+        if(!w || !h) return fin(null);
+        var sc = Math.min(1, 640 / Math.max(w, h));
+        var c = document.createElement('canvas'); c.width = Math.round(w * sc); c.height = Math.round(h * sc);
+        c.getContext('2d').drawImage(vid, 0, 0, c.width, c.height);
+        var d = c.toDataURL('image/jpeg', 0.72);
+        fin(d && d.length > 2000 && d.length < 400000 ? d : null);
+      }catch(e){ fin(null); }
+    };
+    vid.onerror = function(){ fin(null); };
+    setTimeout(function(){ fin(null); }, 8000);
+    vid.src = url; vid.load();
+  }catch(e){ fin(null); }
+}
+function _ptnrPfUploadVideo(item, file){
+  _ptnrPfVideoPoster(file, function(poster){
+    if(poster && _ptnrPfItems.indexOf(item) !== -1){ item.thumb = poster; if(item._uploading) _ptnrPfRender(); }
+  });
+  var tok = _ptnrToken || localStorage.getItem('fa_genesis_partner_token') || '';
+  var xhr = new XMLHttpRequest();
+  item._xhr = xhr;
+  xhr.open('POST', _ptnrApiUrl() + '/api/partner/portfolio/video');
+  xhr.setRequestHeader('Authorization', 'Bearer ' + tok);
+  xhr.setRequestHeader('Content-Type', /^video\//.test(file.type || '') ? file.type : 'video/mp4');
+  xhr.timeout = 20 * 60 * 1000;
+  xhr.upload.onprogress = function(e){
+    if(!e.lengthComputable) return;
+    item._progress = Math.min(100, Math.round(e.loaded * 100 / e.total));
+    _ptnrPfRenderUpload(item);
+  };
+  xhr.onload = function(){
+    var data = null;
+    try{ data = JSON.parse(xhr.responseText); }catch(e){}
+    if(xhr.status >= 200 && xhr.status < 300 && data && data.success && data.media && data.media.url){
+      item.url = data.media.url;
+      item._uploading = false;
+      delete item._xhr;
+      try{ if(item._local) URL.revokeObjectURL(item._local); }catch(e){}
+      item._local = '';
+      _ptnrPfRender();
+      var msgEl = document.getElementById('ptnr-pf-save-msg');
+      if(msgEl){ msgEl.style.color = '#FFD700'; msgEl.textContent = 'Vidéo envoyée. Appuyez sur « Enregistrer le portfolio » pour la publier.'; }
+      return;
+    }
+    var msg = (data && data.error)
+      || (xhr.status === 413 ? 'Cette vidéo dépasse 95 Mo. Choisissez une vidéo plus courte ou filmée en 1080p.'
+      : (xhr.status === 401 ? 'Votre session a expiré. Reconnectez-vous puis ajoutez la vidéo à nouveau.'
+      : 'Le serveur n’a pas pu recevoir la vidéo (erreur ' + xhr.status + '). Réessayez dans un instant.'));
+    _ptnrPfVideoFailed(item, msg);
+  };
+  xhr.onerror = function(){ _ptnrPfVideoFailed(item, 'La connexion a été interrompue pendant l’envoi de la vidéo. Vérifiez votre connexion (le Wi-Fi est conseillé) puis réessayez.'); };
+  xhr.ontimeout = xhr.onerror;
+  xhr.send(file);
+}
+function _ptnrPfVideoFailed(item, msg){
+  var i = _ptnrPfItems.indexOf(item);
+  if(i !== -1) _ptnrPfItems.splice(i, 1);
+  try{ if(item._local) URL.revokeObjectURL(item._local); }catch(e){}
+  _ptnrPfRender();
+  showToast('Vidéo non ajoutée', msg, 'error');
+}
 function _ptnrPfDelete(idx){
+  var it = _ptnrPfItems[idx];
+  // Envoi en cours : annulé (le fichier déjà reçu par le serveur est supprimé au ménage, 24 h).
+  if(it && it._xhr){ try{ it._xhr.onerror = null; it._xhr.abort(); }catch(e){} }
+  if(it && it._local){ try{ URL.revokeObjectURL(it._local); }catch(e){} }
   _ptnrPfItems.splice(idx, 1);
   _ptnrPfRender();
 }
 function _ptnrPfSave(){
   var saveBtn = document.getElementById('ptnr-pf-save-btn');
   var msgEl = document.getElementById('ptnr-pf-save-msg');
+  if(_ptnrPfItems.some(function(it){ return it && it._uploading; })){
+    if(msgEl){ msgEl.style.color = '#f59e0b'; msgEl.textContent = 'Patientez : une vidéo est encore en cours d’envoi.'; }
+    return;
+  }
   if(saveBtn){ saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enregistrement…'; }
   if(msgEl){ msgEl.style.color = ''; msgEl.textContent = ''; }
-  _ptnrFetch('/api/partner/portfolio', 'PUT', { portfolio: _ptnrPfItems }).then(function(data){
+  var payload = _ptnrPfItems.map(function(it){
+    var o = {};
+    for(var k in it){ if(it.hasOwnProperty(k) && k.charAt(0) !== '_') o[k] = it[k]; }
+    return o;
+  });
+  _ptnrFetch('/api/partner/portfolio', 'PUT', { portfolio: payload }).then(function(data){
     if(data && data.success){
       _ptnrPfItems = data.portfolio || _ptnrPfItems;
       _ptnrSession.portfolio = _ptnrPfItems;
@@ -22378,8 +22502,9 @@ function _ptnrPfSave(){
       }
       if(msgEl){ msgEl.style.color = '#ef4444'; msgEl.textContent = (data && data.error) || 'Erreur lors de l\'enregistrement'; }
     }
-  }).catch(function(){
-    if(msgEl){ msgEl.style.color = '#ef4444'; msgEl.textContent = 'Erreur de connexion au serveur'; }
+  }).catch(function(err){
+    // « Erreur serveur » = réponse reçue mais illisible (refus du serveur), pas une coupure réseau.
+    if(msgEl){ msgEl.style.color = '#ef4444'; msgEl.textContent = (err && err.message === 'Erreur serveur') ? 'Le serveur n’a pas pu enregistrer le portfolio. Réessayez dans un instant.' : 'Erreur de connexion au serveur'; }
   }).finally(function(){
     if(saveBtn){ saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Enregistrer le portfolio'; }
   });

@@ -242,8 +242,12 @@ function getStatus() {
     return 'not configured';
 }
 
+// Base MongoDB connectée (null sinon) — utilisée par media-store.js (GridFS, vidéos du portfolio).
+function getDb() { return connected ? db : null; }
+
 module.exports = {
     connect: connect,
+    getDb: getDb,
     restoreAllFromCloud: restoreAllFromCloud,
     persistToCloud: persistToCloud,
     isConnected: isConnected,

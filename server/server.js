@@ -15980,6 +15980,171 @@ app.get('/api/partner/portfolio', authenticatePartner, (req, res) => {
 // Portfolio limité à 5 médias (photos, vidéos) par prestataire.
 const PORTFOLIO_MAX_ITEMS = 5;
 
+// ── Vidéos du portfolio : fichier brut rangé à part (voir media-store.js) ──
+// Envoi : POST /api/partner/portfolio/video (corps = la vidéo elle-même, pas de JSON/base64),
+// puis l'élément du portfolio garde seulement l'adresse /api/media/<id>. Lecture : GET
+// /api/media/<id>, par morceaux (Range) — obligatoire pour lire une vidéo sur iPhone.
+const MediaStore = require('./media-store');
+const mediaStore = MediaStore.create({ dataDir: DATA_DIR, getDb: function() { return persistentStore.getDb ? persistentStore.getDb() : null; } });
+// 95 Mo : sous la limite de 100 Mo par requête du proxy Cloudflare placé devant Render.
+const PORTFOLIO_VIDEO_MAX_BYTES = 95 * 1024 * 1024;
+const VIDEO_TOO_BIG_MESSAGE = 'Cette vidéo dépasse 95 Mo. Choisissez une vidéo plus courte (moins d’une minute) ou filmée en 1080p plutôt qu’en 4K.';
+const VIDEO_INVALID_MESSAGE = 'Ce fichier n’est pas une vidéo lisible. Formats acceptés : MP4, MOV (iPhone) ou WebM.';
+const MEDIA_ID_RE = /^VID-[a-f0-9]{24}$/;
+function mediaPublicUrl(req, id) {
+    var base = process.env.PUBLIC_API_URL
+        || (req ? (req.protocol + '://' + req.get('host')) : (process.env.RENDER_EXTERNAL_URL || 'https://fa-genesis-website.onrender.com'));
+    return String(base).replace(/\/+$/, '') + '/api/media/' + id;
+}
+function mediaIdFromUrl(url) {
+    var m = /\/api\/media\/(VID-[a-f0-9]{24})(?:[?#].*)?$/.exec(String(url || ''));
+    return m ? m[1] : null;
+}
+// Image d'aperçu d'une vidéo (première image, créée sur le téléphone) : petite image en ligne
+// seulement, jamais une adresse externe.
+function cleanVideoThumb(thumb, previous) {
+    var t = typeof thumb === 'string' ? thumb.trim() : '';
+    if (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(t) && t.length <= 400000) return t;
+    return typeof previous === 'string' && /^data:image\//.test(previous) ? previous : '';
+}
+
+app.post('/api/partner/portfolio/video', authenticatePartner, function(req, res) {
+    var partnerId = req.partner.id;
+    if (!checkRateLimit('partner:' + partnerId, 'portfolio_video', 20, 3600000)) {
+        req.resume();
+        return res.status(429).json({ error: 'Trop de vidéos envoyées en peu de temps. Réessayez dans une heure.' });
+    }
+    if (!/^video\//i.test(String(req.headers['content-type'] || ''))) {
+        req.resume();
+        return res.status(400).json({ error: VIDEO_INVALID_MESSAGE, code: 'invalid_media' });
+    }
+    var declared = parseInt(req.headers['content-length'], 10);
+    if (declared > PORTFOLIO_VIDEO_MAX_BYTES) {
+        req.resume();
+        return res.status(413).json({ error: VIDEO_TOO_BIG_MESSAGE, code: 'video_too_large' });
+    }
+    var id = 'VID-' + crypto.randomBytes(12).toString('hex');
+    var tmp = path.join(require('os').tmpdir(), 'fag-' + id + '.upload');
+    var out = fs.createWriteStream(tmp);
+    var size = 0, head = [], headLen = 0, done = false;
+    function cleanup() { fs.unlink(tmp, function() {}); }
+    function fail(status, body) {
+        if (done) return;
+        done = true;
+        try { req.unpipe(out); } catch (e) {}
+        out.destroy();
+        cleanup();
+        req.resume();
+        res.status(status).json(body);
+    }
+    req.on('data', function(chunk) {
+        size += chunk.length;
+        if (headLen < 16) { head.push(chunk); headLen += chunk.length; }
+        if (size > PORTFOLIO_VIDEO_MAX_BYTES) fail(413, { error: VIDEO_TOO_BIG_MESSAGE, code: 'video_too_large' });
+    });
+    req.on('aborted', function() { if (!done) { done = true; out.destroy(); cleanup(); } });
+    req.on('error', function() { if (!done) { done = true; out.destroy(); cleanup(); } });
+    out.on('error', function() { fail(500, { error: 'Enregistrement de la vidéo impossible. Réessayez.' }); });
+    out.on('finish', function() {
+        if (done) return;
+        if (!size) return fail(400, { error: VIDEO_INVALID_MESSAGE, code: 'invalid_media' });
+        var type = MediaStore.sniffVideo(Buffer.concat(head));
+        if (!type) return fail(400, { error: VIDEO_INVALID_MESSAGE, code: 'invalid_media' });
+        mediaStore.put(id, tmp, { owner: partnerId, contentType: type }).then(function() {
+            done = true;
+            cleanup();
+            res.json({ success: true, media: { id: id, url: mediaPublicUrl(req, id), size: size, content_type: type } });
+        }).catch(function(e) {
+            console.error('[PORTFOLIO-VIDEO] Stockage impossible:', e && e.message);
+            fail(500, { error: 'Enregistrement de la vidéo impossible. Réessayez.' });
+        });
+    });
+    req.pipe(out);
+});
+
+// Lecture publique d'une vidéo du portfolio (comme les photos, visibles de tous), par morceaux.
+app.get('/api/media/:id', function(req, res) {
+    var id = req.params.id;
+    if (!MEDIA_ID_RE.test(id)) return res.status(404).end();
+    mediaStore.info(id).then(function(inf) {
+        if (!inf || !inf.size) return res.status(404).end();
+        var size = inf.size, start = 0, end = size - 1, status = 200;
+        var range = String(req.headers.range || '').trim();
+        if (range) {
+            var m = /^bytes=(\d*)-(\d*)$/.exec(range);
+            if (m && (m[1] !== '' || m[2] !== '')) {
+                if (m[1] === '') { start = Math.max(0, size - parseInt(m[2], 10)); }
+                else { start = parseInt(m[1], 10); if (m[2] !== '') end = Math.min(parseInt(m[2], 10), size - 1); }
+                if (start > end || start >= size) {
+                    res.status(416).set('Content-Range', 'bytes */' + size);
+                    return res.end();
+                }
+                status = 206;
+            }
+        }
+        res.status(status);
+        res.set({
+            'Content-Type': inf.contentType || 'video/mp4',
+            'Accept-Ranges': 'bytes',
+            'Content-Length': String(end - start + 1),
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Cross-Origin-Resource-Policy': 'cross-origin'
+        });
+        if (status === 206) res.set('Content-Range', 'bytes ' + start + '-' + end + '/' + size);
+        if (req.method === 'HEAD') return res.end();
+        var s = mediaStore.openStream(id, start, end);
+        s.on('error', function() { if (!res.headersSent) res.status(500).end(); else res.destroy(); });
+        s.pipe(res);
+    }).catch(function() { if (!res.headersSent) res.status(500).end(); });
+});
+
+// Ménage : vidéos envoyées mais jamais enregistrées dans un portfolio (prestataire qui a quitté
+// l'écran sans « Enregistrer »), supprimées après 24 h.
+function sweepOrphanPortfolioVideos() {
+    var used = {};
+    try {
+        loadPartners().forEach(function(p) {
+            (p.portfolio || []).forEach(function(it) { var vid = it && it.type === 'video_upload' && mediaIdFromUrl(it.url); if (vid) used[vid] = true; });
+        });
+    } catch (e) { return Promise.resolve(0); }
+    var cutoff = Date.now() - 24 * 3600000;
+    return mediaStore.list().then(function(rows) {
+        var gone = rows.filter(function(r) { return !used[r.id] && r.created_at && new Date(r.created_at).getTime() < cutoff; });
+        return Promise.all(gone.map(function(r) { return mediaStore.remove(r.id); })).then(function() { return gone.length; });
+    }).catch(function() { return 0; });
+}
+setInterval(function() { sweepOrphanPortfolioVideos(); }, 6 * 3600000);
+
+// Anciennes vidéos enregistrées en texte (base64) dans la fiche : déplacées vers le stockage vidéo
+// au démarrage (sinon la fiche dépasse la limite de 16 Mo de MongoDB et la vidéo reste illisible).
+async function migrateLegacyPortfolioVideos() {
+    var partners = loadPartners(), moved = 0;
+    for (var i = 0; i < partners.length; i++) {
+        var pf = partners[i].portfolio || [];
+        for (var j = 0; j < pf.length; j++) {
+            var it = pf[j];
+            if (!it || it.type !== 'video_upload') continue;
+            var mm = /^data:(video\/[a-z0-9.+-]+);base64,(.+)$/i.exec(it.url || '');
+            if (!mm) continue;
+            var id = 'VID-' + crypto.randomBytes(12).toString('hex');
+            var tmp = path.join(require('os').tmpdir(), 'fag-' + id + '.legacy');
+            try {
+                var buf = Buffer.from(mm[2], 'base64');
+                var type = MediaStore.sniffVideo(buf);
+                if (!type) continue;
+                fs.writeFileSync(tmp, buf);
+                await mediaStore.put(id, tmp, { owner: partners[i].id, contentType: type });
+                it.url = mediaPublicUrl(null, id);
+                moved++;
+            } catch (e) {
+                console.error('[PORTFOLIO-VIDEO] Migration impossible pour', partners[i].id, e && e.message);
+            } finally { fs.unlink(tmp, function() {}); }
+        }
+    }
+    if (moved) { savePartners(partners); console.log('[PORTFOLIO-VIDEO] ' + moved + ' ancienne(s) vidéo(s) déplacée(s) vers le stockage vidéo'); }
+    return moved;
+}
+
 // Textes PUBLICS des prestataires (bio, prestations, légendes du portfolio) : aucun lien de
 // redirection externe ni coordonnée, pour que la mise en relation reste sur GENESIS (voir
 // link-guard.js, mêmes règles que l'app). Un texte identique à celui déjà enregistré est accepté
@@ -16053,10 +16218,21 @@ app.put('/api/partner/portfolio', authenticatePartner, async (req, res) => {
                 if (pm.moderation) entry.moderation = pm.moderation;
                 if (!unchanged && pm.moderation && pm.moderation.status === 'pending') newPending++;
             } else if (entry.type === 'video_upload') {
-                // Vidéos : pas d'analyse automatique (images fixes uniquement), mais uniquement des
-                // vidéos réellement envoyées depuis le téléphone — pas une image ou une URL déguisée.
-                if (!unchanged && !/^data:video\//i.test(entry.url)) return res.status(400).json({ error: IMAGE_FORMAT_MESSAGE, code: 'invalid_media', field: 'portfolio_video', itemId: entry.id });
-                if (unchanged && prevItem.moderation) entry.moderation = prevItem.moderation;
+                // Vidéos : pas d'analyse automatique (images fixes uniquement). Une NOUVELLE vidéo doit
+                // avoir été envoyée par ce prestataire via /api/partner/portfolio/video — jamais du
+                // base64 dans la fiche, ni une adresse externe déguisée (l'adresse est réécrite ici).
+                if (unchanged) {
+                    if (prevItem.moderation) entry.moderation = prevItem.moderation;
+                    entry.thumb = cleanVideoThumb(item.thumb, prevItem.thumb);
+                } else {
+                    const vid = mediaIdFromUrl(entry.url);
+                    const inf = vid ? await mediaStore.info(vid) : null;
+                    if (!inf || inf.owner !== req.partner.id) {
+                        return res.status(400).json({ error: 'Cette vidéo n’a pas été envoyée correctement. Supprimez-la puis ajoutez-la à nouveau.', code: 'invalid_media', field: 'portfolio_video', itemId: entry.id });
+                    }
+                    entry.url = mediaPublicUrl(req, vid);
+                    entry.thumb = cleanVideoThumb(item.thumb, null);
+                }
             }
             cleaned.push(entry);
         }
@@ -16072,6 +16248,13 @@ app.put('/api/partner/portfolio', authenticatePartner, async (req, res) => {
         if (portfolioMediaCount(cleaned) > PORTFOLIO_MAX_ITEMS && portfolioMediaCount(cleaned) > previousCount) {
             return res.status(400).json({ error: 'Votre portfolio est limité à ' + PORTFOLIO_MAX_ITEMS + ' médias. Supprimez-en un pour en ajouter un autre.' });
         }
+        // Vidéos retirées du portfolio : fichier supprimé du stockage.
+        const keptVideos = {};
+        cleaned.forEach(function(it) { const v = it.type === 'video_upload' && mediaIdFromUrl(it.url); if (v) keptVideos[v] = true; });
+        (partners[index].portfolio || []).forEach(function(it) {
+            const v = it && it.type === 'video_upload' && mediaIdFromUrl(it.url);
+            if (v && !keptVideos[v]) mediaStore.remove(v);
+        });
         partners[index].portfolio = cleaned;
         partners[index].updatedAt = new Date().toISOString();
         savePartners(partners);
@@ -25419,6 +25602,12 @@ var httpServer = app.listen(PORT, async () => {
     } catch (mongoErr) {
         console.error('[STARTUP] Erreur restauration MongoDB:', mongoErr.message);
     }
+    // Envoi d'une vidéo depuis un téléphone en 4G : peut dépasser les 5 min accordées par défaut
+    // par Node pour recevoir une requête entière (connexion coupée en plein envoi sinon).
+    try { httpServer.requestTimeout = 30 * 60 * 1000; } catch (e) {}
+    // Vidéos du portfolio : anciennes vidéos en base64 déplacées, envois abandonnés supprimés.
+    migrateLegacyPortfolioVideos().catch(function(e) { console.error('[PORTFOLIO-VIDEO] Migration:', e && e.message); })
+        .then(function() { return sweepOrphanPortfolioVideos(); });
 
     console.log('');
     console.log('=================================================');
