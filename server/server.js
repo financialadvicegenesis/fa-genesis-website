@@ -16050,10 +16050,11 @@ app.post('/api/partner/portfolio/video', authenticatePartner, function(req, res)
         if (!size) return fail(400, { error: VIDEO_INVALID_MESSAGE, code: 'invalid_media' });
         var type = MediaStore.sniffVideo(Buffer.concat(head));
         if (!type) return fail(400, { error: VIDEO_INVALID_MESSAGE, code: 'invalid_media' });
-        mediaStore.put(id, tmp, { owner: partnerId, contentType: type }).then(function() {
+        mediaStore.put(id, tmp, { owner: partnerId, contentType: type, processed: false }).then(function() {
             done = true;
-            cleanup();
             res.json({ success: true, media: { id: id, url: mediaPublicUrl(req, id), size: size, content_type: type } });
+            // Compression en tâche de fond (le fichier temporaire sert de source, supprimé après).
+            if (!queueVideoTranscode(id, tmp)) cleanup();
         }).catch(function(e) {
             console.error('[PORTFOLIO-VIDEO] Stockage impossible:', e && e.message);
             fail(500, { error: 'Enregistrement de la vidéo impossible. Réessayez.' });
@@ -16087,16 +16088,102 @@ app.get('/api/media/:id', function(req, res) {
             'Content-Type': inf.contentType || 'video/mp4',
             'Accept-Ranges': 'bytes',
             'Content-Length': String(end - start + 1),
-            'Cache-Control': 'public, max-age=31536000, immutable',
+            // Version compressée définitive : mise en cache longue. Avant compression, le fichier
+            // va être remplacé à la même adresse : pas de cache.
+            'Cache-Control': inf.processed ? 'public, max-age=31536000, immutable' : 'no-cache',
             'Cross-Origin-Resource-Policy': 'cross-origin'
         });
         if (status === 206) res.set('Content-Range', 'bytes ' + start + '-' + end + '/' + size);
         if (req.method === 'HEAD') return res.end();
-        var s = mediaStore.openStream(id, start, end);
+        var s = mediaStore.openStream(id, inf, start, end);
         s.on('error', function() { if (!res.headersSent) res.status(500).end(); else res.destroy(); });
         s.pipe(res);
     }).catch(function() { if (!res.headersSent) res.status(500).end(); });
 });
+
+// ── Compression des vidéos (ffmpeg, paquet ffmpeg-static) ──
+// Chaque vidéo est réencodée en arrière-plan en H.264 / AAC, 1280 px max sur le grand côté,
+// « faststart » : lisible sur tous les téléphones (les vidéos HEVC d'iPhone ne passent pas sur
+// beaucoup d'Android) et ~10 fois plus légère dans MongoDB. L'original reste servi pendant la
+// compression ; la version compressée le remplace ensuite à la même adresse. En cas d'échec
+// (fichier illisible par ffmpeg, binaire absent), l'original est simplement gardé.
+const FFMPEG_PATH = (function() {
+    try { var p = require('ffmpeg-static'); return (p && fs.existsSync(p)) ? p : null; } catch (e) { return null; }
+})();
+if (!FFMPEG_PATH) console.log('[PORTFOLIO-VIDEO] ffmpeg indisponible : vidéos gardées sans compression');
+var _videoQueue = [], _videoQueueBusy = false, _videoQueued = {};
+function queueVideoTranscode(id, srcPath) {
+    if (!FFMPEG_PATH || _videoQueued[id]) return false;
+    _videoQueued[id] = true;
+    _videoQueue.push({ id: id, src: srcPath || null });
+    setImmediate(_runVideoQueue);
+    return true;
+}
+function _runVideoQueue() {
+    if (_videoQueueBusy || !_videoQueue.length) return;
+    _videoQueueBusy = true;
+    var job = _videoQueue.shift();
+    transcodePortfolioVideo(job).then(function() {
+        delete _videoQueued[job.id];
+        _videoQueueBusy = false;
+        setImmediate(_runVideoQueue);
+    });
+}
+function _runFfmpeg(args, timeoutMs) {
+    return new Promise(function(resolve, reject) {
+        var cp = require('child_process').spawn(FFMPEG_PATH, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+        var err = '';
+        var timer = setTimeout(function() { try { cp.kill('SIGKILL'); } catch (e) {} }, timeoutMs);
+        cp.stderr.on('data', function(d) { err = (err + d).slice(-2000); });
+        cp.on('error', function(e) { clearTimeout(timer); reject(e); });
+        cp.on('close', function(code) { clearTimeout(timer); if (code === 0) resolve(); else reject(new Error('ffmpeg code ' + code + ' : ' + err.trim().split('\n').slice(-2).join(' | '))); });
+    });
+}
+function transcodePortfolioVideo(job) {
+    var os = require('os');
+    var ownSrc = !job.src;
+    var src = job.src || path.join(os.tmpdir(), 'fag-' + job.id + '.src');
+    var out = path.join(os.tmpdir(), 'fag-' + job.id + '-h264.mp4');
+    var started = Date.now();
+    return (ownSrc ? mediaStore.toFile(job.id, src) : Promise.resolve()).then(function() {
+        return _runFfmpeg([
+            '-hide_banner', '-loglevel', 'error', '-y', '-i', src,
+            '-map', '0:v:0', '-map', '0:a:0?',
+            '-vf', "scale=w='min(1280,iw)':h='min(1280,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2",
+            '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-maxrate', '2500k', '-bufsize', '5000k',
+            '-pix_fmt', 'yuv420p', '-profile:v', 'main', '-threads', '2',
+            '-c:a', 'aac', '-b:a', '96k', '-ac', '2',
+            '-movflags', '+faststart', out
+        ], 15 * 60 * 1000);
+    }).then(function() {
+        var head = Buffer.alloc(16), fd = fs.openSync(out, 'r');
+        fs.readSync(fd, head, 0, 16, 0); fs.closeSync(fd);
+        if (!MediaStore.sniffVideo(head)) throw new Error('sortie illisible');
+        // Vidéo retirée pendant la compression : rien à remplacer.
+        return mediaStore.info(job.id).then(function(inf) {
+            if (!inf) return;
+            var before = inf.size, after = fs.statSync(out).size;
+            return mediaStore.put(job.id, out, { owner: inf.owner, contentType: 'video/mp4', processed: true }).then(function() {
+                console.log('[PORTFOLIO-VIDEO] ' + job.id + ' compressée : ' + Math.round(before / 1048576) + ' Mo → ' + Math.round(after / 1048576 * 10) / 10 + ' Mo en ' + Math.round((Date.now() - started) / 1000) + ' s');
+            });
+        });
+    }).catch(function(e) {
+        console.error('[PORTFOLIO-VIDEO] Compression impossible pour ' + job.id + ' (original gardé) :', e && e.message);
+    }).then(function() {
+        fs.unlink(src, function() {});
+        fs.unlink(out, function() {});
+    });
+}
+// Démarrage : vidéos rangées sans compression (envoyées avant ffmpeg, ou serveur redémarré
+// pendant une compression) remises dans la file.
+function queueUnprocessedPortfolioVideos() {
+    if (!FFMPEG_PATH) return Promise.resolve(0);
+    return mediaStore.list().then(function(rows) {
+        var todo = rows.filter(function(r) { return !r.processed; });
+        todo.forEach(function(r) { queueVideoTranscode(r.id, null); });
+        return todo.length;
+    }).catch(function() { return 0; });
+}
 
 // Ménage : vidéos envoyées mais jamais enregistrées dans un portfolio (prestataire qui a quitté
 // l'écran sans « Enregistrer »), supprimées après 24 h.
@@ -25607,7 +25694,8 @@ var httpServer = app.listen(PORT, async () => {
     try { httpServer.requestTimeout = 30 * 60 * 1000; } catch (e) {}
     // Vidéos du portfolio : anciennes vidéos en base64 déplacées, envois abandonnés supprimés.
     migrateLegacyPortfolioVideos().catch(function(e) { console.error('[PORTFOLIO-VIDEO] Migration:', e && e.message); })
-        .then(function() { return sweepOrphanPortfolioVideos(); });
+        .then(function() { return sweepOrphanPortfolioVideos(); })
+        .then(function() { return queueUnprocessedPortfolioVideos(); });
 
     console.log('');
     console.log('=================================================');
