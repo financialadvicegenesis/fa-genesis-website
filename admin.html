@@ -492,6 +492,24 @@
             background: rgba(255,215,0,.08);
         }
         .sidebar-btn.sidebar-active i { color: var(--c-gold); }
+        .sidebar-count {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 800;
+            color: #9a9a9a;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 999px;
+            padding: 0 7px;
+            line-height: 16px;
+            font-variant-numeric: tabular-nums;
+        }
+        .sidebar-active .sidebar-count { color: #FFD700; border-color: rgba(255,215,0,.35); }
+        .ptab { padding: 8px 14px; font-size: 11px; font-weight: 900; border-radius: 8px; cursor: pointer; text-transform: uppercase; border: 2px solid #FFD700; background: transparent; color: #FFD700; }
+        .ptab.on { background: #FFD700; color: #0a0a0a; }
+        .ptab:focus-visible { outline: 2px solid #FFD700; outline-offset: 2px; }
+        .cli-cat { padding: 8px 14px; font-size: 12px; font-weight: 900; cursor: pointer; background: transparent; }
+        .cli-cat:focus-visible { outline: 2px solid #FFD700; outline-offset: 2px; }
         .sidebar-badge {
             margin-left: auto;
             background: var(--c-danger);
@@ -792,6 +810,12 @@
                 <div class="sheet-item" onclick="showSectionMobile('partenaires');closeAdminSheet()">
                     <i class="fas fa-handshake"></i><span>Prestataires</span>
                 </div>
+                <div class="sheet-item" onclick="showSectionMobile('particuliers');closeAdminSheet()">
+                    <i class="fas fa-user"></i><span>Particuliers</span>
+                </div>
+                <div class="sheet-item" onclick="showSectionMobile('entreprises');closeAdminSheet()">
+                    <i class="fas fa-building"></i><span>Entreprises</span>
+                </div>
                 <div class="sheet-item" onclick="showSectionMobile('invites');closeAdminSheet()">
                     <i class="fas fa-user-clock"></i><span>Invités</span>
                 </div>
@@ -865,6 +889,14 @@
                 <button class="sidebar-btn" data-section="etudiants" onclick="showSection('etudiants')">
                     <i class="fas fa-graduation-cap"></i><span>Étudiants</span>
                     <span id="pendingStudentsBadge" class="sidebar-badge" style="display:none;"></span>
+                </button>
+                <button class="sidebar-btn" data-section="particuliers" onclick="showSection('particuliers')">
+                    <i class="fas fa-user"></i><span>Particuliers</span>
+                    <span id="cntParticuliers" class="sidebar-count" style="display:none;"></span>
+                </button>
+                <button class="sidebar-btn" data-section="entreprises" onclick="showSection('entreprises')">
+                    <i class="fas fa-building"></i><span>Entreprises</span>
+                    <span id="cntEntreprises" class="sidebar-count" style="display:none;"></span>
                 </button>
                 <button class="sidebar-btn" data-section="messages" onclick="showSection('messages')">
                     <i class="fas fa-envelope"></i><span>Messages</span>
@@ -1110,6 +1142,13 @@
                             <i class="fas fa-search mr-2"></i>Rechercher
                         </button>
                     </div>
+                    <div class="flex gap-3 flex-wrap" id="clientCatFilters" style="margin-top:14px;">
+                        <button type="button" class="cli-cat" data-cat="all" data-color="#FFD700" onclick="setClientCategory('all')">TOUS <span class="cli-cnt"></span></button>
+                        <button type="button" class="cli-cat" data-cat="particulier" data-color="#22c55e" onclick="setClientCategory('particulier')">PARTICULIERS <span class="cli-cnt"></span></button>
+                        <button type="button" class="cli-cat" data-cat="entreprise" data-color="#60a5fa" onclick="setClientCategory('entreprise')">ENTREPRISES <span class="cli-cnt"></span></button>
+                        <button type="button" class="cli-cat" data-cat="etudiant" data-color="#eab308" onclick="setClientCategory('etudiant')">ÉTUDIANTS <span class="cli-cnt"></span></button>
+                    </div>
+                    <p id="clientCatNote" class="text-xs opacity-60 mt-3 mb-0" style="display:none;"></p>
                 </div>
 
                 <!-- Liste des clients -->
@@ -1194,16 +1233,16 @@
 
                 <!-- Onglets -->
                 <div class="flex gap-3 mb-6 flex-wrap">
-                    <button onclick="showPartnerTab('list')" id="partnerTabList" class="neo-btn-yellow px-4 py-2 text-xs">
+                    <button onclick="showPartnerTab('list')" id="partnerTabList" class="ptab on" aria-pressed="true">
                         <i class="fas fa-list mr-1"></i>LISTE
                     </button>
-                    <button onclick="showPartnerTab('uploads')" id="partnerTabUploads" class="border-4 border-[#ffd43b] bg-[#ffd43b] text-black px-4 py-2 text-xs font-black">
+                    <button onclick="showPartnerTab('uploads')" id="partnerTabUploads" class="ptab">
                         <i class="fas fa-cloud-upload-alt mr-1"></i>UPLOADS EN ATTENTE
                         <span id="pendingUploadsBadge" class="ml-1 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs" style="display:none;">0</span>
                     </button>
-                    <button onclick="showPartnerTab('dossiers')" id="partnerTabDossiers" style="border:1px solid rgba(255,215,0,.2);background:#262626;color:#e0e0e0;padding:8px 14px;font-size:11px;font-weight:900;border-radius:8px;cursor:pointer;text-transform:uppercase;">
+                    <button onclick="showPartnerTab('dossiers')" id="partnerTabDossiers" class="ptab">
                         <i class="fas fa-folder mr-1"></i>DOSSIERS
-                        <span id="dossiersBadge" class="ml-1 bg-black text-white rounded-full px-2 py-0.5 text-xs" style="display:none;">0</span>
+                        <span id="dossiersBadge" class="ml-1 rounded-full px-2 py-0.5 text-xs" style="display:none;background:#333;color:#fff;">0</span>
                     </button>
                 </div>
 
@@ -2217,8 +2256,10 @@
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
                 loadDashboard();
-            } else if (section === 'clients') {
+            } else if (section === 'clients' || section === 'particuliers' || section === 'entreprises') {
                 document.getElementById('clientsSection').style.display = 'block';
+                _clientCatFilter = section === 'particuliers' ? 'particulier' : (section === 'entreprises' ? 'entreprise' : 'all');
+                var _si = document.getElementById('searchInput'); if (_si) _si.value = '';
                 loadClientsList();
             } else if (section === 'messages') {
                 document.getElementById('messagesSection').style.display = 'block';
@@ -2324,6 +2365,7 @@
                 const allPartnersData = partnersResponse.ok ? await partnersResponse.json() : [];
                 // Peupler les globales pour que les modals fonctionnent depuis le dashboard
                 allBackendClients = users;
+                try { updateClientCategoryCounts(users); } catch (e) {}
                 allPartners = allPartnersData;
 
                 const statsHTML = `
@@ -2568,11 +2610,54 @@
 
         var allBackendClients = [];
 
+        // ── Catégories de clients ──
+        // Même règle que le serveur (clientAudienceOfUser) : un compte sans statut choisi est un
+        // Particulier.
+        var _clientCatFilter = 'all';
+        function clientCategory(c) {
+            return c && c.accountType === 'etudiant' ? 'etudiant' : (c && c.accountType === 'entreprise' ? 'entreprise' : 'particulier');
+        }
+        function updateClientCategoryCounts(users) {
+            var list = Array.isArray(users) ? users : [];
+            var n = { all: list.length, particulier: 0, entreprise: 0, etudiant: 0 }, untyped = 0;
+            list.forEach(function(c) {
+                n[clientCategory(c)]++;
+                if (!c.accountType) untyped++;
+            });
+            [['cntParticuliers', n.particulier], ['cntEntreprises', n.entreprise]].forEach(function(x) {
+                var el = document.getElementById(x[0]);
+                if (el) { el.textContent = x[1]; el.style.display = ''; }
+            });
+            document.querySelectorAll('#clientCatFilters .cli-cat').forEach(function(btn) {
+                var cat = btn.getAttribute('data-cat'), col = btn.getAttribute('data-color'), on = cat === _clientCatFilter;
+                var cnt = btn.querySelector('.cli-cnt'); if (cnt) cnt.textContent = '(' + (n[cat] || 0) + ')';
+                btn.style.border = '3px solid ' + col;
+                btn.style.background = on ? col : 'transparent';
+                btn.style.color = on ? '#0a0a0a' : col;
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            var note = document.getElementById('clientCatNote');
+            if (note) {
+                var show = untyped && (_clientCatFilter === 'particulier' || _clientCatFilter === 'all');
+                note.textContent = show ? ('Dont ' + untyped + ' compte' + (untyped > 1 ? 's' : '') + ' sans statut choisi à l’inscription, comptés comme particuliers (comme dans l’app).') : '';
+                note.style.display = show ? '' : 'none';
+            }
+            return n;
+        }
+        function setClientCategory(cat) {
+            _clientCatFilter = cat || 'all';
+            var active = { particulier: 'particuliers', entreprise: 'entreprises' }[_clientCatFilter] || 'clients';
+            document.querySelectorAll('.sidebar-btn').forEach(function(b) { b.classList.toggle('sidebar-active', b.getAttribute('data-section') === active); });
+            var q = (document.getElementById('searchInput') || {}).value || '';
+            loadClientsList(q || undefined);
+        }
+
         async function loadClientsList(searchQuery) {
             try {
                 var response = await fetch(API_BASE_URL + '/api/admin/users');
                 if (!response.ok) throw new Error('Erreur chargement');
                 allBackendClients = await response.json();
+                updateClientCategoryCounts(allBackendClients);
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement clients:', error);
                 document.getElementById('clientsList').innerHTML = '<p class="text-center py-8 font-bold">Erreur de chargement. <button onclick="loadClientsList()" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">R\u00e9essayer</button></p>';
@@ -2580,6 +2665,9 @@
             }
 
             var clients = allBackendClients;
+            if (_clientCatFilter && _clientCatFilter !== 'all') {
+                clients = clients.filter(function(c) { return clientCategory(c) === _clientCatFilter; });
+            }
 
             // Filtrer si recherche
             if (searchQuery) {
@@ -2608,10 +2696,13 @@
                 var acctPill = '';
                 if (client.accountType === 'etudiant') {
                     var studColor = client.student_status === 'verified' ? '#22c55e' : (client.student_status === 'pending' ? '#f59e0b' : (client.student_status === 'rejected' ? '#ef4444' : '#9ca3af'));
-                    acctPill = '<span style="background:#eab308;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;margin-right:4px;">ÉTUDIANT</span>';
-                    if (client.student_status === 'pending') acctPill += '<span style="background:' + studColor + ';color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;">CERT. EN ATTENTE</span>';
+                    // Texte #0a0a0a (pas « black ») : la règle du thème sombre repeint color:black en gris clair.
+                    acctPill = '<span style="background:#eab308;color:#0a0a0a;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;margin-right:4px;">ÉTUDIANT</span>';
+                    if (client.student_status === 'pending') acctPill += '<span style="background:' + studColor + ';color:#0a0a0a;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;">CERT. EN ATTENTE</span>';
                 } else if (client.accountType === 'entreprise') {
-                    acctPill = '<span style="background:#60a5fa;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;">ENTREPRISE</span>';
+                    acctPill = '<span style="background:#60a5fa;color:#0a0a0a;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;">ENTREPRISE</span>';
+                } else {
+                    acctPill = '<span style="background:#22c55e;color:#0a0a0a;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;">PARTICULIER</span>';
                 }
                 html += '<div class="client-row" onclick="openClientModal(\'' + client.email + '\')">' +
                     '<div class="flex justify-between items-center flex-wrap gap-4">' +
@@ -2636,7 +2727,8 @@
                 '</div>';
             });
 
-            document.getElementById('clientsList').innerHTML = html || '<p class="text-center py-8 opacity-50 font-bold">Aucun client</p>';
+            var _emptyCat = { particulier: 'Aucun particulier', entreprise: 'Aucune entreprise', etudiant: 'Aucun étudiant' }[_clientCatFilter] || 'Aucun client';
+            document.getElementById('clientsList').innerHTML = html || '<p class="text-center py-8 opacity-50 font-bold">' + (searchQuery ? 'Aucun résultat pour cette recherche.' : _emptyCat + ' pour le moment.') + '</p>';
         }
 
         function handleSearchClients() {
@@ -4038,7 +4130,9 @@
         }
         function partnerSecondaryBadgesHtml(p) {
             return partnerSecondaryTypes(p).map(function(t) {
-                return '<span style="background:#fff;color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;margin-left:6px;">+ ' + _escHtml(partnerTypeLabelAdmin(t, p).toUpperCase()) + '</span>';
+                // Contour doré (métier principal = badge doré plein). Pas de « color:black » : la règle
+                // du thème sombre le repeint en gris clair, illisible sur fond blanc.
+                return '<span style="background:transparent;color:#FFD700;padding:4px 10px;border:2px solid #FFD700;font-size:11px;font-weight:900;margin-left:6px;">+ ' + _escHtml(partnerTypeLabelAdmin(t, p).toUpperCase()) + '</span>';
             }).join('');
         }
         // Éditeur des métiers dans la fiche d'un prestataire.
@@ -4119,17 +4213,18 @@
             if (listC) listC.style.display = 'none';
             if (uploadsC) uploadsC.style.display = 'none';
             if (dossiersC) dossiersC.style.display = 'none';
-            [tabList, tabUploads, tabDossiers].forEach(function(b) { if(b) b.style.background = '#fff'; });
+            // Onglet actif = doré plein (classe .ptab.on) ; avant, les inactifs passaient en fond blanc
+            // et « Uploads » restait jaune avec un texte éclairci par le thème sombre (illisible).
+            [tabList, tabUploads, tabDossiers].forEach(function(b) { if(b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); } });
+            var _on = { list: tabList, uploads: tabUploads, dossiers: tabDossiers }[tab];
+            if (_on) { _on.classList.add('on'); _on.setAttribute('aria-pressed', 'true'); }
             if (tab === 'list') {
                 if (listC) listC.style.display = 'block';
-                if (tabList) tabList.style.background = 'var(--genesis-yellow)';
             } else if (tab === 'uploads') {
                 if (uploadsC) uploadsC.style.display = 'block';
-                if (tabUploads) tabUploads.style.background = 'var(--genesis-yellow)';
                 loadPendingUploads();
             } else if (tab === 'dossiers') {
                 if (dossiersC) dossiersC.style.display = 'block';
-                if (tabDossiers) tabDossiers.style.background = 'var(--genesis-yellow)';
                 loadDossiers();
             }
         }
