@@ -78,14 +78,14 @@ function create(opts) {
                 var f = rows[0];
                 if (!f) return null;
                 var md = f.metadata || {};
-                return { size: f.length, contentType: f.contentType || 'video/mp4', owner: md.owner, created_at: md.created_at || (f.uploadDate && f.uploadDate.toISOString()), processed: !!md.processed, fileId: f._id };
+                return { size: f.length, contentType: f.contentType || 'video/mp4', owner: md.owner, created_at: md.created_at || (f.uploadDate && f.uploadDate.toISOString()), processed: !!md.processed, attempts: md.transcode_attempts || 0, fileId: f._id };
             });
         }
         try {
             var p = localPaths(id);
             if (!fs.existsSync(p.file)) return Promise.resolve(null);
             var m = JSON.parse(fs.readFileSync(p.meta, 'utf8'));
-            return Promise.resolve({ size: fs.statSync(p.file).size, contentType: m.contentType || 'video/mp4', owner: m.owner, created_at: m.created_at, processed: !!m.processed, fileId: null });
+            return Promise.resolve({ size: fs.statSync(p.file).size, contentType: m.contentType || 'video/mp4', owner: m.owner, created_at: m.created_at, processed: !!m.processed, attempts: m.transcode_attempts || 0, fileId: null });
         } catch (e) { return Promise.resolve(null); }
     }
 
@@ -105,6 +105,25 @@ function create(opts) {
                 openStream(id, inf, 0, inf.size - 1).on('error', reject).pipe(out).on('error', reject).on('finish', function() { resolve(inf); });
             });
         });
+    }
+
+    // Note une tentative de compression AVANT de la lancer (persisté) : si le serveur tombe pendant
+    // la compression (mémoire saturée), la vidéo n'est jamais relancée automatiquement — sinon
+    // chaque redémarrage relancerait la même compression et ferait retomber le serveur en boucle.
+    function markAttempt(id) {
+        var b = bucket();
+        if (b) {
+            return getDb().collection(BUCKET + '.files').updateMany(
+                { $or: [{ _id: id }, { 'metadata.media_id': id }] },
+                { $inc: { 'metadata.transcode_attempts': 1 } }
+            ).then(function() {});
+        }
+        try {
+            var p = localPaths(id), m = JSON.parse(fs.readFileSync(p.meta, 'utf8'));
+            m.transcode_attempts = (m.transcode_attempts || 0) + 1;
+            fs.writeFileSync(p.meta, JSON.stringify(m));
+        } catch (e) {}
+        return Promise.resolve();
     }
 
     function remove(id) {
@@ -132,7 +151,7 @@ function create(opts) {
                     var md = f.metadata || {}, id = md.media_id || f._id;
                     if (seen[id]) return;
                     seen[id] = true;
-                    outRows.push({ id: id, owner: md.owner, created_at: md.created_at || (f.uploadDate && f.uploadDate.toISOString()), processed: !!md.processed });
+                    outRows.push({ id: id, owner: md.owner, created_at: md.created_at || (f.uploadDate && f.uploadDate.toISOString()), processed: !!md.processed, attempts: md.transcode_attempts || 0 });
                 });
                 return outRows;
             });
@@ -143,12 +162,12 @@ function create(opts) {
                 var id = n.replace(/\.json$/, '');
                 var m = {};
                 try { m = JSON.parse(fs.readFileSync(path.join(localDir, n), 'utf8')); } catch (e) {}
-                return { id: id, owner: m.owner, created_at: m.created_at, processed: !!m.processed };
+                return { id: id, owner: m.owner, created_at: m.created_at, processed: !!m.processed, attempts: m.transcode_attempts || 0 };
             }));
         } catch (e) { return Promise.resolve([]); }
     }
 
-    return { put: put, info: info, openStream: openStream, toFile: toFile, remove: remove, list: list };
+    return { put: put, info: info, openStream: openStream, toFile: toFile, markAttempt: markAttempt, remove: remove, list: list };
 }
 
 // Le fichier est-il vraiment une vidéo ? (signature des formats acceptés, pas le type annoncé)

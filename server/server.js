@@ -16107,10 +16107,43 @@ app.get('/api/media/:id', function(req, res) {
 // beaucoup d'Android) et ~10 fois plus légère dans MongoDB. L'original reste servi pendant la
 // compression ; la version compressée le remplace ensuite à la même adresse. En cas d'échec
 // (fichier illisible par ffmpeg, binaire absent), l'original est simplement gardé.
+// PANNE DU 2026-11-09 : une compression lancée sur la petite instance Render a saturé la mémoire,
+// le serveur a redémarré, la reprise au démarrage a relancé la MÊME compression → boucle, API en
+// 502. Garde-fous : tentative notée AVANT de compresser (jamais relancée après une chute),
+// réglages à faible mémoire (1 fil), vidéo trop grande pour la mémoire disponible laissée telle
+// quelle, reprise au démarrage différée, interrupteur VIDEO_TRANSCODE=off (variable Render).
 const FFMPEG_PATH = (function() {
+    if (process.env.VIDEO_TRANSCODE === 'off') return null;
     try { var p = require('ffmpeg-static'); return (p && fs.existsSync(p)) ? p : null; } catch (e) { return null; }
 })();
-if (!FFMPEG_PATH) console.log('[PORTFOLIO-VIDEO] ffmpeg indisponible : vidéos gardées sans compression');
+if (!FFMPEG_PATH) console.log('[PORTFOLIO-VIDEO] compression désactivée ou ffmpeg indisponible : vidéos gardées telles quelles');
+// Mémoire réellement accordée au serveur (limite du conteneur Render), pas celle de la machine.
+function _serverMemoryLimit() {
+    var files = ['/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes'];
+    for (var i = 0; i < files.length; i++) {
+        try {
+            if (!fs.existsSync(files[i])) continue;
+            var v = fs.readFileSync(files[i], 'utf8').trim();
+            if (/^\d+$/.test(v) && +v < 1e15) return +v;
+        } catch (e) {}
+    }
+    return require('os').totalmem();
+}
+// Résolution / codec de la source, sans la décoder (peu de mémoire).
+function _probeVideo(src) {
+    return new Promise(function(resolve) {
+        var cp = require('child_process').spawn(FFMPEG_PATH, ['-hide_banner', '-i', src], { stdio: ['ignore', 'ignore', 'pipe'] });
+        var err = '';
+        var timer = setTimeout(function() { try { cp.kill('SIGKILL'); } catch (e) {} }, 60000);
+        cp.stderr.on('data', function(d) { err = (err + d).slice(-8000); });
+        cp.on('error', function() { clearTimeout(timer); resolve(null); });
+        cp.on('close', function() {
+            clearTimeout(timer);
+            var v = /Video: (\w+)[^\n]*?, (\d{2,5})x(\d{2,5})/.exec(err);
+            resolve(v ? { codec: v[1], w: +v[2], h: +v[3] } : null);
+        });
+    });
+}
 var _videoQueue = [], _videoQueueBusy = false, _videoQueued = {};
 function queueVideoTranscode(id, srcPath) {
     if (!FFMPEG_PATH || _videoQueued[id]) return false;
@@ -16145,13 +16178,25 @@ function transcodePortfolioVideo(job) {
     var src = job.src || path.join(os.tmpdir(), 'fag-' + job.id + '.src');
     var out = path.join(os.tmpdir(), 'fag-' + job.id + '-h264.mp4');
     var started = Date.now();
-    return (ownSrc ? mediaStore.toFile(job.id, src) : Promise.resolve()).then(function() {
+    return mediaStore.markAttempt(job.id).then(function() {
+        return ownSrc ? mediaStore.toFile(job.id, src) : null;
+    }).then(function() {
+        return _probeVideo(src);
+    }).then(function(pr) {
+        // Une vidéo 4K se décode avec beaucoup de mémoire : sous 1,5 Go accordés au serveur, elle
+        // est gardée telle quelle plutôt que de risquer de faire tomber toute l'API.
+        var mem = _serverMemoryLimit();
+        if (pr && pr.w * pr.h > 1920 * 1088 && mem < 1.5 * 1024 * 1024 * 1024) {
+            throw new Error('vidéo ' + pr.w + '×' + pr.h + ' trop grande pour la mémoire du serveur (' + Math.round(mem / 1048576) + ' Mo)');
+        }
         return _runFfmpeg([
-            '-hide_banner', '-loglevel', 'error', '-y', '-i', src,
+            '-hide_banner', '-loglevel', 'error', '-y', '-threads', '1', '-i', src,
             '-map', '0:v:0', '-map', '0:a:0?',
             '-vf', "scale=w='min(1280,iw)':h='min(1280,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2",
-            '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-maxrate', '2500k', '-bufsize', '5000k',
-            '-pix_fmt', 'yuv420p', '-profile:v', 'main', '-threads', '2',
+            '-filter_threads', '1',
+            '-c:v', 'libx264', '-preset', 'superfast', '-crf', '26', '-maxrate', '2500k', '-bufsize', '5000k',
+            '-x264-params', 'rc-lookahead=10', '-threads', '1',
+            '-pix_fmt', 'yuv420p', '-profile:v', 'main',
             '-c:a', 'aac', '-b:a', '96k', '-ac', '2',
             '-movflags', '+faststart', out
         ], 15 * 60 * 1000);
@@ -16174,12 +16219,13 @@ function transcodePortfolioVideo(job) {
         fs.unlink(out, function() {});
     });
 }
-// Démarrage : vidéos rangées sans compression (envoyées avant ffmpeg, ou serveur redémarré
-// pendant une compression) remises dans la file.
+// Démarrage : vidéos rangées sans compression et JAMAIS tentées (envoyées avant ffmpeg) remises
+// dans la file. Une vidéo déjà tentée (échec, ou serveur tombé pendant sa compression) ne l'est
+// plus jamais automatiquement.
 function queueUnprocessedPortfolioVideos() {
     if (!FFMPEG_PATH) return Promise.resolve(0);
     return mediaStore.list().then(function(rows) {
-        var todo = rows.filter(function(r) { return !r.processed; });
+        var todo = rows.filter(function(r) { return !r.processed && !r.attempts; });
         todo.forEach(function(r) { queueVideoTranscode(r.id, null); });
         return todo.length;
     }).catch(function() { return 0; });
@@ -25695,7 +25741,8 @@ var httpServer = app.listen(PORT, async () => {
     // Vidéos du portfolio : anciennes vidéos en base64 déplacées, envois abandonnés supprimés.
     migrateLegacyPortfolioVideos().catch(function(e) { console.error('[PORTFOLIO-VIDEO] Migration:', e && e.message); })
         .then(function() { return sweepOrphanPortfolioVideos(); })
-        .then(function() { return queueUnprocessedPortfolioVideos(); });
+        // Différé : le serveur répond d'abord normalement avant toute compression.
+        .then(function() { setTimeout(function() { queueUnprocessedPortfolioVideos(); }, 3 * 60 * 1000); });
 
     console.log('');
     console.log('=================================================');
