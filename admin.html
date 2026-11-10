@@ -1276,6 +1276,8 @@
 
                 <!-- Liste des partenaires -->
                 <div id="partnersListContainer">
+                    <!-- Vérification des prestataires (justificatifs, 2026-11-10) -->
+                    <div id="verifCampaignCard" class="admin-card neo-shadow mb-6" style="padding:16px 20px;display:none;"></div>
                     <div id="partnersList">
                         <p class="text-center py-8 opacity-50 font-bold">Chargement...</p>
                     </div>
@@ -4378,6 +4380,7 @@
 
         // Charger la liste des partenaires
         async function loadPartnersList(searchQuery) {
+            loadVerificationCampaign();
             var container = document.getElementById('partnersList');
             if (!container) return;
 
@@ -4425,9 +4428,9 @@
                 // Les comptes en attente de validation passent en premier : sans approbation,
                 // leurs prestations/profil restent invisibles des clients (cf. accountStatus === 'pending').
                 var sortedPartners = partners.slice().sort(function(a, b) {
-                    var aPending = a.accountStatus === 'pending' ? 0 : 1;
-                    var bPending = b.accountStatus === 'pending' ? 0 : 1;
-                    return aPending - bPending;
+                    var aRank = (a.verification && a.verification.status === 'submitted') ? 0 : (a.accountStatus === 'pending' ? 1 : 2);
+                    var bRank = (b.verification && b.verification.status === 'submitted') ? 0 : (b.accountStatus === 'pending' ? 1 : 2);
+                    return aRank - bRank;
                 });
 
                 var html = '';
@@ -4443,7 +4446,7 @@
                     html += '<div class="client-row" onclick="openPartnerModal(\'' + safeId + '\')">' +
                         '<div class="flex justify-between items-center flex-wrap gap-4">' +
                             '<div class="flex-1 min-w-[200px]">' +
-                                '<div class="font-black text-lg">' + _escHtml((partner.prenom || '') + ' ' + (partner.nom || '')) + riskPillHtml(partner) + '</div>' +
+                                '<div class="font-black text-lg">' + _escHtml((partner.prenom || '') + ' ' + (partner.nom || '')) + riskPillHtml(partner) + verifPillHtml(partner) + '</div>' +
                                 '<div class="text-sm font-bold opacity-70">' + _escHtml(partner.email || '') + '</div>' +
                                 ((partner.risk_flags && partner.risk_flags.length) ? '<div class="text-xs font-bold mt-1" style="color:#fbbf24;">' + _escHtml(partner.risk_flags.join(' · ')) + '</div>' : '') +
                                 '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + inscritLe + (partner.telephone ? ' • ' + partner.telephone : '') + '</div>' +
@@ -4456,8 +4459,8 @@
                                 '<span style="background:' + statusColor + ';color:' + statusTextColor + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
                             '</div>' +
                             '<div onclick="event.stopPropagation();" style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                                (partner.accountStatus === 'pending'
-                                    ? '<button onclick="togglePartnerStatus(\'' + safeId + '\', \'active\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-sm font-black mr-2"><i class="fas fa-check mr-1"></i>Approuver</button>'
+                                (partner.verification && partner.verification.status === 'submitted'
+                                    ? '<button onclick="openPartnerModal(\'' + safeId + '\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-sm font-black mr-2"><i class="fas fa-id-card mr-1"></i>Examiner le dossier</button>'
                                     : '') +
                                 '<button onclick="openPartnerModal(\'' + safeId + '\')" class="neo-btn-yellow px-4 py-2 text-sm"><i class="fas fa-folder-open mr-1"></i>Gérer</button>' +
                                 '<button onclick="deletePartner(\'' + safeId + '\')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-sm font-black"><i class="fas fa-trash mr-1"></i>Supprimer</button>' +
@@ -4572,13 +4575,16 @@
                     : '<p class="text-sm opacity-70 mb-8">Données financières indisponibles.</p>'
                 ) +
                 '<hr class="border-2 border-black my-6">' +
+                '<h3 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-id-card mr-2"></i>VÉRIFICATION</h3>' +
+                '<div id="partnerVerifSection" style="color:#ccc;font-size:13px;">Chargement du dossier…</div>' +
+                '<hr class="border-2 border-black my-6">' +
                 '<h3 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-cog mr-2"></i>ACTIONS</h3>' +
                 '<div class="flex gap-3 flex-wrap">';
 
             if (partner.accountStatus === 'pending') {
-                modalHTML += '<button onclick="togglePartnerStatus(\'' + partner.id + '\', \'active\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-6 py-3 text-sm font-black">' +
-                    '<i class="fas fa-check mr-2"></i>APPROUVER (visible dans l\'annuaire)' +
-                '</button>';
+                // Depuis le 2026-11-10 : un compte en attente s’active en validant son dossier
+                // (section Vérification ci-dessus), jamais sans justificatifs.
+                modalHTML += '<p style="color:#ccc;font-size:13px;margin:0;">Compte en attente : il sera activé en validant son dossier de vérification (contrat signé obligatoire).</p>';
             } else if (partner.accountStatus === 'deactivated') {
                 modalHTML += '<button onclick="togglePartnerStatus(\'' + partner.id + '\', \'active\')" class="neo-btn-yellow px-6 py-3 text-sm">' +
                     '<i class="fas fa-check mr-2"></i>RÉACTIVER' +
@@ -4606,6 +4612,7 @@
             contentEl.innerHTML = modalHTML;
             modalEl.style.display = 'block';
             renderMetiersChips();
+            loadPartnerVerification(partner.id);
           } catch(err) {
             alert('Erreur ouverture modal prestataire : ' + (err && err.message ? err.message : err));
           }
@@ -4613,6 +4620,202 @@
 
         function closePartnerModal() {
             document.getElementById('partnerModal').style.display = 'none';
+        }
+
+        // ── Vérification des prestataires (justificatifs, 2026-11-10) ──────────────────
+        // Fichiers privés lus via /api/admin/partners/:id/verification/document/:kind (jeton admin
+        // ajouté par admin-system.js). Couleurs explicites : la fenêtre est hors #adminPanel.
+        var VERIF_DOC_LABELS_ADMIN = { identity: 'Pièce d’identité', selfie: 'Selfie avec la pièce', registration: 'Preuve d’immatriculation', activity: 'Preuve d’activité' };
+        var VERIF_PROFILE_LABELS = { micro: 'Indépendant / micro-entrepreneur (France)', company: 'Entreprise / société (France)', foreign: 'Professionnel à l’étranger' };
+
+        function _verifHidden(p) {
+            var st = p.verification && p.verification.status;
+            if (!p.verification_deadline || st === 'verified' || st === 'submitted') return false;
+            return Date.now() > Date.parse(p.verification_deadline);
+        }
+        function verifPillHtml(p) {
+            var st = (p.verification && p.verification.status) || 'none';
+            var lab = null, col = '#999';
+            if (st === 'submitted') { lab = 'DOSSIER À EXAMINER'; col = '#51cf66'; }
+            else if (st === 'verified') { lab = p.verification.level === 'business' ? 'ENTREPRISE VÉRIFIÉE' : 'IDENTITÉ VÉRIFIÉE'; col = '#FFD700'; }
+            else if (st === 'rejected') { lab = 'JUSTIFICATIFS REFUSÉS'; col = '#ff6b6b'; }
+            else if (_verifHidden(p)) { lab = 'MASQUÉ (JUSTIFICATIFS EN RETARD)'; col = '#ff6b6b'; }
+            else if (p.verification_deadline) { lab = 'JUSTIFICATIFS ATTENDUS'; col = '#fbbf24'; }
+            if (!lab) return '';
+            return ' <span style="display:inline-block;margin-left:6px;padding:2px 8px;border:1.5px solid ' + col + ';color:' + col + ';font-size:10px;font-weight:900;letter-spacing:.4px;vertical-align:middle;">' + lab + '</span>';
+        }
+
+        async function loadVerificationCampaign() {
+            var card = document.getElementById('verifCampaignCard');
+            if (!card) return;
+            try {
+                var r = await fetch(API_BASE_URL + '/api/admin/partner-verification/campaign');
+                var d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Erreur');
+                var stats = '<span style="color:#e0e0e0;">' + d.verified + ' vérifié(s) · ' + d.submitted + ' dossier(s) à examiner · ' + d.already_requested + ' déjà sollicité(s)' + (d.hidden ? ' · <span style="color:#ff6b6b;">' + d.hidden + ' masqué(s)</span>' : '') + '</span>';
+                var action = d.targets
+                    ? '<div style="color:#e0e0e0;font-size:13px;margin:10px 0;">' + d.targets + ' prestataire(s) actif(s) n’ont pas encore reçu la demande (' + d.targets_france + ' en France, ' + d.targets_abroad + ' hors de France). Date limite si vous envoyez aujourd’hui : <strong style="color:#FFD700;">' + new Date(d.deadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + '</strong>.</div>' +
+                      '<div style="background:#141414;border:1px solid #333;padding:10px 12px;margin-bottom:10px;"><div style="color:#999;font-size:11px;font-weight:700;margin-bottom:4px;">NOTIFICATION ENVOYÉE (+ e-mail validé, version France ou hors de France)</div><div style="color:#fff;font-weight:800;font-size:13px;">' + _escHtml(d.push_preview.title) + '</div><div style="color:#ccc;font-size:12px;">' + _escHtml(d.push_preview.body) + '</div></div>' +
+                      '<button onclick="sendVerificationCampaign(' + d.targets + ')" class="neo-btn-yellow px-6 py-2"><i class="fas fa-paper-plane mr-2"></i>DEMANDER LES JUSTIFICATIFS (' + d.targets + ')</button>'
+                    : '<div style="color:#999;font-size:12px;margin-top:6px;">Tous les prestataires actifs ont déjà reçu la demande ou sont vérifiés.</div>';
+                card.innerHTML = '<div style="color:#FFD700;font-weight:900;font-size:14px;margin-bottom:4px;"><i class="fas fa-id-card mr-2"></i>VÉRIFICATION DES PRESTATAIRES</div><div style="font-size:12px;">' + stats + '</div>' + action;
+                card.style.display = 'block';
+            } catch (e) {
+                card.style.display = 'none';
+            }
+        }
+
+        async function sendVerificationCampaign(n) {
+            if (!confirm('Envoyer la demande de justificatifs (notification + e-mail) à ' + n + ' prestataire(s) actif(s) ? Ils auront 30 jours. Passé ce délai, ceux qui n’ont rien envoyé seront masqués des clients.')) return;
+            try {
+                var r = await fetch(API_BASE_URL + '/api/admin/partner-verification/campaign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+                var d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Erreur');
+                alert('Demande envoyée à ' + d.sent + ' prestataire(s). Les e-mails partent un par un (environ 2 secondes chacun).');
+                loadPartnersList();
+            } catch (e) {
+                alert('Erreur : ' + e.message);
+            }
+        }
+
+        async function loadPartnerVerification(partnerId) {
+            var el = document.getElementById('partnerVerifSection');
+            if (!el) return;
+            try {
+                var r = await fetch(API_BASE_URL + '/api/admin/partners/' + encodeURIComponent(partnerId) + '/verification');
+                var d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Erreur');
+                el.innerHTML = renderPartnerVerification(partnerId, d);
+            } catch (e) {
+                el.innerHTML = '<p style="color:#ff6b6b;font-weight:700;">Impossible de charger le dossier : ' + _escHtml(e.message) + '</p>';
+            }
+        }
+
+        function _vRow(label, value) {
+            return '<div style="margin-bottom:8px;"><div style="color:#999;font-size:11px;font-weight:700;text-transform:uppercase;">' + label + '</div><div style="color:#f0f0f0;font-weight:700;font-size:13px;">' + value + '</div></div>';
+        }
+
+        function renderPartnerVerification(partnerId, d) {
+            var v = d.verification || {};
+            var sid = String(partnerId).replace(/'/g, '');
+            var stLabel = { none: 'Aucun dossier envoyé', submitted: 'Dossier envoyé, à examiner', verified: 'Vérifié', rejected: 'Refusé, en attente de correction' }[v.status] || v.status;
+            var stCol = { none: '#999', submitted: '#51cf66', verified: '#FFD700', rejected: '#ff6b6b' }[v.status] || '#999';
+            var h = '<div style="border:1.5px solid ' + stCol + ';padding:12px 14px;margin-bottom:14px;">' +
+                '<div style="color:' + stCol + ';font-weight:900;font-size:14px;">' + stLabel + (v.status === 'verified' ? ' · ' + (v.level === 'business' ? 'Entreprise vérifiée' : 'Identité vérifiée') : '') + '</div>' +
+                (v.submitted_at && v.status === 'submitted' ? '<div style="color:#ccc;font-size:12px;">Envoyé le ' + new Date(v.submitted_at).toLocaleString('fr-FR') + '</div>' : '') +
+                (v.verified_at ? '<div style="color:#ccc;font-size:12px;">Validé le ' + new Date(v.verified_at).toLocaleString('fr-FR') + (d.reviewed_by ? ' par ' + _escHtml(d.reviewed_by) : '') + '</div>' : '') +
+                (v.reject_reason ? '<div style="color:#fca5a5;font-size:12px;">Motif : ' + _escHtml(v.reject_reason) + '</div>' : '') +
+                (v.deadline ? '<div style="color:' + (v.hidden ? '#ff6b6b' : '#fbbf24') + ';font-size:12px;">Date limite : ' + new Date(v.deadline).toLocaleDateString('fr-FR') + (v.hidden ? ' — dépassée, profil masqué des clients' : '') + '</div>' : '') +
+                '<div style="color:' + (d.contract_signed ? '#51cf66' : '#ff6b6b') + ';font-size:12px;font-weight:700;margin-top:4px;">' + (d.contract_signed ? 'Contrat de partenariat signé' : 'Contrat de partenariat NON signé') + '</div>' +
+                '</div>';
+
+            if (!v.legal_profile) return h + '<p style="color:#999;font-size:12px;">Le prestataire n’a pas encore indiqué son statut.</p>';
+
+            h += '<div class="grid md:grid-cols-2 gap-4">';
+            h += _vRow('Statut déclaré', VERIF_PROFILE_LABELS[v.legal_profile] + (v.legal_profile === 'foreign' ? (v.registered ? ', immatriculé' : ', sans immatriculation') : '') + ' · pays ' + _escHtml(d.country || '?'));
+            if (v.siret) {
+                var c = d.siret_check || {};
+                var cLab = { active: '<span style="color:#51cf66;">En activité</span>', closed: '<span style="color:#ff6b6b;">FERMÉ</span>', not_found: '<span style="color:#fbbf24;">Introuvable dans l’annuaire officiel</span>', unavailable: '<span style="color:#999;">Vérification indisponible</span>', invalid: '<span style="color:#ff6b6b;">Invalide</span>' }[c.status] || '<span style="color:#999;">Non vérifié</span>';
+                h += _vRow('SIRET', _escHtml(v.siret) + ' — ' + cLab + ' <a href="https://annuaire-entreprises.data.gouv.fr/etablissement/' + encodeURIComponent(v.siret) + '" target="_blank" rel="noopener" style="color:#FFD700;font-size:11px;">voir la fiche officielle</a>');
+                if (c.found) {
+                    h += _vRow('Entreprise trouvée', _escHtml(c.name || '') + (c.address ? '<br><span style="color:#ccc;font-weight:400;">' + _escHtml(c.address) + '</span>' : '') + (c.activity ? '<br><span style="color:#ccc;font-weight:400;">Activité (NAF) ' + _escHtml(c.activity) + (c.created ? ' · créée le ' + _escHtml(c.created) : '') + '</span>' : ''));
+                    var nm = d.name_match === true ? '<span style="color:#51cf66;">Oui</span>' : (d.name_match === false ? '<span style="color:#ff6b6b;">NON — à vérifier sur la pièce d’identité</span>' : '<span style="color:#999;">Nom non publié par l’annuaire</span>');
+                    h += _vRow('Nom cohérent avec le compte', nm);
+                }
+                if (d.duplicates && d.duplicates.length) {
+                    h += _vRow('<span style="color:#ff6b6b;">SIRET déjà utilisé par</span>', d.duplicates.map(function(x) { return _escHtml(x.name + ' (' + x.email + ')'); }).join('<br>'));
+                }
+            }
+            if (v.company_name) h += _vRow('Raison sociale / représentant', _escHtml(v.company_name) + ' · ' + _escHtml(v.representative || ''));
+            if (v.registration_number) h += _vRow('Immatriculation locale', _escHtml(v.registration_number));
+            if (v.activity_proof) h += _vRow('Preuve d’activité (texte)', '<span style="font-weight:400;white-space:pre-wrap;">' + _escHtml(v.activity_proof) + '</span>');
+            h += '</div>';
+
+            h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;">';
+            (v.required || []).forEach(function(k) {
+                var doc = v.docs && v.docs[k];
+                if (doc && !doc.deleted) {
+                    h += '<button onclick="openVerifDoc(\'' + sid + '\', \'' + k + '\')" style="background:#1a1a1a;border:1.5px solid #FFD700;color:#FFD700;padding:8px 12px;font-size:12px;font-weight:800;cursor:pointer;"><i class="fas fa-eye mr-1"></i>' + VERIF_DOC_LABELS_ADMIN[k] + '</button>';
+                } else {
+                    h += '<span style="border:1.5px dashed #555;color:#999;padding:8px 12px;font-size:12px;font-weight:700;">' + VERIF_DOC_LABELS_ADMIN[k] + (doc && doc.deleted ? ' — supprimé après validation' : ' — non envoyé') + '</span>';
+                }
+            });
+            h += '</div>';
+
+            if (v.status === 'submitted') {
+                var canBusiness = !(v.legal_profile === 'foreign' && !v.registered);
+                h += '<div style="border:1px solid #333;padding:12px 14px;">' +
+                    '<div style="color:#e0e0e0;font-size:12px;margin-bottom:10px;">Vérifiez que le visage du selfie correspond à la pièce d’identité, que le nom correspond au compte et que le document d’immatriculation est récent.</div>' +
+                    (canBusiness ? '<label style="color:#ccc;font-size:12px;display:flex;gap:6px;align-items:center;margin-bottom:10px;"><input type="checkbox" id="pvIdentityOnly"> Badge « Identité vérifiée » seulement (immatriculation douteuse)</label>' : '') +
+                    '<button onclick="approvePartnerVerification(\'' + sid + '\')" style="background:#51cf66;color:#0a0a0a;border:none;padding:10px 18px;font-size:13px;font-weight:900;cursor:pointer;margin-right:8px;"><i class="fas fa-check mr-1"></i>VALIDER LE DOSSIER' + (d.account_status === 'pending' ? ' ET ACTIVER LE COMPTE' : '') + '</button>' +
+                    '<div style="margin-top:14px;color:#ccc;font-size:12px;font-weight:700;">Ou demander une correction :</div>' +
+                    '<textarea id="pvRejectReason" rows="2" placeholder="Ce que le prestataire doit corriger (envoyé tel quel)" style="width:100%;background:#111;color:#f0f0f0;border:1px solid #444;padding:8px;font-size:13px;margin:6px 0;"></textarea>' +
+                    '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">' + (v.required || []).map(function(k) {
+                        return '<label style="color:#ccc;font-size:12px;display:flex;gap:5px;align-items:center;"><input type="checkbox" class="pv-redo" value="' + k + '"> Refaire : ' + VERIF_DOC_LABELS_ADMIN[k] + '</label>';
+                    }).join('') + '</div>' +
+                    '<button onclick="rejectPartnerVerification(\'' + sid + '\')" style="background:#ff6b6b;color:#0a0a0a;border:none;padding:9px 16px;font-size:12px;font-weight:900;cursor:pointer;"><i class="fas fa-rotate-left mr-1"></i>DEMANDER UNE CORRECTION</button>' +
+                    '</div>';
+            }
+            return h;
+        }
+
+        async function openVerifDoc(partnerId, kind) {
+            try {
+                var r = await fetch(API_BASE_URL + '/api/admin/partners/' + encodeURIComponent(partnerId) + '/verification/document/' + kind);
+                if (!r.ok) throw new Error('Document indisponible');
+                var blob = await r.blob();
+                var url = URL.createObjectURL(blob);
+                var ov = document.createElement('div');
+                ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
+                var type = blob.type || '';
+                var body = /^image\/(jpeg|png|webp)/.test(type)
+                    ? '<img src="' + url + '" style="max-width:100%;max-height:82vh;object-fit:contain;">'
+                    : (type === 'application/pdf'
+                        ? '<iframe src="' + url + '" style="width:min(900px,100%);height:82vh;border:0;background:#fff;"></iframe>'
+                        : '<div style="color:#e0e0e0;">Aperçu impossible pour ce format (' + _escHtml(type) + ').</div>');
+                ov.innerHTML = '<div style="display:flex;gap:10px;margin-bottom:10px;"><a href="' + url + '" download="' + kind + '" style="background:#FFD700;color:#0a0a0a;padding:8px 14px;font-weight:900;font-size:12px;text-decoration:none;">TÉLÉCHARGER</a><button style="background:#333;color:#f0f0f0;border:none;padding:8px 14px;font-weight:900;font-size:12px;cursor:pointer;">FERMER</button></div>' + body;
+                ov.querySelector('button').onclick = function() { URL.revokeObjectURL(url); ov.remove(); };
+                document.body.appendChild(ov);
+            } catch (e) {
+                alert('Erreur : ' + e.message);
+            }
+        }
+
+        async function approvePartnerVerification(partnerId) {
+            var idOnly = document.getElementById('pvIdentityOnly');
+            if (!confirm('Valider ce dossier ? Les documents seront supprimés et le badge s’affichera sur la fiche du prestataire.')) return;
+            try {
+                var r = await fetch(API_BASE_URL + '/api/admin/partners/' + encodeURIComponent(partnerId) + '/verification/approve', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(idOnly && idOnly.checked ? { level: 'identity' } : {})
+                });
+                var d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Erreur');
+                alert(d.activated ? 'Dossier validé : le compte est activé et visible des clients.' : 'Dossier validé : le badge est affiché sur sa fiche.');
+                openPartnerModal(partnerId);
+                loadPartnersList();
+            } catch (e) {
+                alert('Erreur : ' + e.message);
+            }
+        }
+
+        async function rejectPartnerVerification(partnerId) {
+            var reason = ((document.getElementById('pvRejectReason') || {}).value || '').trim();
+            if (reason.length < 5) { alert('Écrivez au prestataire ce qu’il doit corriger.'); return; }
+            var redo = Array.prototype.slice.call(document.querySelectorAll('.pv-redo:checked')).map(function(c) { return c.value; });
+            try {
+                var r = await fetch(API_BASE_URL + '/api/admin/partners/' + encodeURIComponent(partnerId) + '/verification/reject', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: reason, remove_docs: redo })
+                });
+                var d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Erreur');
+                alert('Demande de correction envoyée au prestataire (notification + e-mail).');
+                openPartnerModal(partnerId);
+                loadPartnersList();
+            } catch (e) {
+                alert('Erreur : ' + e.message);
+            }
         }
 
         async function sendStripeOnboardingLink(partnerId) {

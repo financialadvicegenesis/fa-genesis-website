@@ -21,13 +21,17 @@ var BUCKET = 'portfolio_media';
 function create(opts) {
     var dataDir = opts.dataDir;
     var getDb = opts.getDb; // () => db MongoDB connectée, ou null
-    var localDir = path.join(dataDir, 'media');
+    // Deuxième usage (2026-11-10) : justificatifs PRIVÉS des prestataires (pièce d'identité…),
+    // dans un bucket et un dossier séparés — jamais servis par /api/media, jamais touchés par le
+    // ménage des vidéos du portfolio.
+    var bucketName = opts.bucket || BUCKET;
+    var localDir = path.join(dataDir, opts.subdir || 'media');
 
     function bucket() {
         var db = getDb && getDb();
         if (!db) return null;
         var mongodb = require('mongodb');
-        return new mongodb.GridFSBucket(db, { bucketName: BUCKET });
+        return new mongodb.GridFSBucket(db, { bucketName: bucketName });
     }
     function localPaths(id) {
         return { file: path.join(localDir, id + '.bin'), meta: path.join(localDir, id + '.json') };
@@ -48,7 +52,7 @@ function create(opts) {
                 return new Promise(function(resolve, reject) {
                     var up = b.openUploadStream(id, {
                         contentType: meta.contentType,
-                        metadata: { media_id: id, owner: meta.owner, kind: 'video', processed: !!meta.processed, created_at: created }
+                        metadata: { media_id: id, owner: meta.owner, kind: meta.kind || 'video', processed: !!meta.processed, created_at: created }
                     });
                     fs.createReadStream(tmpPath).on('error', reject).pipe(up).on('error', reject).on('finish', function() { resolve({ fileId: up.id, previous: prev }); });
                 });
@@ -113,7 +117,7 @@ function create(opts) {
     function markAttempt(id) {
         var b = bucket();
         if (b) {
-            return getDb().collection(BUCKET + '.files').updateMany(
+            return getDb().collection(bucketName + '.files').updateMany(
                 { $or: [{ _id: id }, { 'metadata.media_id': id }] },
                 { $inc: { 'metadata.transcode_attempts': 1 } }
             ).then(function() {});

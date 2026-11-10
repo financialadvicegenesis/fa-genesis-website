@@ -1714,6 +1714,102 @@ async function sendPartnerAccountApprovedEmail(partner) {
     }
 }
 
+// ── Vérification des prestataires (2026-11-10) ───────────────────────────────
+// Texte validé par FA GENESIS le 2026-11-10 (version France / version hors de France).
+// inFrance = le SIRET existe dans le pays du prestataire (voir partner-verification.js).
+function _fmtDeadlineFr(iso) {
+    try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' }); }
+    catch (e) { return String(iso || '').slice(0, 10); }
+}
+
+async function _sendPartnerMail(partner, subject, title, content, logLabel) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - ' + logLabel + ' non envoye');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+    var html = getEmailTemplate(content, title);
+    var _lang = getUserLanguage(partner.email, 'partner');
+    subject = translateServerText(subject, _lang);
+    html = translateServerText(html, _lang);
+    try {
+        const result = await transport.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            to: partner.email,
+            subject: subject,
+            html: html
+        });
+        console.log('[EMAIL] ' + logLabel + ' envoye a ' + partner.email + ' - ID: ' + result.messageId);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur ' + logLabel + ':', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+async function sendPartnerVerificationRequestEmail(partner, deadlineIso, inFrance) {
+    const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    const prenom = escapeHtml(partner.prenom || '');
+    const date = _fmtDeadlineFr(deadlineIso);
+    const p = 'margin: 0 0 18px 0; font-size: 16px; color: #333333; line-height: 1.6;';
+    const li = 'margin: 0 0 8px 0;';
+    const list = inFrance
+        ? `<li style="${li}">votre <strong>numéro SIRET</strong> ;</li>
+           <li style="${li}">une <strong>preuve d’immatriculation</strong>, au choix : avis de situation SIRENE (gratuit sur avis-situation-sirene.insee.fr), extrait RNE ou attestation URSSAF. Pour une société : un Kbis de moins de 3 mois ;</li>
+           <li style="${li}">une <strong>pièce d’identité</strong> en cours de validité : carte d’identité, passeport ou titre de séjour ;</li>
+           <li style="${li}">un <strong>selfie</strong> de vous tenant cette pièce, à prendre directement dans l’application.</li>`
+        : `<li style="${li}">une <strong>pièce d’identité</strong> en cours de validité : passeport, carte d’identité ou titre de séjour ;</li>
+           <li style="${li}">un <strong>selfie</strong> de vous tenant cette pièce, à prendre directement dans l’application ;</li>
+           <li style="${li}"><strong>si votre activité est déclarée dans votre pays</strong> : votre numéro d’immatriculation et le document officiel correspondant (par exemple ICE, RCCM ou NIF). Vous obtiendrez alors aussi le badge « Entreprise vérifiée » ;</li>
+           <li style="${li}"><strong>sinon</strong> : une preuve de votre activité, au choix : anciens travaux, page professionnelle (Instagram, Behance, site…) ou références clients.</li>`;
+    const intro = inFrance
+        ? 'Pour garantir la sécurité de tous, GENESIS vérifie désormais l’identité et le statut de chaque prestataire. Les clients verront sur votre fiche le badge « Entreprise vérifiée », un vrai gage de confiance au moment de choisir un prestataire.'
+        : 'Pour garantir la sécurité de tous, GENESIS vérifie désormais l’identité de chaque prestataire. Une fois vérifié, vous obtiendrez sur votre fiche le badge « Identité vérifiée », un vrai gage de confiance pour les clients.';
+    const howTo = inFrance
+        ? 'ouvrez l’application GENESIS, allez dans votre espace prestataire, puis touchez « Vérifier mon compte ». Cela prend environ 3 minutes.'
+        : 'ouvrez l’application GENESIS, allez dans votre espace prestataire, puis touchez « Vérifier mon compte ».';
+    const content = `
+        <p style="${p}">Bonjour ${prenom},</p>
+        <p style="${p}">${intro}</p>
+        <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 18px 20px; margin: 22px 0;">
+            <p style="margin: 0 0 12px 0; font-weight: 700; color: #000; font-size: 16px;">Ce qu’il vous faut :</p>
+            <ul style="margin: 0; padding-left: 20px; color: #333; line-height: 1.6; font-size: 15px;">${list}</ul>
+        </div>
+        <p style="${p}"><strong>Comment faire :</strong> ${howTo}</p>
+        <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 22px 0; text-align: center;">
+            <p style="margin: 0 0 14px 0; font-size: 15px; color: #ffffff;"><strong>Date limite : ${date}.</strong></p>
+            <a href="${frontUrl}/app.html#partner:verification"
+               style="display: inline-block; background-color: #FFD700; color: #000; padding: 14px 28px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">Vérifier mon compte</a>
+        </div>
+        <p style="${p}">Passé cette date, votre profil sera masqué des clients jusqu’à la validation de vos documents. Votre compte, vos prestations et vos missions en cours ne seront pas supprimés. Vos missions en cours se poursuivront normalement.</p>
+        <p style="${p}">Vos documents ne sont consultables que par l’équipe FA GENESIS. Ils sont utilisés uniquement pour cette vérification, puis supprimés une fois votre compte vérifié.</p>
+        <p style="${p}">Une question ? Répondez simplement à cet e-mail.</p>
+        <p style="margin: 26px 0 0 0; font-size: 16px; color: #333333;"><strong style="color: #000000;">L’équipe FA GENESIS</strong></p>
+    `;
+    return _sendPartnerMail(partner, `Action requise : vérifiez votre compte prestataire avant le ${date}`,
+        'Vérification de votre compte prestataire', content, 'Email demande de justificatifs');
+}
+
+async function sendPartnerVerificationRejectedEmail(partner, reason) {
+    const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    const p = 'margin: 0 0 18px 0; font-size: 16px; color: #333333; line-height: 1.6;';
+    const content = `
+        <p style="${p}">Bonjour ${escapeHtml(partner.prenom || '')},</p>
+        <p style="${p}">Notre équipe a examiné vos justificatifs, mais ils ne permettent pas encore de vérifier votre compte.</p>
+        <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 18px 20px; margin: 22px 0;">
+            <p style="margin: 0 0 8px 0; font-weight: 700; color: #000; font-size: 16px;">Ce qu’il faut corriger :</p>
+            <p style="margin: 0; color: #333; font-size: 15px; line-height: 1.6;">${escapeHtml(reason || '')}</p>
+        </div>
+        <div style="text-align: center; margin: 22px 0;">
+            <a href="${frontUrl}/app.html#partner:verification"
+               style="display: inline-block; background-color: #FFD700; color: #000; padding: 14px 28px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">Envoyer un nouveau document</a>
+        </div>
+        <p style="${p}">Une question ? Répondez simplement à cet e-mail.</p>
+        <p style="margin: 26px 0 0 0; font-size: 16px; color: #333333;"><strong style="color: #000000;">L’équipe FA GENESIS</strong></p>
+    `;
+    return _sendPartnerMail(partner, 'Vos justificatifs sont à compléter', 'Vérification de votre compte prestataire', content, 'Email justificatifs refusés');
+}
+
 // ============================================================
 // EXPORTS
 // ============================================================
@@ -2677,6 +2773,8 @@ module.exports = {
     sendQuoteAdminNotification,
     sendQuotePartnerNotification,
     sendPartnerAccountApprovedEmail,
+    sendPartnerVerificationRequestEmail,
+    sendPartnerVerificationRejectedEmail,
     sendPartnerWelcomeEmail,
     sendQuoteToClient,
     sendSessionConfirmedEmail,

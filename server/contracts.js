@@ -5,7 +5,8 @@ var path = require('path');
 var PDFDocument = require('pdfkit');
 
 var CONTRACTS_FILE = path.join(__dirname, 'data', 'contracts.json');
-var CONTRACT_VERSION = 'v3-2026';
+// v4 (2026-11-10) : article 13, obligations légales et fiscales du prestataire.
+var CONTRACT_VERSION = 'v4-2026';
 
 // Logo FA GENESIS embarqué en base64 (lu une fois au démarrage)
 var _LOGO_DATA_URI = '';
@@ -192,6 +193,11 @@ var PARTNERSHIP_CLAUSES = [
         id: 'loi',
         title: 'Article 12 — Loi applicable et juridiction',
         body: 'Le présent contrat est soumis au droit français. Tout litige relatif à son interprétation ou à son exécution, qui ne pourrait être résolu amiablement par les parties, sera soumis à la juridiction compétente du ressort du siège social de FA GENESIS. Les parties s\'engagent à recourir en priorité à la procédure de médiation prévue par la plateforme avant toute action contentieuse.'
+    },
+    {
+        id: 'obligations',
+        title: 'Article 13 — Obligations légales et fiscales du Prestataire',
+        body: 'Le Prestataire est seul responsable de ses obligations légales et fiscales dans son pays : immatriculation de son activité lorsqu\'elle est requise, déclaration de ses revenus, paiement de ses impôts et de ses cotisations sociales. Il garantit l\'exactitude des informations et des justificatifs transmis à GENESIS pour la vérification de son compte, et signale tout changement de sa situation (cessation d\'activité, changement de statut ou d\'immatriculation).'
     }
 ];
 

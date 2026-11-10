@@ -25,6 +25,7 @@ const invoiceService = require('./invoices');
 const emailService = require('./email-service');
 // Anti-abus (e-mail strict, adresses jetables, domaines inexistants, tri des messages de contact)
 const antiAbuse = require('./anti-abuse');
+const PartnerVerif = require('./partner-verification');
 const aiService = require('./services/aiService');
 const mps = require('./services/marketplace-payment-service');
 const scp = require('./services/stripe-connect-provider');
@@ -4827,7 +4828,7 @@ app.post('/api/orders/create', (req, res) => {
                 }
                 var psiPartner = getPartnerById(psiItem.partnerId);
                 if (!psiPartner) return res.status(404).json({ error: 'Partenaire ' + psiItem.partnerId + ' non trouvé' });
-                if (psiPartner.accountStatus !== 'active') return res.status(400).json({ error: 'Le partenaire ' + (psiPartner.prenom||'') + ' n\'est pas disponible' });
+                if (!partnerIsListed(psiPartner)) return res.status(400).json({ error: 'Le partenaire ' + (psiPartner.prenom||'') + ' n\'est pas disponible' });
                 var psiService = (psiPartner.services || []).find(function(s) { return s.id === psiItem.serviceId && s.active !== false; });
                 if (!psiService) return res.status(404).json({ error: 'Prestation non trouvée chez ' + (psiPartner.prenom||'') });
 
@@ -5076,7 +5077,7 @@ app.post('/api/orders/create', (req, res) => {
             if (!partner) {
                 return res.status(404).json({ error: 'Partenaire non trouve' });
             }
-            if (partner.accountStatus !== 'active') {
+            if (!partnerIsListed(partner)) {
                 return res.status(400).json({ error: 'Ce partenaire n\'est pas disponible actuellement' });
             }
             const service = (partner.services || []).find(function(s) {
@@ -12077,7 +12078,7 @@ app.get('/api/users/favorites', (req, res) => {
     try {
         var favIds = user.favoris || [];
         var partners = loadPartners().filter(function(p) {
-            return p.accountStatus === 'active' && favIds.indexOf(p.id) !== -1;
+            return partnerIsListed(p) && favIds.indexOf(p.id) !== -1;
         });
         var results = partners.map(function(p) {
             return {
@@ -12928,6 +12929,7 @@ app.delete('/api/partner/account', authenticatePartner, async (req, res) => {
 
         const deletedEmail = partner.email;
         const deletedPartnerId = partner.id;
+        _removeVerificationDocs(partner, false);
         partners.splice(idx, 1);
         savePartners(partners);
         _purgeAccountData({ userId: null, email: deletedEmail, partnerId: deletedPartnerId, role: 'partner' });
@@ -14918,7 +14920,7 @@ app.post('/api/sessions', function(req, res) {
         } else if (requestedProviderRole && requestedProviderRole !== 'admin') {
             // Auto-assigner un partenaire actif du type demande
             var matchingPartner = partners.find(function(p) {
-                return p.partner_type === requestedProviderRole && p.accountStatus === 'active';
+                return p.partner_type === requestedProviderRole && partnerIsListed(p);
             });
             if (matchingPartner) {
                 partnerId = matchingPartner.id;
@@ -15561,6 +15563,18 @@ app.post('/api/partner/auth/register', async (req, res) => {
         if (existing) {
             return res.status(409).json({ error: 'Un compte existe deja avec cet email' });
         }
+        // Statut légal + SIRET (2026-11-10). Absent = ancienne version de l'app ou du site : le
+        // prestataire le choisira dans « Vérifier mon compte ».
+        var ptnrLegal = null, ptnrSiretCheck = null;
+        if (req.body.legal_profile) {
+            var _lg = PartnerVerif.normalizeLegalInfo(req.body, country);
+            if (!_lg.ok) return res.status(400).json({ error: _lg.error, code: _lg.code });
+            ptnrLegal = _lg.data;
+            if (ptnrLegal.siret) {
+                ptnrSiretCheck = await PartnerVerif.checkSiret(ptnrLegal.siret);
+                if (ptnrSiretCheck.status === 'closed') return res.status(400).json({ error: SIRET_CLOSED_MSG, code: 'siret_closed' });
+            }
+        }
         if (password.length < 6) {
             return res.status(400).json({ error: 'Le mot de passe doit faire au moins 6 caracteres' });
         }
@@ -15589,10 +15603,11 @@ app.post('/api/partner/auth/register', async (req, res) => {
             partner_type_other: partner_type === 'other' ? partner_type_other.trim() : '',
             // Autres métiers choisis dès l'inscription (2 max, voir cleanSecondaryTypes).
             secondary_types: cleanSecondaryTypes(secondary_types, partner_type),
-            company: company || '',
+            company: company || (ptnrLegal && ptnrLegal.company_name) || '',
             services: [],
             sessionToken: sessionToken,
             accountStatus: 'pending',
+            verification: Object.assign({ status: 'none', docs: {} }, ptnrLegal || {}, ptnrSiretCheck ? { siret_check: ptnrSiretCheck } : {}),
             contract_signed: false,
             contract_signed_at: null,
             referredBy: referredBy,
@@ -15602,6 +15617,7 @@ app.post('/api/partner/auth/register', async (req, res) => {
             createdBy: 'self-register',
             signup_flags: ptnrEmailCheck.flags || []
         };
+        if (ptnrLegal && ptnrLegal.siret) partner.siret = ptnrLegal.siret; // factures automatiques
         partners.push(partner);
         savePartners(partners);
         const { password: _, ...partnerSafe } = partner;
@@ -16070,6 +16086,390 @@ const PORTFOLIO_VIDEO_MAX_BYTES = 95 * 1024 * 1024;
 const VIDEO_TOO_BIG_MESSAGE = 'Cette vidéo dépasse 95 Mo. Choisissez une vidéo plus courte (moins d’une minute) ou filmée en 1080p plutôt qu’en 4K.';
 const VIDEO_INVALID_MESSAGE = 'Ce fichier n’est pas une vidéo lisible. Formats acceptés : MP4, MOV (iPhone) ou WebM.';
 const MEDIA_ID_RE = /^VID-[a-f0-9]{24}$/;
+
+// ============================================================
+// VÉRIFICATION DES PRESTATAIRES (2026-11-10) — logique dans server/partner-verification.js
+// ============================================================
+// Justificatifs (pièce d'identité, selfie avec la pièce, immatriculation, preuve d'activité) :
+// fichiers PRIVÉS, dans un bucket GridFS à part (« partner_documents », sinon data/private_documents)
+// — jamais servis par /api/media, jamais touchés par le ménage des vidéos du portfolio — lisibles
+// uniquement par l'admin, et supprimés dès que le dossier est validé (seul le résultat est gardé).
+const privateDocStore = MediaStore.create({ dataDir: DATA_DIR, getDb: function() { return persistentStore.getDb ? persistentStore.getDb() : null; }, bucket: 'partner_documents', subdir: 'private_documents' });
+const DOC_ID_RE = /^DOC-[a-f0-9]{24}$/;
+var VERIF_DOC_LABELS = { identity: 'pièce d’identité', selfie: 'selfie avec la pièce', registration: 'preuve d’immatriculation', activity: 'preuve d’activité' };
+var VERIF_LOCKED_MSG = 'Vos justificatifs sont déjà envoyés. Pour les modifier, contactez l’assistance.';
+var SIRET_CLOSED_MSG = 'Ce SIRET correspond à un établissement fermé dans le répertoire officiel des entreprises. Vérifiez le numéro, ou contactez-nous si votre activité est en cours.';
+var DOC_TOO_BIG_MSG = 'Fichier trop lourd (10 Mo maximum). Prenez une photo plutôt qu’un scan haute définition.';
+var DOC_INVALID_MSG = 'Format non accepté : envoyez une photo (JPEG, PNG, HEIC) ou un PDF.';
+
+// Visible des clients (annuaire, recherche, Jérémie, nouvelles demandes et commandes) : compte
+// actif ET pas masqué pour justificatifs non envoyés dans le délai. Les missions en cours, les
+// paiements et les remboursements gardent leurs contrôles sur accountStatus : ne PAS les
+// remplacer par cette fonction (un prestataire masqué n'est pas « inactif » : rembourser ses
+// clients en cours parce qu'il est masqué serait une erreur).
+function partnerIsListed(p) {
+    return !!p && p.accountStatus === 'active' && !PartnerVerif.isHiddenForVerification(p);
+}
+
+function _verifLocked(v) { return !!v && (v.status === 'submitted' || v.status === 'verified'); }
+
+// Supprime les fichiers d'un dossier. keepMeta : garde la trace (type, date) sans le fichier.
+function _removeVerificationDocs(p, keepMeta) {
+    var v = p && p.verification;
+    if (!v || !v.docs) return;
+    Object.keys(v.docs).forEach(function(k) {
+        var d = v.docs[k];
+        if (d && d.id) privateDocStore.remove(d.id).catch(function() {});
+        if (d && keepMeta) { delete d.id; d.deleted = true; d.deleted_at = new Date().toISOString(); }
+    });
+    if (!keepMeta) v.docs = {};
+}
+
+function _updatePartnerVerification(partnerId, fn) {
+    var partners = loadPartners();
+    var idx = partners.findIndex(function(x) { return x.id === partnerId; });
+    if (idx === -1) return null;
+    var pp = partners[idx];
+    if (!pp.verification) pp.verification = { status: 'none', docs: {} };
+    if (!pp.verification.docs) pp.verification.docs = {};
+    fn(pp, pp.verification);
+    pp.updatedAt = new Date().toISOString();
+    savePartners(partners);
+    return pp;
+}
+
+function _verifHistory(v, entry) {
+    v.history = (v.history || []).concat([Object.assign({ at: new Date().toISOString() }, entry)]).slice(-20);
+}
+
+function _fmtDateFr(iso) {
+    try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' }); }
+    catch (e) { return String(iso || '').slice(0, 10); }
+}
+
+// Notification + e-mail de demande de justificatifs (textes validés par FA GENESIS le 2026-11-10).
+function verificationRequestPush(deadlineIso) {
+    return {
+        title: 'Vérification de votre compte prestataire',
+        body: 'Pour la sécurité de tous, GENESIS vérifie désormais chaque prestataire. Envoyez vos justificatifs avant le ' + _fmtDateFr(deadlineIso) + ' pour rester visible des clients : Profil › Vérifier mon compte (3 min).'
+    };
+}
+function _sendVerificationRequest(p) {
+    var push = verificationRequestPush(p.verification_deadline);
+    notifyUser(p.email, 'partner', 'verification-demandee', push.title, push.body, '/app.html#partner:verification', { jeremie: false });
+    return emailService.sendPartnerVerificationRequestEmail(p, p.verification_deadline, PartnerVerif.usesSiret(p.country))
+        .catch(function(e) { console.warn('[VERIF] e-mail demande:', e && e.message); });
+}
+
+// Contrôle du SIRET pendant la saisie (inscription comprise, donc sans compte) : nom et état
+// d'activité, tirés de l'annuaire public des entreprises (recherche-entreprises.api.gouv.fr).
+app.get('/api/partner/siret-check', async function(req, res) {
+    var ip = req.ip || 'unknown';
+    if (!checkRateLimit(ip, 'siret_check', 40, 3600000)) return res.status(429).json({ error: 'Trop de vérifications. Réessayez dans une heure.' });
+    var siret = PartnerVerif.cleanSiret(req.query.siret);
+    if (!/^\d{14}$/.test(siret)) return res.json({ valid: false, status: 'format' });
+    if (!PartnerVerif.isValidSiret(siret)) return res.json({ valid: false, status: 'invalid' });
+    var c = await PartnerVerif.checkSiret(siret);
+    res.json({ valid: true, status: c.status, name: c.found ? c.name : '' });
+});
+
+// Dossier du prestataire connecté (« Vérifier mon compte »).
+app.get('/api/partner/verification', authenticatePartner, function(req, res) {
+    res.json({ success: true, verification: PartnerVerif.partnerView(req.partner) });
+});
+
+// Statut légal (indépendant / entreprise / à l'étranger) + SIRET ou immatriculation locale.
+app.post('/api/partner/verification/profile', authenticatePartner, async function(req, res) {
+    try {
+        var cur = req.partner.verification || {};
+        if (_verifLocked(cur)) return res.status(409).json({ error: VERIF_LOCKED_MSG, code: 'verification_locked' });
+        var lg = PartnerVerif.normalizeLegalInfo(req.body, req.partner.country);
+        if (!lg.ok) return res.status(400).json({ error: lg.error, code: lg.code });
+        var check = null;
+        if (lg.data.siret) {
+            check = (cur.siret === lg.data.siret && cur.siret_check && cur.siret_check.status !== 'unavailable')
+                ? cur.siret_check : await PartnerVerif.checkSiret(lg.data.siret);
+            if (check.status === 'closed') return res.status(400).json({ error: SIRET_CLOSED_MSG, code: 'siret_closed' });
+        }
+        var removed = [];
+        var p = _updatePartnerVerification(req.partner.id, function(pp, v) {
+            ['legal_profile', 'siret', 'company_name', 'representative', 'registered', 'registration_number', 'siret_check'].forEach(function(k) { delete v[k]; });
+            Object.assign(v, lg.data);
+            if (check) v.siret_check = check;
+            if (v.status !== 'rejected') v.status = 'none';
+            // Le SIRET vérifié sert aussi aux factures automatiques.
+            if (lg.data.siret) pp.siret = lg.data.siret;
+            if (lg.data.company_name && !pp.company) pp.company = lg.data.company_name;
+            // Pièce devenue inutile avec le nouveau statut (ex. preuve d'activité → immatriculation).
+            var need = PartnerVerif.requiredDocs(v.legal_profile, !!v.registered);
+            ['registration', 'activity'].forEach(function(k) {
+                if (need.indexOf(k) === -1 && v.docs[k]) { if (v.docs[k].id) removed.push(v.docs[k].id); delete v.docs[k]; }
+            });
+        });
+        removed.forEach(function(id) { privateDocStore.remove(id).catch(function() {}); });
+        if (!p) return res.status(404).json({ error: 'Prestataire introuvable' });
+        res.json({ success: true, verification: PartnerVerif.partnerView(p) });
+    } catch (e) {
+        console.error('[VERIF] Statut légal:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Envoi d'un justificatif : corps = le fichier (photo ou PDF, 10 Mo max), type vérifié par sa
+// signature réelle. Remplace la pièce du même type déjà envoyée.
+app.post('/api/partner/verification/document/:kind', authenticatePartner, function(req, res) {
+    var kind = req.params.kind;
+    var partnerId = req.partner.id;
+    if (PartnerVerif.DOC_KINDS.indexOf(kind) === -1) { req.resume(); return res.status(400).json({ error: 'Type de document inconnu.' }); }
+    if (_verifLocked(req.partner.verification)) { req.resume(); return res.status(409).json({ error: VERIF_LOCKED_MSG, code: 'verification_locked' }); }
+    if (!checkRateLimit('partner:' + partnerId, 'verif_doc', 40, 3600000)) { req.resume(); return res.status(429).json({ error: 'Trop d’envois en peu de temps. Réessayez dans une heure.' }); }
+    var declared = parseInt(req.headers['content-length'], 10);
+    if (declared > PartnerVerif.DOC_MAX_BYTES) { req.resume(); return res.status(413).json({ error: DOC_TOO_BIG_MSG, code: 'document_too_large' }); }
+    var chunks = [], size = 0, done = false;
+    function fail(status, body) { if (done) return; done = true; chunks = []; req.resume(); res.status(status).json(body); }
+    req.on('data', function(c) {
+        if (done) return;
+        size += c.length;
+        if (size > PartnerVerif.DOC_MAX_BYTES) return fail(413, { error: DOC_TOO_BIG_MSG, code: 'document_too_large' });
+        chunks.push(c);
+    });
+    req.on('aborted', function() { done = true; chunks = []; });
+    req.on('error', function() { done = true; chunks = []; });
+    req.on('end', function() {
+        if (done) return;
+        var buf = Buffer.concat(chunks);
+        chunks = [];
+        var type = PartnerVerif.sniffDocument(buf);
+        if (!type) return fail(400, { error: DOC_INVALID_MSG, code: 'invalid_document' });
+        var id = 'DOC-' + crypto.randomBytes(12).toString('hex');
+        var tmp = path.join(require('os').tmpdir(), 'fag-' + id + '.doc');
+        fs.writeFile(tmp, buf, function(err) {
+            if (err) return fail(500, { error: 'Enregistrement impossible. Réessayez.' });
+            privateDocStore.put(id, tmp, { owner: partnerId, contentType: type, processed: true, kind: 'document' }).then(function() {
+                fs.unlink(tmp, function() {});
+                var old = null;
+                var p = _updatePartnerVerification(partnerId, function(pp, v) {
+                    old = v.docs[kind] && v.docs[kind].id;
+                    v.docs[kind] = { id: id, content_type: type, size: buf.length, uploaded_at: new Date().toISOString() };
+                });
+                if (old) privateDocStore.remove(old).catch(function() {});
+                if (!p) { privateDocStore.remove(id).catch(function() {}); return fail(404, { error: 'Prestataire introuvable' }); }
+                done = true;
+                res.json({ success: true, verification: PartnerVerif.partnerView(p) });
+            }).catch(function(e) {
+                fs.unlink(tmp, function() {});
+                console.error('[VERIF] Stockage justificatif impossible:', e && e.message);
+                fail(500, { error: 'Enregistrement impossible. Réessayez.' });
+            });
+        });
+    });
+});
+
+// Envoi du dossier complet à l'équipe.
+app.post('/api/partner/verification/submit', authenticatePartner, function(req, res) {
+    try {
+        var v = req.partner.verification || {};
+        if (v.status === 'verified') return res.status(409).json({ error: 'Votre compte est déjà vérifié.', code: 'already_verified' });
+        if (v.status === 'submitted') return res.status(409).json({ error: 'Vos justificatifs sont déjà en cours d’examen.', code: 'already_submitted' });
+        if (!v.legal_profile) return res.status(400).json({ error: 'Choisissez d’abord votre statut.', code: 'legal_profile_required' });
+        var proof = typeof req.body.activity_proof === 'string' ? req.body.activity_proof.trim().slice(0, 1000) : (v.activity_proof || '');
+        var docs = v.docs || {};
+        var missing = PartnerVerif.requiredDocs(v.legal_profile, !!v.registered).filter(function(k) {
+            var has = !!(docs[k] && docs[k].id);
+            if (k === 'activity') return !has && proof.length < 10;
+            return !has;
+        });
+        if (missing.length) {
+            return res.status(400).json({ error: 'Il manque : ' + missing.map(function(k) { return VERIF_DOC_LABELS[k]; }).join(', ') + '.', code: 'documents_missing', missing: missing });
+        }
+        var p = _updatePartnerVerification(req.partner.id, function(pp, vv) {
+            vv.status = 'submitted';
+            vv.submitted_at = new Date().toISOString();
+            vv.activity_proof = proof;
+            delete vv.reject_reason;
+            _verifHistory(vv, { action: 'submitted' });
+        });
+        if (!p) return res.status(404).json({ error: 'Prestataire introuvable' });
+        notifyUser(null, 'admin', 'partenaire-verification', 'Justificatifs à examiner',
+            ((p.prenom || '') + ' ' + (p.nom || '')).trim() + ' a envoyé ses justificatifs.', '/admin.html#open-partners');
+        res.json({ success: true, verification: PartnerVerif.partnerView(p) });
+    } catch (e) {
+        console.error('[VERIF] Envoi du dossier:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ── Admin : examen des dossiers ──────────────────────────────────────────────
+app.get('/api/admin/partners/:partnerId/verification', function(req, res) {
+    try {
+        var partners = loadPartners();
+        var p = partners.find(function(x) { return x.id === req.params.partnerId; });
+        if (!p) return res.status(404).json({ error: 'Prestataire introuvable' });
+        var v = p.verification || {};
+        var dup = v.siret ? partners.filter(function(o) {
+            return o.id !== p.id && ((o.verification && o.verification.siret === v.siret) || o.siret === v.siret);
+        }).map(function(o) { return { id: o.id, name: ((o.prenom || '') + ' ' + (o.nom || '')).trim(), email: o.email }; }) : [];
+        res.json({
+            success: true,
+            verification: PartnerVerif.partnerView(p),
+            siret_check: v.siret_check || null,
+            name_match: PartnerVerif.nameMatches(v.siret_check, { nom: p.nom, company_name: v.company_name }),
+            duplicates: dup,
+            contract_signed: !!p.contract_signed,
+            account_status: p.accountStatus,
+            country: p.country || '',
+            history: v.history || [],
+            reviewed_by: v.reviewed_by || null,
+            requested_at: p.verification_requested_at || null
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.get('/api/admin/partners/:partnerId/verification/document/:kind', function(req, res) {
+    var p = getPartnerById(req.params.partnerId);
+    var d = p && p.verification && p.verification.docs && p.verification.docs[req.params.kind];
+    if (!d || !d.id || !DOC_ID_RE.test(d.id)) return res.status(404).json({ error: 'Document indisponible' });
+    privateDocStore.info(d.id).then(function(inf) {
+        if (!inf || !inf.size || inf.owner !== p.id) return res.status(404).json({ error: 'Document indisponible' });
+        var ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/heic': '.heic', 'application/pdf': '.pdf' }[inf.contentType] || '';
+        res.set({
+            'Content-Type': inf.contentType,
+            'Content-Length': String(inf.size),
+            'Cache-Control': 'no-store, private',
+            'X-Content-Type-Options': 'nosniff',
+            'Content-Disposition': 'inline; filename="' + req.params.kind + '-' + p.id + ext + '"'
+        });
+        privateDocStore.openStream(d.id, inf, 0, inf.size - 1).on('error', function() { res.destroy(); }).pipe(res);
+    }).catch(function() { res.status(500).json({ error: 'Lecture impossible' }); });
+});
+
+app.post('/api/admin/partners/:partnerId/verification/approve', function(req, res) {
+    try {
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(x) { return x.id === req.params.partnerId; });
+        if (idx === -1) return res.status(404).json({ error: 'Prestataire introuvable' });
+        var p = partners[idx];
+        var v = p.verification || {};
+        if (v.status !== 'submitted') return res.status(409).json({ error: 'Aucun dossier en attente d’examen pour ce prestataire.', code: 'nothing_to_review' });
+        var activate = p.accountStatus === 'pending';
+        if (activate && !p.contract_signed) {
+            return res.status(409).json({ error: 'Ce prestataire n’a pas encore signé son contrat de partenariat : son compte ne peut pas être activé.', code: 'contract_not_signed' });
+        }
+        var level = PartnerVerif.levelFor(v);
+        if (req.body && req.body.level === 'identity') level = 'identity';
+        v.status = 'verified';
+        v.level = level;
+        v.verified_at = new Date().toISOString();
+        v.reviewed_by = (req.admin && req.admin.email) || 'admin';
+        delete v.reject_reason;
+        _verifHistory(v, { action: 'verified', by: v.reviewed_by, level: level });
+        // RGPD : les fichiers ne servent plus, seul le résultat est gardé.
+        _removeVerificationDocs(p, true);
+        p.verification = v;
+        if (activate) p.accountStatus = 'active';
+        p.updatedAt = new Date().toISOString();
+        savePartners(partners);
+        var levelLabel = level === 'business' ? '« Entreprise vérifiée »' : '« Identité vérifiée »';
+        if (activate) {
+            const { password, ...partnerSafe } = p;
+            emailService.sendPartnerAccountApprovedEmail(partnerSafe).catch(function(e) { console.error('[VERIF] Email approbation:', e && e.message); });
+            notifyUser(p.email, 'partner', 'compte-approuve', 'Votre compte est approuvé !', 'Vos justificatifs sont validés (badge ' + levelLabel + '). Vous pouvez désormais configurer vos prestations, elles seront visibles par les clients.', '/app.html#open-partner');
+        } else {
+            notifyUser(p.email, 'partner', 'compte-verifie', 'Compte vérifié', 'Vos justificatifs sont validés : le badge ' + levelLabel + ' apparaît désormais sur votre fiche.', '/app.html#partner:verification');
+        }
+        res.json({ success: true, activated: activate, level: level, verification: PartnerVerif.partnerView(p) });
+    } catch (e) {
+        console.error('[VERIF] Validation:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/api/admin/partners/:partnerId/verification/reject', function(req, res) {
+    try {
+        var reason = String((req.body && req.body.reason) || '').trim().slice(0, 500);
+        if (reason.length < 5) return res.status(400).json({ error: 'Indiquez au prestataire ce qu’il doit corriger.' });
+        var toRemove = Array.isArray(req.body.remove_docs) ? req.body.remove_docs.filter(function(k) { return PartnerVerif.DOC_KINDS.indexOf(k) !== -1; }) : [];
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(x) { return x.id === req.params.partnerId; });
+        if (idx === -1) return res.status(404).json({ error: 'Prestataire introuvable' });
+        var p = partners[idx];
+        var v = p.verification || (p.verification = { status: 'none', docs: {} });
+        v.docs = v.docs || {};
+        if (v.status !== 'submitted' && v.status !== 'verified') return res.status(409).json({ error: 'Aucun dossier envoyé par ce prestataire.', code: 'nothing_to_review' });
+        // Pièces à refaire : supprimées, le prestataire doit les renvoyer.
+        toRemove.forEach(function(k) { if (v.docs[k] && v.docs[k].id) privateDocStore.remove(v.docs[k].id).catch(function() {}); delete v.docs[k]; });
+        v.status = 'rejected';
+        v.reject_reason = reason;
+        v.reviewed_by = (req.admin && req.admin.email) || 'admin';
+        delete v.level;
+        _verifHistory(v, { action: 'rejected', by: v.reviewed_by, reason: reason });
+        p.updatedAt = new Date().toISOString();
+        savePartners(partners);
+        notifyUser(p.email, 'partner', 'verification-refusee', 'Justificatifs à compléter', reason, '/app.html#partner:verification', { jeremie: false });
+        emailService.sendPartnerVerificationRejectedEmail(p, reason).catch(function(e) { console.warn('[VERIF] e-mail refus:', e && e.message); });
+        res.json({ success: true, verification: PartnerVerif.partnerView(p) });
+    } catch (e) {
+        console.error('[VERIF] Refus:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ── Admin : demande de justificatifs aux prestataires DÉJÀ actifs (délai de 30 jours) ──
+// Une seule fois par prestataire (verification_deadline posé) ; jamais aux comptes déjà vérifiés
+// ou dont le dossier est en cours d'examen.
+function _verificationCampaignTargets(partners) {
+    return partners.filter(function(p) {
+        var st = p.verification && p.verification.status;
+        return p.accountStatus === 'active' && st !== 'verified' && st !== 'submitted' && !p.verification_deadline;
+    });
+}
+function _verificationDeadlineFromNow() {
+    return new Date(Date.now() + PartnerVerif.DEADLINE_DAYS * 24 * 3600 * 1000).toISOString();
+}
+app.get('/api/admin/partner-verification/campaign', function(req, res) {
+    try {
+        var partners = loadPartners();
+        var targets = _verificationCampaignTargets(partners);
+        var deadline = _verificationDeadlineFromNow();
+        var st = function(p) { return (p.verification && p.verification.status) || 'none'; };
+        res.json({
+            success: true,
+            targets: targets.length,
+            targets_france: targets.filter(function(p) { return PartnerVerif.usesSiret(p.country); }).length,
+            targets_abroad: targets.filter(function(p) { return !PartnerVerif.usesSiret(p.country); }).length,
+            already_requested: partners.filter(function(p) { return !!p.verification_deadline; }).length,
+            submitted: partners.filter(function(p) { return st(p) === 'submitted'; }).length,
+            verified: partners.filter(function(p) { return st(p) === 'verified'; }).length,
+            hidden: partners.filter(function(p) { return p.accountStatus === 'active' && PartnerVerif.isHiddenForVerification(p); }).length,
+            deadline: deadline,
+            push_preview: verificationRequestPush(deadline)
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+app.post('/api/admin/partner-verification/campaign', function(req, res) {
+    try {
+        if (!req.body || req.body.confirm !== true) return res.status(400).json({ error: 'Confirmation requise.' });
+        var partners = loadPartners();
+        var targets = _verificationCampaignTargets(partners);
+        var deadline = _verificationDeadlineFromNow();
+        var now = new Date().toISOString();
+        targets.forEach(function(p) { p.verification_deadline = deadline; p.verification_requested_at = now; });
+        if (targets.length) savePartners(partners);
+        // Envoi échelonné (une personne toutes les 2 s) pour ne pas saturer le serveur d'e-mails.
+        targets.forEach(function(p, i) {
+            setTimeout(function() { try { _sendVerificationRequest(p); } catch (e) { console.warn('[VERIF] envoi demande:', e && e.message); } }, i * 2000);
+        });
+        console.log('[VERIF] Demande de justificatifs envoyée à ' + targets.length + ' prestataire(s), date limite ' + deadline);
+        res.json({ success: true, sent: targets.length, deadline: deadline });
+    } catch (e) {
+        console.error('[VERIF] Campagne:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
 function mediaPublicUrl(req, id) {
     var base = process.env.PUBLIC_API_URL
         || (req ? (req.protocol + '://' + req.get('host')) : (process.env.RENDER_EXTERNAL_URL || 'https://fa-genesis-website.onrender.com'));
@@ -18175,7 +18575,7 @@ function buildPartnerContextForJeremie(message, audience, out) {
         // isActive !== false laissait passer des comptes en attente de validation ou désactivés.
         // Et, comme l'annuaire, uniquement ceux qui ont des offres pour la catégorie du client.
         var allPartners = scopePartnersForAudience(loadPartners().filter(function(p) {
-            return p.accountStatus === 'active' && p.partner_type;
+            return partnerIsListed(p) && p.partner_type;
         }), audience || null);
         if (!allPartners.length) return '';
 
@@ -18753,7 +19153,7 @@ app.get('/api/partners/directory', (req, res) => {
     try {
         const { category, q, maxPrice, city, sort, promo, audience } = req.query;
         const allPromos = loadPromotions();
-        let partners = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req));
+        let partners = scopePartnersForAudience(loadPartners().filter(partnerIsListed), clientAudienceOf(req));
 
         if (category) {
             partners = partners.filter(p => partnerListedInType(p, category));
@@ -18842,7 +19242,7 @@ app.get('/api/partners/directory', (req, res) => {
 app.get('/api/partners/:id/reviews', (req, res) => {
     try {
         const _viewerAudience = clientAudienceOf(req);
-        const partner = scopePartnerForAudience(loadPartners().find(p => p.id === req.params.id && p.accountStatus === 'active'), _viewerAudience);
+        const partner = scopePartnerForAudience(loadPartners().find(p => p.id === req.params.id && partnerIsListed(p)), _viewerAudience);
         if (!partner) {
             return res.status(404).json({ error: 'Partenaire non trouve' });
         }
@@ -18908,7 +19308,8 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 portfolio: activePortfolio,
                 // Catégorie du client connecté : seules ses prestations (et les promos) sont envoyées.
                 audienceScope: _viewerAudience,
-                verified: true,
+                verified: !!PartnerVerif.publicLevel(partner),
+                verification_level: PartnerVerif.publicLevel(partner),
                 cercleGenesis: cercleGenesis,
                 cercleDiscountPct: (cercleGenesis && cercleGenesis.current) ? CERCLE_ALLIANCE_DISCOUNT_PCT : 0
             },
@@ -18926,7 +19327,7 @@ app.get('/api/partners/top', (req, res) => {
         const { category, limit } = req.query;
         if (!category) return res.status(400).json({ error: 'category requis' });
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
-        const categoryPartners = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active' && partnerListedInType(p, category)), clientAudienceOf(req));
+        const categoryPartners = scopePartnersForAudience(loadPartners().filter(p => partnerIsListed(p) && partnerListedInType(p, category)), clientAudienceOf(req));
 
         const ranked = categoryPartners
             .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }))
@@ -18946,7 +19347,7 @@ app.get('/api/partners/featured', (req, res) => {
     try {
         const { limit, category } = req.query;
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
-        let activePartners = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req));
+        let activePartners = scopePartnersForAudience(loadPartners().filter(partnerIsListed), clientAudienceOf(req));
         if (category) activePartners = activePartners.filter(p => partnerListedInType(p, category));
 
         const ranked = activePartners
@@ -18993,6 +19394,9 @@ function partnerDirectoryShape(p, allPromos, matchedType) {
         rating: getPartnerRatingSummary(p.id),
         badge: badge,
         distinctions: _serializeDistinctions(activeDists),
+        // Badge « Identité vérifiée » / « Entreprise vérifiée » (justificatifs validés par FA GENESIS).
+        verified: !!PartnerVerif.publicLevel(p),
+        verification_level: PartnerVerif.publicLevel(p),
         profile_boost_active: !!(p.profile_boost_until && new Date(p.profile_boost_until) > new Date()),
         constellation: getConstellationTier(p),
         activePromo: ap ? { id: ap.id, title: publicText(ap.title || '') || 'Promotion', type: ap.type, value: ap.value, end_date: ap.end_date } : null
@@ -19004,7 +19408,7 @@ app.get('/api/partners/new', (req, res) => {
     try {
         const { limit, category } = req.query;
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
-        let pool = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req));
+        let pool = scopePartnersForAudience(loadPartners().filter(partnerIsListed), clientAudienceOf(req));
         if (category) pool = pool.filter(p => partnerListedInType(p, category));
         const sorted = pool
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
@@ -19062,7 +19466,7 @@ app.get('/api/partners/recommended', (req, res) => {
         }
         var preferredCategories = email ? getClientPreferredCategories(email) : [];
 
-        var ranked = scopePartnersForAudience(loadPartners().filter(p => p.accountStatus === 'active'), clientAudienceOf(req))
+        var ranked = scopePartnersForAudience(loadPartners().filter(partnerIsListed), clientAudienceOf(req))
             .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }));
 
         var result = [];
@@ -19110,7 +19514,7 @@ app.get('/api/partners/promo-services', (req, res) => {
         var results = [];
         var aud = clientAudienceOf(req);
         loadPartners()
-            .filter(function(p){ return p.accountStatus === 'active'; })
+            .filter(function(p){ return partnerIsListed(p); })
             .forEach(function(p){
                 var partnerName = ((p.prenom || '') + ' ' + (p.nom || '')).trim();
                 var rating = getPartnerRatingSummary(p.id);
@@ -19941,7 +20345,7 @@ app.post('/api/partner-requests', function(req, res) {
 
         var partner = getPartnerById(partnerId);
         if (!partner) return res.status(404).json({ error: 'Partenaire non trouvé' });
-        if (partner.accountStatus !== 'active') {
+        if (!partnerIsListed(partner)) {
             return res.status(400).json({ error: 'Ce partenaire n\'est pas disponible actuellement' });
         }
         var service = (partner.services || []).find(function(s) { return s.id === serviceId && s.active !== false; });
@@ -20425,7 +20829,7 @@ function findQuoteTransferCandidates(request, origin, clientUser, category, requ
     });
     var loc = String(request.location || '').toLowerCase();
     return loadPartners().filter(function(p) {
-        return p && p.id !== (origin && origin.id) && p.accountStatus === 'active' && !p.messagingBlocked && !busy[p.id]
+        return p && p.id !== (origin && origin.id) && partnerIsListed(p) && !p.messagingBlocked && !busy[p.id]
             && partnerListedInType(p, category)
             && (p.services || []).some(function(s) { return s && s.active !== false && serviceVisibleFor(s, aud); });
     }).map(function(p) {
@@ -21396,6 +21800,10 @@ app.post('/api/partner/profile/set-billing-info', authenticatePartner, function(
         var partners = loadPartners();
         var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
         if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        var _bv = partners[idx].verification;
+        if (_bv && _bv.siret && _bv.siret !== siret && _verifLocked(_bv)) {
+            return res.status(409).json({ error: 'Ce SIRET est différent de celui de votre dossier de vérification (' + _bv.siret + '). Pour en changer, contactez l’assistance.', code: 'siret_verified_mismatch' });
+        }
         partners[idx].siret = siret;
         partners[idx].billing_address = address;
         partners[idx].updatedAt = new Date().toISOString();
@@ -22919,6 +23327,30 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
         }
         const { prenom, nom, telephone, partner_type, company, accountStatus, secondary_types } = req.body;
         const wasActive = partners[index].accountStatus === 'active';
+        if (accountStatus && ['active', 'pending', 'deactivated'].indexOf(accountStatus) === -1) {
+            return res.status(400).json({ error: 'Statut inconnu' });
+        }
+        // Vérification des prestataires (2026-11-10) : un compte en attente ne devient visible
+        // qu'avec son contrat signé ET ses justificatifs validés (« Valider le dossier »). Un compte
+        // désactivé puis réactivé sans dossier validé reçoit un délai de 30 jours, comme les autres.
+        var _sendRequestAfter = false;
+        if (accountStatus === 'active' && !wasActive) {
+            var _vst = partners[index].verification && partners[index].verification.status;
+            if (!partners[index].contract_signed) {
+                return res.status(409).json({ error: 'Ce prestataire n’a pas encore signé son contrat de partenariat.', code: 'contract_not_signed' });
+            }
+            if (partners[index].accountStatus === 'pending' && _vst !== 'verified') {
+                return res.status(409).json({ error: 'Justificatifs non validés : ouvrez son dossier de vérification avant de l’approuver.', code: 'verification_required' });
+            }
+            if (_vst !== 'verified' && _vst !== 'submitted') {
+                var _dl = Date.parse(partners[index].verification_deadline || '');
+                if (isNaN(_dl) || _dl < Date.now()) {
+                    partners[index].verification_deadline = _verificationDeadlineFromNow();
+                    partners[index].verification_requested_at = new Date().toISOString();
+                    _sendRequestAfter = true;
+                }
+            }
+        }
         if (prenom) partners[index].prenom = prenom;
         if (nom) partners[index].nom = nom;
         if (telephone !== undefined) partners[index].telephone = telephone;
@@ -22945,6 +23377,7 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
         const { password, ...partnerSafe } = partners[index];
         // Approbation (pending/deactivated -> active) : prevenir le partenaire qu'il peut
         // desormais configurer ses prestations et qu'il devient visible des clients.
+        if (_sendRequestAfter) _sendVerificationRequest(partnerSafe);
         if (accountStatus === 'active' && !wasActive) {
             emailService.sendPartnerAccountApprovedEmail(partnerSafe).catch(function(e) {
                 console.error('[ADMIN] Erreur envoi email approbation partenaire:', e);
@@ -23039,6 +23472,7 @@ app.delete('/api/admin/partners/:partnerId', (req, res) => {
             return res.status(404).json({ error: 'Partenaire non trouve' });
         }
         const removed = partners.splice(index, 1)[0];
+        _removeVerificationDocs(removed, false);
         savePartners(partners);
         const assignments = loadPartnerAssignments();
         let modified = false;
@@ -25521,7 +25955,7 @@ function _promoShortLabel(pr) {
 }
 // Prestataire présentable à une catégorie de client (null = visiteur : toutes les offres).
 function _discoveryPartnerFor(p, aud) {
-    if (!p || p.accountStatus !== 'active') return null;
+    if (!partnerIsListed(p)) return null;
     var scoped = scopePartnerForAudience(p, aud);
     var has = (scoped.services || []).some(function(s) { return s && s.active !== false; });
     return has ? scoped : null;
@@ -25610,7 +26044,7 @@ function runDiscoveryPushes(opts) {
     opts = opts || {};
     var now = Date.now();
     var st = loadDiscoveryState();
-    var partners = loadPartners().filter(function(p) { return p.accountStatus === 'active'; });
+    var partners = loadPartners().filter(partnerIsListed);
     var partnersById = {};
     loadPartners().forEach(function(p) { partnersById[p.id] = p; });
     // Date à laquelle chaque prestataire est devenu présentable (actif + au moins une prestation).
