@@ -16208,6 +16208,48 @@ function _serverMemoryLimit() {
     }
     return require('os').totalmem();
 }
+// Mémoire réellement OCCUPÉE dans le conteneur. cgroup v2 (memory.current) ou v1
+// (memory.usage_in_bytes), moins le cache de fichiers inactif que le système libère à la demande
+// (même calcul que Render/Docker pour la « working set ») ; à défaut, le processus Node seul.
+function _readCgroupNumber(file) {
+    try { if (fs.existsSync(file)) { var v = fs.readFileSync(file, 'utf8').trim(); if (/^\d+$/.test(v)) return +v; } } catch (e) {}
+    return null;
+}
+function _serverMemoryUsed() {
+    var cur = _readCgroupNumber('/sys/fs/cgroup/memory.current');
+    var statFile = '/sys/fs/cgroup/memory.stat', key = 'inactive_file';
+    if (cur == null) { cur = _readCgroupNumber('/sys/fs/cgroup/memory/memory.usage_in_bytes'); statFile = '/sys/fs/cgroup/memory/memory.stat'; key = 'total_inactive_file'; }
+    if (cur == null) return process.memoryUsage().rss;
+    try {
+        var m = new RegExp('^' + key + ' (\\d+)$', 'm').exec(fs.readFileSync(statFile, 'utf8'));
+        if (m && +m[1] < cur) cur -= +m[1];
+    } catch (e) {}
+    return Math.max(cur, process.memoryUsage().rss);
+}
+function _memMo(b) { return Math.round(b / 1048576) + ' Mo'; }
+
+// Garde-fou mémoire de la compression (2026-11-10, après l'alerte Render « exceeded its memory
+// limit » du 9/11) : une compression 1080p consomme ~120 Mo (mesuré). Elle ne démarre que s'il
+// reste au moins VIDEO_TRANSCODE_MIN_FREE_MB (300 Mo par défaut) de libre ; sinon elle attend
+// 2 min et réessaie, 15 fois au plus. Passé ce délai, la vidéo est laissée telle quelle SANS être
+// marquée « tentée » : la reprise du prochain démarrage la reprendra. La compression ne peut donc
+// plus faire tomber l'API ; au pire, une vidéo est compressée plus tard.
+var VIDEO_TRANSCODE_MIN_FREE = (parseInt(process.env.VIDEO_TRANSCODE_MIN_FREE_MB, 10) || 300) * 1048576;
+var VIDEO_MEM_RETRY_MS = 2 * 60 * 1000, VIDEO_MEM_MAX_WAITS = 15, _videoMemTimer = null;
+function _videoMemoryFree() { return _serverMemoryLimit() - _serverMemoryUsed(); }
+
+// Relevé mémoire toutes les 5 min dans les journaux Render quand le serveur approche de sa
+// limite (> 80 %) : pour savoir, la prochaine fois, qui consommait au moment d'une alerte.
+setInterval(function() {
+    try {
+        var lim = _serverMemoryLimit(), used = _serverMemoryUsed();
+        if (used > lim * 0.8) {
+            var mu = process.memoryUsage();
+            console.warn('[MEMOIRE] ' + _memMo(used) + ' / ' + _memMo(lim) + ' (Node : rss ' + _memMo(mu.rss) + ', tas ' + _memMo(mu.heapUsed) + ', buffers ' + _memMo(mu.external + (mu.arrayBuffers || 0)) + ') — compressions en attente : ' + _videoQueue.length + (_videoQueueBusy ? ', 1 en cours' : ''));
+        }
+    } catch (e) {}
+}, 5 * 60 * 1000).unref();
+
 // Résolution / codec de la source, sans la décoder (peu de mémoire).
 function _probeVideo(src) {
     return new Promise(function(resolve) {
@@ -16232,9 +16274,29 @@ function queueVideoTranscode(id, srcPath) {
     return true;
 }
 function _runVideoQueue() {
-    if (_videoQueueBusy || !_videoQueue.length) return;
+    if (_videoQueueBusy || !_videoQueue.length || _videoMemTimer) return;
+    var free = _videoMemoryFree();
+    if (free < VIDEO_TRANSCODE_MIN_FREE) {
+        var waiting = _videoQueue[0];
+        waiting.waits = (waiting.waits || 0) + 1;
+        if (waiting.waits > VIDEO_MEM_MAX_WAITS) {
+            // Abandon pour cette fois, sans marquer de tentative : reprise au prochain démarrage.
+            _videoQueue.shift();
+            delete _videoQueued[waiting.id];
+            if (waiting.src) fs.unlink(waiting.src, function() {});
+            console.warn('[PORTFOLIO-VIDEO] ' + waiting.id + ' : mémoire insuffisante depuis 30 min (' + _memMo(free) + ' libres), vidéo gardée telle quelle — nouvel essai au prochain démarrage');
+        } else {
+            console.log('[PORTFOLIO-VIDEO] ' + waiting.id + ' : compression reportée de 2 min, seulement ' + _memMo(free) + ' libres sur ' + _memMo(_serverMemoryLimit()) + ' (essai ' + waiting.waits + '/' + VIDEO_MEM_MAX_WAITS + ')');
+        }
+        if (_videoQueue.length) {
+            _videoMemTimer = setTimeout(function() { _videoMemTimer = null; _runVideoQueue(); }, VIDEO_MEM_RETRY_MS);
+            if (_videoMemTimer.unref) _videoMemTimer.unref();
+        }
+        return;
+    }
     _videoQueueBusy = true;
     var job = _videoQueue.shift();
+    console.log('[PORTFOLIO-VIDEO] ' + job.id + ' : compression lancée (' + _memMo(free) + ' libres)');
     transcodePortfolioVideo(job).then(function() {
         delete _videoQueued[job.id];
         _videoQueueBusy = false;
