@@ -687,6 +687,20 @@
         .modal-content [style*="background: white"] { background: #181818 !important; }
         .modal-content p { color: #ccc !important; }
 
+        /* 13bis ── Exception générale (2026-11-10) : la règle 1 ne doit éclaircir que le texte
+           noir posé sur le fond SOMBRE du thème. Un texte noir posé sur un fond coloré explicite
+           (pastille « Vérifié » verte, « Sans justificatif » grise, bouton « Valider »…) devenait
+           gris clair sur fond clair, illisible. Les fonds clairs que le thème repeint en sombre
+           (white, #f8f9fa, #eee) et les fonds transparents restent exclus. */
+        #adminPanel [style*="color:black"][style*="background:"]:not([style*="background:transparent"]):not([style*="background:none"]):not([style*="background:white"]):not([style*="background:#f8f9fa"]):not([style*="background:#eee"]),
+        #adminPanel [style*="color:#000"][style*="background:"]:not([style*="background:transparent"]):not([style*="background:none"]):not([style*="background:white"]):not([style*="background:#f8f9fa"]):not([style*="background:#eee"]),
+        .modal-content [style*="color:black"][style*="background:"]:not([style*="background:transparent"]):not([style*="background:none"]):not([style*="background:white"]),
+        .modal-content [style*="color:#000"][style*="background:"]:not([style*="background:transparent"]):not([style*="background:none"]):not([style*="background:white"]),
+        #adminPanel .text-black[class*="bg-[#"],
+        #adminPanel .text-black.bg-gray-400,
+        .modal-content .text-black[class*="bg-[#"] { color: #0a0a0a !important; }
+        .risk-pill { display: inline-block; background: rgba(245,158,11,.12); color: #fbbf24; border: 1px solid rgba(245,158,11,.5); padding: 1px 8px; font-size: 10px; font-weight: 900; margin-left: 4px; cursor: help; vertical-align: middle; }
+
         /* 13 ── Exception finale : jaune toujours visible et lisible */
         #adminPanel .neo-btn-yellow,
         #adminPanel .neo-btn-yellow *,
@@ -1069,6 +1083,7 @@
                         <button onclick="filterMessages('read')" class="border-4 border-[#4dabf7] bg-[#4dabf7] text-black px-4 py-2 text-xs font-black">LUS</button>
                         <button onclick="filterMessages('replied')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-xs font-black">RÉPONDUS</button>
                         <button onclick="filterMessages('archived')" class="border-4 border-gray-400 bg-gray-400 text-black px-4 py-2 text-xs font-black">ARCHIVÉS</button>
+                        <button onclick="filterMessages('spam')" class="px-4 py-2 text-xs font-black" style="background:transparent;border:2px solid #f59e0b;color:#f59e0b;" title="Démarchage, liens douteux, adresses jetables : classés automatiquement, aucun e-mail envoyé"><i class="fas fa-shield-halved mr-1"></i>INDÉSIRABLES <span id="spamMsgCount"></span></button>
                     </div>
                 </div>
 
@@ -2707,8 +2722,9 @@
                 html += '<div class="client-row" onclick="openClientModal(\'' + client.email + '\')">' +
                     '<div class="flex justify-between items-center flex-wrap gap-4">' +
                         '<div class="flex-1 min-w-[250px]">' +
-                            '<div class="font-black text-lg">' + (client.prenom || '') + ' ' + (client.nom || '') + (acctPill ? ' ' + acctPill : '') + '</div>' +
-                            '<div class="text-sm font-bold opacity-70">' + client.email + '</div>' +
+                            '<div class="font-black text-lg">' + _escHtml((client.prenom || '') + ' ' + (client.nom || '')) + (acctPill ? ' ' + acctPill : '') + riskPillHtml(client) + '</div>' +
+                            '<div class="text-sm font-bold opacity-70">' + _escHtml(client.email) + '</div>' +
+                            ((client.risk_flags && client.risk_flags.length) ? '<div class="text-xs font-bold mt-1" style="color:#fbbf24;">' + _escHtml(client.risk_flags.join(' · ')) + '</div>' : '') +
                             '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + ((client.createdAt || client.created_at) ? new Date(client.createdAt || client.created_at).toLocaleDateString('fr-FR') : 'N/A') + '</div>' +
                         '</div>' +
                         '<div>' +
@@ -3316,12 +3332,12 @@
             if (event) event.stopPropagation();
             if (checked) selectedMsgIds.add(id);
             else selectedMsgIds.delete(id);
-            var filtered = currentFilter === 'all' ? allMessages : allMessages.filter(function(m) { return m.status === currentFilter; });
+            var filtered = _messagesForFilter();
             updateMsgBulkBar(filtered);
         }
 
         function toggleAllMessages(checked) {
-            var filtered = currentFilter === 'all' ? allMessages : allMessages.filter(function(m) { return m.status === currentFilter; });
+            var filtered = _messagesForFilter();
             filtered.forEach(function(m) {
                 if (checked) selectedMsgIds.add(m.id);
                 else selectedMsgIds.delete(m.id);
@@ -3388,7 +3404,7 @@
 
             // Stats
             var unread = allMessages.filter(function(m) { return m.status === 'unread'; }).length;
-            var total = allMessages.length;
+            var total = allMessages.filter(function(m) { return m.status !== 'spam'; }).length;
             document.getElementById('messagesStats').innerHTML =
                 '<span class="text-[#ff6b6b] font-black text-2xl">' + unread + '</span>' +
                 '<span class="text-sm font-bold opacity-70"> non lu' + (unread > 1 ? 's' : '') + ' / ' + total + ' total</span>';
@@ -3411,11 +3427,17 @@
             renderMessages();
         }
 
+        // « Tous » = tout sauf les indésirables (rangés à part, onglet « Indésirables »).
+        function _messagesForFilter() {
+            return currentFilter === 'all'
+                ? allMessages.filter(function(m) { return m.status !== 'spam'; })
+                : allMessages.filter(function(m) { return m.status === currentFilter; });
+        }
+
         function renderMessages() {
-            var filtered = allMessages;
-            if (currentFilter !== 'all') {
-                filtered = allMessages.filter(function(m) { return m.status === currentFilter; });
-            }
+            var filtered = _messagesForFilter();
+            var _sc = document.getElementById('spamMsgCount');
+            if (_sc) { var _ns = allMessages.filter(function(m) { return m.status === 'spam'; }).length; _sc.textContent = _ns ? '(' + _ns + ')' : ''; }
 
             if (filtered.length === 0) {
                 document.getElementById('messagesList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucun message</p>';
@@ -3428,8 +3450,8 @@
                 var date = new Date(msg.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 var isUnread = msg.status === 'unread';
                 var isChecked = selectedMsgIds.has(msg.id);
-                var statusColors = { unread: '#ff6b6b', read: '#4dabf7', replied: '#51cf66', archived: '#999' };
-                var statusLabels = { unread: 'NON LU', read: 'LU', replied: 'RÉPONDU', archived: 'ARCHIVÉ' };
+                var statusColors = { unread: '#ff6b6b', read: '#4dabf7', replied: '#51cf66', archived: '#999', spam: '#f59e0b' };
+                var statusLabels = { unread: 'NON LU', read: 'LU', replied: 'RÉPONDU', archived: 'ARCHIVÉ', spam: 'INDÉSIRABLE' };
                 var subjectLabels = {
                     information: "DEMANDE D'INFO",
                     devis: 'DEVIS',
@@ -3439,7 +3461,7 @@
                     partenariat: 'PARTENARIAT',
                     autre: 'AUTRE'
                 };
-                var subjectLabel = subjectLabels[msg.subject] || msg.subject;
+                var subjectLabel = subjectLabels[msg.subject] || _escHtml(msg.subject);
 
                 html += '<div class="admin-card neo-shadow mb-4" style="' + (isUnread ? 'border-left:6px solid #ff6b6b;' : '') + (isChecked ? 'outline:3px solid #FFD700;' : '') + '">' +
                     '<div class="flex items-start gap-4">' +
@@ -3449,13 +3471,13 @@
                         '<div class="flex-1" style="cursor:pointer;" onclick="openMessage(\'' + msg.id + '\')">' +
                             '<div class="flex justify-between items-start flex-wrap gap-4">' +
                                 '<div class="flex-1 min-w-[250px]">' +
-                                    '<div class="font-black text-lg' + (isUnread ? ' text-[var(--genesis-yellow)]' : '') + '">' + msg.name + '</div>' +
-                                    '<div class="text-sm font-bold opacity-70">' + msg.email + '</div>' +
-                                    (msg.profil ? '<div class="text-xs font-bold opacity-50 mt-1">Profil: ' + msg.profil.toUpperCase() + '</div>' : '') +
+                                    '<div class="font-black text-lg' + (isUnread ? ' text-[var(--genesis-yellow)]' : '') + '">' + _escHtml(msg.name) + '</div>' +
+                                    '<div class="text-sm font-bold opacity-70" style="word-break:break-all;">' + _escHtml(msg.email) + '</div>' +
+                                    (msg.profil ? '<div class="text-xs font-bold opacity-50 mt-1">Profil: ' + _escHtml(msg.profil.toUpperCase()) + '</div>' : '') +
                                     '<div class="mt-2"><span style="background:#FFD700;color:black;padding:2px 8px;border:2px solid black;font-size:11px;font-weight:900;">' + subjectLabel + '</span></div>' +
                                 '</div>' +
                                 '<div class="flex-1 min-w-[200px]">' +
-                                    '<p class="text-sm font-bold opacity-80" style="max-height:40px;overflow:hidden;">' + msg.message.substring(0, 100) + (msg.message.length > 100 ? '...' : '') + '</p>' +
+                                    '<p class="text-sm font-bold opacity-80" style="max-height:40px;overflow:hidden;">' + _escHtml(String(msg.message || '').substring(0, 100)) + (String(msg.message || '').length > 100 ? '...' : '') + '</p>' +
                                 '</div>' +
                                 '<div class="text-right">' +
                                     '<div style="background:' + (statusColors[msg.status] || '#999') + ';color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;">' + (statusLabels[msg.status] || msg.status) + '</div>' +
@@ -3481,20 +3503,30 @@
             } catch (e) {}
 
             var date = new Date(msg.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            // Le formulaire de contact est PUBLIC : tout champ est échappé avant affichage (un e-mail
+            // piégé pouvait exécuter du code dans la session admin).
+            var _e = _escHtml;
+            var _spamBox = msg.status === 'spam'
+                ? '<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.45);color:#fca5a5;padding:12px 16px;margin:0 0 16px;font-size:13px;font-weight:700;border-radius:8px;">' +
+                    '<i class="fas fa-shield-halved mr-2"></i>Classé indésirable automatiquement' + (msg.spam_reasons && msg.spam_reasons.length ? ' : ' + _e(msg.spam_reasons.join(' · ')) : '') +
+                    '. Aucun e-mail n\u2019a été envoyé à cette adresse. Ne cliquez pas sur les liens qu\u2019il contient.</div>'
+                : '';
 
             var modalHTML =
                 '<h2 class="text-2xl font-black italic uppercase mb-6 text-[var(--genesis-yellow)]">' +
                     '<i class="fas fa-envelope-open mr-2"></i>MESSAGE' +
                 '</h2>' +
+                _spamBox +
                 '<div class="grid md:grid-cols-3 gap-4 mb-6">' +
-                    '<div><span class="text-sm font-bold opacity-60">DE :</span><br><span class="font-black text-lg">' + msg.name + '</span></div>' +
-                    '<div><span class="text-sm font-bold opacity-60">EMAIL :</span><br><span class="font-black">' + msg.email + '</span></div>' +
-                    '<div><span class="text-sm font-bold opacity-60">PROFIL :</span><br><span class="font-black">' + (msg.profil ? msg.profil.charAt(0).toUpperCase() + msg.profil.slice(1) : 'Non renseigné') + '</span></div>' +
-                    '<div><span class="text-sm font-bold opacity-60">OBJET :</span><br><span class="font-black">' + msg.subject + '</span></div>' +
+                    '<div><span class="text-sm font-bold opacity-60">DE :</span><br><span class="font-black text-lg">' + _e(msg.name) + '</span></div>' +
+                    '<div><span class="text-sm font-bold opacity-60">EMAIL :</span><br><span class="font-black" style="word-break:break-all;">' + _e(msg.email) + '</span></div>' +
+                    '<div><span class="text-sm font-bold opacity-60">PROFIL :</span><br><span class="font-black">' + (msg.profil ? _e(msg.profil.charAt(0).toUpperCase() + msg.profil.slice(1)) + ' <span style="font-size:11px;font-weight:700;color:#888;">(déclaré dans le formulaire, pas un compte)</span>' : 'Non renseigné') + '</span></div>' +
+                    '<div><span class="text-sm font-bold opacity-60">OBJET :</span><br><span class="font-black">' + _e(msg.subject) + '</span></div>' +
                     '<div><span class="text-sm font-bold opacity-60">DATE :</span><br><span class="font-black">' + date + '</span></div>' +
                 '</div>' +
-                '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:20px;margin:20px 0;">' +
-                    '<p style="white-space:pre-wrap;font-size:15px;line-height:1.6;">' + msg.message + '</p>' +
+                // Fond sombre teinté (avant : crème #FFF9E6, sur lequel le thème sombre posait un texte gris clair illisible)
+                '<div style="background:rgba(255,215,0,.06);border-left:4px solid #FFD700;padding:20px;margin:20px 0;">' +
+                    '<p style="white-space:pre-wrap;font-size:15px;line-height:1.6;color:#e8e8e8;word-break:break-word;">' + _e(msg.message) + '</p>' +
                 '</div>' +
                 '<div id="replyFormContainer" style="display:none;margin:20px 0;">' +
                     '<label class="text-sm font-black uppercase opacity-60 block mb-2"><i class="fas fa-pen mr-1"></i>Votre r\u00e9ponse :</label>' +
@@ -3503,7 +3535,7 @@
                         '<button onclick="sendReply(\'' + msg.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm" id="sendReplyBtn">' +
                             '<i class="fas fa-paper-plane mr-2"></i>ENVOYER' +
                         '</button>' +
-                        '<button onclick="document.getElementById(\'replyFormContainer\').style.display=\'none\';document.getElementById(\'replyToggleBtn\').style.display=\'inline-block\';" class="border-4 border-black bg-gray-300 text-black px-6 py-3 text-sm font-black">' +
+                        '<button onclick="document.getElementById(\'replyFormContainer\').style.display=\'none\';document.getElementById(\'replyToggleBtn\').style.display=\'inline-block\';" class="px-6 py-3 text-sm font-black" style="background:#262626;color:#e0e0e0;border:1px solid #444;">' +
                             '<i class="fas fa-times mr-2"></i>ANNULER' +
                         '</button>' +
                     '</div>' +
@@ -3512,9 +3544,13 @@
                     '<button id="replyToggleBtn" onclick="document.getElementById(\'replyFormContainer\').style.display=\'block\';this.style.display=\'none\';document.getElementById(\'replyTextarea\').focus();" class="neo-btn-yellow px-6 py-3 text-sm">' +
                         '<i class="fas fa-reply mr-2"></i>RÉPONDRE PAR EMAIL' +
                     '</button>' +
-                    '<button onclick="updateMessageStatus(\'' + msg.id + '\', \'archived\');closeClientModal()" class="border-4 border-black bg-gray-300 text-black px-6 py-3 text-sm font-black">' +
-                        '<i class="fas fa-archive mr-2"></i>ARCHIVER' +
-                    '</button>' +
+                    (msg.status === 'spam'
+                        ? '<button onclick="updateMessageStatus(\'' + msg.id + '\', \'read\');closeClientModal()" class="px-6 py-3 text-sm font-black" style="background:#262626;color:#e0e0e0;border:1px solid #444;">' +
+                            '<i class="fas fa-check mr-2"></i>CE N\u2019EST PAS INDÉSIRABLE' +
+                          '</button>'
+                        : '<button onclick="updateMessageStatus(\'' + msg.id + '\', \'archived\');closeClientModal()" class="px-6 py-3 text-sm font-black" style="background:#262626;color:#e0e0e0;border:1px solid #444;">' +
+                            '<i class="fas fa-archive mr-2"></i>ARCHIVER' +
+                          '</button>') +
                     '<button onclick="deleteMessage(\'' + msg.id + '\')" class="border-4 border-black bg-[#ff6b6b] text-black px-6 py-3 text-sm font-black">' +
                         '<i class="fas fa-trash mr-2"></i>SUPPRIMER' +
                     '</button>' +
@@ -4128,6 +4164,13 @@
             if (t === 'other' && p && p.partner_type !== 'other' && p.secondary_type_other) return p.secondary_type_other;
             return PARTNER_TYPE_LABELS[t] || t || 'N/A';
         }
+        // Signaux anti-abus calculés par le serveur (risk_flags) : adresse jetable, domaine peu
+        // fiable, téléphone partagé avec d'autres comptes. Informatif : l'admin décide.
+        function riskPillHtml(acc) {
+            var f = (acc && Array.isArray(acc.risk_flags)) ? acc.risk_flags : [];
+            if (!f.length) return '';
+            return ' <span class="risk-pill" title="' + _studEsc(f.join('\n')) + '"><i class="fas fa-triangle-exclamation" style="margin-right:4px;"></i>À VÉRIFIER</span>';
+        }
         function partnerSecondaryBadgesHtml(p) {
             return partnerSecondaryTypes(p).map(function(t) {
                 // Contour doré (métier principal = badge doré plein). Pas de « color:black » : la règle
@@ -4400,8 +4443,9 @@
                     html += '<div class="client-row" onclick="openPartnerModal(\'' + safeId + '\')">' +
                         '<div class="flex justify-between items-center flex-wrap gap-4">' +
                             '<div class="flex-1 min-w-[200px]">' +
-                                '<div class="font-black text-lg">' + (partner.prenom || '') + ' ' + (partner.nom || '') + '</div>' +
-                                '<div class="text-sm font-bold opacity-70">' + (partner.email || '') + '</div>' +
+                                '<div class="font-black text-lg">' + _escHtml((partner.prenom || '') + ' ' + (partner.nom || '')) + riskPillHtml(partner) + '</div>' +
+                                '<div class="text-sm font-bold opacity-70">' + _escHtml(partner.email || '') + '</div>' +
+                                ((partner.risk_flags && partner.risk_flags.length) ? '<div class="text-xs font-bold mt-1" style="color:#fbbf24;">' + _escHtml(partner.risk_flags.join(' · ')) + '</div>' : '') +
                                 '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + inscritLe + (partner.telephone ? ' • ' + partner.telephone : '') + '</div>' +
                             '</div>' +
                             '<div>' +

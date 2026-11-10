@@ -23,6 +23,8 @@ const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInst
 const contractService = require('./contracts');
 const invoiceService = require('./invoices');
 const emailService = require('./email-service');
+// Anti-abus (e-mail strict, adresses jetables, domaines inexistants, tri des messages de contact)
+const antiAbuse = require('./anti-abuse');
 const aiService = require('./services/aiService');
 const mps = require('./services/marketplace-payment-service');
 const scp = require('./services/stripe-connect-provider');
@@ -1933,8 +1935,16 @@ function sanitizeUserText(v) {
         .replace(/'/g, '’')
         .replace(/&(?=#|apos|quot|lt|gt|amp)/gi, '＆');
 }
+// Un champ e-mail n'est jamais du texte libre : chevrons, guillemets, accents graves, barres
+// obliques inverses et espaces y sont retirés (FAILLE CORRIGÉE 2026-11-10 : le champ e-mail
+// échappait à la neutralisation et « <svg onload=…>@x.io » s'exécutait dans l'espace admin).
+var _EMAIL_KEY_RE = /e-?mail$/i;
+function sanitizeEmailValue(v) {
+    return (typeof v === 'string' && v.indexOf('@') !== -1) ? v.replace(/[<>"`\\\s]/g, '') : v;
+}
 function sanitizeBody(node, key, depth) {
     if (depth > 8 || node == null) return node;
+    if (key && typeof node === 'string' && _EMAIL_KEY_RE.test(key)) return sanitizeEmailValue(node);
     if (key && _SANITIZE_SKIP_KEYS.test(key)) return node;
     if (typeof node === 'string') return sanitizeUserText(node);
     if (Array.isArray(node)) { for (var i = 0; i < node.length; i++) node[i] = sanitizeBody(node[i], key, depth + 1); return node; }
@@ -2005,7 +2015,30 @@ function sanitizeStoredUserText() {
         }
     });
     if (fixed > mark) savePartnerRequests(requests);
+    mark = fixed;
+    var msgs = loadMessages();
+    msgs.forEach(function(m) {
+        if (!m) return;
+        if (typeof m.email === 'string') { var ev = sanitizeEmailValue(m.email); if (ev !== m.email) { m.email = ev; fixed++; } }
+    });
+    if (fixed > mark) saveMessages(msgs);
     if (fixed) console.log('[SANITIZE] ' + fixed + ' texte(s) enregistré(s) neutralisé(s).');
+}
+
+// Messages de contact reçus AVANT le tri anti-démarchage : notés une fois (spam_checked), les
+// indésirables passent en statut « spam » (toujours visibles dans l'admin, jamais supprimés).
+// Les messages déjà répondus ou archivés ne sont pas touchés.
+function classifyStoredContactMessages() {
+    var msgs = loadMessages(), moved = 0, changed = false;
+    msgs.forEach(function(m) {
+        if (!m || m.spam_checked) return;
+        m.spam_checked = true; changed = true;
+        if (m.status !== 'unread' && m.status !== 'read') return;
+        var r = antiAbuse.scoreContactMessage(m);
+        if (r.spam) { m.status = 'spam'; m.spam_reasons = r.reasons; m.spam_score = r.score; moved++; }
+    });
+    if (changed) saveMessages(msgs);
+    if (moved) console.log('[ANTI-ABUS] ' + moved + ' message(s) de contact existant(s) classé(s) indésirable(s).');
 }
 
 app.use(function(req, res, next) {
@@ -10443,12 +10476,39 @@ app.post('/api/orders/:orderId/accept-reschedule', function(req, res) {
  * GET /api/admin/users
  * Recuperer tous les utilisateurs inscrits (Admin)
  */
+// Signaux « à vérifier » affichés dans l'admin (2026-11-10) — calculés à chaque lecture, donc
+// valables aussi pour les comptes créés avant l'anti-abus. Jamais bloquants : l'admin décide.
+//  - adresse jetable / domaine peu fiable ;
+//  - même numéro de téléphone que d'autres comptes (multi-comptes : remise de bienvenue
+//    réutilisée, faux avis, prestataire qui se commande lui-même…).
+function _phoneKey(v) {
+    var d = String(v || '').replace(/\D/g, '');
+    return d.length >= 8 ? d.slice(-9) : '';
+}
+function buildAccountRiskIndex(users, partners) {
+    var byPhone = {};
+    (users || []).forEach(function(u) { var k = _phoneKey(u && u.telephone); if (k) (byPhone[k] = byPhone[k] || []).push('client ' + (u.email || u.id)); });
+    (partners || []).forEach(function(p) { var k = _phoneKey(p && p.telephone); if (k) (byPhone[k] = byPhone[k] || []).push('prestataire ' + (p.email || p.id)); });
+    return function riskFlags(acc, selfLabel) {
+        var flags = (acc && Array.isArray(acc.signup_flags)) ? acc.signup_flags.slice() : [];
+        var dom = antiAbuse.emailDomain(acc && acc.email);
+        if (antiAbuse.isDisposableDomain(dom)) flags.push('Adresse e-mail jetable (' + dom + ')');
+        else if (antiAbuse.isSuspiciousDomain(dom) && !flags.some(function(f) { return f.indexOf(dom) !== -1; })) flags.push('Adresse e-mail sur un domaine peu fiable (' + dom + ')');
+        var k = _phoneKey(acc && acc.telephone);
+        var others = k ? (byPhone[k] || []).filter(function(x) { return x !== selfLabel; }) : [];
+        if (others.length) flags.push('Même téléphone que ' + others.length + ' autre' + (others.length > 1 ? 's comptes' : ' compte') + ' : ' + others.slice(0, 3).join(', ') + (others.length > 3 ? '…' : ''));
+        return flags;
+    };
+}
+
 app.get('/api/admin/users', function(req, res) {
     try {
         var users = loadUsers();
+        var riskFlags = buildAccountRiskIndex(users, loadPartners());
         var safeUsers = users.map(function(u) {
             var rest = Object.assign({}, u);
             delete rest.password;
+            rest.risk_flags = riskFlags(u, 'client ' + (u.email || u.id));
             var completedOrders = getClientCompletedOrders(u.email);
             rest.genesisPoints = getClientGenesisPoints(u, completedOrders);
             return rest;
@@ -11016,9 +11076,8 @@ app.post('/api/contact', async (req, res) => {
             });
         }
 
-        // Validation email basique
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        // Format d'e-mail strict (voir anti-abuse.js)
+        if (!antiAbuse.isStrictEmail(email)) {
             return res.status(400).json({ error: 'Format d\'email invalide' });
         }
 
@@ -11052,6 +11111,11 @@ app.post('/api/contact', async (req, res) => {
             }
         }
 
+        // Tri anti-démarchage / arnaque : le message est gardé (statut « spam », visible dans
+        // l'admin) mais aucun e-mail n'est envoyé — ni accusé de réception (sinon le formulaire
+        // sert à envoyer nos e-mails à n'importe quelle adresse), ni alerte admin.
+        const spamCheck = antiAbuse.scoreContactMessage({ email: email, subject: subject, message: message });
+
         // Creer le message
         const newMessage = {
             id: 'MSG-' + uuidv4().split('-')[0].toUpperCase(),
@@ -11061,7 +11125,10 @@ app.post('/api/contact', async (req, res) => {
             profil: profil ? profil.trim() : null,
             subject: subject.trim(),
             message: message.trim(),
-            status: 'unread',
+            status: spamCheck.spam ? 'spam' : 'unread',
+            spam_checked: true,
+            spam_score: spamCheck.score,
+            spam_reasons: spamCheck.reasons,
             quote_id: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -11072,7 +11139,12 @@ app.post('/api/contact', async (req, res) => {
         messages.push(newMessage);
         saveMessages(messages);
 
-        console.log('[CONTACT] Nouveau message: ' + newMessage.id + ' de ' + name + ' <' + email + '>');
+        console.log('[CONTACT] Nouveau message: ' + newMessage.id + ' de ' + name + ' <' + email + '>' + (spamCheck.spam ? ' — INDÉSIRABLE (' + spamCheck.reasons.join(', ') + ')' : ''));
+
+        // Indésirable : même réponse qu'un envoi normal (ne pas renseigner les robots), sans e-mail.
+        if (spamCheck.spam) {
+            return res.json({ success: true, messageId: newMessage.id, message: 'Votre message a bien ete recu.' });
+        }
 
         // Envoyer les emails en parallele (sans bloquer la reponse)
         const emailPromises = [];
@@ -11155,6 +11227,7 @@ app.get('/api/admin/messages/stats', function(req, res) {
             read: messages.filter(function(m) { return m.status === 'read'; }).length,
             replied: messages.filter(function(m) { return m.status === 'replied'; }).length,
             archived: messages.filter(function(m) { return m.status === 'archived'; }).length,
+            spam: messages.filter(function(m) { return m.status === 'spam'; }).length,
             today: messages.filter(function(m) { return new Date(m.created_at).toDateString() === todayStr; }).length
         });
     } catch (e) {
@@ -11191,7 +11264,7 @@ app.get('/api/admin/messages/:messageId', function(req, res) {
 app.put('/api/admin/messages/:messageId/status', function(req, res) {
     try {
         var status = (req.body || {}).status;
-        var validStatuses = ['unread', 'read', 'replied', 'archived'];
+        var validStatuses = ['unread', 'read', 'replied', 'archived', 'spam'];
         if (validStatuses.indexOf(status) === -1) {
             return res.status(400).json({ error: 'Statut invalide', valid_statuses: validStatuses });
         }
@@ -11340,10 +11413,11 @@ app.post('/api/auth/register', async (req, res) => {
             });
         }
 
-        // Validation email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({ error: 'Format d\'email invalide' });
+        // E-mail : format strict, pas d'adresse jetable, domaine capable de recevoir du courrier
+        const regEmailCheck = await antiAbuse.checkSignupEmail(email);
+        if (!regEmailCheck.ok) {
+            console.log('[ANTI-ABUS] Inscription refusée (' + regEmailCheck.code + '): ' + email);
+            return res.status(400).json({ error: regEmailCheck.error, code: regEmailCheck.code });
         }
 
         // Anti-spam : champ honeypot (les bots remplissent les champs caches)
@@ -11444,6 +11518,8 @@ app.post('/api/auth/register', async (req, res) => {
             referral_discount: { pct: referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL, applied: false },
             sessionToken: sessionToken,
             student_status: userAccountType === 'etudiant' ? (studentCertificate ? 'pending' : 'unverified') : null,
+            // Signaux à vérifier, affichés dans l'admin (jamais bloquants à eux seuls)
+            signup_flags: regEmailCheck.flags || [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastLogin: new Date().toISOString()
@@ -15472,9 +15548,11 @@ app.post('/api/partner/auth/register', async (req, res) => {
             }
         }
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({ error: 'Format d\'email invalide' });
+        // E-mail : format strict, pas d'adresse jetable, domaine capable de recevoir du courrier
+        const ptnrEmailCheck = await antiAbuse.checkSignupEmail(email);
+        if (!ptnrEmailCheck.ok) {
+            console.log('[ANTI-ABUS] Inscription partenaire refusée (' + ptnrEmailCheck.code + '): ' + email);
+            return res.status(400).json({ error: ptnrEmailCheck.error, code: ptnrEmailCheck.code });
         }
         if (PARTNER_TYPE_VALUES.indexOf(partner_type) === -1) {
             return res.status(400).json({ error: 'partner_type invalide. Valeurs acceptees: ' + PARTNER_TYPE_VALUES.join(', ') });
@@ -15521,7 +15599,8 @@ app.post('/api/partner/auth/register', async (req, res) => {
             createdAt: now,
             updatedAt: now,
             lastLogin: now,
-            createdBy: 'self-register'
+            createdBy: 'self-register',
+            signup_flags: ptnrEmailCheck.flags || []
         };
         partners.push(partner);
         savePartners(partners);
@@ -22709,8 +22788,11 @@ app.post('/api/admin/setup-test-parrainage', async function(req, res) {
 // Lister tous les partenaires
 app.get('/api/admin/partners', (req, res) => {
     try {
-        const partners = loadPartners().map(p => {
+        const _allPartners = loadPartners();
+        const riskFlags = buildAccountRiskIndex(loadUsers(), _allPartners);
+        const partners = _allPartners.map(p => {
             const { password, ...safe } = p;
+            safe.risk_flags = riskFlags(p, 'prestataire ' + (p.email || p.id));
             // Normalise la date d'inscription : certains enregistrements utilisent createdAt,
             // d'autres created_at selon la route d'inscription. On expose les deux pour le front.
             if (!safe.created_at && safe.createdAt) safe.created_at = safe.createdAt;
@@ -25783,6 +25865,7 @@ var httpServer = app.listen(PORT, async () => {
     // Textes déjà enregistrés AVANT la neutralisation à l'entrée (voir sanitizeBody) : même
     // traitement, une fois (idempotent), sur les champs affichés aux autres utilisateurs.
     try { sanitizeStoredUserText(); } catch (e) { console.error('[SANITIZE] Migration impossible:', e.message); }
+    try { classifyStoredContactMessages(); } catch (e) { console.error('[ANTI-ABUS] Tri des messages impossible:', e.message); }
 
     // Comptes de test internes : uniquement en dehors de la production
     if (process.env.NODE_ENV !== 'production') {
