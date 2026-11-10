@@ -16230,11 +16230,11 @@ function _memMo(b) { return Math.round(b / 1048576) + ' Mo'; }
 
 // Garde-fou mémoire de la compression (2026-11-10, après l'alerte Render « exceeded its memory
 // limit » du 9/11) : une compression 1080p consomme ~120 Mo (mesuré). Elle ne démarre que s'il
-// reste au moins VIDEO_TRANSCODE_MIN_FREE_MB (300 Mo par défaut) de libre ; sinon elle attend
+// reste au moins VIDEO_TRANSCODE_MIN_FREE_MB (200 Mo par défaut : ~120 Mo + marge ; le serveur occupe 25 à 50 % de ses 512 Mo au quotidien, pics à 63 % — graphique Render du 10/11, donc 300 Mo bloquait presque tout) de libre ; sinon elle attend
 // 2 min et réessaie, 15 fois au plus. Passé ce délai, la vidéo est laissée telle quelle SANS être
 // marquée « tentée » : la reprise du prochain démarrage la reprendra. La compression ne peut donc
 // plus faire tomber l'API ; au pire, une vidéo est compressée plus tard.
-var VIDEO_TRANSCODE_MIN_FREE = (parseInt(process.env.VIDEO_TRANSCODE_MIN_FREE_MB, 10) || 300) * 1048576;
+var VIDEO_TRANSCODE_MIN_FREE = (parseInt(process.env.VIDEO_TRANSCODE_MIN_FREE_MB, 10) || 200) * 1048576;
 var VIDEO_MEM_RETRY_MS = 2 * 60 * 1000, VIDEO_MEM_MAX_WAITS = 15, _videoMemTimer = null;
 function _videoMemoryFree() { return _serverMemoryLimit() - _serverMemoryUsed(); }
 
