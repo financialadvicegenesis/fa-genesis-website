@@ -1973,6 +1973,22 @@ a{text-decoration:none;color:inherit}
 .ptnr-login-err{color:#ef4444;font-size:13px;margin-top:8px;display:none;}
 .ptnr-login-err.on{display:block;}
 .ptnr-link-btn{width:100%;background:transparent;border:none;color:#888;font-size:12px;font-weight:700;padding:14px;cursor:pointer;margin-top:6px;text-align:center;}
+/* Inscription prestataire en 4 étapes (2026-11-11) */
+.reg-steps{margin:2px 0 18px;}
+.reg-steps-bar{height:4px;background:#222;border-radius:4px;overflow:hidden;}
+.reg-steps-bar span{display:block;height:100%;background:#FFD700;border-radius:4px;transition:width .3s ease;}
+.reg-steps-label{font-size:11px;color:#888;font-weight:700;margin-top:6px;letter-spacing:.3px;}
+.reg-step-title{font-size:17px;font-weight:900;color:#fff;margin:0 0 6px;}
+.reg-step-sub{font-size:12px;color:#999;line-height:1.55;margin:0 0 14px;}
+.reg-kind{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;background:#141414;border:1.5px solid #2a2a2a;border-radius:14px;padding:14px;margin:0 0 10px;cursor:pointer;font-family:inherit;box-sizing:border-box;}
+.reg-kind.on{border-color:#FFD700;background:rgba(255,215,0,.07);}
+.reg-kind-ico{font-size:18px;color:#888;width:22px;text-align:center;margin-top:2px;flex-shrink:0;}
+.reg-kind.on .reg-kind-ico{color:#FFD700;}
+.reg-kind-txt{display:flex;flex-direction:column;gap:4px;}
+.reg-kind-name{font-size:14px;font-weight:800;color:#fff;}
+.reg-kind.on .reg-kind-name{color:#FFD700;}
+.reg-kind-sub{font-size:11.5px;color:#999;line-height:1.5;}
+@media (prefers-reduced-motion: reduce){.reg-steps-bar span{transition:none;}}
 /* Vérification du compte prestataire (justificatifs, 2026-11-10) */
 .pv-card{background:#111;border:1.5px solid #222;border-radius:14px;padding:14px;margin:0 0 12px;}
 .pv-step{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:900;color:#FFD700;letter-spacing:.6px;text-transform:uppercase;margin:20px 0 8px;}
@@ -2654,15 +2670,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261110b"></script>
-<script src="app-i18n-es.js?v=20261110b"></script>
-<script src="app-i18n-hi.js?v=20261110b"></script>
-<script src="app-i18n-pt.js?v=20261110b"></script>
-<script src="app-i18n-ja.js?v=20261110b"></script>
-<script src="app-i18n-zh.js?v=20261110b"></script>
-<script src="app-i18n-ar.js?v=20261110b"></script>
-<script src="app-i18n-it.js?v=20261110b"></script>
-<script src="app-i18n-de.js?v=20261110b"></script>
+<script src="app-i18n-en.js?v=20261111a"></script>
+<script src="app-i18n-es.js?v=20261111a"></script>
+<script src="app-i18n-hi.js?v=20261111a"></script>
+<script src="app-i18n-pt.js?v=20261111a"></script>
+<script src="app-i18n-ja.js?v=20261111a"></script>
+<script src="app-i18n-zh.js?v=20261111a"></script>
+<script src="app-i18n-ar.js?v=20261111a"></script>
+<script src="app-i18n-it.js?v=20261111a"></script>
+<script src="app-i18n-de.js?v=20261111a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3251,18 +3267,39 @@ function _genesisVersionFooter(){
         </div>
       </div>
 
-      <!-- Register screen (in-app, no redirect to website) -->
+      <!-- Register screen (in-app) — parcours en 4 étapes (2026-11-11) : profil → pays → informations
+           → justificatifs. Le compte est créé à la fin de l'étape 3 (il faut un compte pour envoyer des
+           fichiers) ; l'étape 4 réutilise l'écran « Vérifier mon compte » (_pvSignupMode). -->
       <div id="ptnr-register-screen" style="display:none;">
-        <button class="w-back-btn" onclick="_ptnrRegBackToLogin()" aria-label="Retour">&#8249;</button>
+        <button class="w-back-btn" id="ptnr-reg-back" onclick="_ptnrRegBack()" aria-label="Retour">&#8249;</button>
         <div class="ptnr-login-wrap">
           <div class="ptnr-login-logo">GENESIS</div>
           <div class="ptnr-login-title">Devenir Prestataire</div>
-          <div class="ptnr-login-sub">Créez votre compte prestataire pour proposer vos services directement depuis l'application</div>
-          <input class="ptnr-input" id="ptnr-reg-prenom" type="text" placeholder="Prénom" autocomplete="given-name">
-          <input class="ptnr-input" id="ptnr-reg-nom" type="text" placeholder="Nom" autocomplete="family-name">
-          <input class="ptnr-input" id="ptnr-reg-email" type="email" placeholder="Email" autocomplete="email">
-          <input class="ptnr-input" id="ptnr-reg-tel" type="tel" placeholder="Téléphone" autocomplete="tel">
-          <select class="ptnr-input" id="ptnr-reg-country" autocomplete="country" onchange="_ptnrRegCountryChange()">
+          <div class="reg-steps">
+            <div class="reg-steps-bar"><span id="ptnr-reg-progress" style="width:25%;"></span></div>
+            <div class="reg-steps-label" id="ptnr-reg-steplabel">Étape 1 sur 4</div>
+          </div>
+
+          <!-- Étape 1 : profil -->
+          <div id="ptnr-reg-step1">
+            <div class="reg-step-title">Quel est votre profil ?</div>
+            <button type="button" class="reg-kind" id="ptnr-reg-kind-micro" onclick="_ptnrRegPickKind('micro')">
+              <i class="fa-solid fa-user-tie reg-kind-ico"></i>
+              <span class="reg-kind-txt"><span class="reg-kind-name">Indépendant / freelance</span><span class="reg-kind-sub">Vous travaillez à votre compte (micro-entrepreneur, auto-entrepreneur, freelance). Étudiant ? Vous devez être immatriculé.</span></span>
+            </button>
+            <button type="button" class="reg-kind" id="ptnr-reg-kind-company" onclick="_ptnrRegPickKind('company')">
+              <i class="fa-solid fa-building reg-kind-ico"></i>
+              <span class="reg-kind-txt"><span class="reg-kind-name">Entreprise / société</span><span class="reg-kind-sub">Vous représentez une société ou une agence (SARL, SAS, EURL…).</span></span>
+            </button>
+            <div class="ptnr-login-err" id="ptnr-reg-err1"></div>
+            <button class="ptnr-login-btn" onclick="_ptnrRegNext()">CONTINUER</button>
+          </div>
+
+          <!-- Étape 2 : pays -->
+          <div id="ptnr-reg-step2" style="display:none;">
+            <div class="reg-step-title">Dans quel pays exercez-vous ?</div>
+            <div class="reg-step-sub">Les informations et les documents demandés dépendent de votre pays.</div>
+          <select class="ptnr-input" id="ptnr-reg-country" autocomplete="country">
             <option value="">Pays de résidence *</option>
             <optgroup label="── Europe ──">
               <option value="FR">🇫🇷 France</option>
@@ -3345,31 +3382,18 @@ function _genesisVersionFooter(){
               <option value="ID">🇮🇩 Indonésie</option>
             </optgroup>
           </select>
-          <!-- Statut légal (2026-11-10) : selon le pays. Les justificatifs s'envoient juste après l'inscription. -->
-          <div id="ptnr-reg-legal-fr" style="display:none;">
-            <select class="ptnr-input" id="ptnr-reg-legal" onchange="_ptnrRegLegalChange()">
-              <option value="">Votre statut *</option>
-              <option value="micro">Indépendant / micro-entrepreneur</option>
-              <option value="company">Entreprise / société</option>
-            </select>
-            <div id="ptnr-reg-siret-wrap" style="display:none;">
-              <input class="ptnr-input" id="ptnr-reg-siret" type="text" inputmode="numeric" maxlength="17" placeholder="SIRET (14 chiffres) *" oninput="_pvSiretLiveCheck(this.value,'ptnr-reg-siret-status')" style="margin-bottom:4px;">
-              <div class="pv-siret-status" id="ptnr-reg-siret-status" style="margin-bottom:10px;"></div>
-            </div>
-            <div id="ptnr-reg-company-wrap" style="display:none;">
-              <input class="ptnr-input" id="ptnr-reg-company-name" type="text" placeholder="Raison sociale *">
-              <input class="ptnr-input" id="ptnr-reg-representative" type="text" placeholder="Représentant légal (prénom et nom) *">
-            </div>
-            <div class="pv-note" style="margin:-4px 0 12px;">Étudiant ? Pour proposer vos services, vous devez être immatriculé (micro-entreprise).</div>
+            <div class="ptnr-login-err" id="ptnr-reg-err2"></div>
+            <button class="ptnr-login-btn" onclick="_ptnrRegNext()">CONTINUER</button>
           </div>
-          <div id="ptnr-reg-legal-abroad" style="display:none;margin:0 0 12px;">
-            <div class="pv-q">Votre activité est-elle déclarée (immatriculée) dans votre pays ? *</div>
-            <div style="display:flex;gap:8px;">
-              <button type="button" class="pv-choice" id="ptnr-reg-registered-yes" style="justify-content:center;" onclick="_ptnrRegSetRegistered(true)">Oui</button>
-              <button type="button" class="pv-choice" id="ptnr-reg-registered-no" style="justify-content:center;" onclick="_ptnrRegSetRegistered(false)">Non, pas encore</button>
-            </div>
-            <input class="ptnr-input" id="ptnr-reg-regnum" type="text" placeholder="Numéro d’immatriculation (ICE, RCCM, NIF…) *" style="display:none;margin-top:4px;">
-          </div>
+
+          <!-- Étape 3 : informations -->
+          <div id="ptnr-reg-step3" style="display:none;">
+            <div class="reg-step-title">Vos informations</div>
+            <input class="ptnr-input" id="ptnr-reg-prenom" type="text" placeholder="Prénom" autocomplete="given-name">
+            <input class="ptnr-input" id="ptnr-reg-nom" type="text" placeholder="Nom" autocomplete="family-name">
+            <input class="ptnr-input" id="ptnr-reg-email" type="email" placeholder="Email" autocomplete="email">
+            <input class="ptnr-input" id="ptnr-reg-tel" type="tel" placeholder="Téléphone" autocomplete="tel">
+            <input class="ptnr-input" id="ptnr-reg-ville" type="text" placeholder="Ville" autocomplete="address-level2">
           <select class="ptnr-input" id="ptnr-reg-type" onchange="document.getElementById('ptnr-reg-type-other').style.display = (this.value==='other') ? 'block' : 'none';_ptnrRegRenderSecondary();">
             <option value="">Choisir une catégorie...</option>
             <option value="photographer">Photographe</option>
@@ -3391,19 +3415,52 @@ function _genesisVersionFooter(){
             <div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin:2px 0 6px;">Autres métiers (optionnel, 2 maximum)</div>
             <div id="ptnr-reg-secondary-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
           </div>
-          <input class="ptnr-input" id="ptnr-reg-ville" type="text" placeholder="Ville" autocomplete="address-level2">
-          <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Entreprise (optionnel)">
+            <!-- Entreprise : raison sociale + représentant (France et étranger) -->
+            <div id="ptnr-reg-company-wrap" style="display:none;">
+              <input class="ptnr-input" id="ptnr-reg-company-name" type="text" placeholder="Raison sociale *">
+              <input class="ptnr-input" id="ptnr-reg-representative" type="text" placeholder="Représentant légal (prénom et nom) *">
+            </div>
+            <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Nom commercial (optionnel)">
+            <!-- France : SIRET, contrôlé pendant la saisie -->
+            <div id="ptnr-reg-siret-wrap" style="display:none;">
+              <input class="ptnr-input" id="ptnr-reg-siret" type="text" inputmode="numeric" maxlength="17" placeholder="SIRET (14 chiffres) *" oninput="_pvSiretLiveCheck(this.value,'ptnr-reg-siret-status')" style="margin-bottom:4px;">
+              <div class="pv-siret-status" id="ptnr-reg-siret-status" style="margin-bottom:10px;"></div>
+            </div>
+            <div class="pv-note" id="ptnr-reg-student-note" style="display:none;margin:-4px 0 12px;">Étudiant ? Pour proposer vos services, vous devez être immatriculé (micro-entreprise).</div>
+            <!-- Étranger : immatriculation locale (obligatoire pour une entreprise) -->
+            <div id="ptnr-reg-legal-abroad" style="display:none;margin:0 0 12px;">
+              <div class="pv-q">Votre activité est-elle déclarée (immatriculée) dans votre pays ? *</div>
+              <div style="display:flex;gap:8px;">
+                <button type="button" class="pv-choice" id="ptnr-reg-registered-yes" style="justify-content:center;" onclick="_ptnrRegSetRegistered(true)">Oui</button>
+                <button type="button" class="pv-choice" id="ptnr-reg-registered-no" style="justify-content:center;" onclick="_ptnrRegSetRegistered(false)">Non, pas encore</button>
+              </div>
+            </div>
+            <input class="ptnr-input" id="ptnr-reg-regnum" type="text" placeholder="Numéro d’immatriculation (ICE, RCCM, NIF…) *" style="display:none;">
           <div class="reg-pw-wrap">
             <input class="ptnr-input" id="ptnr-reg-pass" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password" style="padding-right:48px;margin-bottom:0;">
             <button class="reg-eye" id="ptnr-reg-pass-eye" onclick="regTogglePwd('ptnr-reg-pass','ptnr-reg-pass-eye')" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
-          <input class="ptnr-input" id="ptnr-reg-referral" type="text" placeholder="Code de parrainage (optionnel)" onkeydown="if(event.key==='Enter')_ptnrRegSubmit()">
-          <div class="pv-note" style="margin:0 0 12px;"><i class="fa-solid fa-shield-halved" style="color:#FFD700;margin-right:5px;"></i>Après l’inscription, vous enverrez depuis l’application votre pièce d’identité, un selfie avec la pièce et vos justificatifs. Votre profil devient visible des clients une fois ces documents validés.</div>
-          <div class="ptnr-login-err" id="ptnr-reg-err"></div>
-          <button class="ptnr-login-btn" id="ptnr-reg-btn" onclick="_ptnrRegSubmit()">CRÉER MON COMPTE</button>
-          <button class="ptnr-link-btn" onclick="_ptnrRegBackToLogin()">J'ai déjà un compte, me connecter</button>
+            <input class="ptnr-input" id="ptnr-reg-referral" type="text" placeholder="Code de parrainage (optionnel)" onkeydown="if(event.key==='Enter')_ptnrRegSubmit()">
+            <div class="pv-note" style="margin:0 0 12px;"><i class="fa-solid fa-shield-halved" style="color:#FFD700;margin-right:5px;"></i>Étape suivante : votre pièce d’identité, un selfie avec la pièce et vos justificatifs. Votre profil devient visible des clients une fois ces documents validés.</div>
+            <div class="ptnr-login-err" id="ptnr-reg-err"></div>
+            <button class="ptnr-login-btn" id="ptnr-reg-btn" onclick="_ptnrRegSubmit()">CRÉER MON COMPTE</button>
+          </div>
+
+          <!-- Étape 4 : justificatifs (compte déjà créé) -->
+          <div id="ptnr-reg-step4" style="display:none;">
+            <div class="reg-step-title">Vos justificatifs</div>
+            <div class="reg-step-sub">Dernière étape : envoyez vos documents pour que notre équipe valide votre compte.</div>
+            <div id="ptnr-reg-docs-content"></div>
+            <button class="ptnr-link-btn" onclick="_ptnrRegFinish()">Terminer plus tard</button>
+          </div>
+
+          <button class="ptnr-link-btn" id="ptnr-reg-login-link" onclick="_ptnrRegBackToLogin()">J'ai déjà un compte, me connecter</button>
         </div>
       </div>
+
+      <!-- Sélecteurs de fichiers des justificatifs : hors des écrans (utilisés à l'inscription ET dans l'espace) -->
+      <input type="file" id="ptnr-verif-file" accept="image/*,application/pdf" style="display:none" onchange="_ptnrVerifFileChosen(this)">
+      <input type="file" id="ptnr-verif-selfie" accept="image/*" capture="user" style="display:none" onchange="_ptnrVerifFileChosen(this)">
 
       <!-- Admin redirect screen -->
       <div id="ptnr-admin-screen" style="display:none;">
@@ -3745,8 +3802,6 @@ function _genesisVersionFooter(){
         <div class="ptnr-screen" id="ptnr-screen-verification">
           <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Vérifier mon compte</span></div>
           <div id="ptnr-verification-content" style="padding:0 16px 90px;"></div>
-          <input type="file" id="ptnr-verif-file" accept="image/*,application/pdf" style="display:none" onchange="_ptnrVerifFileChosen(this)">
-          <input type="file" id="ptnr-verif-selfie" accept="image/*" capture="user" style="display:none" onchange="_ptnrVerifFileChosen(this)">
         </div>
 
         <!-- Sub-screen: Événements GENESIS (remplace Explorer GENESIS / Collègues, retiré) -->
@@ -16181,9 +16236,10 @@ function _ptnrRegStart(){
   var typeOtherEl=document.getElementById('ptnr-reg-type-other'); if(typeOtherEl) typeOtherEl.style.display='none';
   var typeEl=document.getElementById('ptnr-reg-type'); if(typeEl) typeEl.value='';
   _ptnrRegSecondary = []; _ptnrRegRenderSecondary();
-  ['ptnr-reg-legal','ptnr-reg-siret','ptnr-reg-company-name','ptnr-reg-representative','ptnr-reg-regnum'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['ptnr-reg-country','ptnr-reg-siret','ptnr-reg-company-name','ptnr-reg-representative','ptnr-reg-regnum'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   var _sst=document.getElementById('ptnr-reg-siret-status'); if(_sst) _sst.innerHTML='';
-  _ptnrRegRegistered = null; _ptnrRegSetRegistered(null); _ptnrRegLegalChange(); _ptnrRegCountryChange();
+  _ptnrRegKind = ''; _ptnrRegPickKind(''); _ptnrRegRegistered = null; _ptnrRegSetRegistered(null);
+  _pvSignupMode = false; _ptnrRegGo(1);
   var errEl=document.getElementById('ptnr-reg-err'); if(errEl) errEl.className='ptnr-login-err';
   _ptnrRegOpenedAt = Date.now();
   _ptnrShowScreen('register');
@@ -16230,9 +16286,7 @@ function _ptnrRegSubmit(){
   if(!prenom.trim()||!nom.trim()||!email.trim()||!partnerType||!password){
     if(errEl){errEl.textContent='Merci de remplir tous les champs obligatoires.';errEl.className='ptnr-login-err on';} return;
   }
-  if(!country){
-    if(errEl){errEl.textContent='Merci de sélectionner votre pays de résidence.';errEl.className='ptnr-login-err on';} return;
-  }
+  if(!country){ _ptnrRegGo(2); return; }
   if(partnerType==='other' && partnerTypeOther.length<2){
     if(errEl){errEl.textContent='Merci de préciser votre profil pour la catégorie "Autre".';errEl.className='ptnr-login-err on';} return;
   }
@@ -16265,9 +16319,10 @@ function _ptnrRegSubmit(){
       _ptnrSaveToCache(res.partner);
       _gvOutcome('signup_partner', res.token);
       _ptnrBioUnlocked = true; // vient de créer son compte à l'instant
-      _ptnrOfferBiometricOptIn();
-      _ptnrShowScreen('profiles');
-      _ptnrLoadProfileSelector();
+      // Étape 4 : justificatifs, dans la foulée de l'inscription (biométrie et contrat ensuite).
+      _ptnrVerif = null; _pvForm = null; _pvActivityDraft = null; _pvSignupMode = true;
+      _ptnrRegGo(4);
+      _ptnrLoadVerification();
     } else {
       var msg = (res.error || res.message || 'Erreur lors de la création du compte.');
       if(errEl){errEl.textContent=msg;errEl.className='ptnr-login-err on';}
@@ -16524,7 +16579,8 @@ function _ptnrSignPartnershipContract() {
       if (typeof showToast === 'function') showToast('Contrat signé ! Bienvenue sur FA GENESIS.');
       _ptnrShowDash();
       // Compte en attente : dernière étape = les justificatifs (sans eux, pas de validation).
-      if(!_ptnrApplyPendingNotifTarget()) _ptnrNav((_ptnrSession && _ptnrSession.accountStatus === 'pending') ? 'verification' : 'home');
+      var _needDocs = !_ptnrVerif || _ptnrVerif.status === 'none' || _ptnrVerif.status === 'rejected';
+      if(!_ptnrApplyPendingNotifTarget()) _ptnrNav((_ptnrSession && _ptnrSession.accountStatus === 'pending' && _needDocs) ? 'verification' : 'home');
       _ptnrRefreshBadges();
       _ptnrCheckPushStatus();
       setTimeout(function(){
@@ -16560,51 +16616,93 @@ function _ptnrFmtLong(iso){
   try{ return new Date(iso).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return String(iso||'').slice(0,10); }
 }
 
-// ── Inscription : bloc « statut » selon le pays ──
-function _ptnrRegCountryChange(){
-  var c = (document.getElementById('ptnr-reg-country')||{}).value || '';
-  var fr = document.getElementById('ptnr-reg-legal-fr'), ab = document.getElementById('ptnr-reg-legal-abroad');
-  if(fr) fr.style.display = (c && _pvUsesSiret(c)) ? 'block' : 'none';
-  if(ab) ab.style.display = (c && !_pvUsesSiret(c)) ? 'block' : 'none';
+// ── Inscription en 4 étapes : profil → pays → informations → justificatifs (2026-11-11) ──
+var _ptnrRegStep = 1, _ptnrRegKind = '';   // 'micro' (indépendant / freelance) | 'company'
+var _pvSignupMode = false;                  // écran des justificatifs affiché dans l'inscription (étape 4)
+function _ptnrRegGo(step){
+  _ptnrRegStep = step;
+  for(var i = 1; i <= 4; i++){ var el = document.getElementById('ptnr-reg-step'+i); if(el) el.style.display = (i === step) ? 'block' : 'none'; }
+  var bar = document.getElementById('ptnr-reg-progress'); if(bar) bar.style.width = (step * 25) + '%';
+  var lab = document.getElementById('ptnr-reg-steplabel'); if(lab) lab.textContent = ['','Étape 1 sur 4','Étape 2 sur 4','Étape 3 sur 4','Étape 4 sur 4'][step];
+  var login = document.getElementById('ptnr-reg-login-link'); if(login) login.style.display = step === 4 ? 'none' : '';
+  var back = document.getElementById('ptnr-reg-back'); if(back) back.style.visibility = step === 4 ? 'hidden' : 'visible';
+  if(step === 3) _ptnrRegApplyLegal();
+  var scr = document.getElementById('ptnr-register-screen'); if(scr && scr.scrollIntoView) try{ scr.scrollIntoView(); }catch(e){}
+  var cc = document.getElementById('content'); if(cc) cc.scrollTop = 0;
+  window.scrollTo(0, 0);
 }
-function _ptnrRegLegalChange(){
-  var lp = (document.getElementById('ptnr-reg-legal')||{}).value || '';
-  var sw = document.getElementById('ptnr-reg-siret-wrap'), cw = document.getElementById('ptnr-reg-company-wrap'), ent = document.getElementById('ptnr-reg-entreprise');
-  if(sw) sw.style.display = lp ? 'block' : 'none';
-  if(cw) cw.style.display = lp === 'company' ? 'block' : 'none';
-  if(ent) ent.style.display = lp === 'company' ? 'none' : '';
+function _ptnrRegPickKind(k){
+  _ptnrRegKind = k;
+  ['micro','company'].forEach(function(x){ var b = document.getElementById('ptnr-reg-kind-'+x); if(b) b.className = 'reg-kind' + (x === k ? ' on' : ''); });
+  var e = document.getElementById('ptnr-reg-err1'); if(e) e.className = 'ptnr-login-err';
+}
+function _ptnrRegNext(){
+  if(_ptnrRegStep === 1){
+    if(!_ptnrRegKind){ var e1 = document.getElementById('ptnr-reg-err1'); if(e1){ e1.textContent = 'Choisissez votre profil.'; e1.className = 'ptnr-login-err on'; } return; }
+    _ptnrRegGo(2); return;
+  }
+  if(_ptnrRegStep === 2){
+    var c = (document.getElementById('ptnr-reg-country')||{}).value || '';
+    var e2 = document.getElementById('ptnr-reg-err2');
+    if(!c){ if(e2){ e2.textContent = 'Choisissez votre pays.'; e2.className = 'ptnr-login-err on'; } return; }
+    if(e2) e2.className = 'ptnr-login-err';
+    _ptnrRegGo(3);
+  }
+}
+function _ptnrRegBack(){
+  if(_ptnrRegStep === 4) return;              // compte déjà créé : « Terminer plus tard »
+  if(_ptnrRegStep > 1) _ptnrRegGo(_ptnrRegStep - 1); else _ptnrRegBackToLogin();
+}
+// Champs de l'étape 3 selon le profil et le pays.
+function _ptnrRegApplyLegal(){
+  var c = (document.getElementById('ptnr-reg-country')||{}).value || '';
+  var fr = _pvUsesSiret(c), co = _ptnrRegKind === 'company';
+  function show(id, on){ var el = document.getElementById(id); if(el) el.style.display = on ? 'block' : 'none'; }
+  show('ptnr-reg-siret-wrap', fr);
+  show('ptnr-reg-company-wrap', co);
+  show('ptnr-reg-entreprise', !co);
+  show('ptnr-reg-student-note', fr && !co);
+  show('ptnr-reg-legal-abroad', !fr && !co);
+  show('ptnr-reg-regnum', !fr && (co || _ptnrRegRegistered === true));
 }
 function _ptnrRegSetRegistered(val){
   _ptnrRegRegistered = val;
-  var y = document.getElementById('ptnr-reg-registered-yes'), n = document.getElementById('ptnr-reg-registered-no'), num = document.getElementById('ptnr-reg-regnum');
+  var y = document.getElementById('ptnr-reg-registered-yes'), n = document.getElementById('ptnr-reg-registered-no');
   if(y) y.className = 'pv-choice' + (val === true ? ' on' : '');
   if(n) n.className = 'pv-choice' + (val === false ? ' on' : '');
-  if(num) num.style.display = val === true ? 'block' : 'none';
+  if(_ptnrRegStep === 3) _ptnrRegApplyLegal();
 }
 function _ptnrRegLegalPayload(){
   var c = (document.getElementById('ptnr-reg-country')||{}).value || '';
   function val(id){ return ((document.getElementById(id)||{}).value || '').trim(); }
-  if(!c) return { data: {} };
+  if(!_ptnrRegKind) return { error: 'Choisissez votre profil.' };
+  if(!c) return { error: 'Choisissez votre pays.' };
+  var co = _ptnrRegKind === 'company';
+  var out = { legal_profile: _ptnrRegKind };
   if(_pvUsesSiret(c)){
-    var lp = val('ptnr-reg-legal');
-    if(!lp) return { error: 'Choisissez votre statut : indépendant / micro-entrepreneur ou entreprise.' };
-    var siret = val('ptnr-reg-siret').replace(/[\s.\-]/g,'');
-    if(!/^\d{14}$/.test(siret)) return { error: 'Le SIRET doit contenir 14 chiffres.' };
-    var out = { legal_profile: lp, siret: siret };
-    if(lp === 'company'){
-      out.company_name = val('ptnr-reg-company-name'); out.representative = val('ptnr-reg-representative');
-      if(out.company_name.length < 2) return { error: 'Indiquez la raison sociale de votre entreprise.' };
-      if(out.representative.length < 3) return { error: 'Indiquez le nom du représentant légal.' };
+    out.siret = val('ptnr-reg-siret').replace(/[\s.\-]/g,'');
+    if(!/^\d{14}$/.test(out.siret)) return { error: 'Le SIRET doit contenir 14 chiffres.' };
+  } else {
+    out.registered = co ? true : _ptnrRegRegistered;
+    if(out.registered !== true && out.registered !== false) return { error: 'Indiquez si votre activité est déclarée dans votre pays.' };
+    if(out.registered){
+      out.registration_number = val('ptnr-reg-regnum');
+      if(out.registration_number.length < 3) return { error: 'Indiquez votre numéro d’immatriculation (par exemple ICE, RCCM ou NIF).' };
     }
-    return { data: out };
   }
-  if(_ptnrRegRegistered !== true && _ptnrRegRegistered !== false) return { error: 'Indiquez si votre activité est déclarée dans votre pays.' };
-  var o = { legal_profile: 'foreign', registered: _ptnrRegRegistered };
-  if(_ptnrRegRegistered){
-    o.registration_number = val('ptnr-reg-regnum');
-    if(o.registration_number.length < 3) return { error: 'Indiquez votre numéro d’immatriculation (par exemple ICE, RCCM ou NIF).' };
+  if(co){
+    out.company_name = val('ptnr-reg-company-name'); out.representative = val('ptnr-reg-representative');
+    if(out.company_name.length < 2) return { error: 'Indiquez la raison sociale de votre entreprise.' };
+    if(out.representative.length < 3) return { error: 'Indiquez le nom du représentant légal.' };
   }
-  return { data: o };
+  return { data: out };
+}
+// Fin de l'inscription (dossier envoyé, ou « Terminer plus tard ») → biométrie, profil, contrat.
+function _ptnrRegFinish(){
+  _pvSignupMode = false;
+  _ptnrOfferBiometricOptIn();
+  _ptnrShowScreen('profiles');
+  _ptnrLoadProfileSelector();
 }
 
 // ── Contrôle du SIRET pendant la saisie (annuaire officiel des entreprises) ──
@@ -16650,8 +16748,9 @@ function _ptnrUpdateVerifBar(){
 }
 
 // ── Écran « Vérifier mon compte » ──
+function _pvContainer(){ return document.getElementById(_pvSignupMode ? 'ptnr-reg-docs-content' : 'ptnr-verification-content'); }
 function _ptnrLoadVerification(){
-  var c = document.getElementById('ptnr-verification-content');
+  var c = _pvContainer();
   if(c && !_ptnrVerif) c.innerHTML = _skeletonRows(2);
   _ptnrFetch('/api/partner/verification').then(function(d){
     if(d && d.verification){ _ptnrVerif = d.verification; _pvForm = null; }
@@ -16699,7 +16798,8 @@ function _pvFormInit(v){
   if(_pvForm) return _pvForm;
   v = v || {};
   _pvForm = { legal_profile: v.legal_profile || (v.uses_siret ? '' : 'foreign'), siret: v.siret || '', company_name: v.company_name || '', representative: v.representative || '',
-    registered: v.legal_profile === 'foreign' ? !!v.registered : null, registration_number: v.registration_number || '' };
+    registered: v.legal_profile === 'foreign' ? !!v.registered : null, registration_number: v.registration_number || '',
+    business_kind: v.business_kind || (v.legal_profile === 'company' ? 'company' : (v.legal_profile ? 'independent' : '')) };
   return _pvForm;
 }
 function _pvSet(k, val){
@@ -16724,11 +16824,20 @@ function _pvProfileForm(v){
       h += '<div class="pv-note">Étudiant ? Pour proposer vos services sur GENESIS, vous devez être immatriculé (micro-entreprise).</div>';
     }
   } else {
-    h += '<div class="pv-q">Votre activité est-elle déclarée (immatriculée) dans votre pays ?</div>'
-      + _pvChoice('Oui, j’ai un numéro d’immatriculation', f.registered === true, "_pvSet('registered',true)")
-      + _pvChoice('Non, pas encore', f.registered === false, "_pvSet('registered',false)");
-    if(f.registered === true) h += '<input class="ptnr-input" id="pv-regnum" type="text" placeholder="Numéro d’immatriculation (ICE, RCCM, NIF…)" value="'+_escHtml(f.registration_number)+'" oninput="_pvForm.registration_number=this.value" style="margin:10px 0 0;">';
-    if(f.registered === false) h += '<div class="pv-note">Vous obtiendrez le badge « Identité vérifiée » : il vous suffira de montrer une preuve de votre activité.</div>';
+    h += '<div class="pv-q">Vous êtes :</div>'
+      + _pvChoice('Indépendant / freelance', f.business_kind === 'independent', "_pvSet('business_kind','independent')")
+      + _pvChoice('Entreprise / société', f.business_kind === 'company', "_pvSet('business_kind','company')");
+    if(f.business_kind === 'independent'){
+      h += '<div class="pv-q" style="margin-top:10px;">Votre activité est-elle déclarée (immatriculée) dans votre pays ?</div>'
+        + _pvChoice('Oui, j’ai un numéro d’immatriculation', f.registered === true, "_pvSet('registered',true)")
+        + _pvChoice('Non, pas encore', f.registered === false, "_pvSet('registered',false)");
+    }
+    if(f.business_kind === 'company'){
+      h += '<input class="ptnr-input" id="pv-company" type="text" placeholder="Raison sociale" value="'+_escHtml(f.company_name)+'" oninput="_pvForm.company_name=this.value" style="margin:10px 0 0;">'
+        + '<input class="ptnr-input" id="pv-rep" type="text" placeholder="Représentant légal (prénom et nom)" value="'+_escHtml(f.representative)+'" oninput="_pvForm.representative=this.value" style="margin:10px 0 0;">';
+    }
+    if(f.business_kind === 'company' || f.registered === true) h += '<input class="ptnr-input" id="pv-regnum" type="text" placeholder="Numéro d’immatriculation (ICE, RCCM, NIF…)" value="'+_escHtml(f.registration_number)+'" oninput="_pvForm.registration_number=this.value" style="margin:10px 0 0;">';
+    if(f.business_kind === 'independent' && f.registered === false) h += '<div class="pv-note">Vous obtiendrez le badge « Identité vérifiée » : il vous suffira de montrer une preuve de votre activité.</div>';
   }
   h += '<div class="ptnr-login-err" id="pv-profile-err"></div>'
     + '<button class="ptnr-login-btn" id="pv-profile-btn" style="margin-top:12px;" onclick="_ptnrVerifSaveProfile()">ENREGISTRER</button>'
@@ -16739,6 +16848,7 @@ function _pvProfileForm(v){
 function _pvProfileSummary(v, locked){
   var label = v.legal_profile === 'micro' ? 'Indépendant / micro-entrepreneur'
     : v.legal_profile === 'company' ? 'Entreprise / société'
+    : v.business_kind === 'company' ? 'Entreprise à l’étranger'
     : (v.registered ? 'Professionnel à l’étranger, immatriculé' : 'Professionnel à l’étranger, sans immatriculation');
   var detail = '';
   if(v.siret) detail += '<div class="pv-doc-hint" style="margin-top:6px;">SIRET <span data-i18n-skip>'+_escHtml(v.siret)+'</span></div>'
@@ -16782,11 +16892,22 @@ function _pvRefreshSubmitState(){
   if(b && _ptnrVerif) b.style.opacity = _pvMissing(_ptnrVerif).length ? '.45' : '1';
 }
 function _ptnrRenderVerification(){
-  var c = document.getElementById('ptnr-verification-content');
+  var c = _pvContainer();
   if(!c || !_ptnrVerif) return;
   var v = _ptnrVerif;
   var locked = v.status === 'submitted' || v.status === 'verified';
   var privacy = '<div class="pv-privacy"><i class="fa-solid fa-lock" style="margin-top:2px;"></i><span>Vos documents ne sont consultables que par l’équipe FA GENESIS. Ils servent uniquement à cette vérification et sont supprimés dès que votre compte est vérifié.</span></div>';
+  // Inscription (étape 4) : statut déjà choisi aux étapes 1 à 3 → directement les pièces.
+  if(_pvSignupMode && v.legal_profile && !_pvForm && !locked){
+    var sh = '';
+    (v.required || []).forEach(function(k){ sh += _pvDocRow(k, v, false); });
+    sh += '<div class="ptnr-login-err" id="pv-submit-err"></div>'
+      + '<button class="ptnr-login-btn" id="pv-submit-btn" style="margin-top:8px;'+(_pvMissing(v).length ? 'opacity:.45;' : '')+'" onclick="_ptnrVerifSubmit()">ENVOYER MON DOSSIER</button>';
+    c.innerHTML = sh + privacy;
+    var sta = document.getElementById('pv-activity-proof');
+    if(sta) sta.value = _pvActivityDraft != null ? _pvActivityDraft : (v.activity_proof || '');
+    return;
+  }
   var html = _pvStatusCard(v);
   if(v.status === 'verified'){ c.innerHTML = html + privacy; return; }
   html += _pvStep('1', 'Votre statut');
@@ -16816,9 +16937,12 @@ function _ptnrVerifSaveProfile(){
     if(!/^\d{14}$/.test(body.siret)) return showErr('Le SIRET doit contenir 14 chiffres.');
     if(f.legal_profile === 'company'){ body.company_name = (f.company_name || '').trim(); body.representative = (f.representative || '').trim(); }
   } else {
-    if(f.registered !== true && f.registered !== false) return showErr('Indiquez si votre activité est déclarée dans votre pays.');
-    body.legal_profile = 'foreign'; body.registered = f.registered;
-    if(f.registered) body.registration_number = (f.registration_number || '').trim();
+    if(f.business_kind !== 'independent' && f.business_kind !== 'company') return showErr('Choisissez votre profil.');
+    var _co = f.business_kind === 'company';
+    if(!_co && f.registered !== true && f.registered !== false) return showErr('Indiquez si votre activité est déclarée dans votre pays.');
+    body.legal_profile = _co ? 'company' : 'micro'; body.business_kind = f.business_kind; body.registered = _co ? true : f.registered;
+    if(body.registered) body.registration_number = (f.registration_number || '').trim();
+    if(_co){ body.company_name = (f.company_name || '').trim(); body.representative = (f.representative || '').trim(); }
   }
   if(btn){ btn.disabled = true; btn.textContent = 'Enregistrement…'; }
   _ptnrFetch('/api/partner/verification/profile', 'POST', body).then(function(d){
@@ -16901,8 +17025,9 @@ function _ptnrVerifSubmit(){
   _ptnrFetch('/api/partner/verification/submit', 'POST', { activity_proof: proof }).then(function(d){
     if(d && d.verification){
       _ptnrVerif = d.verification; _pvActivityDraft = null;
-      _ptnrRenderVerification(); _ptnrUpdateVerifBar();
       showToast('Dossier envoyé', 'Notre équipe l’examine, généralement sous 48 h.', 'success');
+      if(_pvSignupMode){ _ptnrRegFinish(); return; }
+      _ptnrRenderVerification(); _ptnrUpdateVerifBar();
       var cc = document.getElementById('content'); if(cc) cc.scrollTop = 0;
     } else {
       if(btn){ btn.disabled = false; btn.textContent = 'ENVOYER MON DOSSIER'; }

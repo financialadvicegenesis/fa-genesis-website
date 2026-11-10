@@ -16193,7 +16193,7 @@ app.post('/api/partner/verification/profile', authenticatePartner, async functio
         }
         var removed = [];
         var p = _updatePartnerVerification(req.partner.id, function(pp, v) {
-            ['legal_profile', 'siret', 'company_name', 'representative', 'registered', 'registration_number', 'siret_check'].forEach(function(k) { delete v[k]; });
+            ['legal_profile', 'business_kind', 'siret', 'company_name', 'representative', 'registered', 'registration_number', 'siret_check'].forEach(function(k) { delete v[k]; });
             Object.assign(v, lg.data);
             if (check) v.siret_check = check;
             if (v.status !== 'rejected') v.status = 'none';

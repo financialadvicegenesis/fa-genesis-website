@@ -71,33 +71,39 @@ function levelFor(v) {
 function normalizeLegalInfo(body, country) {
     body = body || {};
     var inFrance = usesSiret(country);
-    var profile = String(body.legal_profile || '').trim();
-    if (!inFrance) profile = 'foreign';
-    if (LEGAL_PROFILES.indexOf(profile) === -1 || (inFrance && profile === 'foreign')) {
-        return { ok: false, code: 'legal_profile_required', error: 'Choisissez votre statut : indépendant / micro-entrepreneur ou entreprise.' };
-    }
-    var data = { legal_profile: profile };
-    if (profile === 'micro' || profile === 'company') {
+    var asked = String(body.legal_profile || '').trim();
+    // Profil choisi à l'étape 1 de l'inscription : indépendant / freelance ou entreprise. Hors de
+    // France, il est gardé dans business_kind (le statut légal devient « foreign »).
+    var kind = (body.business_kind === 'company' || body.business_kind === 'independent') ? body.business_kind
+        : (asked === 'company' ? 'company' : ((asked === 'micro' || asked === 'foreign') ? 'independent' : ''));
+    var data;
+    if (inFrance) {
+        if (asked !== 'micro' && asked !== 'company') {
+            return { ok: false, code: 'legal_profile_required', error: 'Choisissez votre statut : indépendant / micro-entrepreneur ou entreprise.' };
+        }
+        data = { legal_profile: asked, business_kind: asked === 'company' ? 'company' : 'independent' };
         var siret = cleanSiret(body.siret);
         if (!/^\d{14}$/.test(siret)) return { ok: false, code: 'siret_format', error: 'Le SIRET doit contenir 14 chiffres.' };
         if (!isValidSiret(siret)) return { ok: false, code: 'siret_invalid', error: 'Ce SIRET n’est pas valide. Vérifiez les 14 chiffres.' };
         data.siret = siret;
-        if (profile === 'company') {
-            var cname = String(body.company_name || '').trim().slice(0, 120);
-            var rep = String(body.representative || '').trim().slice(0, 120);
-            if (cname.length < 2) return { ok: false, code: 'company_name_required', error: 'Indiquez la raison sociale de votre entreprise.' };
-            if (rep.length < 3) return { ok: false, code: 'representative_required', error: 'Indiquez le nom du représentant légal.' };
-            data.company_name = cname;
-            data.representative = rep;
-        }
     } else {
-        var registered = body.registered === true || body.registered === 'true' || body.registered === 1;
-        data.registered = registered;
+        if (!kind) return { ok: false, code: 'legal_profile_required', error: 'Choisissez votre profil : indépendant / freelance ou entreprise.' };
+        // Une entreprise est forcément immatriculée.
+        var registered = kind === 'company' || body.registered === true || body.registered === 'true' || body.registered === 1;
+        data = { legal_profile: 'foreign', business_kind: kind, registered: registered };
         if (registered) {
             var num = String(body.registration_number || '').trim().slice(0, 60);
             if (num.length < 3) return { ok: false, code: 'registration_number_required', error: 'Indiquez votre numéro d’immatriculation (par exemple ICE, RCCM ou NIF).' };
             data.registration_number = num;
         }
+    }
+    if (data.business_kind === 'company') {
+        var cname = String(body.company_name || '').trim().slice(0, 120);
+        var rep = String(body.representative || '').trim().slice(0, 120);
+        if (cname.length < 2) return { ok: false, code: 'company_name_required', error: 'Indiquez la raison sociale de votre entreprise.' };
+        if (rep.length < 3) return { ok: false, code: 'representative_required', error: 'Indiquez le nom du représentant légal.' };
+        data.company_name = cname;
+        data.representative = rep;
     }
     return { ok: true, data: data };
 }
@@ -200,6 +206,7 @@ function partnerView(p) {
     return {
         status: v.status || 'none',
         legal_profile: profile,
+        business_kind: v.business_kind || (profile === 'company' ? 'company' : (profile ? 'independent' : null)),
         siret: v.siret || '',
         company_name: v.company_name || '',
         representative: v.representative || '',

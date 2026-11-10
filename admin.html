@@ -4712,7 +4712,7 @@
             if (!v.legal_profile) return h + '<p style="color:#999;font-size:12px;">Le prestataire n’a pas encore indiqué son statut.</p>';
 
             h += '<div class="grid md:grid-cols-2 gap-4">';
-            h += _vRow('Statut déclaré', VERIF_PROFILE_LABELS[v.legal_profile] + (v.legal_profile === 'foreign' ? (v.registered ? ', immatriculé' : ', sans immatriculation') : '') + ' · pays ' + _escHtml(d.country || '?'));
+            h += _vRow('Statut déclaré', VERIF_PROFILE_LABELS[v.legal_profile] + (v.legal_profile === 'foreign' ? (v.business_kind === 'company' ? ', entreprise' : ', indépendant') + (v.registered ? ', immatriculé' : ', sans immatriculation') : '') + ' · pays ' + _escHtml(d.country || '?'));
             if (v.siret) {
                 var c = d.siret_check || {};
                 var cLab = { active: '<span style="color:#51cf66;">En activité</span>', closed: '<span style="color:#ff6b6b;">FERMÉ</span>', not_found: '<span style="color:#fbbf24;">Introuvable dans l’annuaire officiel</span>', unavailable: '<span style="color:#999;">Vérification indisponible</span>', invalid: '<span style="color:#ff6b6b;">Invalide</span>' }[c.status] || '<span style="color:#999;">Non vérifié</span>';
