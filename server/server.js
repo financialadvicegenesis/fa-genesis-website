@@ -18338,18 +18338,7 @@ function getEventAttendancePoints(personId) {
     return total;
 }
 
-function getPartnerGenesisPoints(partner, missionsCompleted) {
-    if (!partner) return 0;
-    var missions = typeof missionsCompleted === 'number' ? missionsCompleted : getPartnerMissionsCompleted(partner.id);
-    var fiveStars = loadPartnerReviews().filter(function(r) {
-        return r.partnerId === partner.id && r.status === 'published' && r.rating === 5;
-    }).length;
-    var referrals = getPartnerReferralCount(partner.id);
-    return (missions * GENESIS_POINT_VALUES.prestationRealisee)
-        + (fiveStars * GENESIS_POINT_VALUES.avisCinqEtoiles)
-        + (referrals * GENESIS_POINT_VALUES.parrainage)
-        + getEventAttendancePoints(partner.id);
-}
+// getPartnerGenesisPoints supprimée le 2026-11-11 : plus de points QG côté prestataire.
 
 // Bonus de bienvenue (40 QG). Les comptes de test hors production portent un total arbitraire
 // dans referralBonusQG (setup-test-accounts) : conservé pour un compte non parrainé.
@@ -18443,7 +18432,7 @@ function getConstellationTier(partner) {
 const MISSION_ALLIANCE_ENABLED = false;
 const GENESIS_MISSIONS = [
     { id: 'multi_collab',      audience: 'client',  label: 'Collaborer avec 3 professionnels différents',       description: 'Travaillez avec au moins 3 partenaires différents pour enrichir votre réseau Genesis.',          icon: 'fa-people-group',   target: 3,  qgReward: 75  },
-    { id: 'event_participation',audience: 'both',   label: 'Participer à un atelier ou événement Genesis',       description: 'Inscrivez-vous et soyez présent à un événement ou workshop organisé par FA GENESIS.',          icon: 'fa-calendar-check', target: 1,  qgReward: 50  },
+    { id: 'event_participation',audience: 'client',   label: 'Participer à un atelier ou événement Genesis',       description: 'Inscrivez-vous et soyez présent à un événement ou workshop organisé par FA GENESIS.',          icon: 'fa-calendar-check', target: 1,  qgReward: 50  },
     { id: 'ref1',  category: 'communaute', audience: 'client', label: 'Inviter 1 nouveau membre actif',    description: 'Votre filleul doit réaliser sa première prestation pour que le parrainage soit validé.',  icon: 'fa-user-plus',      target: 1,  qgReward: 100  },
     { id: 'ref5',  category: 'communaute', audience: 'client', label: 'Inviter 5 nouveaux membres actifs',  description: 'Chacun doit avoir réalisé au moins une prestation.',                                    icon: 'fa-users',          target: 5,  qgReward: 300  },
     { id: 'ref10', category: 'communaute', audience: 'client', label: 'Inviter 10 nouveaux membres actifs', description: 'Chacun doit avoir réalisé au moins une prestation.',                                    icon: 'fa-people-arrows',  target: 10, qgReward: 500  },
@@ -18451,9 +18440,8 @@ const GENESIS_MISSIONS = [
     { id: 'ref50', category: 'communaute', audience: 'client', label: 'Inviter 50 nouveaux membres actifs', description: 'Chacun doit avoir réalisé au moins une prestation.',                                    icon: 'fa-earth-americas', target: 50, qgReward: 2000 },
     { id: 'alliance_circle',    audience: 'client', label: 'Atteindre le palier Alliance avec un partenaire',    description: 'Collaborez 5 fois avec le même partenaire pour débloquer le Cercle Alliance.',                icon: 'fa-handshake',      target: 5,  qgReward: 100 },
     { id: 'ten_orders',         audience: 'client', label: 'Souscrivez et finalisez 10 prestations sur la plateforme', description: 'Une prestation compte une fois finalisée : livraison validée ou solde payé.',           icon: 'fa-receipt',        target: 10, qgReward: 150 },
-    { id: 'multi_clients',      audience: 'partner',label: 'Travailler avec 3 clients différents',               description: 'Réalisez des prestations pour au moins 3 clients différents.',                                icon: 'fa-people-group',   target: 3,  qgReward: 75  },
-    { id: 'five_star_reviews',  audience: 'partner',label: 'Obtenir 10 avis 5 étoiles',                          description: 'Décrochez 10 avis 5 étoiles de vos clients.',                                                 icon: 'fa-star',           target: 10, qgReward: 150 },
-    { id: 'premium_circle',     audience: 'partner',label: 'Construire un Cercle Premium avec un client',         description: 'Collaborez 10 fois avec le même client pour débloquer le Cercle Premium.',                    icon: 'fa-gem',            target: 10, qgReward: 150 }
+    // Missions et points QG prestataire retirés (décision FA GENESIS, 2026-11-11) : jamais affichés
+    // dans l'espace prestataire. La progression prestataire = badges (PARTNER_BADGE_TIERS) uniquement.
 ];
 
 function computeGenesisMissionProgress(mission, person, personType) {
@@ -18473,15 +18461,6 @@ function computeGenesisMissionProgress(mission, person, personType) {
             break;
         case 'ten_orders':
             current = getClientCompletedOrders(person.email);
-            break;
-        case 'multi_clients':
-            current = getPartnerDistinctClientCount(person.id);
-            break;
-        case 'five_star_reviews':
-            current = loadPartnerReviews().filter(function(r) { return r.partnerId === person.id && r.status === 'published' && r.rating === 5; }).length;
-            break;
-        case 'premium_circle':
-            current = getPartnerMaxCollabCount(person.id);
             break;
     }
     var capped = Math.min(current, mission.target);
@@ -18648,7 +18627,7 @@ function buildJeremieSystemPrompt(person, personType, language) {
             }).join(' | ') : 'aucune'));
             lines.push('Ton role avec ce client : conseiller de projet (l\'aider a clarifier son besoin et choisir le bon ' +
                 'type de prestataire), recommandation intelligente (s\'appuyer sur ses categories preferees et son historique), ' +
-                'detection d\'opportunites (lui suggerer la prochaine mission ou le prochain palier de Cercle Genesis a portee ' +
+                'detection d\'opportunites (lui suggerer la prochaine mission ou le prochain niveau a portee ' +
                 'de main), et explication pedagogique du systeme de fidelisation s\'il pose des questions dessus.');
             // Paliers Jeremie client, tels qu'annonces dans Mes niveaux GENESIS (/api/client/level-progress) :
             // Createur = suggestions personnalisees, Batisseur = IA Plus, Visionnaire = IA Pro, Generateur = IA Expert.
@@ -18739,19 +18718,15 @@ function buildJeremieSystemPrompt(person, personType, language) {
                 ? (_pBadgeLabels[pProgress.nextBadge] + ' : ' + pProgress.missionsCurrent + '/' + pProgress.missionsTarget +
                    ' missions, note ' + (pProgress.ratingCurrent || 0) + '/' + pProgress.ratingTarget + ' requise')
                 : 'badge maximum atteint';
-            var pGenesisPoints = getPartnerGenesisPoints(person, missionsCompleted);
-            var pMissions = getGenesisMissions(person, 'partner');
             var opportunites = findSharedClientPartners(person.id, 3);
 
             lines.push('');
             lines.push('Donnees de ce partenaire : prenom=' + (person.prenom || '') + ', categorie=' + (person.partner_type || '') +
-                ', badge=' + pBadgeLabel + ', prochain badge=' + pNextLabel + ', QG=' + pGenesisPoints +
+                ', badge=' + pBadgeLabel + ', prochain badge=' + pNextLabel +
                 ', note moyenne=' + (summary && summary.average ? summary.average : 'pas encore note') +
                 ', prestations realisees=' + missionsCompleted +
                 ', SIRET renseigne (factures automatiques)=' + (person.siret ? 'oui' : 'non') + '.');
-            lines.push('Missions Genesis en cours : ' + (pMissions.length ? pMissions.map(function(m) {
-                return m.label + ' (' + m.current + '/' + m.target + (m.completed ? ', terminee' : '') + ')';
-            }).join(' | ') : 'aucune'));
+            lines.push('Les prestataires n\'ont ni points QG ni missions : leur progression passe uniquement par les badges. Ne lui en parle jamais.');
             lines.push('Partenaires partageant des clients avec lui (opportunites de collaboration) : ' +
                 (opportunites.length ? opportunites.map(function(o) { return o.name + ' (' + o.sharedClientCount + ' client(s) en commun)'; }).join(', ') : 'aucune pour le moment'));
             // Paliers Jeremie par badge, tels qu'annonces dans "Mes badges" (app.html, _ptnrBadgeDefs) :
@@ -22348,7 +22323,6 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             rating: summary,
             badge: badge,
             badgeProgress: getPartnerBadgeProgress(partner, summary, missionsCompleted),
-            genesisPoints: getPartnerGenesisPoints(partner, missionsCompleted),
             genesisLevel: getGenesisLevel(badge),
             constellation: getConstellationTier(partner),
             founderBadge: partner.founderBadge === true,
