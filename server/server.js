@@ -19585,7 +19585,9 @@ app.get('/api/partners/:id/reviews', (req, res) => {
         // Cercle Genesis : relation de ce client precis avec ce partenaire (si connecte)
         let cercleGenesis = null;
         const authHeader = req.headers.authorization;
-        if (authHeader && authHeader.startsWith('Bearer ')) {
+        // Ligne « Découverte / Alliance avec ce partenaire » retirée de la fiche avec la mission Alliance
+        // (décision FA GENESIS, 2026-11-11) : réaffichée si MISSION_ALLIANCE_ENABLED repasse à true.
+        if (MISSION_ALLIANCE_ENABLED && authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.slice(7);
             const clientUser = findUserByToken(token);
             if (clientUser) {
