@@ -4361,10 +4361,20 @@ function _showRoleChoiceAfterDelete(){
                 'tuto-overlay','reg-overlay','login-overlay','cart-overlay','pay-overlay',
                 'dispatch-claim-overlay','avail-overlay','msg-compose-overlay','dispute-overlay',
                 'doc-viewer-overlay','pb-overlay'];
+    // BUG CORRIGÉ (2026-11-11) : le style inline display:none restait posé après la fermeture.
+    // Exemple : déconnexion prestataire → espace client → « S'inscrire » ouvrait une fenêtre
+    // d'inscription invisible (showRegisterSheet ne remet pas style.display à ''), et on retombait
+    // sur l'écran d'accueil jusqu'au redémarrage de l'app. On retire donc la classe d'ouverture,
+    // puis on n'impose display:none QUE si la feuille de style ne cache pas déjà la fenêtre :
+    // une fenêtre fermée par sa classe peut ainsi se rouvrir normalement.
     _ids.forEach(function(id){
       var el = document.getElementById(id);
-      if(el){ el.style.display='none'; el.className=el.className.replace(/\b(on|open)\b/g,'').trim(); }
+      if(!el) return;
+      el.className = el.className.replace(/\b(on|open)\b/g,'').trim();
+      el.style.display = '';
+      if(getComputedStyle(el).display !== 'none') el.style.display = 'none';
     });
+    ['reg-sheet','login-sheet'].forEach(function(id){ var s = document.getElementById(id); if(s) s.classList.remove('up'); });
     // Fermer aussi les overlays de détail de service (classe dynamique)
     document.querySelectorAll('.svc-detail-overlay').forEach(function(el){ el.style.display='none'; });
   }catch(e){}
@@ -19920,6 +19930,7 @@ function showRegisterSheet(){
   var overlay = document.getElementById('reg-overlay');
   var sheet = document.getElementById('reg-sheet');
   if(!overlay || !sheet) return;
+  overlay.style.display = ''; // même filet que showLoginSheet : jamais de display:none résiduel
   var loOverlay=document.getElementById('login-overlay'); var loSheet=document.getElementById('login-sheet');
   if(loOverlay&&loOverlay.classList.contains('open')){ if(loSheet) loSheet.classList.remove('up'); loOverlay.classList.remove('open'); }
   var steps = document.querySelectorAll('.reg-step');
