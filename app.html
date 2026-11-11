@@ -2677,15 +2677,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261111c"></script>
-<script src="app-i18n-es.js?v=20261111c"></script>
-<script src="app-i18n-hi.js?v=20261111c"></script>
-<script src="app-i18n-pt.js?v=20261111c"></script>
-<script src="app-i18n-ja.js?v=20261111c"></script>
-<script src="app-i18n-zh.js?v=20261111c"></script>
-<script src="app-i18n-ar.js?v=20261111c"></script>
-<script src="app-i18n-it.js?v=20261111c"></script>
-<script src="app-i18n-de.js?v=20261111c"></script>
+<script src="app-i18n-en.js?v=20261111d"></script>
+<script src="app-i18n-es.js?v=20261111d"></script>
+<script src="app-i18n-hi.js?v=20261111d"></script>
+<script src="app-i18n-pt.js?v=20261111d"></script>
+<script src="app-i18n-ja.js?v=20261111d"></script>
+<script src="app-i18n-zh.js?v=20261111d"></script>
+<script src="app-i18n-ar.js?v=20261111d"></script>
+<script src="app-i18n-it.js?v=20261111d"></script>
+<script src="app-i18n-de.js?v=20261111d"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -17017,6 +17017,11 @@ function _ptnrVerifSaveProfile(){
 // l'appareil photo s'ouvre (« Prendre une photo » du menu, ou capture directe du selfie). Sur ces
 // versions, jamais d'ouverture directe de la caméra, et on guide vers la photothèque.
 var _pvCamState = null; // null = pas encore vérifié, true = caméra possible, false = app iPhone trop ancienne
+// 2026-11-11 : la fermeture de l'app à l'ouverture de la caméra a été signalée avec la 1.0.4 installée
+// (qui contient pourtant NSCameraUsageDescription) : cause encore inconnue. Par sécurité, aucune
+// ouverture directe de la caméra sur iPhone tant que ce n'est pas diagnostiqué — passer cette valeur
+// à la version corrigée une fois la cause trouvée et testée sur un vrai iPhone.
+var _PV_IOS_CAMERA_MIN = '99.0.0';
 function _pvVersionBelow(v, min){
   var a = String(v || '').split('.'), b = String(min).split('.');
   for(var i = 0; i < 3; i++){ var x = parseInt(a[i] || '0', 10) || 0, y = parseInt(b[i] || '0', 10) || 0; if(x !== y) return x < y; }
@@ -17031,7 +17036,7 @@ function _pvCheckCamera(){
     var A = C.Plugins && C.Plugins.App;
     if(!A || !A.getInfo){ _pvCamState = false; return Promise.resolve(false); }
     return A.getInfo().then(function(info){
-      _pvCamState = !_pvVersionBelow(info && info.version, '1.0.4');
+      _pvCamState = !_pvVersionBelow(info && info.version, _PV_IOS_CAMERA_MIN);
       return _pvCamState;
     }).catch(function(){ _pvCamState = false; return false; });
   }catch(e){ _pvCamState = true; return Promise.resolve(true); }
@@ -17069,7 +17074,7 @@ function _ptnrVerifPick(kind){
 }
 function _pvCamNoticeHtml(){
   if(_pvCamState !== false) return '';
-  return '<div class="pv-cam-notice"><i class="fa-solid fa-camera" style="margin-right:6px;"></i><span>Prenez vos photos et votre vidéo avec l’appareil photo de votre iPhone, puis envoyez-les depuis « Photothèque ». Mettez à jour l’application GENESIS dès que possible : vous pourrez les prendre directement.</span></div>';
+  return '<div class="pv-cam-notice"><i class="fa-solid fa-camera" style="margin-right:6px;"></i><span>Prenez vos photos et votre vidéo avec l’appareil photo de votre iPhone, puis envoyez-les depuis « Photothèque ».</span></div>';
 }
 function _ptnrVerifFileChosen(inp){
   var f = inp && inp.files && inp.files[0];
