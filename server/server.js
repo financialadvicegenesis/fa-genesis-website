@@ -18105,7 +18105,7 @@ const GENESIS_POINT_VALUES = {
     filleulPremierPrestation: 50,
     missionMultiCollab: 75,
     missionTenOrders: 150,      // « Souscrivez et finalisez 10 prestations » (2026-11-11, était affichée +200 sans être créditée)
-    missionAlliance: 100,       // « Atteindre le palier Alliance avec un partenaire » (crédité depuis 2026-11-11)
+    missionAlliance: 100,       // « Atteindre le palier Alliance avec un partenaire » — mission RETIRÉE (voir MISSION_ALLIANCE_ENABLED)
     missionRef1:  100,
     missionRef5:  300,
     missionRef10: 500,
@@ -18302,7 +18302,7 @@ function checkReferralAndMissionRewards(clientEmail) {
         }
 
         // 4. MISSION alliance_circle : +100 QG à la 5e collaboration finalisée avec un même prestataire
-        if (!(users[uIdx].missionBonuses && users[uIdx].missionBonuses.alliance_circle) && getClientMaxCollabCount(clientEmail) >= 5) {
+        if (MISSION_ALLIANCE_ENABLED && !(users[uIdx].missionBonuses && users[uIdx].missionBonuses.alliance_circle) && getClientMaxCollabCount(clientEmail) >= 5) {
             if (!users[uIdx].missionBonuses) users[uIdx].missionBonuses = {};
             users[uIdx].missionBonuses.alliance_circle = true;
             dirty = true;
@@ -18391,7 +18391,7 @@ function getClientGenesisPoints(user, completedOrders) {
         + welcomeBonus
         + (mb.multi_collab ? GENESIS_POINT_VALUES.missionMultiCollab : 0)
         + ((mb.ten_orders || orders >= 10) ? GENESIS_POINT_VALUES.missionTenOrders : 0)
-        + (mb.alliance_circle ? GENESIS_POINT_VALUES.missionAlliance : 0)
+        + (MISSION_ALLIANCE_ENABLED && mb.alliance_circle ? GENESIS_POINT_VALUES.missionAlliance : 0)
         + (mb.ref1  ? GENESIS_POINT_VALUES.missionRef1  : 0)
         + (mb.ref5  ? GENESIS_POINT_VALUES.missionRef5  : 0)
         + (mb.ref10 ? GENESIS_POINT_VALUES.missionRef10 : 0)
@@ -18437,6 +18437,10 @@ function getConstellationTier(partner) {
 // pas de recompense separee : la mission accomplie est deja comptabilisee
 // dans le QG via les compteurs source qu'elle agrege).
 // ============================================================
+// Mission « Atteindre le palier Alliance avec un partenaire » retirée pour l'instant (décision de
+// FA GENESIS, 2026-11-11 : le Cercle Alliance n'apporte encore rien de concret). Code conservé :
+// passer à true pour la réactiver (catalogue, crédit des 100 QG et notification).
+const MISSION_ALLIANCE_ENABLED = false;
 const GENESIS_MISSIONS = [
     { id: 'multi_collab',      audience: 'client',  label: 'Collaborer avec 3 professionnels différents',       description: 'Travaillez avec au moins 3 partenaires différents pour enrichir votre réseau Genesis.',          icon: 'fa-people-group',   target: 3,  qgReward: 75  },
     { id: 'event_participation',audience: 'both',   label: 'Participer à un atelier ou événement Genesis',       description: 'Inscrivez-vous et soyez présent à un événement ou workshop organisé par FA GENESIS.',          icon: 'fa-calendar-check', target: 1,  qgReward: 50  },
@@ -18493,6 +18497,7 @@ function computeGenesisMissionProgress(mission, person, personType) {
 function getGenesisMissions(person, personType) {
     return GENESIS_MISSIONS
         .filter(function(m) { return m.audience === 'both' || m.audience === personType; })
+        .filter(function(m) { return m.id !== 'alliance_circle' || MISSION_ALLIANCE_ENABLED; })
         .map(function(m) { return computeGenesisMissionProgress(m, person, personType); });
 }
 
@@ -18559,7 +18564,7 @@ function buildJeremieSystemPrompt(person, personType, language) {
         'de bienvenue + ' + GENESIS_POINT_VALUES.filleulPremierPrestation + ' QG de bonus parrainage (90 QG). Le parrain gagne ses QG uniquement via les missions ' +
         'Communaute, quand ses filleuls terminent leur premiere prestation : 1er filleul +100, 5 filleuls +300, 10 +500, 25 +1000, 50 +2000 (jamais +100 par filleul en plus). Il n\'existe AUCUNE reduction de ' +
         'bienvenue ni de parrainage, ne jamais en promettre. ' +
-        'Les Cercles Genesis recompensent les collaborations repetees avec un meme prestataire.');
+        'Il n\'existe pas de mission ni de recompense liee aux Cercles Genesis : ne pas en promettre.');
     lines.push('PROGRESSION PRESTATAIRE (different du client, ne jamais lui parler des niveaux Explorateur/Createur/' +
         'Batisseur/Visionnaire/Generateur) : badges ' + PARTNER_BADGE_TIERS.slice().reverse().map(function(t) {
             return ({ bronze: 'Bronze', argent: 'Argent', or: 'Or', elite: 'Elite' })[t.id] + ' (' + t.missions + ' missions et note >= ' + t.rating + ')';
