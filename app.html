@@ -17017,11 +17017,9 @@ function _ptnrVerifSaveProfile(){
 // l'appareil photo s'ouvre (« Prendre une photo » du menu, ou capture directe du selfie). Sur ces
 // versions, jamais d'ouverture directe de la caméra, et on guide vers la photothèque.
 var _pvCamState = null; // null = pas encore vérifié, true = caméra possible, false = app iPhone trop ancienne
-// 2026-11-11 : la fermeture de l'app à l'ouverture de la caméra a été signalée avec la 1.0.4 installée
-// (qui contient pourtant NSCameraUsageDescription) : cause encore inconnue. Par sécurité, aucune
-// ouverture directe de la caméra sur iPhone tant que ce n'est pas diagnostiqué — passer cette valeur
-// à la version corrigée une fois la cause trouvée et testée sur un vrai iPhone.
-var _PV_IOS_CAMERA_MIN = '99.0.0';
+// Première version iPhone avec NSCameraUsageDescription (codemagic.yaml, 2026-11-09). La fermeture
+// signalée le 2026-11-11 avait eu lieu sur la 1.0.3 (la 1.0.4 a été installée juste après).
+var _PV_IOS_CAMERA_MIN = '1.0.4';
 function _pvVersionBelow(v, min){
   var a = String(v || '').split('.'), b = String(min).split('.');
   for(var i = 0; i < 3; i++){ var x = parseInt(a[i] || '0', 10) || 0, y = parseInt(b[i] || '0', 10) || 0; if(x !== y) return x < y; }
