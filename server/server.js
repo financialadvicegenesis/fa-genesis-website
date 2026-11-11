@@ -17550,7 +17550,10 @@ function getClientPartnerCollabCount(clientEmail, partnerId) {
     if (orderIds.length === 0) return 0;
     const seen = {};
     loadOrders().forEach(o => {
-        if (orderIds.indexOf(o.id) === -1 || o.balance_paid !== true) return;
+        // Finalisée = solde payé OU livraison validée par le client (paiement unique GENESIS SAFE,
+        // sans solde séparé) — même règle que getClientCompletedOrders. Avant 2026-11-11, seules les
+        // commandes avec solde comptaient : le Cercle Alliance ignorait les paiements uniques.
+        if (orderIds.indexOf(o.id) === -1 || !(o.balance_paid === true || o.client_validated === true)) return;
         const oe = (o.client_info && o.client_info.email) || o.email || '';
         if (oe.toLowerCase() === needle) seen[o.id] = true;
     });
@@ -17605,7 +17608,7 @@ function getClientDistinctPartnerCount(clientEmail) {
     loadDispatches().forEach(d => {
         if (!d.claimed_by_partner_id) return;
         const order = orders.find(o => o.id === d.order_id);
-        if (!order || order.balance_paid !== true) return;
+        if (!order || !(order.balance_paid === true || order.client_validated === true)) return;
         const oe = (order.client_info && order.client_info.email) || order.email || '';
         if (oe.toLowerCase() === needle) partnerIds[d.claimed_by_partner_id] = true;
     });
@@ -18101,6 +18104,8 @@ const GENESIS_POINT_VALUES = {
     parrainage: 100,
     filleulPremierPrestation: 50,
     missionMultiCollab: 75,
+    missionTenOrders: 150,      // « Souscrivez et finalisez 10 prestations » (2026-11-11, était affichée +200 sans être créditée)
+    missionAlliance: 100,       // « Atteindre le palier Alliance avec un partenaire » (crédité depuis 2026-11-11)
     missionRef1:  100,
     missionRef5:  300,
     missionRef10: 500,
@@ -18285,6 +18290,28 @@ function checkReferralAndMissionRewards(clientEmail) {
             }
         }
 
+        // 3. MISSION ten_orders : +150 QG à la 10e prestation finalisée
+        if (!(users[uIdx].missionBonuses && users[uIdx].missionBonuses.ten_orders) && getClientCompletedOrders(clientEmail) >= 10) {
+            if (!users[uIdx].missionBonuses) users[uIdx].missionBonuses = {};
+            users[uIdx].missionBonuses.ten_orders = true;
+            dirty = true;
+            notifyUser(clientEmail, 'client', 'mission_complete',
+                '🏆 Mission accomplie !',
+                'Vous avez souscrit et finalisé 10 prestations sur GENESIS et gagnez +' + GENESIS_POINT_VALUES.missionTenOrders + ' Points QG !',
+                '/app.html#profil');
+        }
+
+        // 4. MISSION alliance_circle : +100 QG à la 5e collaboration finalisée avec un même prestataire
+        if (!(users[uIdx].missionBonuses && users[uIdx].missionBonuses.alliance_circle) && getClientMaxCollabCount(clientEmail) >= 5) {
+            if (!users[uIdx].missionBonuses) users[uIdx].missionBonuses = {};
+            users[uIdx].missionBonuses.alliance_circle = true;
+            dirty = true;
+            notifyUser(clientEmail, 'client', 'mission_complete',
+                '🏆 Mission accomplie !',
+                'Vous avez collaboré 5 fois avec le même prestataire : vous atteignez le Cercle Alliance et gagnez +' + GENESIS_POINT_VALUES.missionAlliance + ' Points QG !',
+                '/app.html#profil');
+        }
+
         if (dirty) {
             saveUsers(users);
             var updated = users[uIdx];
@@ -18363,6 +18390,8 @@ function getClientGenesisPoints(user, completedOrders) {
         + getEventAttendancePoints(user.id)
         + welcomeBonus
         + (mb.multi_collab ? GENESIS_POINT_VALUES.missionMultiCollab : 0)
+        + ((mb.ten_orders || orders >= 10) ? GENESIS_POINT_VALUES.missionTenOrders : 0)
+        + (mb.alliance_circle ? GENESIS_POINT_VALUES.missionAlliance : 0)
         + (mb.ref1  ? GENESIS_POINT_VALUES.missionRef1  : 0)
         + (mb.ref5  ? GENESIS_POINT_VALUES.missionRef5  : 0)
         + (mb.ref10 ? GENESIS_POINT_VALUES.missionRef10 : 0)
@@ -18417,7 +18446,7 @@ const GENESIS_MISSIONS = [
     { id: 'ref25', category: 'communaute', audience: 'client', label: 'Inviter 25 nouveaux membres actifs', description: 'Chacun doit avoir réalisé au moins une prestation.',                                    icon: 'fa-globe',          target: 25, qgReward: 1000 },
     { id: 'ref50', category: 'communaute', audience: 'client', label: 'Inviter 50 nouveaux membres actifs', description: 'Chacun doit avoir réalisé au moins une prestation.',                                    icon: 'fa-earth-americas', target: 50, qgReward: 2000 },
     { id: 'alliance_circle',    audience: 'client', label: 'Atteindre le palier Alliance avec un partenaire',    description: 'Collaborez 5 fois avec le même partenaire pour débloquer le Cercle Alliance.',                icon: 'fa-handshake',      target: 5,  qgReward: 100 },
-    { id: 'ten_orders',         audience: 'client', label: 'Réaliser 10 prestations',                            description: 'Commandez et finalisez 10 prestations sur la plateforme.',                                   icon: 'fa-receipt',        target: 10, qgReward: 200 },
+    { id: 'ten_orders',         audience: 'client', label: 'Souscrivez et finalisez 10 prestations sur la plateforme', description: 'Une prestation compte une fois finalisée : livraison validée ou solde payé.',           icon: 'fa-receipt',        target: 10, qgReward: 150 },
     { id: 'multi_clients',      audience: 'partner',label: 'Travailler avec 3 clients différents',               description: 'Réalisez des prestations pour au moins 3 clients différents.',                                icon: 'fa-people-group',   target: 3,  qgReward: 75  },
     { id: 'five_star_reviews',  audience: 'partner',label: 'Obtenir 10 avis 5 étoiles',                          description: 'Décrochez 10 avis 5 étoiles de vos clients.',                                                 icon: 'fa-star',           target: 10, qgReward: 150 },
     { id: 'premium_circle',     audience: 'partner',label: 'Construire un Cercle Premium avec un client',         description: 'Collaborez 10 fois avec le même client pour débloquer le Cercle Premium.',                    icon: 'fa-gem',            target: 10, qgReward: 150 }
@@ -18475,9 +18504,9 @@ app.get('/api/genesis/missions', function(req, res) {
         var user = findUserByToken(token);
         if (user) {
             var mb = user.missionBonuses || {};
-            var _claimedKeys = { multi_collab: mb.multi_collab, ref1: mb.ref1, ref5: mb.ref5, ref10: mb.ref10, ref25: mb.ref25, ref50: mb.ref50 };
+            var _claimedKeys = { multi_collab: mb.multi_collab, ref1: mb.ref1, ref5: mb.ref5, ref10: mb.ref10, ref25: mb.ref25, ref50: mb.ref50, ten_orders: mb.ten_orders, alliance_circle: mb.alliance_circle };
             var missions = getGenesisMissions(user, 'client').map(function(m) {
-                m.rewardClaimed = _claimedKeys[m.id] === true || (m.completed && !['multi_collab','ref1','ref5','ref10','ref25','ref50'].includes(m.id));
+                m.rewardClaimed = _claimedKeys[m.id] === true || (m.completed && !['multi_collab','ref1','ref5','ref10','ref25','ref50','ten_orders','alliance_circle'].includes(m.id));
                 return m;
             });
             return res.json({ success: true, missions: missions });
