@@ -1756,10 +1756,10 @@ async function sendPartnerVerificationRequestEmail(partner, deadlineIso, inFranc
     const list = inFrance
         ? `<li style="${li}">votre <strong>numéro SIRET</strong> ;</li>
            <li style="${li}">une <strong>preuve d’immatriculation</strong>, au choix : avis de situation SIRENE (gratuit sur avis-situation-sirene.insee.fr), extrait RNE ou attestation URSSAF. Pour une société : un Kbis de moins de 3 mois ;</li>
-           <li style="${li}">une <strong>pièce d’identité</strong> en cours de validité : carte d’identité, passeport ou titre de séjour ;</li>
-           <li style="${li}">un <strong>selfie</strong> de vous tenant cette pièce, à prendre directement dans l’application.</li>`
-        : `<li style="${li}">une <strong>pièce d’identité</strong> en cours de validité : passeport, carte d’identité ou titre de séjour ;</li>
-           <li style="${li}">un <strong>selfie</strong> de vous tenant cette pièce, à prendre directement dans l’application ;</li>
+           <li style="${li}">une <strong>pièce d’identité</strong> en cours de validité : carte d’identité ou titre de séjour (recto et verso), ou passeport ;</li>
+           <li style="${li}">une <strong>courte vidéo de votre visage</strong> (3 à 5 secondes, en tournant la tête à gauche puis à droite), à filmer directement dans l’application.</li>`
+        : `<li style="${li}">une <strong>pièce d’identité</strong> en cours de validité : passeport, ou carte d’identité / titre de séjour (recto et verso) ;</li>
+           <li style="${li}">une <strong>courte vidéo de votre visage</strong> (3 à 5 secondes, en tournant la tête à gauche puis à droite), à filmer directement dans l’application ;</li>
            <li style="${li}"><strong>si votre activité est déclarée dans votre pays</strong> : votre numéro d’immatriculation et le document officiel correspondant (par exemple ICE, RCCM ou NIF). Vous obtiendrez alors aussi le badge « Entreprise vérifiée » ;</li>
            <li style="${li}"><strong>sinon</strong> : une preuve de votre activité, au choix : anciens travaux, page professionnelle (Instagram, Behance, site…) ou références clients.</li>`;
     const intro = inFrance

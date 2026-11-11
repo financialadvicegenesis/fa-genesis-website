@@ -2006,6 +2006,12 @@ a{text-decoration:none;color:inherit}
 .pv-doc-actions{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;}
 .pv-doc-btn{background:transparent;border:1.5px solid #FFD700;color:#FFD700;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;}
 .pv-doc-progress{font-size:11px;color:#aaa;}
+.pv-idtypes{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 4px;}
+.pv-idtype{background:#141414;border:1.5px solid #2a2a2a;color:#bbb;border-radius:10px;padding:7px 11px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;}
+.pv-idtype.on{border-color:#FFD700;color:#FFD700;background:rgba(255,215,0,.08);}
+.pv-face-steps{display:flex;gap:6px;margin:10px 0 0;}
+.pv-face-step{flex:1;background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:8px 4px;text-align:center;font-size:10.5px;color:#aaa;line-height:1.35;}
+.pv-face-step i{display:block;font-size:16px;color:#FFD700;margin-bottom:4px;}
 .pv-cam-notice{font-size:12px;color:#fbbf24;line-height:1.55;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:11px 13px;margin:0 0 10px;}
 .pv-privacy{font-size:11px;color:#777;line-height:1.55;margin:16px 2px 0;display:flex;gap:8px;}
 .pv-status{display:flex;gap:12px;border-radius:14px;padding:14px;margin:16px 0 4px;border:1.5px solid;background:#0f0f0f;}
@@ -2671,15 +2677,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261111b"></script>
-<script src="app-i18n-es.js?v=20261111b"></script>
-<script src="app-i18n-hi.js?v=20261111b"></script>
-<script src="app-i18n-pt.js?v=20261111b"></script>
-<script src="app-i18n-ja.js?v=20261111b"></script>
-<script src="app-i18n-zh.js?v=20261111b"></script>
-<script src="app-i18n-ar.js?v=20261111b"></script>
-<script src="app-i18n-it.js?v=20261111b"></script>
-<script src="app-i18n-de.js?v=20261111b"></script>
+<script src="app-i18n-en.js?v=20261111c"></script>
+<script src="app-i18n-es.js?v=20261111c"></script>
+<script src="app-i18n-hi.js?v=20261111c"></script>
+<script src="app-i18n-pt.js?v=20261111c"></script>
+<script src="app-i18n-ja.js?v=20261111c"></script>
+<script src="app-i18n-zh.js?v=20261111c"></script>
+<script src="app-i18n-ar.js?v=20261111c"></script>
+<script src="app-i18n-it.js?v=20261111c"></script>
+<script src="app-i18n-de.js?v=20261111c"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3441,7 +3447,7 @@ function _genesisVersionFooter(){
             <button class="reg-eye" id="ptnr-reg-pass-eye" onclick="regTogglePwd('ptnr-reg-pass','ptnr-reg-pass-eye')" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
             <input class="ptnr-input" id="ptnr-reg-referral" type="text" placeholder="Code de parrainage (optionnel)" onkeydown="if(event.key==='Enter')_ptnrRegSubmit()">
-            <div class="pv-note" style="margin:0 0 12px;"><i class="fa-solid fa-shield-halved" style="color:#FFD700;margin-right:5px;"></i>Étape suivante : votre pièce d’identité, un selfie avec la pièce et vos justificatifs. Votre profil devient visible des clients une fois ces documents validés.</div>
+            <div class="pv-note" style="margin:0 0 12px;"><i class="fa-solid fa-shield-halved" style="color:#FFD700;margin-right:5px;"></i>Étape suivante : votre pièce d’identité, une courte vidéo de votre visage et vos justificatifs. Votre profil devient visible des clients une fois ces documents validés.</div>
             <div class="ptnr-login-err" id="ptnr-reg-err"></div>
             <button class="ptnr-login-btn" id="ptnr-reg-btn" onclick="_ptnrRegSubmit()">CRÉER MON COMPTE</button>
           </div>
@@ -3461,6 +3467,7 @@ function _genesisVersionFooter(){
       <!-- Sélecteurs de fichiers des justificatifs : hors des écrans (utilisés à l'inscription ET dans l'espace) -->
       <input type="file" id="ptnr-verif-file" accept="image/*,application/pdf" style="display:none" onchange="_ptnrVerifFileChosen(this)">
       <input type="file" id="ptnr-verif-selfie" accept="image/*" capture="user" style="display:none" onchange="_ptnrVerifFileChosen(this)">
+      <input type="file" id="ptnr-verif-video" accept="video/*" capture="user" style="display:none" onchange="_ptnrVerifFileChosen(this)">
 
       <!-- Admin redirect screen -->
       <div id="ptnr-admin-screen" style="display:none;">
@@ -16792,7 +16799,15 @@ function _ptnrLoadVerification(){
 
 function _pvDocInfo(kind, v){
   var abroad = v && !v.uses_siret;
-  if(kind === 'identity') return { label: 'Pièce d’identité', icon: 'fa-id-card', hint: abroad ? 'Passeport, carte d’identité ou titre de séjour en cours de validité.' : 'Carte d’identité, passeport ou titre de séjour en cours de validité.' };
+  var idt = v && v.id_doc_type;
+  if(kind === 'identity'){
+    if(idt === 'passport') return { label: 'Passeport', icon: 'fa-passport', hint: 'La page avec votre photo, en entier, bien lisible et sans reflet.' };
+    if(idt === 'residence_permit') return { label: 'Titre de séjour (recto)', icon: 'fa-id-card', hint: 'Le côté avec votre photo, en entier, bien lisible et sans reflet.' };
+    if(idt === 'id_card') return { label: 'Carte d’identité (recto)', icon: 'fa-id-card', hint: 'Le côté avec votre photo, en entier, bien lisible et sans reflet.' };
+    return { label: 'Pièce d’identité', icon: 'fa-id-card', hint: abroad ? 'Passeport, carte d’identité ou titre de séjour en cours de validité.' : 'Carte d’identité, passeport ou titre de séjour en cours de validité.' };
+  }
+  if(kind === 'identity_back') return { label: idt === 'residence_permit' ? 'Titre de séjour (verso)' : 'Carte d’identité (verso)', icon: 'fa-id-card', hint: 'L’autre côté de la même pièce, en entier.' };
+  if(kind === 'face_video') return { label: 'Vidéo de votre visage', icon: 'fa-video', hint: 'Une vidéo de 3 à 5 secondes, avec la caméra de face. Bonne lumière, sans lunettes de soleil ni casquette. Elle permet de vérifier que vous êtes bien la personne de la pièce d’identité.' };
   if(kind === 'selfie') return { label: 'Selfie avec votre pièce', icon: 'fa-camera', hint: 'Une photo de vous tenant votre pièce d’identité à côté de votre visage. Le visage et la pièce doivent être bien lisibles.' };
   if(kind === 'registration'){
     if(v && v.legal_profile === 'company') return { label: 'Extrait Kbis', icon: 'fa-building', hint: 'Extrait Kbis de moins de 3 mois.' };
@@ -16892,10 +16907,28 @@ function _pvDocRow(kind, v, locked){
   var has = !!(d && !d.deleted);
   var state = has ? '<span style="color:#22c55e;font-size:11px;font-weight:800;white-space:nowrap;"><i class="fa-solid fa-circle-check"></i> <span>Envoyé</span></span>'
     : '<span style="color:#f59e0b;font-size:11px;font-weight:800;white-space:nowrap;">À envoyer</span>';
-  var btn = locked ? '' : '<button type="button" class="pv-doc-btn" onclick="_ptnrVerifPick(\''+kind+'\')"><i class="fa-solid '+(kind === 'selfie' ? 'fa-camera' : 'fa-upload')+'"></i> <span>'+(has ? 'Remplacer' : (kind === 'selfie' ? (_pvCamState === false ? 'Choisir le selfie' : 'Prendre le selfie') : 'Envoyer'))+'</span></button>';
+  var _btnLabel = has ? 'Remplacer'
+    : kind === 'selfie' ? (_pvCamState === false ? 'Choisir le selfie' : 'Prendre le selfie')
+    : kind === 'face_video' ? (_pvCamState === false ? 'Choisir la vidéo' : 'Filmer mon visage')
+    : 'Envoyer';
+  var _btnIco = kind === 'selfie' ? 'fa-camera' : (kind === 'face_video' ? 'fa-video' : 'fa-upload');
+  var btn = locked ? '' : '<button type="button" class="pv-doc-btn" onclick="_ptnrVerifPick(\''+kind+'\')"><i class="fa-solid '+_btnIco+'"></i> <span>'+_btnLabel+'</span></button>';
   var h = '<div class="pv-doc" id="pv-doc-'+kind+'">'
     + '<div class="pv-doc-head"><div class="pv-doc-ico"><i class="fa-solid '+info.icon+'"></i></div><div class="pv-doc-title">'+info.label+'</div>'+state+'</div>'
     + '<div class="pv-doc-hint">'+info.hint+'</div>';
+  if(kind === 'identity' && !locked){
+    h += '<div class="pv-q" style="margin:10px 0 6px;">Quelle pièce envoyez-vous ?</div><div class="pv-idtypes">'
+      + [['id_card','Carte d’identité'],['residence_permit','Titre de séjour'],['passport','Passeport']].map(function(t){
+          return '<button type="button" class="pv-idtype'+(v.id_doc_type === t[0] ? ' on' : '')+'" onclick="_pvSetIdType(\''+t[0]+'\')">'+t[1]+'</button>';
+        }).join('') + '</div>';
+  }
+  if(kind === 'face_video' && !locked){
+    h += '<div class="pv-face-steps">'
+      + '<div class="pv-face-step"><i class="fa-solid fa-face-smile"></i><span>Regardez l’objectif</span></div>'
+      + '<div class="pv-face-step"><i class="fa-solid fa-arrow-left"></i><span>Tournez la tête à gauche</span></div>'
+      + '<div class="pv-face-step"><i class="fa-solid fa-arrow-right"></i><span>Puis à droite</span></div>'
+      + '</div>';
+  }
   if(kind === 'registration' && v.legal_profile === 'micro' && !locked){
     h += '<button type="button" class="ptnr-link-btn" style="padding:8px 0 0;text-align:left;width:auto;" onclick="openInBrowser(\'https://avis-situation-sirene.insee.fr/\')"><i class="fa-solid fa-arrow-up-right-from-square" style="margin-right:5px;"></i><span>Obtenir mon avis de situation SIRENE</span></button>';
   }
@@ -17003,10 +17036,20 @@ function _pvCheckCamera(){
     }).catch(function(){ _pvCamState = false; return false; });
   }catch(e){ _pvCamState = true; return Promise.resolve(true); }
 }
+function _pvSetIdType(t){
+  _ptnrFetch('/api/partner/verification/id-type', 'POST', { id_doc_type: t }).then(function(d){
+    if(d && d.verification){ _ptnrVerif = d.verification; _ptnrRenderVerification(); }
+    else showToast('Erreur', (d && d.error) || 'Réessayez.', 'error');
+  }).catch(function(){ showToast('Erreur de connexion', 'Vérifiez votre connexion et réessayez.', 'error'); });
+}
 function _ptnrVerifPick(kind){
   if(_ptnrVerifBusy) return;
+  if((kind === 'identity' || kind === 'identity_back') && _ptnrVerif && !_ptnrVerif.id_doc_type){
+    showToast('Quelle pièce envoyez-vous ?', 'Choisissez d’abord : carte d’identité, titre de séjour ou passeport.', 'info');
+    return;
+  }
   _ptnrVerifUploadKind = kind;
-  var inp = document.getElementById(kind === 'selfie' ? 'ptnr-verif-selfie' : 'ptnr-verif-file');
+  var inp = document.getElementById(kind === 'selfie' ? 'ptnr-verif-selfie' : (kind === 'face_video' ? 'ptnr-verif-video' : 'ptnr-verif-file'));
   if(!inp) return;
   inp.value = '';
   // Le clic doit partir tout de suite (geste de l'utilisateur) : l'état de la caméra est connu
@@ -17015,22 +17058,47 @@ function _ptnrVerifPick(kind){
   var _iosNative = !!(_C && _C.isNativePlatform && _C.isNativePlatform() && _C.getPlatform && _C.getPlatform() === 'ios');
   if(_pvCamState === false || (_pvCamState === null && _iosNative)){
     inp.removeAttribute('capture');
-    var _camMsg = 'Sur cette version de l’application, l’appareil photo ne peut pas s’ouvrir depuis GENESIS.\n\n1. Prenez d’abord la photo avec l’appareil photo de votre iPhone.\n2. Revenez ici et choisissez « Photothèque ».\n\nN’utilisez pas « Prendre une photo » dans le menu qui va s’ouvrir.';
+    var _camMsg = kind === 'face_video'
+      ? 'Sur cette version de l’application, l’appareil photo ne peut pas s’ouvrir depuis GENESIS.\n\n1. Filmez d’abord la vidéo avec l’appareil photo de votre iPhone (mode Vidéo, caméra de face).\n2. Revenez ici et choisissez « Photothèque ».\n\nN’utilisez pas « Prendre une vidéo » dans le menu qui va s’ouvrir.'
+      : 'Sur cette version de l’application, l’appareil photo ne peut pas s’ouvrir depuis GENESIS.\n\n1. Prenez d’abord la photo avec l’appareil photo de votre iPhone.\n2. Revenez ici et choisissez « Photothèque ».\n\nN’utilisez pas « Prendre une photo » dans le menu qui va s’ouvrir.';
     if(!window.confirm(typeof _tr === 'function' ? _tr(_camMsg) : _camMsg)) return;
-  } else if(kind === 'selfie'){
+  } else if(kind === 'selfie' || kind === 'face_video'){
     inp.setAttribute('capture', 'user');
   }
   inp.click();
 }
 function _pvCamNoticeHtml(){
   if(_pvCamState !== false) return '';
-  return '<div class="pv-cam-notice"><i class="fa-solid fa-camera" style="margin-right:6px;"></i><span>Prenez vos photos avec l’appareil photo de votre iPhone, puis envoyez-les depuis « Photothèque ». Mettez à jour l’application GENESIS dès que possible : la prise de photo directe y sera disponible.</span></div>';
+  return '<div class="pv-cam-notice"><i class="fa-solid fa-camera" style="margin-right:6px;"></i><span>Prenez vos photos et votre vidéo avec l’appareil photo de votre iPhone, puis envoyez-les depuis « Photothèque ». Mettez à jour l’application GENESIS dès que possible : vous pourrez les prendre directement.</span></div>';
 }
 function _ptnrVerifFileChosen(inp){
   var f = inp && inp.files && inp.files[0];
   var kind = _ptnrVerifUploadKind;
   if(!f || !kind) return;
+  if(kind === 'face_video'){
+    if(f.type && !/^video\//.test(f.type)){ showToast('Ce n’est pas une vidéo', 'Filmez votre visage en mode Vidéo.', 'error'); return; }
+    _pvVideoDuration(f).then(function(d){
+      if(d && d > 20){ showToast('Vidéo trop longue', '3 à 5 secondes suffisent : regardez l’objectif, puis tournez la tête à gauche et à droite.', 'error'); return; }
+      if(d && d < 1.5){ showToast('Vidéo trop courte', 'Filmez 3 à 5 secondes : regardez l’objectif, puis tournez la tête à gauche et à droite.', 'error'); return; }
+      _ptnrVerifUpload(kind, f);
+    });
+    return;
+  }
   _pvPrepareFile(f).then(function(blob){ _ptnrVerifUpload(kind, blob); });
+}
+function _pvVideoDuration(f){
+  return new Promise(function(resolve){
+    var u = null;
+    try{
+      u = URL.createObjectURL(f);
+      var vd = document.createElement('video');
+      vd.preload = 'metadata'; vd.muted = true;
+      var t = setTimeout(function(){ URL.revokeObjectURL(u); resolve(null); }, 5000);
+      vd.onloadedmetadata = function(){ clearTimeout(t); var d = vd.duration; URL.revokeObjectURL(u); resolve(isFinite(d) ? d : null); };
+      vd.onerror = function(){ clearTimeout(t); URL.revokeObjectURL(u); resolve(null); };
+      vd.src = u;
+    }catch(e){ if(u) URL.revokeObjectURL(u); resolve(null); }
+  });
 }
 // Photo lourde → réduite sur le téléphone (2000 px, JPEG) : envoi plus rapide en 4G, toujours lisible.
 function _pvPrepareFile(f){
@@ -17056,13 +17124,14 @@ function _pvPrepareFile(f){
   });
 }
 function _ptnrVerifUpload(kind, blob){
-  if(blob.size > 10 * 1024 * 1024){ showToast('Fichier trop lourd', '10 Mo maximum. Prenez une photo plutôt qu’un scan.', 'error'); return; }
+  if(kind === 'face_video' && blob.size > 60 * 1024 * 1024){ showToast('Vidéo trop lourde', '3 à 5 secondes suffisent.', 'error'); return; }
+  if(kind !== 'face_video' && blob.size > 10 * 1024 * 1024){ showToast('Fichier trop lourd', '10 Mo maximum. Prenez une photo plutôt qu’un scan.', 'error'); return; }
   _ptnrVerifBusy = true;
   var prog = document.getElementById('pv-prog-' + kind);
   if(prog) prog.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Envoi…</span>';
   var tok = _ptnrToken || localStorage.getItem('fa_genesis_partner_token') || '';
   var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-  var tid = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 120000);
+  var tid = setTimeout(function(){ if(ctrl) ctrl.abort(); }, kind === 'face_video' ? 300000 : 120000);
   fetch(_ptnrApiUrl() + '/api/partner/verification/document/' + kind, {
     method: 'POST',
     headers: { 'Content-Type': blob.type || 'application/octet-stream', 'Authorization': 'Bearer ' + tok },

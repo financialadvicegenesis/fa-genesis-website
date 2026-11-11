@@ -16090,17 +16090,19 @@ const MEDIA_ID_RE = /^VID-[a-f0-9]{24}$/;
 // ============================================================
 // VÉRIFICATION DES PRESTATAIRES (2026-11-10) — logique dans server/partner-verification.js
 // ============================================================
-// Justificatifs (pièce d'identité, selfie avec la pièce, immatriculation, preuve d'activité) :
+// Justificatifs (pièce d'identité recto/verso, vidéo du visage, immatriculation, preuve d'activité) :
 // fichiers PRIVÉS, dans un bucket GridFS à part (« partner_documents », sinon data/private_documents)
 // — jamais servis par /api/media, jamais touchés par le ménage des vidéos du portfolio — lisibles
 // uniquement par l'admin, et supprimés dès que le dossier est validé (seul le résultat est gardé).
 const privateDocStore = MediaStore.create({ dataDir: DATA_DIR, getDb: function() { return persistentStore.getDb ? persistentStore.getDb() : null; }, bucket: 'partner_documents', subdir: 'private_documents' });
 const DOC_ID_RE = /^DOC-[a-f0-9]{24}$/;
-var VERIF_DOC_LABELS = { identity: 'pièce d’identité', selfie: 'selfie avec la pièce', registration: 'preuve d’immatriculation', activity: 'preuve d’activité' };
+var VERIF_DOC_LABELS = { identity: 'pièce d’identité (recto)', identity_back: 'pièce d’identité (verso)', face_video: 'vidéo de votre visage', selfie: 'selfie avec la pièce', registration: 'preuve d’immatriculation', activity: 'preuve d’activité' };
 var VERIF_LOCKED_MSG = 'Vos justificatifs sont déjà envoyés. Pour les modifier, contactez l’assistance.';
 var SIRET_CLOSED_MSG = 'Ce SIRET correspond à un établissement fermé dans le répertoire officiel des entreprises. Vérifiez le numéro, ou contactez-nous si votre activité est en cours.';
 var DOC_TOO_BIG_MSG = 'Fichier trop lourd (10 Mo maximum). Prenez une photo plutôt qu’un scan haute définition.';
 var DOC_INVALID_MSG = 'Format non accepté : envoyez une photo (JPEG, PNG, HEIC) ou un PDF.';
+var VIDEO_DOC_TOO_BIG_MSG = 'Vidéo trop lourde (60 Mo maximum) : 3 à 5 secondes suffisent.';
+var VIDEO_DOC_INVALID_MSG = 'Format non accepté : envoyez une vidéo (MP4, MOV ou WebM).';
 
 // Visible des clients (annuaire, recherche, Jérémie, nouvelles demandes et commandes) : compte
 // actif ET pas masqué pour justificatifs non envoyés dans le délai. Les missions en cours, les
@@ -16201,7 +16203,7 @@ app.post('/api/partner/verification/profile', authenticatePartner, async functio
             if (lg.data.siret) pp.siret = lg.data.siret;
             if (lg.data.company_name && !pp.company) pp.company = lg.data.company_name;
             // Pièce devenue inutile avec le nouveau statut (ex. preuve d'activité → immatriculation).
-            var need = PartnerVerif.requiredDocs(v.legal_profile, !!v.registered);
+            var need = PartnerVerif.requiredFor(v);
             ['registration', 'activity'].forEach(function(k) {
                 if (need.indexOf(k) === -1 && v.docs[k]) { if (v.docs[k].id) removed.push(v.docs[k].id); delete v.docs[k]; }
             });
@@ -16215,54 +16217,81 @@ app.post('/api/partner/verification/profile', authenticatePartner, async functio
     }
 });
 
-// Envoi d'un justificatif : corps = le fichier (photo ou PDF, 10 Mo max), type vérifié par sa
-// signature réelle. Remplace la pièce du même type déjà envoyée.
+// Type de pièce d'identité (carte, titre de séjour, passeport) : un passeport n'a pas de verso.
+app.post('/api/partner/verification/id-type', authenticatePartner, function(req, res) {
+    var t = String((req.body && req.body.id_doc_type) || '');
+    if (PartnerVerif.ID_TYPES.indexOf(t) === -1) return res.status(400).json({ error: 'Type de pièce inconnu.' });
+    if (_verifLocked(req.partner.verification)) return res.status(409).json({ error: VERIF_LOCKED_MSG, code: 'verification_locked' });
+    var removed = null;
+    var p = _updatePartnerVerification(req.partner.id, function(pp, v) {
+        v.id_doc_type = t;
+        if (t === 'passport' && v.docs.identity_back) { removed = v.docs.identity_back.id; delete v.docs.identity_back; }
+    });
+    if (removed) privateDocStore.remove(removed).catch(function() {});
+    if (!p) return res.status(404).json({ error: 'Prestataire introuvable' });
+    res.json({ success: true, verification: PartnerVerif.partnerView(p) });
+});
+
+// Envoi d'un justificatif : corps = le fichier (photo ou PDF 10 Mo max, vidéo du visage 60 Mo max),
+// écrit en flux dans un fichier temporaire (jamais tout en mémoire), type vérifié par sa signature
+// réelle. Remplace la pièce du même type déjà envoyée. La vidéo du visage est ensuite convertie en
+// H.264 (file de compression des vidéos, même garde-fou mémoire) : lisible dans le navigateur de
+// l'admin même quand l'iPhone l'a filmée en HEVC.
 app.post('/api/partner/verification/document/:kind', authenticatePartner, function(req, res) {
     var kind = req.params.kind;
     var partnerId = req.partner.id;
     if (PartnerVerif.DOC_KINDS.indexOf(kind) === -1) { req.resume(); return res.status(400).json({ error: 'Type de document inconnu.' }); }
+    var isVideo = PartnerVerif.isVideoKind(kind);
+    var maxBytes = PartnerVerif.maxBytesFor(kind);
+    var tooBig = isVideo ? VIDEO_DOC_TOO_BIG_MSG : DOC_TOO_BIG_MSG;
     if (_verifLocked(req.partner.verification)) { req.resume(); return res.status(409).json({ error: VERIF_LOCKED_MSG, code: 'verification_locked' }); }
     if (!checkRateLimit('partner:' + partnerId, 'verif_doc', 40, 3600000)) { req.resume(); return res.status(429).json({ error: 'Trop d’envois en peu de temps. Réessayez dans une heure.' }); }
     var declared = parseInt(req.headers['content-length'], 10);
-    if (declared > PartnerVerif.DOC_MAX_BYTES) { req.resume(); return res.status(413).json({ error: DOC_TOO_BIG_MSG, code: 'document_too_large' }); }
-    var chunks = [], size = 0, done = false;
-    function fail(status, body) { if (done) return; done = true; chunks = []; req.resume(); res.status(status).json(body); }
+    if (declared > maxBytes) { req.resume(); return res.status(413).json({ error: tooBig, code: 'document_too_large' }); }
+    var id = 'DOC-' + crypto.randomBytes(12).toString('hex');
+    var tmp = path.join(require('os').tmpdir(), 'fag-' + id + '.doc');
+    var out = fs.createWriteStream(tmp);
+    var size = 0, head = [], headLen = 0, done = false;
+    function cleanup() { fs.unlink(tmp, function() {}); }
+    function fail(status, body) {
+        if (done) return;
+        done = true;
+        try { req.unpipe(out); } catch (e) {}
+        out.destroy();
+        cleanup();
+        req.resume();
+        res.status(status).json(body);
+    }
     req.on('data', function(c) {
-        if (done) return;
         size += c.length;
-        if (size > PartnerVerif.DOC_MAX_BYTES) return fail(413, { error: DOC_TOO_BIG_MSG, code: 'document_too_large' });
-        chunks.push(c);
+        if (headLen < 16) { head.push(c); headLen += c.length; }
+        if (size > maxBytes) fail(413, { error: tooBig, code: 'document_too_large' });
     });
-    req.on('aborted', function() { done = true; chunks = []; });
-    req.on('error', function() { done = true; chunks = []; });
-    req.on('end', function() {
+    req.on('aborted', function() { if (!done) { done = true; out.destroy(); cleanup(); } });
+    req.on('error', function() { if (!done) { done = true; out.destroy(); cleanup(); } });
+    out.on('error', function() { fail(500, { error: 'Enregistrement impossible. Réessayez.' }); });
+    out.on('finish', function() {
         if (done) return;
-        var buf = Buffer.concat(chunks);
-        chunks = [];
-        var type = PartnerVerif.sniffDocument(buf);
-        if (!type) return fail(400, { error: DOC_INVALID_MSG, code: 'invalid_document' });
-        var id = 'DOC-' + crypto.randomBytes(12).toString('hex');
-        var tmp = path.join(require('os').tmpdir(), 'fag-' + id + '.doc');
-        fs.writeFile(tmp, buf, function(err) {
-            if (err) return fail(500, { error: 'Enregistrement impossible. Réessayez.' });
-            privateDocStore.put(id, tmp, { owner: partnerId, contentType: type, processed: true, kind: 'document' }).then(function() {
-                fs.unlink(tmp, function() {});
-                var old = null;
-                var p = _updatePartnerVerification(partnerId, function(pp, v) {
-                    old = v.docs[kind] && v.docs[kind].id;
-                    v.docs[kind] = { id: id, content_type: type, size: buf.length, uploaded_at: new Date().toISOString() };
-                });
-                if (old) privateDocStore.remove(old).catch(function() {});
-                if (!p) { privateDocStore.remove(id).catch(function() {}); return fail(404, { error: 'Prestataire introuvable' }); }
-                done = true;
-                res.json({ success: true, verification: PartnerVerif.partnerView(p) });
-            }).catch(function(e) {
-                fs.unlink(tmp, function() {});
-                console.error('[VERIF] Stockage justificatif impossible:', e && e.message);
-                fail(500, { error: 'Enregistrement impossible. Réessayez.' });
+        var h = Buffer.concat(head);
+        var type = isVideo ? MediaStore.sniffVideo(h) : PartnerVerif.sniffDocument(h);
+        if (!size || !type) return fail(400, { error: isVideo ? VIDEO_DOC_INVALID_MSG : DOC_INVALID_MSG, code: 'invalid_document' });
+        privateDocStore.put(id, tmp, { owner: partnerId, contentType: type, processed: !isVideo, kind: 'document' }).then(function() {
+            var old = null;
+            var p = _updatePartnerVerification(partnerId, function(pp, v) {
+                old = v.docs[kind] && v.docs[kind].id;
+                v.docs[kind] = { id: id, content_type: type, size: size, uploaded_at: new Date().toISOString() };
             });
+            if (old) privateDocStore.remove(old).catch(function() {});
+            if (!p) { cleanup(); privateDocStore.remove(id).catch(function() {}); return fail(404, { error: 'Prestataire introuvable' }); }
+            done = true;
+            res.json({ success: true, verification: PartnerVerif.partnerView(p) });
+            if (!isVideo || !queueVideoTranscode(id, tmp, { store: privateDocStore, faceVideo: true })) cleanup();
+        }).catch(function(e) {
+            console.error('[VERIF] Stockage justificatif impossible:', e && e.message);
+            fail(500, { error: 'Enregistrement impossible. Réessayez.' });
         });
     });
+    req.pipe(out);
 });
 
 // Envoi du dossier complet à l'équipe.
@@ -16274,7 +16303,7 @@ app.post('/api/partner/verification/submit', authenticatePartner, function(req, 
         if (!v.legal_profile) return res.status(400).json({ error: 'Choisissez d’abord votre statut.', code: 'legal_profile_required' });
         var proof = typeof req.body.activity_proof === 'string' ? req.body.activity_proof.trim().slice(0, 1000) : (v.activity_proof || '');
         var docs = v.docs || {};
-        var missing = PartnerVerif.requiredDocs(v.legal_profile, !!v.registered).filter(function(k) {
+        var missing = PartnerVerif.requiredFor(v).filter(function(k) {
             var has = !!(docs[k] && docs[k].id);
             if (k === 'activity') return !has && proof.length < 10;
             return !has;
@@ -16333,7 +16362,7 @@ app.get('/api/admin/partners/:partnerId/verification/document/:kind', function(r
     if (!d || !d.id || !DOC_ID_RE.test(d.id)) return res.status(404).json({ error: 'Document indisponible' });
     privateDocStore.info(d.id).then(function(inf) {
         if (!inf || !inf.size || inf.owner !== p.id) return res.status(404).json({ error: 'Document indisponible' });
-        var ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/heic': '.heic', 'application/pdf': '.pdf' }[inf.contentType] || '';
+        var ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/heic': '.heic', 'application/pdf': '.pdf', 'video/mp4': '.mp4', 'video/webm': '.webm', 'video/3gpp': '.3gp' }[inf.contentType] || '';
         res.set({
             'Content-Type': inf.contentType,
             'Content-Length': String(inf.size),
@@ -16666,10 +16695,12 @@ function _probeVideo(src) {
     });
 }
 var _videoQueue = [], _videoQueueBusy = false, _videoQueued = {};
-function queueVideoTranscode(id, srcPath) {
+// opts.store : stockage de la vidéo (vidéos du portfolio par défaut, ou justificatifs privés) ;
+// opts.faceVideo : vidéo du visage pour la vérification → sans son, 720 px suffisent.
+function queueVideoTranscode(id, srcPath, opts) {
     if (!FFMPEG_PATH || _videoQueued[id]) return false;
     _videoQueued[id] = true;
-    _videoQueue.push({ id: id, src: srcPath || null });
+    _videoQueue.push({ id: id, src: srcPath || null, store: (opts && opts.store) || null, faceVideo: !!(opts && opts.faceVideo) });
     setImmediate(_runVideoQueue);
     return true;
 }
@@ -16719,8 +16750,10 @@ function transcodePortfolioVideo(job) {
     var src = job.src || path.join(os.tmpdir(), 'fag-' + job.id + '.src');
     var out = path.join(os.tmpdir(), 'fag-' + job.id + '-h264.mp4');
     var started = Date.now();
-    return mediaStore.markAttempt(job.id).then(function() {
-        return ownSrc ? mediaStore.toFile(job.id, src) : null;
+    var store = job.store || mediaStore;
+    var maxDim = job.faceVideo ? 720 : 1280;
+    return store.markAttempt(job.id).then(function() {
+        return ownSrc ? store.toFile(job.id, src) : null;
     }).then(function() {
         return _probeVideo(src);
     }).then(function(pr) {
@@ -16730,26 +16763,26 @@ function transcodePortfolioVideo(job) {
         if (pr && pr.w * pr.h > 1920 * 1088 && mem < 1.5 * 1024 * 1024 * 1024) {
             throw new Error('vidéo ' + pr.w + '×' + pr.h + ' trop grande pour la mémoire du serveur (' + Math.round(mem / 1048576) + ' Mo)');
         }
+        var audio = job.faceVideo ? ['-an'] : ['-c:a', 'aac', '-b:a', '96k', '-ac', '2'];
         return _runFfmpeg([
             '-hide_banner', '-loglevel', 'error', '-y', '-threads', '1', '-i', src,
-            '-map', '0:v:0', '-map', '0:a:0?',
-            '-vf', "scale=w='min(1280,iw)':h='min(1280,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2",
+            '-map', '0:v:0'].concat(job.faceVideo ? [] : ['-map', '0:a:0?'], [
+            '-vf', "scale=w='min(" + maxDim + ",iw)':h='min(" + maxDim + ",ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2",
             '-filter_threads', '1',
             '-c:v', 'libx264', '-preset', 'superfast', '-crf', '26', '-maxrate', '2500k', '-bufsize', '5000k',
             '-x264-params', 'rc-lookahead=10', '-threads', '1',
-            '-pix_fmt', 'yuv420p', '-profile:v', 'main',
-            '-c:a', 'aac', '-b:a', '96k', '-ac', '2',
+            '-pix_fmt', 'yuv420p', '-profile:v', 'main'], audio, [
             '-movflags', '+faststart', out
-        ], 15 * 60 * 1000);
+        ]), 15 * 60 * 1000);
     }).then(function() {
         var head = Buffer.alloc(16), fd = fs.openSync(out, 'r');
         fs.readSync(fd, head, 0, 16, 0); fs.closeSync(fd);
         if (!MediaStore.sniffVideo(head)) throw new Error('sortie illisible');
         // Vidéo retirée pendant la compression : rien à remplacer.
-        return mediaStore.info(job.id).then(function(inf) {
+        return store.info(job.id).then(function(inf) {
             if (!inf) return;
             var before = inf.size, after = fs.statSync(out).size;
-            return mediaStore.put(job.id, out, { owner: inf.owner, contentType: 'video/mp4', processed: true }).then(function() {
+            return store.put(job.id, out, { owner: inf.owner, contentType: 'video/mp4', processed: true, kind: job.faceVideo ? 'document' : 'video' }).then(function() {
                 console.log('[PORTFOLIO-VIDEO] ' + job.id + ' compressée : ' + Math.round(before / 1048576) + ' Mo → ' + Math.round(after / 1048576 * 10) / 10 + ' Mo en ' + Math.round((Date.now() - started) / 1000) + ' s');
             });
         });

@@ -4625,7 +4625,8 @@
         // ── Vérification des prestataires (justificatifs, 2026-11-10) ──────────────────
         // Fichiers privés lus via /api/admin/partners/:id/verification/document/:kind (jeton admin
         // ajouté par admin-system.js). Couleurs explicites : la fenêtre est hors #adminPanel.
-        var VERIF_DOC_LABELS_ADMIN = { identity: 'Pièce d’identité', selfie: 'Selfie avec la pièce', registration: 'Preuve d’immatriculation', activity: 'Preuve d’activité' };
+        var VERIF_DOC_LABELS_ADMIN = { identity: 'Pièce d’identité (recto)', identity_back: 'Pièce d’identité (verso)', face_video: 'Vidéo du visage', selfie: 'Selfie avec la pièce', registration: 'Preuve d’immatriculation', activity: 'Preuve d’activité' };
+        var VERIF_ID_TYPES = { id_card: 'Carte d’identité', residence_permit: 'Titre de séjour', passport: 'Passeport' };
         var VERIF_PROFILE_LABELS = { micro: 'Indépendant / micro-entrepreneur (France)', company: 'Entreprise / société (France)', foreign: 'Professionnel à l’étranger' };
 
         function _verifHidden(p) {
@@ -4712,6 +4713,7 @@
             if (!v.legal_profile) return h + '<p style="color:#999;font-size:12px;">Le prestataire n’a pas encore indiqué son statut.</p>';
 
             h += '<div class="grid md:grid-cols-2 gap-4">';
+            if (v.id_doc_type) h += _vRow('Pièce d’identité envoyée', VERIF_ID_TYPES[v.id_doc_type] || _escHtml(v.id_doc_type));
             h += _vRow('Statut déclaré', VERIF_PROFILE_LABELS[v.legal_profile] + (v.legal_profile === 'foreign' ? (v.business_kind === 'company' ? ', entreprise' : ', indépendant') + (v.registered ? ', immatriculé' : ', sans immatriculation') : '') + ' · pays ' + _escHtml(d.country || '?'));
             if (v.siret) {
                 var c = d.siret_check || {};
@@ -4741,11 +4743,15 @@
                 }
             });
             h += '</div>';
+            var _face = (v.docs && v.docs.face_video && !v.docs.face_video.deleted) ? 'face_video' : ((v.docs && v.docs.selfie && !v.docs.selfie.deleted) ? 'selfie' : null);
+            if (_face && v.docs.identity && !v.docs.identity.deleted) {
+                h += '<button onclick="openVerifCompare(\'' + sid + '\', \'' + _face + '\')" style="background:#FFD700;color:#0a0a0a;border:none;padding:10px 16px;font-size:12px;font-weight:900;cursor:pointer;margin:0 0 14px;"><i class="fas fa-user-check mr-1"></i>COMPARER LA PIÈCE ET LE VISAGE</button>';
+            }
 
             if (v.status === 'submitted') {
                 var canBusiness = !(v.legal_profile === 'foreign' && !v.registered);
                 h += '<div style="border:1px solid #333;padding:12px 14px;">' +
-                    '<div style="color:#e0e0e0;font-size:12px;margin-bottom:10px;">Vérifiez que le visage du selfie correspond à la pièce d’identité, que le nom correspond au compte et que le document d’immatriculation est récent.</div>' +
+                    '<div style="color:#e0e0e0;font-size:12px;margin-bottom:10px;">Vérifiez que le visage de la vidéo est bien celui de la pièce d’identité (et qu’il bouge : une vraie personne, pas une photo filmée), que le nom correspond au compte, que la pièce est en cours de validité et que le document d’immatriculation est récent.</div>' +
                     (canBusiness ? '<label style="color:#ccc;font-size:12px;display:flex;gap:6px;align-items:center;margin-bottom:10px;"><input type="checkbox" id="pvIdentityOnly"> Badge « Identité vérifiée » seulement (immatriculation douteuse)</label>' : '') +
                     '<button onclick="approvePartnerVerification(\'' + sid + '\')" style="background:#51cf66;color:#0a0a0a;border:none;padding:10px 18px;font-size:13px;font-weight:900;cursor:pointer;margin-right:8px;"><i class="fas fa-check mr-1"></i>VALIDER LE DOSSIER' + (d.account_status === 'pending' ? ' ET ACTIVER LE COMPTE' : '') + '</button>' +
                     '<div style="margin-top:14px;color:#ccc;font-size:12px;font-weight:700;">Ou demander une correction :</div>' +
@@ -4759,6 +4765,34 @@
             return h;
         }
 
+        function _verifMediaHtml(url, type) {
+            if (/^image\/(jpeg|png|webp)/.test(type)) return '<img src="' + url + '" style="max-width:100%;max-height:78vh;object-fit:contain;">';
+            if (/^video\//.test(type)) return '<video src="' + url + '" controls autoplay muted loop playsinline style="max-width:100%;max-height:78vh;background:#000;"></video><div style="color:#ccc;font-size:11px;margin-top:6px;">Si la vidéo ne se lit pas, utilisez « Télécharger ».</div>';
+            if (type === 'application/pdf') return '<iframe src="' + url + '" style="width:min(900px,100%);height:78vh;border:0;background:#fff;"></iframe>';
+            return '<div style="color:#e0e0e0;">Aperçu impossible pour ce format (' + _escHtml(type) + ').</div>';
+        }
+        async function _verifBlob(partnerId, kind) {
+            var r = await fetch(API_BASE_URL + '/api/admin/partners/' + encodeURIComponent(partnerId) + '/verification/document/' + kind);
+            if (!r.ok) throw new Error('Document indisponible');
+            var blob = await r.blob();
+            return { url: URL.createObjectURL(blob), type: blob.type || '' };
+        }
+        // Pièce d'identité et visage côte à côte, pour comparer d'un coup d'œil.
+        async function openVerifCompare(partnerId, faceKind) {
+            try {
+                var a = await _verifBlob(partnerId, 'identity'), b = await _verifBlob(partnerId, faceKind);
+                var ov = document.createElement('div');
+                ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.94);display:flex;flex-direction:column;padding:16px;overflow:auto;';
+                function pane(title, m) { return '<div style="flex:1 1 320px;min-width:0;text-align:center;"><div style="color:#FFD700;font-weight:900;font-size:13px;margin-bottom:8px;">' + title + '</div>' + _verifMediaHtml(m.url, m.type) + '</div>'; }
+                ov.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div style="color:#f0f0f0;font-weight:900;">Même personne ?</div><button style="background:#333;color:#f0f0f0;border:none;padding:8px 14px;font-weight:900;font-size:12px;cursor:pointer;">FERMER</button></div>'
+                    + '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">' + pane('Pièce d’identité', a) + pane(faceKind === 'face_video' ? 'Vidéo du visage' : 'Selfie avec la pièce', b) + '</div>';
+                ov.querySelector('button').onclick = function() { URL.revokeObjectURL(a.url); URL.revokeObjectURL(b.url); ov.remove(); };
+                document.body.appendChild(ov);
+            } catch (e) {
+                alert('Erreur : ' + e.message);
+            }
+        }
+
         async function openVerifDoc(partnerId, kind) {
             try {
                 var r = await fetch(API_BASE_URL + '/api/admin/partners/' + encodeURIComponent(partnerId) + '/verification/document/' + kind);
@@ -4768,11 +4802,7 @@
                 var ov = document.createElement('div');
                 ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
                 var type = blob.type || '';
-                var body = /^image\/(jpeg|png|webp)/.test(type)
-                    ? '<img src="' + url + '" style="max-width:100%;max-height:82vh;object-fit:contain;">'
-                    : (type === 'application/pdf'
-                        ? '<iframe src="' + url + '" style="width:min(900px,100%);height:82vh;border:0;background:#fff;"></iframe>'
-                        : '<div style="color:#e0e0e0;">Aperçu impossible pour ce format (' + _escHtml(type) + ').</div>');
+                var body = _verifMediaHtml(url, type);
                 ov.innerHTML = '<div style="display:flex;gap:10px;margin-bottom:10px;"><a href="' + url + '" download="' + kind + '" style="background:#FFD700;color:#0a0a0a;padding:8px 14px;font-weight:900;font-size:12px;text-decoration:none;">TÉLÉCHARGER</a><button style="background:#333;color:#f0f0f0;border:none;padding:8px 14px;font-weight:900;font-size:12px;cursor:pointer;">FERMER</button></div>' + body;
                 ov.querySelector('button').onclick = function() { URL.revokeObjectURL(url); ov.remove(); };
                 document.body.appendChild(ov);

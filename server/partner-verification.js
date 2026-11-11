@@ -17,10 +17,18 @@
 // entreprises (recherche-entreprises.api.gouv.fr, gratuit, sans clé), utilisé par server.js.
 
 var LEGAL_PROFILES = ['micro', 'company', 'foreign'];
-var DOC_KINDS = ['identity', 'selfie', 'registration', 'activity'];
+// identity = recto (ou page photo du passeport), identity_back = verso d'une carte, face_video =
+// vidéo du visage qui tourne la tête (preuve qu'une vraie personne est devant la caméra, 2026-11-11).
+// selfie = ancien « selfie avec la pièce », encore accepté pour les dossiers commencés avant.
+var DOC_KINDS = ['identity', 'identity_back', 'face_video', 'selfie', 'registration', 'activity'];
+var ID_TYPES = ['id_card', 'residence_permit', 'passport'];
+var VIDEO_KINDS = ['face_video'];
 // Pays où le SIRET existe (France métropolitaine + départements et collectivités d'outre-mer).
 var SIRET_COUNTRIES = ['FR', 'GP', 'MQ', 'GF', 'RE', 'YT', 'PM', 'BL', 'MF'];
 var DOC_MAX_BYTES = 10 * 1024 * 1024;
+var VIDEO_MAX_BYTES = 60 * 1024 * 1024;
+function isVideoKind(kind) { return VIDEO_KINDS.indexOf(kind) !== -1; }
+function maxBytesFor(kind) { return isVideoKind(kind) ? VIDEO_MAX_BYTES : DOC_MAX_BYTES; }
 var DEADLINE_DAYS = 30;
 
 function usesSiret(country) {
@@ -51,12 +59,21 @@ function isValidSiret(v) {
 }
 
 // Pièces demandées selon le statut. registered : un professionnel à l'étranger a-t-il une
-// immatriculation dans son pays ?
-function requiredDocs(profile, registered) {
-    var docs = ['identity', 'selfie'];
+// immatriculation dans son pays ? opts.idType : passeport = une seule page (pas de verso) ;
+// opts.legacySelfie : dossier commencé avec l'ancien selfie → on ne lui redemande rien.
+function requiredDocs(profile, registered, opts) {
+    opts = opts || {};
+    var docs = opts.legacySelfie ? ['identity', 'selfie']
+        : ['identity'].concat(opts.idType === 'passport' ? [] : ['identity_back'], ['face_video']);
     if (profile === 'micro' || profile === 'company') docs.push('registration');
     else if (profile === 'foreign') docs.push(registered ? 'registration' : 'activity');
     return docs;
+}
+
+function requiredFor(v) {
+    v = v || {};
+    if (!v.legal_profile) return null;
+    return requiredDocs(v.legal_profile, !!v.registered, { idType: v.id_doc_type, legacySelfie: !!(v.docs && v.docs.selfie) });
 }
 
 // Niveau de badge obtenu une fois le dossier validé.
@@ -214,7 +231,8 @@ function partnerView(p) {
         registration_number: v.registration_number || '',
         activity_proof: v.activity_proof || '',
         docs: docs,
-        required: profile ? requiredDocs(profile, !!v.registered) : null,
+        required: requiredFor(v),
+        id_doc_type: v.id_doc_type || null,
         siret_status: v.siret_check ? v.siret_check.status : null,
         siret_name: v.siret_check && v.siret_check.found ? v.siret_check.name : '',
         reject_reason: v.status === 'rejected' ? (v.reject_reason || '') : '',
@@ -232,6 +250,11 @@ module.exports = {
     DOC_KINDS: DOC_KINDS,
     SIRET_COUNTRIES: SIRET_COUNTRIES,
     DOC_MAX_BYTES: DOC_MAX_BYTES,
+    VIDEO_MAX_BYTES: VIDEO_MAX_BYTES,
+    ID_TYPES: ID_TYPES,
+    isVideoKind: isVideoKind,
+    maxBytesFor: maxBytesFor,
+    requiredFor: requiredFor,
     DEADLINE_DAYS: DEADLINE_DAYS,
     usesSiret: usesSiret,
     cleanSiret: cleanSiret,
