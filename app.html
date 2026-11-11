@@ -2006,6 +2006,7 @@ a{text-decoration:none;color:inherit}
 .pv-doc-actions{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;}
 .pv-doc-btn{background:transparent;border:1.5px solid #FFD700;color:#FFD700;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;}
 .pv-doc-progress{font-size:11px;color:#aaa;}
+.pv-cam-notice{font-size:12px;color:#fbbf24;line-height:1.55;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:11px 13px;margin:0 0 10px;}
 .pv-privacy{font-size:11px;color:#777;line-height:1.55;margin:16px 2px 0;display:flex;gap:8px;}
 .pv-status{display:flex;gap:12px;border-radius:14px;padding:14px;margin:16px 0 4px;border:1.5px solid;background:#0f0f0f;}
 .pv-status-ico{font-size:20px;flex-shrink:0;margin-top:1px;}
@@ -2670,15 +2671,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261111a"></script>
-<script src="app-i18n-es.js?v=20261111a"></script>
-<script src="app-i18n-hi.js?v=20261111a"></script>
-<script src="app-i18n-pt.js?v=20261111a"></script>
-<script src="app-i18n-ja.js?v=20261111a"></script>
-<script src="app-i18n-zh.js?v=20261111a"></script>
-<script src="app-i18n-ar.js?v=20261111a"></script>
-<script src="app-i18n-it.js?v=20261111a"></script>
-<script src="app-i18n-de.js?v=20261111a"></script>
+<script src="app-i18n-en.js?v=20261111b"></script>
+<script src="app-i18n-es.js?v=20261111b"></script>
+<script src="app-i18n-hi.js?v=20261111b"></script>
+<script src="app-i18n-pt.js?v=20261111b"></script>
+<script src="app-i18n-ja.js?v=20261111b"></script>
+<script src="app-i18n-zh.js?v=20261111b"></script>
+<script src="app-i18n-ar.js?v=20261111b"></script>
+<script src="app-i18n-it.js?v=20261111b"></script>
+<script src="app-i18n-de.js?v=20261111b"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3285,7 +3286,7 @@ function _genesisVersionFooter(){
             <div class="reg-step-title">Quel est votre profil ?</div>
             <button type="button" class="reg-kind" id="ptnr-reg-kind-micro" onclick="_ptnrRegPickKind('micro')">
               <i class="fa-solid fa-user-tie reg-kind-ico"></i>
-              <span class="reg-kind-txt"><span class="reg-kind-name">Indépendant / freelance</span><span class="reg-kind-sub">Vous travaillez à votre compte (micro-entrepreneur, auto-entrepreneur, freelance). Étudiant ? Vous devez être immatriculé.</span></span>
+              <span class="reg-kind-txt"><span class="reg-kind-name">Indépendant / freelance</span><span class="reg-kind-sub">Vous travaillez à votre compte (micro-entrepreneur, auto-entrepreneur, freelance).</span></span>
             </button>
             <button type="button" class="reg-kind" id="ptnr-reg-kind-company" onclick="_ptnrRegPickKind('company')">
               <i class="fa-solid fa-building reg-kind-ico"></i>
@@ -3412,7 +3413,7 @@ function _genesisVersionFooter(){
           </select>
           <input class="ptnr-input" id="ptnr-reg-type-other" type="text" placeholder="Précisez votre profil" style="display:none;">
           <div id="ptnr-reg-secondary-wrap" style="display:none;margin:0 0 12px;">
-            <div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin:2px 0 6px;">Autres métiers (optionnel, 2 maximum)</div>
+            <div id="ptnr-reg-secondary-title" style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin:2px 0 6px;">Autres métiers (optionnel, 2 maximum)</div>
             <div id="ptnr-reg-secondary-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
           </div>
             <!-- Entreprise : raison sociale + représentant (France et étranger) -->
@@ -3426,7 +3427,6 @@ function _genesisVersionFooter(){
               <input class="ptnr-input" id="ptnr-reg-siret" type="text" inputmode="numeric" maxlength="17" placeholder="SIRET (14 chiffres) *" oninput="_pvSiretLiveCheck(this.value,'ptnr-reg-siret-status')" style="margin-bottom:4px;">
               <div class="pv-siret-status" id="ptnr-reg-siret-status" style="margin-bottom:10px;"></div>
             </div>
-            <div class="pv-note" id="ptnr-reg-student-note" style="display:none;margin:-4px 0 12px;">Étudiant ? Pour proposer vos services, vous devez être immatriculé (micro-entreprise).</div>
             <!-- Étranger : immatriculation locale (obligatoire pour une entreprise) -->
             <div id="ptnr-reg-legal-abroad" style="display:none;margin:0 0 12px;">
               <div class="pv-q">Votre activité est-elle déclarée (immatriculée) dans votre pays ? *</div>
@@ -16258,7 +16258,7 @@ function _ptnrRegRenderSecondary(){
   wrap.style.display = primary ? 'block' : 'none';
   chips.innerHTML = Object.keys(PARTNER_TYPE_LABELS_DIR).filter(function(t){ return t!=='other' && t!=='coworking' && t!==primary; }).map(function(t){
     var on = _ptnrRegSecondary.indexOf(t) !== -1;
-    return '<button type="button" onclick="_ptnrRegToggleSecondary(\''+t+'\')" style="padding:7px 11px;border-radius:10px;font-size:12px;font-weight:'+(on?'900':'600')+';cursor:pointer;font-family:inherit;border:1.5px solid '+(on?'#FFD700':'#2a2a2a')+';background:'+(on?'rgba(255,215,0,.12)':'#141414')+';color:'+(on?'#FFD700':'#aaa')+';">'+(on?'<i class="fa-solid fa-check" style="margin-right:5px;"></i>':'')+PARTNER_TYPE_LABELS_DIR[t]+'</button>';
+    return '<button type="button" onclick="_ptnrRegToggleSecondary(\''+t+'\')" style="padding:7px 11px;border-radius:10px;font-size:12px;font-weight:'+(on?'900':'600')+';cursor:pointer;font-family:inherit;border:1.5px solid '+(on?'#FFD700':'#2a2a2a')+';background:'+(on?'rgba(255,215,0,.12)':'#141414')+';color:'+(on?'#FFD700':'#aaa')+';">'+(on?'<i class="fa-solid fa-check" style="margin-right:5px;"></i>':'')+(typeof _ptnrRegTypeLabel==='function'?_ptnrRegTypeLabel(t):PARTNER_TYPE_LABELS_DIR[t])+'</button>';
   }).join('');
 }
 function _ptnrRegToggleSecondary(t){
@@ -16654,14 +16654,42 @@ function _ptnrRegBack(){
   if(_ptnrRegStep > 1) _ptnrRegGo(_ptnrRegStep - 1); else _ptnrRegBackToLogin();
 }
 // Champs de l'étape 3 selon le profil et le pays.
+// Une entreprise ne choisit pas un « métier » d'indépendant mais son secteur : mêmes catégories de
+// l'annuaire (un client qui cherche un photographe trouve aussi les studios), libellés d'entreprise.
+var PARTNER_TYPE_LABELS_COMPANY = {
+  photographer: 'Studio photo', videographer: 'Société de production vidéo', marketer: 'Agence marketing',
+  media: 'Média / presse', community_manager: 'Agence social media', graphiste: 'Studio de design graphique',
+  developpeur_web: 'Agence web / développement', pilote_drone: 'Société de prises de vue par drone',
+  consultant: 'Cabinet de conseil', coworking: 'Espace de coworking', animateur_evenementiel: 'Agence événementielle',
+  influencer: 'Agence d’influence', other: 'Autre activité'
+};
+function _ptnrRegTypeLabel(t){
+  return (_ptnrRegKind === 'company' && PARTNER_TYPE_LABELS_COMPANY[t]) || PARTNER_TYPE_LABELS_DIR[t] || t;
+}
+function _ptnrRegApplyTypeLabels(){
+  var co = _ptnrRegKind === 'company';
+  var sel = document.getElementById('ptnr-reg-type');
+  if(sel){
+    [].slice.call(sel.options).forEach(function(o){
+      if(o.getAttribute('data-ind') === null) o.setAttribute('data-ind', o.textContent);
+      o.textContent = !o.value ? (co ? 'Choisir votre secteur d’activité…' : o.getAttribute('data-ind'))
+        : (co && PARTNER_TYPE_LABELS_COMPANY[o.value] ? PARTNER_TYPE_LABELS_COMPANY[o.value] : o.getAttribute('data-ind'));
+    });
+  }
+  var other = document.getElementById('ptnr-reg-type-other');
+  if(other) other.placeholder = co ? 'Précisez votre activité' : 'Précisez votre profil';
+  var secTitle = document.getElementById('ptnr-reg-secondary-title');
+  if(secTitle) secTitle.textContent = co ? 'Autres activités (optionnel, 2 maximum)' : 'Autres métiers (optionnel, 2 maximum)';
+  _ptnrRegRenderSecondary();
+}
 function _ptnrRegApplyLegal(){
+  _ptnrRegApplyTypeLabels();
   var c = (document.getElementById('ptnr-reg-country')||{}).value || '';
   var fr = _pvUsesSiret(c), co = _ptnrRegKind === 'company';
   function show(id, on){ var el = document.getElementById(id); if(el) el.style.display = on ? 'block' : 'none'; }
   show('ptnr-reg-siret-wrap', fr);
   show('ptnr-reg-company-wrap', co);
   show('ptnr-reg-entreprise', !co);
-  show('ptnr-reg-student-note', fr && !co);
   show('ptnr-reg-legal-abroad', !fr && !co);
   show('ptnr-reg-regnum', !fr && (co || _ptnrRegRegistered === true));
 }
@@ -16821,7 +16849,6 @@ function _pvProfileForm(v){
         h += '<input class="ptnr-input" id="pv-company" type="text" placeholder="Raison sociale" value="'+_escHtml(f.company_name)+'" oninput="_pvForm.company_name=this.value" style="margin:10px 0 0;">'
           + '<input class="ptnr-input" id="pv-rep" type="text" placeholder="Représentant légal (prénom et nom)" value="'+_escHtml(f.representative)+'" oninput="_pvForm.representative=this.value" style="margin:10px 0 0;">';
       }
-      h += '<div class="pv-note">Étudiant ? Pour proposer vos services sur GENESIS, vous devez être immatriculé (micro-entreprise).</div>';
     }
   } else {
     h += '<div class="pv-q">Vous êtes :</div>'
@@ -16865,7 +16892,7 @@ function _pvDocRow(kind, v, locked){
   var has = !!(d && !d.deleted);
   var state = has ? '<span style="color:#22c55e;font-size:11px;font-weight:800;white-space:nowrap;"><i class="fa-solid fa-circle-check"></i> <span>Envoyé</span></span>'
     : '<span style="color:#f59e0b;font-size:11px;font-weight:800;white-space:nowrap;">À envoyer</span>';
-  var btn = locked ? '' : '<button type="button" class="pv-doc-btn" onclick="_ptnrVerifPick(\''+kind+'\')"><i class="fa-solid '+(kind === 'selfie' ? 'fa-camera' : 'fa-upload')+'"></i> <span>'+(has ? 'Remplacer' : (kind === 'selfie' ? 'Prendre le selfie' : 'Envoyer'))+'</span></button>';
+  var btn = locked ? '' : '<button type="button" class="pv-doc-btn" onclick="_ptnrVerifPick(\''+kind+'\')"><i class="fa-solid '+(kind === 'selfie' ? 'fa-camera' : 'fa-upload')+'"></i> <span>'+(has ? 'Remplacer' : (kind === 'selfie' ? (_pvCamState === false ? 'Choisir le selfie' : 'Prendre le selfie') : 'Envoyer'))+'</span></button>';
   var h = '<div class="pv-doc" id="pv-doc-'+kind+'">'
     + '<div class="pv-doc-head"><div class="pv-doc-ico"><i class="fa-solid '+info.icon+'"></i></div><div class="pv-doc-title">'+info.label+'</div>'+state+'</div>'
     + '<div class="pv-doc-hint">'+info.hint+'</div>';
@@ -16894,12 +16921,13 @@ function _pvRefreshSubmitState(){
 function _ptnrRenderVerification(){
   var c = _pvContainer();
   if(!c || !_ptnrVerif) return;
+  if(_pvCamState === null){ _pvCheckCamera().then(function(ok){ if(!ok) _ptnrRenderVerification(); }); }
   var v = _ptnrVerif;
   var locked = v.status === 'submitted' || v.status === 'verified';
   var privacy = '<div class="pv-privacy"><i class="fa-solid fa-lock" style="margin-top:2px;"></i><span>Vos documents ne sont consultables que par l’équipe FA GENESIS. Ils servent uniquement à cette vérification et sont supprimés dès que votre compte est vérifié.</span></div>';
   // Inscription (étape 4) : statut déjà choisi aux étapes 1 à 3 → directement les pièces.
   if(_pvSignupMode && v.legal_profile && !_pvForm && !locked){
-    var sh = '';
+    var sh = _pvCamNoticeHtml();
     (v.required || []).forEach(function(k){ sh += _pvDocRow(k, v, false); });
     sh += '<div class="ptnr-login-err" id="pv-submit-err"></div>'
       + '<button class="ptnr-login-btn" id="pv-submit-btn" style="margin-top:8px;'+(_pvMissing(v).length ? 'opacity:.45;' : '')+'" onclick="_ptnrVerifSubmit()">ENVOYER MON DOSSIER</button>';
@@ -16914,6 +16942,7 @@ function _ptnrRenderVerification(){
   html += (locked || (v.legal_profile && !_pvForm)) ? _pvProfileSummary(v, locked) : _pvProfileForm(v);
   if(v.legal_profile && !_pvForm){
     html += _pvStep('2', 'Vos justificatifs');
+    if(!locked) html += _pvCamNoticeHtml();
     (v.required || []).forEach(function(k){ html += _pvDocRow(k, v, locked); });
     if(!locked){
       html += '<div class="ptnr-login-err" id="pv-submit-err"></div>'
@@ -16950,13 +16979,52 @@ function _ptnrVerifSaveProfile(){
     else { if(btn){ btn.disabled = false; btn.textContent = 'ENREGISTRER'; } showErr((d && d.error) || 'Erreur serveur'); }
   }).catch(function(){ if(btn){ btn.disabled = false; btn.textContent = 'ENREGISTRER'; } showErr('Erreur de connexion. Réessayez.'); });
 }
+// L'app iPhone d'avant la version 1.0.4 n'a pas l'autorisation « appareil photo »
+// (NSCameraUsageDescription, ajoutée dans codemagic.yaml le 2026-11-09) : iOS FERME l'app dès que
+// l'appareil photo s'ouvre (« Prendre une photo » du menu, ou capture directe du selfie). Sur ces
+// versions, jamais d'ouverture directe de la caméra, et on guide vers la photothèque.
+var _pvCamState = null; // null = pas encore vérifié, true = caméra possible, false = app iPhone trop ancienne
+function _pvVersionBelow(v, min){
+  var a = String(v || '').split('.'), b = String(min).split('.');
+  for(var i = 0; i < 3; i++){ var x = parseInt(a[i] || '0', 10) || 0, y = parseInt(b[i] || '0', 10) || 0; if(x !== y) return x < y; }
+  return false;
+}
+function _pvCheckCamera(){
+  if(_pvCamState !== null) return Promise.resolve(_pvCamState);
+  try{
+    var C = window.Capacitor;
+    var ios = C && C.isNativePlatform && C.isNativePlatform() && C.getPlatform && C.getPlatform() === 'ios';
+    if(!ios){ _pvCamState = true; return Promise.resolve(true); }
+    var A = C.Plugins && C.Plugins.App;
+    if(!A || !A.getInfo){ _pvCamState = false; return Promise.resolve(false); }
+    return A.getInfo().then(function(info){
+      _pvCamState = !_pvVersionBelow(info && info.version, '1.0.4');
+      return _pvCamState;
+    }).catch(function(){ _pvCamState = false; return false; });
+  }catch(e){ _pvCamState = true; return Promise.resolve(true); }
+}
 function _ptnrVerifPick(kind){
   if(_ptnrVerifBusy) return;
   _ptnrVerifUploadKind = kind;
   var inp = document.getElementById(kind === 'selfie' ? 'ptnr-verif-selfie' : 'ptnr-verif-file');
   if(!inp) return;
   inp.value = '';
+  // Le clic doit partir tout de suite (geste de l'utilisateur) : l'état de la caméra est connu
+  // d'avance (vérifié à l'affichage de l'écran, voir _ptnrRenderVerification).
+  var _C = window.Capacitor;
+  var _iosNative = !!(_C && _C.isNativePlatform && _C.isNativePlatform() && _C.getPlatform && _C.getPlatform() === 'ios');
+  if(_pvCamState === false || (_pvCamState === null && _iosNative)){
+    inp.removeAttribute('capture');
+    var _camMsg = 'Sur cette version de l’application, l’appareil photo ne peut pas s’ouvrir depuis GENESIS.\n\n1. Prenez d’abord la photo avec l’appareil photo de votre iPhone.\n2. Revenez ici et choisissez « Photothèque ».\n\nN’utilisez pas « Prendre une photo » dans le menu qui va s’ouvrir.';
+    if(!window.confirm(typeof _tr === 'function' ? _tr(_camMsg) : _camMsg)) return;
+  } else if(kind === 'selfie'){
+    inp.setAttribute('capture', 'user');
+  }
   inp.click();
+}
+function _pvCamNoticeHtml(){
+  if(_pvCamState !== false) return '';
+  return '<div class="pv-cam-notice"><i class="fa-solid fa-camera" style="margin-right:6px;"></i><span>Prenez vos photos avec l’appareil photo de votre iPhone, puis envoyez-les depuis « Photothèque ». Mettez à jour l’application GENESIS dès que possible : la prise de photo directe y sera disponible.</span></div>';
 }
 function _ptnrVerifFileChosen(inp){
   var f = inp && inp.files && inp.files[0];
