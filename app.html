@@ -2677,15 +2677,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261111h"></script>
-<script src="app-i18n-es.js?v=20261111h"></script>
-<script src="app-i18n-hi.js?v=20261111h"></script>
-<script src="app-i18n-pt.js?v=20261111h"></script>
-<script src="app-i18n-ja.js?v=20261111h"></script>
-<script src="app-i18n-zh.js?v=20261111h"></script>
-<script src="app-i18n-ar.js?v=20261111h"></script>
-<script src="app-i18n-it.js?v=20261111h"></script>
-<script src="app-i18n-de.js?v=20261111h"></script>
+<script src="app-i18n-en.js?v=20261111i"></script>
+<script src="app-i18n-es.js?v=20261111i"></script>
+<script src="app-i18n-hi.js?v=20261111i"></script>
+<script src="app-i18n-pt.js?v=20261111i"></script>
+<script src="app-i18n-ja.js?v=20261111i"></script>
+<script src="app-i18n-zh.js?v=20261111i"></script>
+<script src="app-i18n-ar.js?v=20261111i"></script>
+<script src="app-i18n-it.js?v=20261111i"></script>
+<script src="app-i18n-de.js?v=20261111i"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -10892,6 +10892,7 @@ function _syncUserBadge(){
       USER.referralDiscount = d.referralDiscount || null;
       USER.welcomeDiscountEligible = d.welcomeDiscountEligible === true;
       USER.referralBonusQG = d.referralBonusQG || 0;
+      USER.welcomeBonusQG = d.welcomeBonusQG || 0;
       USER.missionBonuses = d.missionBonuses || {};
       USER.profile_bio    = d.profile_bio    || '';
       USER.profile_theme  = d.profile_theme  || 'genesis';
@@ -13197,7 +13198,8 @@ function showResumeMensuel() {
       ];
       // Bonus obtenus
       var bonusEarned = [];
-      if(USER.referralBonusQG) bonusEarned.push({icon:'fa-gift',label:'Bonus première prestation (filleul)',pts:USER.referralBonusQG,earned:true});
+      if(USER.welcomeBonusQG) bonusEarned.push({icon:'fa-gift',label:'Bonus de bienvenue',pts:USER.welcomeBonusQG,earned:true});
+      if(USER.referralBonusQG) bonusEarned.push({icon:'fa-user-plus',label:'Bonus première prestation (filleul)',pts:USER.referralBonusQG,earned:true});
       if(USER.missionBonuses && USER.missionBonuses.multi_collab) bonusEarned.push({icon:'fa-people-group',label:'Mission : 3 collaborations',pts:75,earned:true});
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
       qgActions.forEach(function(a){
@@ -15571,7 +15573,8 @@ function openPayOverlay(total, cartItems){
   _payReferralDiscountUsed = false;
   _payCartSnap = cartItems; _payTotal = total;
 
-  // Avantage bienvenue sur la première commande : 15% sans parrainage, 10% avec parrainage
+  // Avantage bienvenue : désactivé côté serveur depuis le 2026-11-11 (welcomeDiscountEligible=false,
+  // referralDiscount=null) — ce calcul d'affichage reste donc à 0.
   var _rwelcomePct = (USER && USER.referralDiscount && USER.referralDiscount.pct) ? USER.referralDiscount.pct : 15;
   var _rdiscount = (USER && !GUEST && (USER.welcomeDiscountEligible === true || (USER.referralDiscount && !USER.referralDiscount.applied))) ? _rwelcomePct : 0;
   if(_rdiscount > 0){

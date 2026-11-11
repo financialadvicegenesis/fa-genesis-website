@@ -4932,7 +4932,7 @@ app.post('/api/orders/create', (req, res) => {
                 var psiFullPrice = psiTotal;
                 var psiWelcomeAmt = 0;
                 // Avantage bienvenue : s'applique sur la première commande, une seule fois au total
-                if (psiIsFirstOrder && !psiWelcomeApplied) {
+                if (WELCOME_DISCOUNT_ENABLED && psiIsFirstOrder && !psiWelcomeApplied) {
                     var psiDiePct = (psiActUser && psiActUser.referral_discount && psiActUser.referral_discount.pct)
                         ? psiActUser.referral_discount.pct
                         : (psiActUser && psiActUser.referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL);
@@ -5214,7 +5214,7 @@ app.post('/api/orders/create', (req, res) => {
             var psoAuthTok = (req.headers.authorization || '').replace('Bearer ', '').trim();
             var psoActUser = psoAuthTok ? findUserByToken(psoAuthTok) : null;
             var psoClientEmail = (clientInfo && clientInfo.email) || (psoActUser && psoActUser.email) || '';
-            if (psoClientEmail && isClientFirstPaidOrder(psoClientEmail)) {
+            if (WELCOME_DISCOUNT_ENABLED && psoClientEmail && isClientFirstPaidOrder(psoClientEmail)) {
                 // Taux selon l'origine du client : avec parrainage → 10%, sans parrainage → 15%
                 var psoDiePct = (psoActUser && psoActUser.referral_discount && psoActUser.referral_discount.pct)
                     ? psoActUser.referral_discount.pct
@@ -11621,8 +11621,10 @@ app.post('/api/auth/register', async (req, res) => {
             payments: [],
             favoris: [],
             referredBy: referredBy,
-            referralBonusQG: referredBy ? 0 : 40,
-            referral_discount: { pct: referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL, applied: false },
+            // Bonus de bienvenue 40 QG pour tous (filleul compris, décision 2026-11-11) ; le filleul
+            // reçoit +50 QG de plus après sa 1re prestation (filleul_bonus_awarded).
+            referralBonusQG: WELCOME_BONUS_QG,
+            referral_discount: WELCOME_DISCOUNT_ENABLED ? { pct: referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL, applied: false } : null,
             sessionToken: sessionToken,
             student_status: userAccountType === 'etudiant' ? (studentCertificate ? 'pending' : 'unverified') : null,
             company: regCompany,
@@ -11649,7 +11651,7 @@ app.post('/api/auth/register', async (req, res) => {
         console.log(`[AUTH] Nouvel utilisateur inscrit: ${newUser.id} - ${email}`);
 
         // Notification bienvenue + bonus QG au nouveau client
-        var _bonusQG = referredBy ? 0 : 40;
+        var _bonusQG = WELCOME_BONUS_QG;
         if (_bonusQG > 0) {
             notifyUser(email, 'client', 'welcome_bonus',
                 'Bonus de bienvenue — +' + _bonusQG + ' QG !',
@@ -11917,9 +11919,11 @@ app.get('/api/auth/me', (req, res) => {
             favoris: user.favoris || [],
             referralCode: user.id,
             referralCount: referralCount,
-            referralDiscount: user.referral_discount || null,
-            welcomeDiscountEligible: isClientFirstPaidOrder(user.email),
-            referralBonusQG: (user.referralBonusQG !== undefined && user.referralBonusQG !== null) ? user.referralBonusQG : (user.referredBy ? 0 : 40),
+            referralDiscount: WELCOME_DISCOUNT_ENABLED ? (user.referral_discount || null) : null,
+            welcomeDiscountEligible: WELCOME_DISCOUNT_ENABLED && isClientFirstPaidOrder(user.email),
+            welcomeBonusQG: clientWelcomeBonusQG(user),
+            // Historique : l'app affiche ce champ comme « Bonus première prestation (filleul) ».
+            referralBonusQG: clientFilleulBonusQG(user),
             missionBonuses: user.missionBonuses || {},
             accountType: user.accountType || null,
             student_status: user.student_status || null,
@@ -18094,6 +18098,13 @@ const GENESIS_POINT_VALUES = {
 };
 // Avantage bienvenue : absorbé par GENESIS. Taux selon l'origine :
 //   sans code de parrainage → -15%  |  avec code de parrainage → -10%
+// DÉSACTIVÉ (décision de FA GENESIS, 2026-11-11) : pas encore de trésorerie pour financer des
+// réductions. Plus aucune réduction de bienvenue, avec ou sans code de parrainage, y compris pour
+// les comptes qui avaient un referral_discount enregistré. Récompenses = points QG uniquement :
+// +40 QG à l'inscription pour tous, +50 QG pour le filleul après sa 1re prestation, +100 QG au
+// parrain (+ missions de parrainage). Pour réactiver un jour : passer à true (code conservé).
+const WELCOME_DISCOUNT_ENABLED = false;
+const WELCOME_BONUS_QG = 40;
 const WELCOME_DISCOUNT_PCT_NO_REFERRAL  = 15;
 const WELCOME_DISCOUNT_PCT_WITH_REFERRAL = 10;
 const WELCOME_DISCOUNT_PCT = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias backwards-compat
@@ -18181,10 +18192,11 @@ function checkReferralAndMissionRewards(clientEmail) {
         var dirty = false;
 
         // 1. FILLEUL : bonus première prestation (+50 QG)
-        if (user.referredBy && !user.referralBonusQG) {
+        if (user.referredBy && !clientFilleulBonusAwarded(user)) {
             var completedCount = getClientCompletedOrders(clientEmail);
             if (completedCount >= 1) {
-                users[uIdx].referralBonusQG = GENESIS_POINT_VALUES.filleulPremierPrestation;
+                users[uIdx].filleul_bonus_awarded = true;
+                users[uIdx].filleul_bonus_awarded_at = new Date().toISOString();
                 dirty = true;
                 // Notification filleul
                 notifyUser(clientEmail, 'client', 'referral_bonus',
@@ -18297,17 +18309,29 @@ function getPartnerGenesisPoints(partner, missionsCompleted) {
         + getEventAttendancePoints(partner.id);
 }
 
+// Bonus de bienvenue (40 QG). Les comptes de test hors production portent un total arbitraire
+// dans referralBonusQG (setup-test-accounts) : conservé pour un compte non parrainé.
+function clientWelcomeBonusQG(user) {
+    if (!user) return 0;
+    if (!user.referredBy && user.referralBonusQG !== undefined && user.referralBonusQG !== null) return user.referralBonusQG;
+    return WELCOME_BONUS_QG;
+}
+// Bonus filleul déjà versé ? Avant 2026-11-11 il était stocké dans referralBonusQG (= 50).
+function clientFilleulBonusAwarded(user) {
+    return !!(user && user.referredBy && (user.filleul_bonus_awarded || user.referralBonusQG === GENESIS_POINT_VALUES.filleulPremierPrestation));
+}
+function clientFilleulBonusQG(user) {
+    return clientFilleulBonusAwarded(user) ? GENESIS_POINT_VALUES.filleulPremierPrestation : 0;
+}
+
 function getClientGenesisPoints(user, completedOrders) {
     if (!user) return 0;
     var orders = typeof completedOrders === 'number' ? completedOrders : getClientCompletedOrders(user.email);
     var referrals = getClientReferralCount(user.id);
     var reviewsLeft = loadPartnerReviews().filter(function(r) { return (r.userEmail || '').toLowerCase() === user.email.toLowerCase(); }).length;
     var mb = user.missionBonuses || {};
-    // Bonus d'inscription 40 QG : attribué si referralBonusQG n'a jamais été défini
-    // (anciens comptes) ET que l'utilisateur n'a pas été parrainé
-    var welcomeBonus = (user.referralBonusQG !== undefined && user.referralBonusQG !== null)
-        ? user.referralBonusQG
-        : (user.referredBy ? 0 : 40);
+    // Bonus de bienvenue 40 QG pour tous + 50 QG au filleul après sa 1re prestation (2026-11-11).
+    var welcomeBonus = clientWelcomeBonusQG(user) + clientFilleulBonusQG(user);
     return (orders * GENESIS_POINT_VALUES.reservationEffectuee)
         + (reviewsLeft * GENESIS_POINT_VALUES.avisLaisse)
         + (referrals * GENESIS_POINT_VALUES.parrainage)
@@ -18477,8 +18501,10 @@ function buildJeremieSystemPrompt(person, personType, language) {
         ' QG, atelier +' + GENESIS_POINT_VALUES.workshop + ' QG, evenement GENESIS +' + GENESIS_POINT_VALUES.evenement +
         ' QG, parrainage valide +' + GENESIS_POINT_VALUES.parrainage + ' QG. Ses niveaux : Explorateur (depart), ' +
         CLIENT_QG_LEVEL_TIERS.slice().reverse().map(function(t) { return t.label + ' (' + t.pts + ' QG)'; }).join(', ') +
-        '. Suivi dans Profil > Mes niveaux GENESIS. Reduction de bienvenue sur la 1ere commande : -' +
-        WELCOME_DISCOUNT_PCT_NO_REFERRAL + '% (ou -' + WELCOME_DISCOUNT_PCT_WITH_REFERRAL + '% avec un code de parrainage). ' +
+        '. Suivi dans Profil > Mes niveaux GENESIS. PARRAINAGE : le filleul s\'inscrit avec le code du parrain ; il recoit les 40 QG ' +
+        'de bienvenue comme tout le monde, puis +' + GENESIS_POINT_VALUES.filleulPremierPrestation + ' QG apres sa premiere prestation ; le parrain ' +
+        'gagne +' + GENESIS_POINT_VALUES.parrainage + ' QG par filleul actif (plus les missions de parrainage). Il n\'existe AUCUNE reduction de ' +
+        'bienvenue ni de parrainage, ne jamais en promettre. ' +
         'Les Cercles Genesis recompensent les collaborations repetees avec un meme prestataire.');
     lines.push('PROGRESSION PRESTATAIRE (different du client, ne jamais lui parler des niveaux Explorateur/Createur/' +
         'Batisseur/Visionnaire/Generateur) : badges ' + PARTNER_BADGE_TIERS.slice().reverse().map(function(t) {
@@ -19539,7 +19565,8 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 verified: !!PartnerVerif.publicLevel(partner),
                 verification_level: PartnerVerif.publicLevel(partner),
                 cercleGenesis: cercleGenesis,
-                cercleDiscountPct: (cercleGenesis && cercleGenesis.current) ? CERCLE_ALLIANCE_DISCOUNT_PCT : 0
+                // Réduction Cercle supprimée (fidélisation v2) et jamais appliquée au paiement : ne plus l'afficher.
+                cercleDiscountPct: 0
             },
             reviews: reviews
         });
