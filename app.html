@@ -2677,15 +2677,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261111e"></script>
-<script src="app-i18n-es.js?v=20261111e"></script>
-<script src="app-i18n-hi.js?v=20261111e"></script>
-<script src="app-i18n-pt.js?v=20261111e"></script>
-<script src="app-i18n-ja.js?v=20261111e"></script>
-<script src="app-i18n-zh.js?v=20261111e"></script>
-<script src="app-i18n-ar.js?v=20261111e"></script>
-<script src="app-i18n-it.js?v=20261111e"></script>
-<script src="app-i18n-de.js?v=20261111e"></script>
+<script src="app-i18n-en.js?v=20261111f"></script>
+<script src="app-i18n-es.js?v=20261111f"></script>
+<script src="app-i18n-hi.js?v=20261111f"></script>
+<script src="app-i18n-pt.js?v=20261111f"></script>
+<script src="app-i18n-ja.js?v=20261111f"></script>
+<script src="app-i18n-zh.js?v=20261111f"></script>
+<script src="app-i18n-ar.js?v=20261111f"></script>
+<script src="app-i18n-it.js?v=20261111f"></script>
+<script src="app-i18n-de.js?v=20261111f"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -7390,7 +7390,7 @@ function openPartnerDetail(partnerId){
           }).join('')+'</div>'
         : '';
       var servicesHtml = services.length
-        ? _studentVerifyNoticeHtml(services) + svcTabsHtml + '<div class="pf-svcs" id="p-svc-grid">'+_ptnrRenderProfileSvcCards(services, _partnerDetailAudience, p)+'</div>'
+        ? _studentVerifyNoticeHtml(services) + _companyNoticeHtml() + svcTabsHtml + '<div class="pf-svcs" id="p-svc-grid">'+_ptnrRenderProfileSvcCards(services, _partnerDetailAudience, p)+'</div>'
         : (_viewAud
           ? '<div class="p-dir-review-empty">'+({ etudiant: 'Ce prestataire ne propose pas encore d\'offres pour les étudiants.', particulier: 'Ce prestataire ne propose pas encore d\'offres pour les particuliers.', entreprise: 'Ce prestataire ne propose pas encore d\'offres pour les entreprises.' })[_viewAud]+'</div>'
           : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>');
@@ -9632,6 +9632,7 @@ function _genesisCardHtml() {
     +'<div style="font-size:11px;color:#888;margin-bottom:'+(bioSafe?'10':'0')+'px;">'+em+'</div>'
     +(bioSafe ? '<div style="font-size:12px;color:#aaa;line-height:1.55;border-top:1px solid '+col+'14;padding-top:10px;">'+bioSafe+'</div>' : '')
     +_studentBadgeHtml()
+    +_companyBadgeHtml()
     +'</div></div>';
 }
 
@@ -9642,12 +9643,22 @@ function _studentBadgeHtml(){
     verified:  {label:'Étudiant vérifié ✓', color:'#22c55e', bg:'rgba(34,197,94,.08)', border:'rgba(34,197,94,.25)'},
     pending:   {label:'Justificatif en attente…', color:'#eab308', bg:'rgba(234,179,8,.08)', border:'rgba(234,179,8,.25)'},
     rejected:  {label:'Justificatif rejeté — soumettre à nouveau', color:'#ef4444', bg:'rgba(239,68,68,.08)', border:'rgba(239,68,68,.25)'},
+    expired:   {label:'Certificat de l’an dernier expiré — envoyez celui de cette année', color:'#ef4444', bg:'rgba(239,68,68,.08)', border:'rgba(239,68,68,.25)'},
     unverified:{label:'Statut étudiant non vérifié', color:'#888', bg:'rgba(255,255,255,.04)', border:'rgba(255,255,255,.08)'}
   };
   var m = map[ss] || map['unverified'];
+  var label = '<span>'+m.label+'</span>', upload = ss==='rejected'||ss==='unverified'||ss==='expired';
+  // Vérification valable pour l'année scolaire (jusqu'au 31 octobre) : rappel à partir de mi-septembre,
+  // et un nouveau certificat envoyé ne retire pas les tarifs pendant son examen.
+  if(ss === 'verified'){
+    var until = USER.student_verified_until, from = Date.parse(USER.student_renewal_reminder_from || '');
+    if(USER.student_renewal_pending){ m = map.pending; label = '<span>Nouveau certificat en cours de vérification</span>'; }
+    else if(until && !isNaN(from) && Date.now() >= from){ m = map.pending; label = '<span>Envoyez votre certificat de cette année avant le</span> <span data-i18n-skip>'+_ptnrFmtLong(until)+'</span>'; upload = true; }
+    else if(until) label = '<span>Étudiant vérifié ✓</span> <span style="font-weight:600;opacity:.75;"><span>jusqu’au</span> <span data-i18n-skip>'+_ptnrFmtLong(until)+'</span></span>';
+  }
   return '<div style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:700;color:'+m.color+';background:'+m.bg+';border:1px solid '+m.border+';display:flex;align-items:center;gap:8px;">'
-    +'<i class="fa-solid fa-graduation-cap"></i> '+m.label
-    +(ss==='rejected'||ss==='unverified' ? ' <button onclick="_appUploadNewCert()" style="margin-left:auto;padding:4px 9px;border-radius:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#ccc;font-size:10px;cursor:pointer;">Envoyer</button>' : '')
+    +'<i class="fa-solid fa-graduation-cap"></i> <span>'+label+'</span>'
+    +(upload ? ' <button onclick="_appUploadNewCert()" style="margin-left:auto;padding:4px 9px;border-radius:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#ccc;font-size:10px;cursor:pointer;flex-shrink:0;">Envoyer</button>' : '')
     +'</div>';
 }
 
@@ -9661,12 +9672,12 @@ function _studentVerifyNoticeHtml(services){
     return a.indexOf('etudiant') !== -1 && a.indexOf('promo') === -1;
   });
   if(!hasStudentOffer) return '';
-  var pending = USER.student_status === 'pending';
+  var pending = USER.student_status === 'pending', expired = USER.student_status === 'expired';
   return '<div style="margin:0 0 14px;padding:12px 14px;border-radius:12px;background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);display:flex;gap:10px;align-items:flex-start;">'
     +'<i class="fa-solid fa-graduation-cap" style="color:#eab308;margin-top:2px;"></i>'
     +'<div style="flex:1;font-size:12px;color:#ddd;line-height:1.5;">'
-      +'<div style="font-weight:800;color:#eab308;margin-bottom:2px;">'+(pending ? 'Justificatif en cours de vérification' : 'Vérifiez votre statut étudiant')+'</div>'
-      +'<div>'+(pending ? 'Vous pourrez commander les offres étudiants dès sa validation (sous 24 h).' : 'Les tarifs étudiants sont réservés aux étudiants vérifiés. Envoyez votre justificatif pour pouvoir commander.')+'</div>'
+      +'<div style="font-weight:800;color:#eab308;margin-bottom:2px;">'+(pending ? 'Justificatif en cours de vérification' : (expired ? 'Statut étudiant à renouveler' : 'Vérifiez votre statut étudiant'))+'</div>'
+      +'<div>'+(pending ? 'Vous pourrez commander les offres étudiants dès sa validation (sous 24 h).' : (expired ? 'Envoyez votre certificat de scolarité de cette année pour commander à nouveau les offres étudiants.' : 'Les tarifs étudiants sont réservés aux étudiants vérifiés. Envoyez votre justificatif pour pouvoir commander.'))+'</div>'
       +(pending ? '' : '<button onclick="_appUploadNewCert()" style="margin-top:8px;padding:6px 12px;border-radius:8px;background:#eab308;border:none;color:#000;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;">Envoyer mon justificatif</button>')
     +'</div></div>';
 }
@@ -9784,7 +9795,11 @@ function _appUploadNewCert(){
     var fr=new FileReader();
     fr.onload=function(e){
       _cliFetch('/api/client/students/certificate','POST',{studentCertificate:e.target.result}).then(function(res){
-        if(res&&res.success){
+        if(res&&res.success&&res.renewal){
+          showToast('Certificat envoyé','Vos tarifs étudiants restent actifs pendant la vérification','success');
+          USER.student_renewal_pending=true;
+          if(typeof renderProfil==='function') renderProfil();
+        } else if(res&&res.success){
           showToast('Justificatif envoyé','Validation sous 24h','success');
           USER.student_status='pending';
           if(typeof renderProfil==='function') renderProfil();
@@ -10432,7 +10447,7 @@ function loadNotifInbox(){
       }
       // Vérification étudiant en temps réel : si une notif student_verified non lue
       // est détectée alors que le client est encore affiché comme "pending", forcer la sync
-      if(USER && USER.student_status==='pending'){
+      if(USER && (USER.student_status==='pending' || USER.student_renewal_pending)){
         var hasStudVerif = list.some(function(n){return n.type==='student_verified'&&!n.read;});
         if(hasStudVerif) _syncUserBadge();
       }
@@ -10867,6 +10882,10 @@ function _syncUserBadge(){
       if(d.accountType)    USER.accountType    = d.accountType;
       var _prevStudentStatus = USER.student_status;
       if(d.student_status != null) USER.student_status = d.student_status;
+      USER.student_verified_until = d.student_verified_until || null;
+      USER.student_renewal_pending = !!d.student_renewal_pending;
+      USER.student_renewal_reminder_from = d.student_renewal_reminder_from || null;
+      if(d.accountType === 'entreprise') USER.company = d.company || null;
       if(d.offers_push === true || d.offers_push === false || d.offers_push === null) USER.offers_push = d.offers_push;
       try{ _applyUserTheme(USER.profile_theme); }catch(e){}
       // Détection de passage de niveau : popup + confettis UNIQUEMENT pour une vraie progression
@@ -19970,7 +19989,160 @@ var _regCertBase64 = '';
 function regSelectProfile(type){
   regData.accountType = type;
   _regCertBase64 = '';
+  _regShowCompanySection();
   regGoToStep(2);
+}
+
+// ── Clients « Entreprise » (2026-11-11) : SIRET obligatoire en France, vérifié automatiquement
+// dans le répertoire officiel des entreprises ; hors de France, nom de l'entreprise. Pas de Kbis.
+// Même formulaire à l'inscription (préfixe reg-co) et depuis le profil (préfixe co-sheet).
+var _CO_SIRET_COUNTRIES = ['FR','GP','MQ','GF','RE','YT','PM','BL','MF'];
+var _coSiretTimers = {};
+function _coIsFr(px){ var c = (document.getElementById(px+'-country')||{}).value || 'FR'; return _CO_SIRET_COUNTRIES.indexOf(c) !== -1; }
+function _coCountryOptions(){
+  var src = document.getElementById('ptnr-reg-country');
+  var html = src ? src.innerHTML : '<option value="FR">France</option>';
+  return html.replace(/<option value="">[^<]*<\/option>/, '');
+}
+function _coFormHtml(px){
+  return '<div class="reg-field"><label class="reg-label" for="'+px+'-country">Pays de l’entreprise *</label>'
+    +'<select id="'+px+'-country" class="reg-input" onchange="_coCountryChange(\''+px+'\')">'+_coCountryOptions()+'</select></div>'
+    +'<div id="'+px+'-fr"><div class="reg-field"><label class="reg-label" for="'+px+'-siret">SIRET *</label>'
+    +'<input id="'+px+'-siret" class="reg-input" type="text" inputmode="numeric" maxlength="17" placeholder="14 chiffres" autocomplete="off" oninput="_coSiretCheck(\''+px+'\')">'
+    +'<div id="'+px+'-siret-status" style="font-size:12px;margin-top:6px;line-height:1.45;"></div></div></div>'
+    +'<div class="reg-field"><label class="reg-label" for="'+px+'-name"><span>Nom de l’entreprise</span><span id="'+px+'-name-req" data-i18n-skip> *</span></label>'
+    +'<input id="'+px+'-name" class="reg-input" type="text" maxlength="160" autocomplete="organization" placeholder="Raison sociale"></div>'
+    +'<div id="'+px+'-intl" style="display:none;"><div class="reg-field"><label class="reg-label" for="'+px+'-regnum">Numéro d’immatriculation</label>'
+    +'<input id="'+px+'-regnum" class="reg-input" type="text" maxlength="40" placeholder="Facultatif" autocomplete="off"></div></div>'
+    +'<div style="font-size:11px;color:#888;line-height:1.5;margin:-8px 0 16px;">'
+    +'<span id="'+px+'-help-fr">Le SIRET est vérifié automatiquement dans le répertoire officiel des entreprises. Le nom et le SIREN de votre entreprise figurent sur vos factures.</span>'
+    +'<span id="'+px+'-help-intl" style="display:none;">Le nom de votre entreprise figure sur vos factures.</span></div>';
+}
+function _coFill(px, co){
+  co = co || {};
+  var set = function(id, v){ var el = document.getElementById(px+id); if(el && v != null) el.value = v; };
+  set('-country', co.country || 'FR'); set('-siret', co.siret || ''); set('-name', co.name || ''); set('-regnum', co.registration_number || '');
+  var sel = document.getElementById(px+'-country'); if(sel && !sel.value) sel.value = 'FR';
+  _coCountryChange(px);
+  if(co.siret) _coSiretCheck(px);
+}
+function _coCountryChange(px){
+  var fr = _coIsFr(px);
+  var show = function(id, on){ var el = document.getElementById(px+id); if(el) el.style.display = on ? '' : 'none'; };
+  show('-fr', fr); show('-intl', !fr); show('-help-fr', fr); show('-help-intl', !fr); show('-name-req', !fr);
+}
+function _coSiretCheck(px){
+  var el = document.getElementById(px+'-siret-status'); if(!el) return;
+  var v = String((document.getElementById(px+'-siret')||{}).value||'').replace(/[\s.\-]/g,'');
+  clearTimeout(_coSiretTimers[px]);
+  if(!v){ el.innerHTML = ''; return; }
+  if(!/^\d{14}$/.test(v)){ el.innerHTML = '<span style="color:#888;" data-i18n-skip>'+v.length+'/14</span>'; return; }
+  el.innerHTML = '<span style="color:#888;"><i class="fa-solid fa-spinner fa-spin"></i> <span>Vérification…</span></span>';
+  _coSiretTimers[px] = setTimeout(function(){
+    fetch((window.FA_GENESIS_API||API)+'/api/partner/siret-check?siret='+v).then(function(r){ return r.json(); }).then(function(d){
+      var cur = document.getElementById(px+'-siret-status'); if(!cur) return;
+      var h = '';
+      if(!d || !d.valid) h = '<span style="color:#ef4444;"><i class="fa-solid fa-circle-xmark"></i> <span>Ce SIRET n’est pas valide. Vérifiez les 14 chiffres.</span></span>';
+      else if(d.status === 'active'){
+        h = '<span style="color:#22c55e;"><i class="fa-solid fa-circle-check"></i> <span data-i18n-skip>'+_escHtml(d.name||'')+'</span> · <span>en activité</span></span>';
+        var nm = document.getElementById(px+'-name');
+        if(nm && d.name && (!nm.value || nm.getAttribute('data-auto') === '1')){ nm.value = d.name; nm.setAttribute('data-auto','1'); }
+      }
+      else if(d.status === 'closed') h = '<span style="color:#ef4444;"><i class="fa-solid fa-circle-xmark"></i> <span>Établissement fermé dans le répertoire officiel des entreprises.</span></span>';
+      else if(d.status === 'not_found') h = '<span style="color:#f59e0b;"><i class="fa-solid fa-circle-info"></i> <span>Introuvable dans le répertoire officiel pour l’instant : indiquez aussi le nom de votre entreprise.</span></span>';
+      else h = '<span style="color:#888;"><span>Vérification automatique indisponible : indiquez aussi le nom de votre entreprise.</span></span>';
+      cur.innerHTML = h;
+    }).catch(function(){ var cur = document.getElementById(px+'-siret-status'); if(cur) cur.innerHTML = ''; });
+  }, 500);
+}
+// Champs → corps de requête, ou { error } (mêmes règles que le serveur).
+function _coCollect(px){
+  var g = function(id){ return String((document.getElementById(px+id)||{}).value||'').trim(); };
+  var out = { company_country: g('-country') || 'FR', company_name: g('-name') };
+  if(_coIsFr(px)){
+    out.company_siret = g('-siret').replace(/[\s.\-]/g,'');
+    if(!/^\d{14}$/.test(out.company_siret)) return { error: 'Indiquez le numéro SIRET de votre entreprise (14 chiffres).' };
+  } else {
+    out.company_registration = g('-regnum');
+    if(out.company_name.length < 2) return { error: 'Indiquez le nom de votre entreprise.' };
+  }
+  return { data: out };
+}
+function _regShowCompanySection(){
+  var sec = document.getElementById('reg-company-section');
+  var on = regData.accountType === 'entreprise';
+  if(sec){
+    if(on && !sec.innerHTML){ sec.innerHTML = _coFormHtml('reg-co'); _coFill('reg-co', null); }
+    sec.style.display = on ? 'block' : 'none';
+  }
+  var a = document.getElementById('reg-s4-sub'), b = document.getElementById('reg-s4-sub-co');
+  if(a) a.style.display = on ? 'none' : '';
+  if(b) b.style.display = on ? '' : 'none';
+}
+
+// Profil : renseigner ou corriger son entreprise (comptes créés avant l'obligation compris).
+function _coOpenSheet(){
+  var old = document.getElementById('confirm-modal-overlay'); if(old) old.remove();
+  var ov = document.createElement('div'); ov.id = 'confirm-modal-overlay';
+  ov.innerHTML = '<div class="confirm-modal-card" style="max-height:86vh;overflow-y:auto;">'
+    +'<div class="confirm-modal-title">Votre entreprise</div>'
+    +_coFormHtml('co-sheet')
+    +'<div class="reg-err" id="co-sheet-err" style="margin:-4px 0 12px;"></div>'
+    +'<div class="confirm-modal-row">'
+      +'<button class="confirm-modal-btn confirm-modal-btn-cancel" type="button" onclick="_coCloseSheet()">Annuler</button>'
+      +'<button class="confirm-modal-btn confirm-modal-btn-ok" type="button" id="co-sheet-save" onclick="_coSave()">Enregistrer</button>'
+    +'</div></div>';
+  document.body.appendChild(ov);
+  _coFill('co-sheet', USER && USER.company);
+  requestAnimationFrame(function(){ ov.className = 'on'; });
+  ov.onclick = function(e){ if(e.target === ov) _coCloseSheet(); };
+}
+function _coCloseSheet(){
+  var ov = document.getElementById('confirm-modal-overlay'); if(!ov) return;
+  ov.className = ''; setTimeout(function(){ if(ov.parentNode) ov.remove(); }, 180);
+}
+function _coSave(){
+  var err = document.getElementById('co-sheet-err'), btn = document.getElementById('co-sheet-save');
+  var c = _coCollect('co-sheet');
+  if(c.error){ if(err){ err.textContent = c.error; err.classList.add('on'); } return; }
+  if(err) err.classList.remove('on');
+  if(btn){ btn.disabled = true; btn.textContent = 'Vérification…'; }
+  _cliFetch('/api/client/company','POST',c.data).then(function(res){
+    if(btn){ btn.disabled = false; btn.textContent = 'Enregistrer'; }
+    if(res && res.success){
+      USER.company = res.company;
+      try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
+      _coCloseSheet();
+      showToast('Entreprise enregistrée','','success');
+      if(typeof renderProfil === 'function' && document.getElementById('tab-profil') && document.getElementById('tab-profil').classList.contains('on')) renderProfil();
+      var nt = document.getElementById('co-fiche-notice'); if(nt) nt.style.display = 'none';
+    } else if(err){ err.textContent = (res && res.error) || 'Réessayez.'; err.classList.add('on'); }
+  }).catch(function(){
+    if(btn){ btn.disabled = false; btn.textContent = 'Enregistrer'; }
+    if(err){ err.textContent = 'Erreur réseau. Vérifiez votre connexion.'; err.classList.add('on'); }
+  });
+}
+function _companyBadgeHtml(){
+  if(!USER || GUEST || USER.accountType !== 'entreprise') return '';
+  var c = USER.company;
+  var btn = function(label){ return '<button onclick="_coOpenSheet()" style="margin-left:auto;padding:4px 9px;border-radius:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#ccc;font-size:10px;cursor:pointer;flex-shrink:0;">'+label+'</button>'; };
+  if(!c || !c.name){
+    return '<div style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:700;color:#FFD700;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.25);display:flex;align-items:center;gap:8px;">'
+      +'<i class="fa-solid fa-building"></i> <span>Renseignez votre entreprise</span>'+btn('Compléter')+'</div>';
+  }
+  var st = (c.status || (c.check && c.check.status)) === 'active' ? ' · <span>SIRET vérifié ✓</span>' : (c.siret ? ' · <span>SIRET en cours de vérification</span>' : '');
+  return '<div style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:700;color:#60a5fa;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.25);display:flex;align-items:center;gap:8px;">'
+    +'<i class="fa-solid fa-building"></i> <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;"><span data-i18n-skip>'+_escHtml(c.name)+'</span>'+st+'</span>'+btn('Modifier')+'</div>';
+}
+// Fiche d'un prestataire : rappel discret (jamais bloquant) pour un compte entreprise incomplet.
+function _companyNoticeHtml(){
+  if(!USER || GUEST || USER.accountType !== 'entreprise' || (USER.company && USER.company.name)) return '';
+  return '<div id="co-fiche-notice" style="margin:0 0 14px;padding:12px 14px;border-radius:12px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.3);display:flex;gap:10px;align-items:flex-start;">'
+    +'<i class="fa-solid fa-building" style="color:#60a5fa;margin-top:2px;"></i>'
+    +'<div style="flex:1;font-size:12px;color:#ddd;line-height:1.5;">'
+      +'<div>Renseignez votre entreprise : son nom et son SIREN figureront sur vos factures.</div>'
+      +'<button onclick="_coOpenSheet()" style="margin-top:8px;padding:6px 12px;border-radius:8px;background:#60a5fa;border:none;color:#000;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;">Compléter</button>'
+    +'</div></div>';
 }
 
 function _regCertFileChange(inp){
@@ -20006,6 +20178,7 @@ function regStepPassword(){
   var pwd2=((document.getElementById('reg-pwd2')||{}).value||'');
   var e1=document.getElementById('reg-err-pwd'); var e2=document.getElementById('reg-err-pwd2');
   _regShowCertSection && _regShowCertSection();
+  _regShowCompanySection();
   if(pwd.length<8){ if(e1){e1.textContent='Minimum 8 caractères requis.';e1.classList.add('on');} return; }
   if(e1) e1.classList.remove('on');
   if(pwd!==pwd2){ if(e2){e2.textContent='Les mots de passe ne correspondent pas.';e2.classList.add('on');} return; }
@@ -20023,6 +20196,12 @@ function regStepIdentity(){
   if(!prenom){ if(ep){ep.textContent='Prénom requis.';ep.classList.add('on');} return; }
   if(ep) ep.classList.remove('on');
   if(ge) ge.classList.remove('on');
+  ['company_country','company_siret','company_name','company_registration'].forEach(function(k){ delete regData[k]; });
+  if(regData.accountType==='entreprise'){
+    var co=_coCollect('reg-co');
+    if(co.error){ if(ge){ge.textContent=co.error;ge.classList.add('on');} return; }
+    for(var ck in co.data){ if(co.data.hasOwnProperty(ck)) regData[ck]=co.data[ck]; }
+  }
   regData.prenom=prenom; if(nom) regData.nom=nom; if(tel) regData.telephone=tel; if(referral) regData.referralCode=referral;
   if(regData.accountType==='etudiant' && _regCertBase64) regData.studentCertificate = _regCertBase64;
   var btn=document.getElementById('reg-btn3');
@@ -20815,7 +20994,8 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       <!-- Étape 4 : Identité -->
       <div class="reg-step" id="reg-s4">
         <div class="reg-title">Dites-nous<br>qui vous êtes</div>
-        <div class="reg-sub">Votre prénom est requis. Le reste est facultatif.</div>
+        <div class="reg-sub" id="reg-s4-sub">Votre prénom est requis. Le reste est facultatif.</div>
+        <div class="reg-sub" id="reg-s4-sub-co" style="display:none;">Votre prénom et votre entreprise sont requis.</div>
         <div class="reg-field">
           <label class="reg-label" for="reg-prenom">Prénom *</label>
           <input id="reg-prenom" class="reg-input" type="text" placeholder="Votre prénom" autocomplete="given-name" onkeydown="regHandleEnter(event,regStepIdentity)">
@@ -20829,6 +21009,8 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <label class="reg-label" for="reg-tel">Téléphone</label>
           <input id="reg-tel" class="reg-input" type="tel" placeholder="+33 6 00 00 00 00" autocomplete="tel" onkeydown="regHandleEnter(event,regStepIdentity)">
         </div>
+        <!-- Entreprise (visible uniquement si profil = entreprise) : SIRET vérifié en France -->
+        <div id="reg-company-section" style="display:none;"></div>
         <div class="reg-field">
           <label class="reg-label" for="reg-referral">Code de parrainage</label>
           <input id="reg-referral" class="reg-input" type="text" placeholder="USR-XXXXXXXX (optionnel)" onkeydown="regHandleEnter(event,regStepIdentity)">

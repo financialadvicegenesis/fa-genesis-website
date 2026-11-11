@@ -1055,10 +1055,11 @@
                         <button type="button" onclick="loadStudentsList('pending')" data-stud-filter="pending" data-color="#f59e0b" class="stud-filt">EN ATTENTE <span class="stud-cnt"></span></button>
                         <button type="button" onclick="loadStudentsList('verified')" data-stud-filter="verified" data-color="#22c55e" class="stud-filt">VÉRIFIÉS <span class="stud-cnt"></span></button>
                         <button type="button" onclick="loadStudentsList('rejected')" data-stud-filter="rejected" data-color="#ef4444" class="stud-filt">REJETÉS <span class="stud-cnt"></span></button>
+                        <button type="button" onclick="loadStudentsList('expired')" data-stud-filter="expired" data-color="#a3a3a3" class="stud-filt">EXPIRÉS <span class="stud-cnt"></span></button>
                         <button type="button" onclick="loadStudentsList('unverified')" data-stud-filter="unverified" data-color="#9ca3af" class="stud-filt">SANS JUSTIFICATIF <span class="stud-cnt"></span></button>
                     </div>
                     <input type="text" id="studSearchInput" placeholder="Rechercher un étudiant (nom, email, téléphone)..." oninput="renderStudentsList()" style="margin-top:14px;width:100%;">
-                    <p class="text-xs opacity-60 mt-3 mb-0">Un étudiant non vérifié voit les offres étudiants mais ne peut pas les commander tant que vous n'avez pas validé son justificatif.</p>
+                    <p class="text-xs opacity-60 mt-3 mb-0">Un étudiant non vérifié voit les offres étudiants mais ne peut pas les commander tant que vous n'avez pas validé son justificatif. Une validation vaut pour l'année scolaire : elle expire le 31 octobre suivant (rappel à l'étudiant à partir du 16 septembre). Un « renouvellement » garde ses tarifs pendant votre examen.</p>
                 </div>
                 <!-- Liste étudiants -->
                 <div id="studentsList">
@@ -2669,6 +2670,33 @@
             loadClientsList(q || undefined);
         }
 
+        // Client « Entreprise » (2026-11-11) : SIRET vérifié automatiquement dans le répertoire officiel.
+        // Comptes créés avant l'obligation : « ENTREPRISE À COMPLÉTER » (jamais bloqués).
+        function _coEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+        function _coStatus(co) { return co ? (co.siret ? ((co.check && co.check.status) || co.status || 'unavailable') : 'declared') : null; }
+        function clientCompanyPill(client) {
+            var co = client.company, st = _coStatus(co);
+            var pill = function(bg, fg, txt) { return '<span style="background:' + bg + ';color:' + fg + ';padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;">' + txt + '</span>'; };
+            if (!co || !co.name) return pill('#9ca3af', '#0a0a0a', 'ENTREPRISE À COMPLÉTER');
+            if (st === 'active') return pill('#22c55e', '#0a0a0a', 'SIRET VÉRIFIÉ');
+            if (st === 'declared') return pill('#d1d5db', '#0a0a0a', 'HORS FRANCE');
+            return pill('#f59e0b', '#0a0a0a', 'SIRET À VÉRIFIER');
+        }
+        function clientCompanyBlockHtml(client) {
+            if (client.accountType !== 'entreprise') return '';
+            var co = client.company, st = _coStatus(co);
+            var box = 'margin:-12px 0 24px;padding:14px 16px;border:2px solid #60a5fa;background:#0f1724;color:#e5e7eb;';
+            if (!co || !co.name) return '<div style="' + box + '"><div style="font-weight:900;color:#60a5fa;margin-bottom:4px;"><i class="fas fa-building mr-2"></i>ENTREPRISE</div><div style="font-size:13px;color:#cbd5e1;">Pas encore renseignée (compte créé avant l’obligation du SIRET). Le client peut la compléter depuis son profil.</div></div>';
+            var stTxt = { active: '<span style="color:#22c55e;font-weight:900;">En activité dans le répertoire officiel</span>', not_found: '<span style="color:#f59e0b;font-weight:900;">Introuvable dans le répertoire officiel : à vérifier</span>', unavailable: '<span style="color:#f59e0b;font-weight:900;">Vérification automatique indisponible au moment de l’inscription : à vérifier</span>', declared: '<span style="color:#cbd5e1;font-weight:900;">Entreprise hors de France (déclarative)</span>' }[st] || '';
+            var rows = '<div style="font-size:16px;font-weight:900;color:#fff;">' + _coEsc(co.name) + '</div>';
+            if (co.declared_name) rows += '<div style="font-size:12px;color:#cbd5e1;">Nom saisi par le client : ' + _coEsc(co.declared_name) + '</div>';
+            if (co.siret) rows += '<div style="font-size:13px;margin-top:4px;">SIRET : <a href="https://annuaire-entreprises.data.gouv.fr/etablissement/' + encodeURIComponent(co.siret) + '" target="_blank" rel="noopener" style="color:#93c5fd;text-decoration:underline;font-weight:900;">' + _coEsc(co.siret) + '</a></div>';
+            if (co.check && co.check.address) rows += '<div style="font-size:12px;color:#cbd5e1;">' + _coEsc(co.check.address) + '</div>';
+            if (co.registration_number) rows += '<div style="font-size:13px;margin-top:4px;">Immatriculation : ' + _coEsc(co.registration_number) + '</div>';
+            rows += '<div style="font-size:12px;margin-top:4px;">Pays : ' + _coEsc(co.country || 'FR') + (stTxt ? ' · ' + stTxt : '') + '</div>';
+            return '<div style="' + box + '"><div style="font-weight:900;color:#60a5fa;margin-bottom:6px;"><i class="fas fa-building mr-2"></i>ENTREPRISE</div>' + rows + '</div>';
+        }
+
         async function loadClientsList(searchQuery) {
             try {
                 var response = await fetch(API_BASE_URL + '/api/admin/users');
@@ -2693,6 +2721,7 @@
                     return (c.prenom && c.prenom.toLowerCase().includes(q)) ||
                            (c.nom && c.nom.toLowerCase().includes(q)) ||
                            (c.email && c.email.toLowerCase().includes(q)) ||
+                           (c.company && ((c.company.name || '') + ' ' + (c.company.siret || '')).toLowerCase().includes(q)) ||
                            (c.offre && c.offre.toLowerCase().includes(q));
                 });
             }
@@ -2717,7 +2746,7 @@
                     acctPill = '<span style="background:#eab308;color:#0a0a0a;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;margin-right:4px;">ÉTUDIANT</span>';
                     if (client.student_status === 'pending') acctPill += '<span style="background:' + studColor + ';color:#0a0a0a;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;">CERT. EN ATTENTE</span>';
                 } else if (client.accountType === 'entreprise') {
-                    acctPill = '<span style="background:#60a5fa;color:#0a0a0a;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;">ENTREPRISE</span>';
+                    acctPill = '<span style="background:#60a5fa;color:#0a0a0a;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;margin-right:4px;">ENTREPRISE</span>' + clientCompanyPill(client);
                 } else {
                     acctPill = '<span style="background:#22c55e;color:#0a0a0a;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;">PARTICULIER</span>';
                 }
@@ -2837,7 +2866,13 @@
                     + ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'reject\')" style="background:#ef4444;border:2px solid black;color:white;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-times mr-1"></i>Rejeter</button>'
                     + ' <button onclick="adminViewStudentCert(\'' + (client.id||client.email) + '\')" style="background:#222;border:2px solid var(--genesis-yellow);color:var(--genesis-yellow);padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-file mr-1"></i>Voir justificatif</button>';
             } else if (studStatus === 'verified') {
-                studStatusHtml = '<span style="background:#22c55e;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;"><i class="fas fa-check mr-1"></i>ÉTUDIANT VÉRIFIÉ</span>';
+                studStatusHtml = '<span style="background:#22c55e;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;"><i class="fas fa-check mr-1"></i>ÉTUDIANT VÉRIFIÉ' + (client.student_verified_until ? ' JUSQU’AU ' + new Date(client.student_verified_until).toLocaleDateString('fr-FR') : '') + '</span>';
+                if (client.student_renewal_pending) studStatusHtml += '<span style="background:#f59e0b;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;">NOUVEAU CERTIFICAT À VÉRIFIER</span>'
+                    + ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'verify\')" style="background:#22c55e;border:2px solid black;color:black;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-check mr-1"></i>Valider</button>'
+                    + ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'reject\')" style="background:#ef4444;border:2px solid black;color:white;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-times mr-1"></i>Rejeter</button>'
+                    + ' <button onclick="adminViewStudentCert(\'' + (client.id||client.email) + '\')" style="background:#222;border:2px solid var(--genesis-yellow);color:var(--genesis-yellow);padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-file mr-1"></i>Voir justificatif</button>';
+            } else if (studStatus === 'expired') {
+                studStatusHtml = '<span style="background:#9ca3af;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;">CERTIFICAT EXPIRÉ (ANNÉE SCOLAIRE TERMINÉE)</span>';
             } else if (studStatus === 'rejected') {
                 studStatusHtml = '<span style="background:#ef4444;color:white;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;">JUSTIFICATIF REJETÉ</span>';
             }
@@ -2927,6 +2962,7 @@
                     </div>
                 </div>
 
+                ${clientCompanyBlockHtml(client)}
                 <div class="grid md:grid-cols-3 gap-6 mb-8">
                     <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Email</p>
@@ -8205,8 +8241,8 @@
         // la liste semblait vide alors que des étudiants existaient).
         var _studFilter = null;
         var _studentsCache = [];
-        var STUD_STATUS_COLORS = { pending: '#f59e0b', verified: '#22c55e', rejected: '#ef4444', unverified: '#9ca3af' };
-        var STUD_STATUS_LABELS = { pending: 'En attente', verified: 'Vérifié', rejected: 'Rejeté', unverified: 'Sans justificatif' };
+        var STUD_STATUS_COLORS = { pending: '#f59e0b', verified: '#22c55e', rejected: '#ef4444', expired: '#a3a3a3', unverified: '#9ca3af' };
+        var STUD_STATUS_LABELS = { pending: 'En attente', verified: 'Vérifié', rejected: 'Rejeté', expired: 'Expiré', unverified: 'Sans justificatif' };
 
         function _studEsc(v) {
             return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -8266,7 +8302,9 @@
                         ? '<div class="text-xs mt-1" style="color:#ef4444;font-weight:900;"><i class="fas fa-triangle-exclamation mr-1"></i>Justificatif introuvable : demandez-en un nouveau</div>'
                         : '<div class="text-xs mt-1 opacity-40 font-bold">Aucun justificatif</div>');
                 var extra = '';
-                if (st === 'verified' && s.student_verified_at) extra = '<div class="text-xs mt-1 font-bold" style="color:#22c55e;">Vérifié le ' + _studDate(s.student_verified_at) + '</div>';
+                if (st === 'verified' && s.student_verified_at) extra = '<div class="text-xs mt-1 font-bold" style="color:#22c55e;">Vérifié le ' + _studDate(s.student_verified_at) + (s.student_verified_until ? ' · valable jusqu’au ' + _studDate(s.student_verified_until) : '') + '</div>';
+                if (s.renewal) extra = '<div class="text-xs mt-1 font-bold" style="color:#f59e0b;">Renouvellement : certificat de la nouvelle année. Statut actuel valable jusqu’au ' + _studDate(s.student_verified_until) + '.</div>';
+                if (st === 'expired') extra = '<div class="text-xs mt-1 font-bold" style="color:#a3a3a3;">Année scolaire terminée' + (s.student_expired_at ? ' le ' + _studDate(s.student_expired_at) : '') + ' : en attente du certificat de cette année.</div>';
                 if (st === 'rejected' && s.student_reject_reason) extra = '<div class="text-xs mt-1 font-bold" style="color:#ef4444;">Motif : ' + _studEsc(s.student_reject_reason) + '</div>';
                 var actions = '';
                 if (s.has_certificate) actions += '<button onclick="adminViewStudentCert(\'' + sid + '\')" style="' + btnBase + 'background:#222;border-color:var(--genesis-yellow);color:var(--genesis-yellow);"><i class="fas fa-file mr-1"></i>Justificatif</button>';
@@ -8327,6 +8365,7 @@
             }
             try {
                 var endpoint = action === 'verify' ? 'verify' : 'reject';
+                if (action === 'revoke') body.revoke = true;
                 var resp = await fetch(API_BASE_URL + '/api/admin/students/' + encodeURIComponent(userId) + '/' + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
                 var data = await resp.json();
                 if (data.success) {

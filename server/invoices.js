@@ -64,7 +64,7 @@ function _nextInvoiceNumber(partnerId, invoices) {
 // Une seule facture par commande, générée une fois que le versement final est réellement
 // crédité (voir en-tête de fichier). Idempotente : rappelée plusieurs fois sans effet si une
 // facture existe déjà pour cette order_id.
-function generateInvoiceForOrder(order, partner, dispatch) {
+function generateInvoiceForOrder(order, partner, dispatch, clientCompany) {
     if (!order || !partner) return null;
 
     var invoices = loadInvoices();
@@ -90,6 +90,9 @@ function generateInvoiceForOrder(order, partner, dispatch) {
         partner_email: partner.email,
         client_name: clientName,
         client_email: clientInfo.email || order.client_email || '',
+        // Client « Entreprise » : raison sociale + SIREN (mention exigée sur les factures entre
+        // entreprises avec la réforme de la facturation électronique), ou immatriculation étrangère.
+        client_company: clientCompany && clientCompany.name ? { name: clientCompany.name, siren: clientCompany.siren || '', registration_number: clientCompany.registration_number || '', country: clientCompany.country || '' } : null,
         service_name: (dispatch && dispatch.offer_name) || order.product_name || 'Prestation GENESIS',
         amount: parseFloat(order.total_amount || 0),
         paid_at: new Date().toISOString(),
@@ -142,7 +145,15 @@ function generateInvoicePdfBuffer(invoice, callback) {
         doc.text(invoice.partner_email || '', 50, doc.y + 2);
 
         doc.fontSize(9).font('Helvetica-Bold').fillColor('#888').text('CLIENT', 320, _colY);
-        doc.fontSize(11).font('Helvetica-Bold').fillColor('#000').text(invoice.client_name, 320, _colY + 14);
+        if (invoice.client_company) {
+            doc.fontSize(11).font('Helvetica-Bold').fillColor('#000').text(invoice.client_company.name, 320, _colY + 14, { width: 225 });
+            doc.fontSize(9).font('Helvetica').fillColor('#333');
+            if (invoice.client_company.siren) doc.text('SIREN : ' + invoice.client_company.siren, 320, doc.y + 2);
+            else if (invoice.client_company.registration_number) doc.text('Immatriculation : ' + invoice.client_company.registration_number + (invoice.client_company.country ? ' (' + invoice.client_company.country + ')' : ''), 320, doc.y + 2, { width: 225 });
+            doc.text('À l’attention de ' + invoice.client_name, 320, doc.y + 2, { width: 225 });
+        } else {
+            doc.fontSize(11).font('Helvetica-Bold').fillColor('#000').text(invoice.client_name, 320, _colY + 14);
+        }
         doc.fontSize(9).font('Helvetica').fillColor('#333').text(invoice.client_email || '', 320, doc.y + 2);
 
         doc.y = Math.max(doc.y, _colY + 90);

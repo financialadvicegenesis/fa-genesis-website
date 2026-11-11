@@ -26,6 +26,7 @@ const emailService = require('./email-service');
 // Anti-abus (e-mail strict, adresses jetables, domaines inexistants, tri des messages de contact)
 const antiAbuse = require('./anti-abuse');
 const PartnerVerif = require('./partner-verification');
+const ClientCo = require('./client-company');
 const aiService = require('./services/aiService');
 const mps = require('./services/marketplace-payment-service');
 const scp = require('./services/stripe-connect-provider');
@@ -1018,7 +1019,7 @@ function saveCertificates(data) {
 // Les promotions restent ouvertes à tous.
 var STUDENT_NOT_VERIFIED_MESSAGE = 'Les tarifs étudiants sont réservés aux étudiants vérifiés. Envoyez votre justificatif depuis votre profil : il est vérifié sous 24 h.';
 function studentPriceBlocked(service, user) {
-    if (!service || !user || user.accountType !== 'etudiant' || user.student_status === 'verified') return false;
+    if (!service || !user || user.accountType !== 'etudiant' || ClientCo.isStudentVerified(user)) return false;
     var a = Array.isArray(service.audience) ? service.audience : [service.audience || 'particulier'];
     return a.indexOf('etudiant') !== -1 && a.indexOf('promo') === -1;
 }
@@ -1140,7 +1141,14 @@ function _paymentStageSuffix(stage, order) {
 function _maybeGenerateMissionInvoice(order, partner, dispatch) {
     try {
         if (!order || !partner) return;
-        var result = invoiceService.generateInvoiceForOrder(order, partner, dispatch);
+        // Client « Entreprise » : son nom et son SIREN figurent sur la facture.
+        var invClientCo = null;
+        try {
+            var invEmail = String((order.client_info && order.client_info.email) || order.client_email || '').toLowerCase();
+            var invUser = invEmail ? getUserByEmail(invEmail) : null;
+            if (invUser && invUser.accountType === 'entreprise' && invUser.company) invClientCo = ClientCo.companyView(invUser.company);
+        } catch (e) {}
+        var result = invoiceService.generateInvoiceForOrder(order, partner, dispatch, invClientCo);
         // Le SIRET n'existe qu'en France : ne pas réclamer un SIRET à un prestataire établi ailleurs
         // (Gabon, etc.) — il recevrait ce rappel à chaque mission sans jamais pouvoir y répondre.
         if (result && result.pending_siret && partner.country && partner.country !== 'FR') return;
@@ -3080,8 +3088,13 @@ app.get('/api/admin/students', function(req, res) {
                 nom: u.nom || '',
                 email: u.email,
                 telephone: u.telephone || '',
-                student_status: u.student_status || 'unverified',
+                // Nouveau certificat envoyé par un étudiant encore vérifié : à examiner comme un dossier
+                // en attente (il garde ses tarifs pendant ce temps, voir client-company.js).
+                student_status: u.student_renewal_pending && u.student_status === 'verified' ? 'pending' : (u.student_status || 'unverified'),
+                renewal: !!(u.student_renewal_pending && u.student_status === 'verified'),
                 student_verified_at: u.student_verified_at || null,
+                student_verified_until: u.student_verified_until || null,
+                student_expired_at: u.student_expired_at || null,
                 student_reject_reason: u.student_reject_reason || '',
                 has_certificate: false,
                 certificate_submitted_at: null,
@@ -3124,10 +3137,13 @@ app.post('/api/admin/students/:id/verify', function(req, res) {
         if (users[idx].accountType !== 'etudiant') return res.status(400).json({ error: 'Cet utilisateur n\'est pas étudiant' });
         users[idx].student_status = 'verified';
         users[idx].student_verified_at = new Date().toISOString();
+        users[idx].student_verified_until = ClientCo.studentValidUntil(users[idx].student_verified_at);
+        users[idx].student_renewal_pending = false;
+        users[idx].student_expired_at = null;
         users[idx].student_reject_reason = '';
         users[idx].updatedAt = new Date().toISOString();
         saveUsers(users);
-        notifyUser(users[idx].email, 'client', 'student_verified', 'Compte étudiant vérifié ✓', 'Votre justificatif étudiant a été validé par FA GENESIS. Vous bénéficiez maintenant des offres étudiants.', '#profil');
+        notifyUser(users[idx].email, 'client', 'student_verified', 'Compte étudiant vérifié ✓', 'Votre justificatif étudiant a été validé par FA GENESIS. Vous bénéficiez des offres étudiants jusqu’au ' + ClientCo.fmtFr(users[idx].student_verified_until) + '.', '#profil');
         emailService.sendEmail && emailService.sendEmail({
             to: users[idx].email,
             subject: 'Votre compte étudiant FA GENESIS est vérifié ✓',
@@ -3149,6 +3165,17 @@ app.post('/api/admin/students/:id/reject', function(req, res) {
         var idx = users.findIndex(function(u) { return u.id === req.params.id; });
         if (idx === -1) return res.status(404).json({ error: 'Utilisateur non trouvé' });
         if (users[idx].accountType !== 'etudiant') return res.status(400).json({ error: 'Cet utilisateur n\'est pas étudiant' });
+        // Nouveau certificat refusé alors que l'année en cours est encore valable : l'étudiant garde
+        // ses tarifs jusqu'à la date prévue (sauf « Retirer la vérification », revoke).
+        if (users[idx].student_renewal_pending && ClientCo.isStudentVerified(users[idx]) && !(req.body && req.body.revoke)) {
+            users[idx].student_renewal_pending = false;
+            users[idx].student_reject_reason = reason;
+            users[idx].updatedAt = new Date().toISOString();
+            saveUsers(users);
+            notifyUser(users[idx].email, 'client', 'student_rejected', 'Nouveau certificat non accepté', 'Votre nouveau certificat de scolarité n’a pas pu être validé : ' + reason + ' Vos tarifs étudiants restent actifs jusqu’au ' + ClientCo.fmtFr(users[idx].student_verified_until) + '.', '#profil');
+            return res.json({ success: true, message: 'Nouveau justificatif rejeté (statut actuel conservé)' });
+        }
+        users[idx].student_renewal_pending = false;
         users[idx].student_status = 'rejected';
         users[idx].student_verified_at = null;
         users[idx].student_reject_reason = reason;
@@ -3180,13 +3207,76 @@ app.post('/api/client/students/certificate', function(req, res) {
         saveCertificates(certs);
         var users = loadUsers();
         var idx = users.findIndex(function(u) { return u.id === user.id; });
-        if (idx !== -1) { users[idx].student_status = 'pending'; users[idx].updatedAt = new Date().toISOString(); saveUsers(users); }
-        notifyUser(null, 'admin', 'student_cert', 'Justificatif étudiant soumis', user.prenom + ' ' + (user.nom || '') + ' a soumis un nouveau justificatif.', '/app.html#open-admin');
-        res.json({ success: true, message: 'Justificatif soumis. Validation sous 24h.' });
+        // Étudiant encore vérifié (nouvelle année scolaire) : il garde ses tarifs pendant l'examen.
+        var renewal = idx !== -1 && ClientCo.isStudentVerified(users[idx]);
+        if (idx !== -1) {
+            if (renewal) users[idx].student_renewal_pending = true;
+            else users[idx].student_status = 'pending';
+            users[idx].updatedAt = new Date().toISOString();
+            saveUsers(users);
+        }
+        notifyUser(null, 'admin', 'student_cert', renewal ? 'Renouvellement étudiant à vérifier' : 'Justificatif étudiant soumis', user.prenom + ' ' + (user.nom || '') + (renewal ? ' a envoyé son certificat de scolarité de la nouvelle année.' : ' a soumis un nouveau justificatif.'), '/app.html#open-admin');
+        res.json({ success: true, renewal: renewal, message: renewal ? 'Certificat envoyé. Vos tarifs étudiants restent actifs pendant la vérification.' : 'Justificatif soumis. Validation sous 24h.' });
     } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
+
+// POST /api/client/company — un client « Entreprise » renseigne ou corrige son entreprise (SIRET
+// vérifié en France). Les comptes créés avant l'obligation le complètent ici, sans être bloqués.
+app.post('/api/client/company', async function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    if (user.accountType !== 'entreprise') return res.status(400).json({ error: 'Réservé aux comptes entreprise' });
+    if (!checkRateLimit(user.id, 'client_company', 20, 3600000)) return res.status(429).json({ error: 'Trop de tentatives. Réessayez dans une heure.' });
+    try {
+        var input = ClientCo.normalizeCompanyInput(req.body);
+        if (input.error) return res.status(400).json({ error: input.error, code: input.code });
+        var built = await ClientCo.buildCompany(input.data, user.company || null);
+        if (built.error) return res.status(400).json({ error: built.error, code: built.code });
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.id === user.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Compte introuvable' });
+        users[idx].company = built.company;
+        users[idx].updatedAt = new Date().toISOString();
+        saveUsers(users);
+        res.json({ success: true, company: ClientCo.companyView(built.company) });
+    } catch (e) {
+        console.error('[CLIENT/COMPANY]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Année scolaire : rappel avant le 31 octobre, puis expiration de la vérification étudiante
+// (voir client-company.js). Au démarrage puis toutes les 6 heures ; idempotent.
+function runStudentRenewalSweep() {
+    var users = loadUsers();
+    var r = ClientCo.sweepStudents(users);
+    if (!r.changed) return r;
+    saveUsers(users);
+    if (r.expired.length) {
+        // Certificat de l'an dernier : plus utile, supprimé (minimisation des données).
+        try {
+            var certs = loadCertificates(), drop = false;
+            r.expired.forEach(function(u) { if (certs[u.id]) { delete certs[u.id]; drop = true; } });
+            if (drop) saveCertificates(certs);
+        } catch (e) { console.error('[STUDENTS] Suppression certificats expirés:', e.message); }
+    }
+    var esc = function(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+    r.remind.forEach(function(u) {
+        var t = ClientCo.studentReminderText(u);
+        notifyUser(u.email, 'client', 'student_renewal', t.title, t.body, '#profil');
+        emailService.sendEmail && emailService.sendEmail({ to: u.email, subject: t.title, html: '<p>Bonjour ' + esc(u.prenom) + ',</p><p>' + esc(t.body) + '</p><p>L’équipe FA GENESIS</p>' }).catch(function() {});
+    });
+    r.expired.forEach(function(u) {
+        var t = ClientCo.studentExpiredText();
+        notifyUser(u.email, 'client', 'student_expired', t.title, t.body, '#profil');
+        emailService.sendEmail && emailService.sendEmail({ to: u.email, subject: t.title, html: '<p>Bonjour ' + esc(u.prenom) + ',</p><p>' + esc(t.body) + '</p><p>L’équipe FA GENESIS</p>' }).catch(function() {});
+    });
+    if (r.remind.length || r.expired.length) console.log('[STUDENTS] Rappels : ' + r.remind.length + ', expirations : ' + r.expired.length);
+    return r;
+}
+setInterval(function() { try { runStudentRenewalSweep(); } catch (e) { console.error('[STUDENTS] Passage année scolaire:', e.message); } }, 6 * 3600000).unref();
 
 // POST /api/disputes/:id/message — ajoute un message au fil du litige (relance Jeremie si en triage)
 app.post('/api/disputes/:id/message', function(req, res) {
@@ -11462,6 +11552,17 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ error: 'Un compte existe deja avec cet email' });
         }
 
+        // Client « Entreprise » : SIRET obligatoire en France, vérifié dans le répertoire officiel
+        // (établissement fermé refusé) ; hors de France, nom de l'entreprise (voir client-company.js).
+        var regCompany = null;
+        if (userAccountType === 'entreprise') {
+            var regCoIn = ClientCo.normalizeCompanyInput(req.body);
+            if (regCoIn.error) return res.status(400).json({ error: regCoIn.error, code: regCoIn.code });
+            var regCoOut = await ClientCo.buildCompany(regCoIn.data, null);
+            if (regCoOut.error) return res.status(400).json({ error: regCoOut.error, code: regCoOut.code });
+            regCompany = regCoOut.company;
+        }
+
         // Hasher le mot de passe
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
@@ -11519,6 +11620,7 @@ app.post('/api/auth/register', async (req, res) => {
             referral_discount: { pct: referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL, applied: false },
             sessionToken: sessionToken,
             student_status: userAccountType === 'etudiant' ? (studentCertificate ? 'pending' : 'unverified') : null,
+            company: regCompany,
             // Signaux à vérifier, affichés dans l'admin (jamais bloquants à eux seuls)
             signup_flags: regEmailCheck.flags || [],
             createdAt: new Date().toISOString(),
@@ -11816,6 +11918,10 @@ app.get('/api/auth/me', (req, res) => {
             missionBonuses: user.missionBonuses || {},
             accountType: user.accountType || null,
             student_status: user.student_status || null,
+            student_verified_until: user.student_status === 'verified' ? (user.student_verified_until || null) : null,
+            student_renewal_pending: !!user.student_renewal_pending,
+            student_renewal_reminder_from: user.student_status === 'verified' && user.student_verified_until ? new Date(Date.parse(user.student_verified_until) - ClientCo.STUDENT_REMINDER_DAYS * 86400000).toISOString() : null,
+            company: user.accountType === 'entreprise' ? ClientCo.companyView(user.company) : null,
             offers_push: user.offers_push === true ? true : (user.offers_push === false ? false : null),
             preferred_partner_types: user.preferred_partner_types || [],
             profile_bio: user.profile_bio || '',
@@ -26478,6 +26584,7 @@ var httpServer = app.listen(PORT, async () => {
     try { sanitizeStoredUserText(); } catch (e) { console.error('[SANITIZE] Migration impossible:', e.message); }
     try { classifyStoredContactMessages(); } catch (e) { console.error('[ANTI-ABUS] Tri des messages impossible:', e.message); }
     try { grandfatherHistoricalPartners(); } catch (e) { console.error('[VERIF] Prestataires historiques :', e.message); }
+    try { runStudentRenewalSweep(); } catch (e) { console.error('[STUDENTS] Passage année scolaire:', e.message); }
 
     // Comptes de test internes : uniquement en dehors de la production
     if (process.env.NODE_ENV !== 'production') {
