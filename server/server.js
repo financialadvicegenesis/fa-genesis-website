@@ -10639,6 +10639,42 @@ app.get('/api/admin/users/:email', function(req, res) {
 // ── Purge complète des données d'un compte supprimé ──────────────────────────
 // opts : { userId, email, partnerId, role: 'client'|'partner' }
 // Les données financières (orders, payouts) sont anonymisées, pas supprimées.
+// Avis d'un client supprimé : plus aucune donnée personnelle, la note reste au prestataire.
+function _anonymizeReviewIfAuthor(r, email) {
+    if (!r || !email) return false;
+    var fields = ['userEmail', 'client_email', 'reviewer_email'];
+    var hit = fields.some(function(f) { return r[f] && String(r[f]).toLowerCase() === email; });
+    if (!hit) return false;
+    fields.forEach(function(f) { if (r[f]) r[f] = null; });
+    r.userName = 'Client GENESIS';
+    r._client_deleted = true;
+    return true;
+}
+
+// Rattrapage (une fois, au démarrage) des avis laissés par des comptes supprimés AVANT ce
+// correctif : un avis dont l'auteur n'a plus de compte, ou dont le compte actuel a été créé APRÈS
+// l'avis (compte supprimé puis recréé avec la même adresse), est anonymisé. Idempotent.
+function anonymizeOrphanReviews() {
+    var reviews = loadPartnerReviews();
+    if (!Array.isArray(reviews) || !reviews.length) return 0;
+    var users = loadUsers();
+    var byEmail = {};
+    users.forEach(function(u) { if (u && u.email) byEmail[u.email.toLowerCase()] = u; });
+    var n = 0;
+    reviews.forEach(function(r) {
+        var em = (r && r.userEmail ? String(r.userEmail) : '').toLowerCase();
+        if (!em) return;
+        var u = byEmail[em];
+        var reviewAt = Date.parse(r.createdAt || '');
+        var userAt = u ? Date.parse(u.createdAt || '') : NaN;
+        if (!u || (!isNaN(reviewAt) && !isNaN(userAt) && userAt > reviewAt)) {
+            if (_anonymizeReviewIfAuthor(r, em)) n++;
+        }
+    });
+    if (n) { savePartnerReviews(reviews); console.log('[PURGE] ' + n + ' avis de comptes supprimés anonymisés'); }
+    return n;
+}
+
 function _purgeAccountData(opts) {
     var email     = ((opts.email || '')).toLowerCase();
     var userId    = opts.userId    || null;
@@ -10652,7 +10688,7 @@ function _purgeAccountData(opts) {
         // Sessions (séances planifiées / coworking)
         var sessions = loadSessions();
         var sc = sessions.filter(function(s) {
-            if (role === 'client')  return !(s.client_id && s.client_id.toLowerCase() === email);
+            if (role === 'client')  return !((s.client_id && s.client_id.toLowerCase() === email) || (s.userEmail && s.userEmail.toLowerCase() === email));
             if (role === 'partner') return !(s.partner_id && s.partner_id === partnerId);
             return true;
         });
@@ -10808,13 +10844,19 @@ function _purgeAccountData(opts) {
         } catch(e) { errs.push('disputes:' + e.message); }
 
         try {
-            // Avis rédigés par ce client sur des prestataires
-            var reviews = loadPartnerReviews();
-            var rc = reviews.filter(function(r) {
-                return !((r.client_email && r.client_email.toLowerCase() === email) ||
-                         (r.reviewer_email && r.reviewer_email.toLowerCase() === email));
-            });
-            if (rc.length !== reviews.length) savePartnerReviews(rc);
+            // Avis rédigés par ce client sur des prestataires. BUG CORRIGÉ (2026-11-11) : la purge
+            // cherchait client_email / reviewer_email alors que les avis sont enregistrés sous
+            // userEmail — rien n'était jamais effacé, et un compte recréé avec la même adresse
+            // récupérait ses anciens avis dans ses points QG (+30 chacun). Les avis sont désormais
+            // ANONYMISÉS : la note et le commentaire restent sur la fiche du prestataire (sa
+            // réputation ne dépend pas de la suppression d'un compte client), sans plus aucun lien
+            // avec la personne.
+            if (email) {
+                var reviews = loadPartnerReviews();
+                var rch = false;
+                reviews.forEach(function(r) { if (_anonymizeReviewIfAuthor(r, email)) rch = true; });
+                if (rch) savePartnerReviews(reviews);
+            }
         } catch(e) { errs.push('partner_reviews:' + e.message); }
 
         try {
@@ -26654,6 +26696,7 @@ var httpServer = app.listen(PORT, async () => {
     try { classifyStoredContactMessages(); } catch (e) { console.error('[ANTI-ABUS] Tri des messages impossible:', e.message); }
     try { grandfatherHistoricalPartners(); } catch (e) { console.error('[VERIF] Prestataires historiques :', e.message); }
     try { runStudentRenewalSweep(); } catch (e) { console.error('[STUDENTS] Passage année scolaire:', e.message); }
+    try { anonymizeOrphanReviews(); } catch (e) { console.error('[PURGE] Avis orphelins:', e.message); }
 
     // Comptes de test internes : uniquement en dehors de la production
     if (process.env.NODE_ENV !== 'production') {
