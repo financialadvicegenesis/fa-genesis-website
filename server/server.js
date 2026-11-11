@@ -3095,6 +3095,10 @@ app.get('/api/admin/students', function(req, res) {
                 student_verified_at: u.student_verified_at || null,
                 student_verified_until: u.student_verified_until || null,
                 student_expired_at: u.student_expired_at || null,
+                school_year: u.student_verified_until ? ClientCo.validatedSchoolYear(u.student_verified_until) : '',
+                // Année qui doit figurer sur le certificat à examiner.
+                expected_school_year: ((u.student_renewal_pending && u.student_status === 'verified') || u.student_status === 'expired' || (u.student_status === 'pending' && u.student_expired_at)) && u.student_verified_until
+                    ? ClientCo.renewalSchoolYear(u.student_verified_until) : ClientCo.currentSchoolYear(),
                 student_reject_reason: u.student_reject_reason || '',
                 has_certificate: false,
                 certificate_submitted_at: null,
@@ -3172,7 +3176,7 @@ app.post('/api/admin/students/:id/reject', function(req, res) {
             users[idx].student_reject_reason = reason;
             users[idx].updatedAt = new Date().toISOString();
             saveUsers(users);
-            notifyUser(users[idx].email, 'client', 'student_rejected', 'Nouveau certificat non accepté', 'Votre nouveau certificat de scolarité n’a pas pu être validé : ' + reason + ' Vos tarifs étudiants restent actifs jusqu’au ' + ClientCo.fmtFr(users[idx].student_verified_until) + '.', '#profil');
+            notifyUser(users[idx].email, 'client', 'student_rejected', 'Nouveau certificat non accepté', 'Votre certificat de scolarité ' + ClientCo.renewalSchoolYear(users[idx].student_verified_until) + ' n’a pas pu être validé : ' + reason + ' Vos tarifs étudiants restent actifs jusqu’au ' + ClientCo.fmtFr(users[idx].student_verified_until) + '.', '#profil');
             return res.json({ success: true, message: 'Nouveau justificatif rejeté (statut actuel conservé)' });
         }
         users[idx].student_renewal_pending = false;
@@ -3215,7 +3219,8 @@ app.post('/api/client/students/certificate', function(req, res) {
             users[idx].updatedAt = new Date().toISOString();
             saveUsers(users);
         }
-        notifyUser(null, 'admin', 'student_cert', renewal ? 'Renouvellement étudiant à vérifier' : 'Justificatif étudiant soumis', user.prenom + ' ' + (user.nom || '') + (renewal ? ' a envoyé son certificat de scolarité de la nouvelle année.' : ' a soumis un nouveau justificatif.'), '/app.html#open-admin');
+        var certYear = idx !== -1 && users[idx].student_verified_until ? ClientCo.renewalSchoolYear(users[idx].student_verified_until) : '';
+        notifyUser(null, 'admin', 'student_cert', renewal ? 'Renouvellement étudiant à vérifier' : 'Justificatif étudiant soumis', user.prenom + ' ' + (user.nom || '') + (renewal ? ' a envoyé son certificat de scolarité ' + certYear + '.' : (certYear ? ' a envoyé son certificat de scolarité ' + certYear + ' (statut expiré).' : ' a soumis un nouveau justificatif.')), '/app.html#open-admin');
         res.json({ success: true, renewal: renewal, message: renewal ? 'Certificat envoyé. Vos tarifs étudiants restent actifs pendant la vérification.' : 'Justificatif soumis. Validation sous 24h.' });
     } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
@@ -3269,7 +3274,7 @@ function runStudentRenewalSweep() {
         emailService.sendEmail && emailService.sendEmail({ to: u.email, subject: t.title, html: '<p>Bonjour ' + esc(u.prenom) + ',</p><p>' + esc(t.body) + '</p><p>L’équipe FA GENESIS</p>' }).catch(function() {});
     });
     r.expired.forEach(function(u) {
-        var t = ClientCo.studentExpiredText();
+        var t = ClientCo.studentExpiredText(u);
         notifyUser(u.email, 'client', 'student_expired', t.title, t.body, '#profil');
         emailService.sendEmail && emailService.sendEmail({ to: u.email, subject: t.title, html: '<p>Bonjour ' + esc(u.prenom) + ',</p><p>' + esc(t.body) + '</p><p>L’équipe FA GENESIS</p>' }).catch(function() {});
     });
@@ -11920,6 +11925,8 @@ app.get('/api/auth/me', (req, res) => {
             student_status: user.student_status || null,
             student_verified_until: user.student_status === 'verified' ? (user.student_verified_until || null) : null,
             student_renewal_pending: !!user.student_renewal_pending,
+            // Certificat attendu au renouvellement / après expiration (« 2027-2028 »).
+            student_renewal_school_year: (user.student_status === 'verified' || user.student_status === 'expired') && user.student_verified_until ? ClientCo.renewalSchoolYear(user.student_verified_until) : null,
             student_renewal_reminder_from: user.student_status === 'verified' && user.student_verified_until ? new Date(Date.parse(user.student_verified_until) - ClientCo.STUDENT_REMINDER_DAYS * 86400000).toISOString() : null,
             company: user.accountType === 'entreprise' ? ClientCo.companyView(user.company) : null,
             offers_push: user.offers_push === true ? true : (user.offers_push === false ? false : null),

@@ -2867,7 +2867,7 @@
                     + ' <button onclick="adminViewStudentCert(\'' + (client.id||client.email) + '\')" style="background:#222;border:2px solid var(--genesis-yellow);color:var(--genesis-yellow);padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-file mr-1"></i>Voir justificatif</button>';
             } else if (studStatus === 'verified') {
                 studStatusHtml = '<span style="background:#22c55e;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;"><i class="fas fa-check mr-1"></i>ÉTUDIANT VÉRIFIÉ' + (client.student_verified_until ? ' JUSQU’AU ' + new Date(client.student_verified_until).toLocaleDateString('fr-FR') : '') + '</span>';
-                if (client.student_renewal_pending) studStatusHtml += '<span style="background:#f59e0b;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;">NOUVEAU CERTIFICAT À VÉRIFIER</span>'
+                if (client.student_renewal_pending) studStatusHtml += '<span style="background:#f59e0b;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;">CERTIFICAT DE SCOLARITÉ ' + (client.student_verified_until ? new Date(client.student_verified_until).getUTCFullYear() + '-' + (new Date(client.student_verified_until).getUTCFullYear() + 1) : '') + ' À VÉRIFIER</span>'
                     + ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'verify\')" style="background:#22c55e;border:2px solid black;color:black;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-check mr-1"></i>Valider</button>'
                     + ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'reject\')" style="background:#ef4444;border:2px solid black;color:white;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-times mr-1"></i>Rejeter</button>'
                     + ' <button onclick="adminViewStudentCert(\'' + (client.id||client.email) + '\')" style="background:#222;border:2px solid var(--genesis-yellow);color:var(--genesis-yellow);padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-file mr-1"></i>Voir justificatif</button>';
@@ -8302,9 +8302,10 @@
                         ? '<div class="text-xs mt-1" style="color:#ef4444;font-weight:900;"><i class="fas fa-triangle-exclamation mr-1"></i>Justificatif introuvable : demandez-en un nouveau</div>'
                         : '<div class="text-xs mt-1 opacity-40 font-bold">Aucun justificatif</div>');
                 var extra = '';
-                if (st === 'verified' && s.student_verified_at) extra = '<div class="text-xs mt-1 font-bold" style="color:#22c55e;">Vérifié le ' + _studDate(s.student_verified_at) + (s.student_verified_until ? ' · valable jusqu’au ' + _studDate(s.student_verified_until) : '') + '</div>';
-                if (s.renewal) extra = '<div class="text-xs mt-1 font-bold" style="color:#f59e0b;">Renouvellement : certificat de la nouvelle année. Statut actuel valable jusqu’au ' + _studDate(s.student_verified_until) + '.</div>';
-                if (st === 'expired') extra = '<div class="text-xs mt-1 font-bold" style="color:#a3a3a3;">Année scolaire terminée' + (s.student_expired_at ? ' le ' + _studDate(s.student_expired_at) : '') + ' : en attente du certificat de cette année.</div>';
+                if (st === 'verified' && s.student_verified_at) extra = '<div class="text-xs mt-1 font-bold" style="color:#22c55e;">Vérifié le ' + _studDate(s.student_verified_at) + (s.school_year ? ' · année scolaire ' + _studEsc(s.school_year) : '') + (s.student_verified_until ? ' · valable jusqu’au ' + _studDate(s.student_verified_until) : '') + '</div>';
+                if (s.renewal) extra = '<div class="text-xs mt-1 font-bold" style="color:#f59e0b;">Renouvellement : le document doit être le certificat de scolarité ' + _studEsc(s.expected_school_year) + '. Statut ' + _studEsc(s.school_year) + ' valable jusqu’au ' + _studDate(s.student_verified_until) + '.</div>';
+                else if (st === 'pending' && s.expected_school_year) extra = '<div class="text-xs mt-1 font-bold" style="color:#f59e0b;">Le document doit être le certificat de scolarité ' + _studEsc(s.expected_school_year) + '.</div>';
+                if (st === 'expired') extra = '<div class="text-xs mt-1 font-bold" style="color:#a3a3a3;">Année scolaire ' + _studEsc(s.school_year) + ' terminée' + (s.student_expired_at ? ' le ' + _studDate(s.student_expired_at) : '') + ' : en attente du certificat de scolarité ' + _studEsc(s.expected_school_year) + '.</div>';
                 if (st === 'rejected' && s.student_reject_reason) extra = '<div class="text-xs mt-1 font-bold" style="color:#ef4444;">Motif : ' + _studEsc(s.student_reject_reason) + '</div>';
                 var actions = '';
                 if (s.has_certificate) actions += '<button onclick="adminViewStudentCert(\'' + sid + '\')" style="' + btnBase + 'background:#222;border-color:var(--genesis-yellow);color:var(--genesis-yellow);"><i class="fas fa-file mr-1"></i>Justificatif</button>';
@@ -8353,12 +8354,18 @@
 
         async function adminVerifyStudent(userId, email, action, missingCert) {
             var body = {};
+            // Année scolaire qui doit figurer sur le certificat (« 2027-2028 »), vue par l'admin avant de valider.
+            var _sRow = (typeof _studentsCache !== 'undefined' && _studentsCache || []).filter(function(x) { return x.id === userId || x.email === email; })[0];
+            var _sYear = _sRow && _sRow.expected_school_year ? _sRow.expected_school_year : '';
             if (action === 'verify') {
-                if (!confirm('Valider le statut étudiant de ' + email + ' ? Il aura accès aux tarifs étudiants.')) return;
+                if (!confirm(_sYear
+                    ? 'Valider le certificat de scolarité ' + _sYear + ' de ' + email + ' ?\n\nVérifiez que l\'année scolaire ' + _sYear + ' figure bien sur le document.'
+                    : 'Valider le statut étudiant de ' + email + ' ? Il aura accès aux tarifs étudiants.')) return;
             } else {
                 var def = missingCert
                     ? 'Nous n\'avons pas pu lire votre justificatif. Merci de l\'envoyer à nouveau depuis votre profil.'
-                    : (action === 'revoke' ? 'Votre statut étudiant doit être vérifié à nouveau. Merci d\'envoyer un justificatif en cours de validité.' : 'Justificatif non valide ou illisible.');
+                    : (action === 'revoke' ? 'Votre statut étudiant doit être vérifié à nouveau. Merci d\'envoyer un justificatif en cours de validité.'
+                        : (_sYear ? 'Le document envoyé n\'est pas le certificat de scolarité ' + _sYear + '.' : 'Justificatif non valide ou illisible.'));
                 var reason = prompt((action === 'revoke' ? 'Retirer la vérification de ' : 'Rejeter le justificatif de ') + email + ' ?\n\nMotif envoyé à l\'étudiant :', def);
                 if (reason === null) return;
                 body.reason = reason.trim() || def;

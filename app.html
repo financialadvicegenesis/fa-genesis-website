@@ -2677,15 +2677,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261111f"></script>
-<script src="app-i18n-es.js?v=20261111f"></script>
-<script src="app-i18n-hi.js?v=20261111f"></script>
-<script src="app-i18n-pt.js?v=20261111f"></script>
-<script src="app-i18n-ja.js?v=20261111f"></script>
-<script src="app-i18n-zh.js?v=20261111f"></script>
-<script src="app-i18n-ar.js?v=20261111f"></script>
-<script src="app-i18n-it.js?v=20261111f"></script>
-<script src="app-i18n-de.js?v=20261111f"></script>
+<script src="app-i18n-en.js?v=20261111g"></script>
+<script src="app-i18n-es.js?v=20261111g"></script>
+<script src="app-i18n-hi.js?v=20261111g"></script>
+<script src="app-i18n-pt.js?v=20261111g"></script>
+<script src="app-i18n-ja.js?v=20261111g"></script>
+<script src="app-i18n-zh.js?v=20261111g"></script>
+<script src="app-i18n-ar.js?v=20261111g"></script>
+<script src="app-i18n-it.js?v=20261111g"></script>
+<script src="app-i18n-de.js?v=20261111g"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -9643,17 +9643,20 @@ function _studentBadgeHtml(){
     verified:  {label:'Étudiant vérifié ✓', color:'#22c55e', bg:'rgba(34,197,94,.08)', border:'rgba(34,197,94,.25)'},
     pending:   {label:'Justificatif en attente…', color:'#eab308', bg:'rgba(234,179,8,.08)', border:'rgba(234,179,8,.25)'},
     rejected:  {label:'Justificatif rejeté — soumettre à nouveau', color:'#ef4444', bg:'rgba(239,68,68,.08)', border:'rgba(239,68,68,.25)'},
-    expired:   {label:'Certificat de l’an dernier expiré — envoyez celui de cette année', color:'#ef4444', bg:'rgba(239,68,68,.08)', border:'rgba(239,68,68,.25)'},
+    expired:   {label:'Statut étudiant expiré', color:'#ef4444', bg:'rgba(239,68,68,.08)', border:'rgba(239,68,68,.25)'},
     unverified:{label:'Statut étudiant non vérifié', color:'#888', bg:'rgba(255,255,255,.04)', border:'rgba(255,255,255,.08)'}
   };
   var m = map[ss] || map['unverified'];
   var label = '<span>'+m.label+'</span>', upload = ss==='rejected'||ss==='unverified'||ss==='expired';
+  // Chaque renouvellement précise l'année scolaire du certificat attendu (« 2027-2028 »).
+  var syHtml = USER.student_renewal_school_year ? ' <span data-i18n-skip>'+_escHtml(USER.student_renewal_school_year)+'</span>' : '';
+  if(ss === 'expired' && syHtml) label = '<span>Statut étudiant expiré : envoyez votre certificat de scolarité</span>'+syHtml;
   // Vérification valable pour l'année scolaire (jusqu'au 31 octobre) : rappel à partir de mi-septembre,
   // et un nouveau certificat envoyé ne retire pas les tarifs pendant son examen.
   if(ss === 'verified'){
     var until = USER.student_verified_until, from = Date.parse(USER.student_renewal_reminder_from || '');
-    if(USER.student_renewal_pending){ m = map.pending; label = '<span>Nouveau certificat en cours de vérification</span>'; }
-    else if(until && !isNaN(from) && Date.now() >= from){ m = map.pending; label = '<span>Envoyez votre certificat de cette année avant le</span> <span data-i18n-skip>'+_ptnrFmtLong(until)+'</span>'; upload = true; }
+    if(USER.student_renewal_pending){ m = map.pending; label = syHtml ? '<span>Certificat de scolarité</span>'+syHtml+' <span>en cours de vérification</span>' : '<span>Nouveau certificat en cours de vérification</span>'; }
+    else if(until && !isNaN(from) && Date.now() >= from){ m = map.pending; label = '<span>Envoyez votre certificat de scolarité</span>'+syHtml+' <span>avant le</span> <span data-i18n-skip>'+_ptnrFmtLong(until)+'</span>'; upload = true; }
     else if(until) label = '<span>Étudiant vérifié ✓</span> <span style="font-weight:600;opacity:.75;"><span>jusqu’au</span> <span data-i18n-skip>'+_ptnrFmtLong(until)+'</span></span>';
   }
   return '<div style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:700;color:'+m.color+';background:'+m.bg+';border:1px solid '+m.border+';display:flex;align-items:center;gap:8px;">'
@@ -9677,7 +9680,7 @@ function _studentVerifyNoticeHtml(services){
     +'<i class="fa-solid fa-graduation-cap" style="color:#eab308;margin-top:2px;"></i>'
     +'<div style="flex:1;font-size:12px;color:#ddd;line-height:1.5;">'
       +'<div style="font-weight:800;color:#eab308;margin-bottom:2px;">'+(pending ? 'Justificatif en cours de vérification' : (expired ? 'Statut étudiant à renouveler' : 'Vérifiez votre statut étudiant'))+'</div>'
-      +'<div>'+(pending ? 'Vous pourrez commander les offres étudiants dès sa validation (sous 24 h).' : (expired ? 'Envoyez votre certificat de scolarité de cette année pour commander à nouveau les offres étudiants.' : 'Les tarifs étudiants sont réservés aux étudiants vérifiés. Envoyez votre justificatif pour pouvoir commander.'))+'</div>'
+      +'<div>'+(pending ? 'Vous pourrez commander les offres étudiants dès sa validation (sous 24 h).' : (expired && USER.student_renewal_school_year ? '<span>Envoyez votre certificat de scolarité</span> <span data-i18n-skip>'+_escHtml(USER.student_renewal_school_year)+'</span> <span>pour commander à nouveau les offres étudiants.</span>' : (expired ? 'Envoyez votre certificat de scolarité de cette année pour commander à nouveau les offres étudiants.' : 'Les tarifs étudiants sont réservés aux étudiants vérifiés. Envoyez votre justificatif pour pouvoir commander.')))+'</div>'
       +(pending ? '' : '<button onclick="_appUploadNewCert()" style="margin-top:8px;padding:6px 12px;border-radius:8px;background:#eab308;border:none;color:#000;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;">Envoyer mon justificatif</button>')
     +'</div></div>';
 }
@@ -10885,6 +10888,7 @@ function _syncUserBadge(){
       USER.student_verified_until = d.student_verified_until || null;
       USER.student_renewal_pending = !!d.student_renewal_pending;
       USER.student_renewal_reminder_from = d.student_renewal_reminder_from || null;
+      USER.student_renewal_school_year = d.student_renewal_school_year || null;
       if(d.accountType === 'entreprise') USER.company = d.company || null;
       if(d.offers_push === true || d.offers_push === false || d.offers_push === null) USER.offers_push = d.offers_push;
       try{ _applyUserTheme(USER.profile_theme); }catch(e){}

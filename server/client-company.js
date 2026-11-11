@@ -85,6 +85,26 @@ function studentValidUntil(verifiedIso) {
     return new Date(Date.UTC(year, 9, 31, 22, 59, 59)).toISOString();
 }
 
+// Années scolaires, au format « 2026-2027 » (décision FA GENESIS, 2026-11-11 : chaque demande de
+// renouvellement précise l'année scolaire du certificat attendu).
+function schoolYearLabel(startYear) { return startYear + '-' + (startYear + 1); }
+// Année validée par une vérification qui expire le 31 octobre de l'année Y : (Y-1)-Y.
+function validatedSchoolYear(untilIso) {
+    var d = new Date(untilIso || '');
+    return isNaN(d.getTime()) ? '' : schoolYearLabel(d.getUTCFullYear() - 1);
+}
+// Certificat attendu au renouvellement (ou après expiration) : celui de l'année qui commence, Y-(Y+1).
+function renewalSchoolYear(untilIso) {
+    var d = new Date(untilIso || '');
+    return isNaN(d.getTime()) ? '' : schoolYearLabel(d.getUTCFullYear());
+}
+// Année scolaire en cours (à partir de juillet, celle qui commence en septembre).
+function currentSchoolYear(nowMs) {
+    var d = new Date(nowMs || Date.now());
+    var y = d.getUTCFullYear();
+    return schoolYearLabel(d.getUTCMonth() + 1 >= 7 ? y : y - 1);
+}
+
 // Étudiant vérifié ET année scolaire non terminée.
 function isStudentVerified(user, nowMs) {
     if (!user || user.student_status !== 'verified') return false;
@@ -130,15 +150,17 @@ function sweepStudents(users, nowMs) {
 }
 
 function studentReminderText(u) {
+    var sy = renewalSchoolYear(u.student_verified_until);
     return {
-        title: 'Nouvelle année scolaire : votre certificat',
-        body: 'Pour garder les tarifs étudiants, envoyez votre certificat de scolarité de cette année avant le ' + _fmtFr(u.student_verified_until) + ', depuis votre profil.'
+        title: 'Votre certificat de scolarité ' + sy,
+        body: 'Pour garder les tarifs étudiants, envoyez depuis votre profil votre certificat de scolarité ' + sy + ', avant le ' + _fmtFr(u.student_verified_until) + '.'
     };
 }
-function studentExpiredText() {
+function studentExpiredText(u) {
+    var sy = renewalSchoolYear(u && u.student_verified_until) || currentSchoolYear();
     return {
         title: 'Statut étudiant à renouveler',
-        body: 'Votre certificat de scolarité de l’an dernier n’est plus valable. Envoyez celui de cette année depuis votre profil pour retrouver les tarifs étudiants.'
+        body: 'Votre statut étudiant a expiré le 31 octobre. Envoyez depuis votre profil votre certificat de scolarité ' + sy + ' pour retrouver les tarifs étudiants.'
     };
 }
 
@@ -153,6 +175,10 @@ module.exports = {
     isStudentVerified: isStudentVerified,
     sweepStudents: sweepStudents,
     studentReminderText: studentReminderText,
+    schoolYearLabel: schoolYearLabel,
+    validatedSchoolYear: validatedSchoolYear,
+    renewalSchoolYear: renewalSchoolYear,
+    currentSchoolYear: currentSchoolYear,
     studentExpiredText: studentExpiredText,
     fmtFr: _fmtFr
 };
