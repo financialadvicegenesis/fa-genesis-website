@@ -4631,7 +4631,7 @@
 
         function _verifHidden(p) {
             var st = p.verification && p.verification.status;
-            if (!p.verification_deadline || st === 'verified' || st === 'submitted') return false;
+            if (p.verification_grandfathered || !p.verification_deadline || st === 'verified' || st === 'submitted') return false;
             return Date.now() > Date.parse(p.verification_deadline);
         }
         function verifPillHtml(p) {
@@ -4640,39 +4640,46 @@
             if (st === 'submitted') { lab = 'DOSSIER À EXAMINER'; col = '#51cf66'; }
             else if (st === 'verified') { lab = p.verification.level === 'business' ? 'ENTREPRISE VÉRIFIÉE' : 'IDENTITÉ VÉRIFIÉE'; col = '#FFD700'; }
             else if (st === 'rejected') { lab = 'JUSTIFICATIFS REFUSÉS'; col = '#ff6b6b'; }
+            else if (p.verification_grandfathered) { lab = 'HISTORIQUE · VÉRIFICATION FACULTATIVE'; col = '#cbd5e1'; }
             else if (_verifHidden(p)) { lab = 'MASQUÉ (JUSTIFICATIFS EN RETARD)'; col = '#ff6b6b'; }
             else if (p.verification_deadline) { lab = 'JUSTIFICATIFS ATTENDUS'; col = '#fbbf24'; }
             if (!lab) return '';
             return ' <span style="display:inline-block;margin-left:6px;padding:2px 8px;border:1.5px solid ' + col + ';color:' + col + ';font-size:10px;font-weight:900;letter-spacing:.4px;vertical-align:middle;">' + lab + '</span>';
         }
 
+        // Prestataires historiques (approuvés avant la vérification) : vérification facultative
+        // (décision du 2026-11-11). La demande de justificatifs aux prestataires actifs n'a plus lieu
+        // d'être ; la carte propose seulement le message d'annulation à ceux qui l'avaient reçue.
         async function loadVerificationCampaign() {
             var card = document.getElementById('verifCampaignCard');
             if (!card) return;
             try {
-                var r = await fetch(API_BASE_URL + '/api/admin/partner-verification/campaign');
+                var r = await fetch(API_BASE_URL + '/api/admin/partner-verification/historical');
                 var d = await r.json();
                 if (!d.success) throw new Error(d.error || 'Erreur');
-                var stats = '<span style="color:#e0e0e0;">' + d.verified + ' vérifié(s) · ' + d.submitted + ' dossier(s) à examiner · ' + d.already_requested + ' déjà sollicité(s)' + (d.hidden ? ' · <span style="color:#ff6b6b;">' + d.hidden + ' masqué(s)</span>' : '') + '</span>';
-                var action = d.targets
-                    ? '<div style="color:#e0e0e0;font-size:13px;margin:10px 0;">' + d.targets + ' prestataire(s) actif(s) n’ont pas encore reçu la demande (' + d.targets_france + ' en France, ' + d.targets_abroad + ' hors de France). Date limite si vous envoyez aujourd’hui : <strong style="color:#FFD700;">' + new Date(d.deadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + '</strong>.</div>' +
-                      '<div style="background:#141414;border:1px solid #333;padding:10px 12px;margin-bottom:10px;"><div style="color:#999;font-size:11px;font-weight:700;margin-bottom:4px;">NOTIFICATION ENVOYÉE (+ e-mail validé, version France ou hors de France)</div><div style="color:#fff;font-weight:800;font-size:13px;">' + _escHtml(d.push_preview.title) + '</div><div style="color:#ccc;font-size:12px;">' + _escHtml(d.push_preview.body) + '</div></div>' +
-                      '<button onclick="sendVerificationCampaign(' + d.targets + ')" class="neo-btn-yellow px-6 py-2"><i class="fas fa-paper-plane mr-2"></i>DEMANDER LES JUSTIFICATIFS (' + d.targets + ')</button>'
-                    : '<div style="color:#999;font-size:12px;margin-top:6px;">Tous les prestataires actifs ont déjà reçu la demande ou sont vérifiés.</div>';
-                card.innerHTML = '<div style="color:#FFD700;font-weight:900;font-size:14px;margin-bottom:4px;"><i class="fas fa-id-card mr-2"></i>VÉRIFICATION DES PRESTATAIRES</div><div style="font-size:12px;">' + stats + '</div>' + action;
+                var html = '<div style="color:#FFD700;font-weight:900;font-size:14px;margin-bottom:4px;"><i class="fas fa-id-card mr-2"></i>VÉRIFICATION DES PRESTATAIRES</div>' +
+                    '<div style="color:#e0e0e0;font-size:12px;line-height:1.6;">Nouveaux comptes : vérification obligatoire à l’inscription. ' + d.historical + ' prestataire(s) historique(s) (approuvés avant le 10/11/2026) : vérification facultative, jamais masqués' + (d.historical_verified ? ' — ' + d.historical_verified + ' vérifié(s) volontairement' : '') + '.</div>';
+                if (d.notice_targets) {
+                    html += '<div style="color:#e0e0e0;font-size:13px;margin:10px 0;">' + d.notice_targets + ' prestataire(s) historique(s) ont reçu la demande de justificatifs avec une date limite, désormais annulée. Message à leur envoyer :</div>' +
+                        '<div style="background:#141414;border:1px solid #333;padding:10px 12px;margin-bottom:10px;"><div style="color:#999;font-size:11px;font-weight:700;margin-bottom:4px;">NOTIFICATION (+ e-mail « aucune date limite »)</div><div style="color:#fff;font-weight:800;font-size:13px;">' + _escHtml(d.push_preview.title) + '</div><div style="color:#ccc;font-size:12px;">' + _escHtml(d.push_preview.body) + '</div></div>' +
+                        '<button onclick="sendVerificationOptionalNotice(' + d.notice_targets + ')" class="neo-btn-yellow px-6 py-2"><i class="fas fa-paper-plane mr-2"></i>ENVOYER LE MESSAGE D’ANNULATION (' + d.notice_targets + ')</button>';
+                } else if (d.notice_sent) {
+                    html += '<div style="color:#999;font-size:12px;margin-top:6px;">Message d’annulation envoyé à ' + d.notice_sent + ' prestataire(s).</div>';
+                }
+                card.innerHTML = html;
                 card.style.display = 'block';
             } catch (e) {
                 card.style.display = 'none';
             }
         }
 
-        async function sendVerificationCampaign(n) {
-            if (!confirm('Envoyer la demande de justificatifs (notification + e-mail) à ' + n + ' prestataire(s) actif(s) ? Ils auront 30 jours. Passé ce délai, ceux qui n’ont rien envoyé seront masqués des clients.')) return;
+        async function sendVerificationOptionalNotice(n) {
+            if (!confirm('Envoyer le message « vérification facultative, aucune date limite » (notification + e-mail) à ' + n + ' prestataire(s) historique(s) ?')) return;
             try {
-                var r = await fetch(API_BASE_URL + '/api/admin/partner-verification/campaign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+                var r = await fetch(API_BASE_URL + '/api/admin/partner-verification/historical/notice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
                 var d = await r.json();
                 if (!d.success) throw new Error(d.error || 'Erreur');
-                alert('Demande envoyée à ' + d.sent + ' prestataire(s). Les e-mails partent un par un (environ 2 secondes chacun).');
+                alert('Message envoyé à ' + d.sent + ' prestataire(s). Les e-mails partent un par un (environ 2 secondes chacun).');
                 loadPartnersList();
             } catch (e) {
                 alert('Erreur : ' + e.message);
@@ -4706,6 +4713,7 @@
                 (v.submitted_at && v.status === 'submitted' ? '<div style="color:#ccc;font-size:12px;">Envoyé le ' + new Date(v.submitted_at).toLocaleString('fr-FR') + '</div>' : '') +
                 (v.verified_at ? '<div style="color:#ccc;font-size:12px;">Validé le ' + new Date(v.verified_at).toLocaleString('fr-FR') + (d.reviewed_by ? ' par ' + _escHtml(d.reviewed_by) : '') + '</div>' : '') +
                 (v.reject_reason ? '<div style="color:#fca5a5;font-size:12px;">Motif : ' + _escHtml(v.reject_reason) + '</div>' : '') +
+                (v.grandfathered ? '<div style="color:#cbd5e1;font-size:12px;">Prestataire historique (approuvé avant la vérification) : vérification facultative, jamais masqué.</div>' : '') +
                 (v.deadline ? '<div style="color:' + (v.hidden ? '#ff6b6b' : '#fbbf24') + ';font-size:12px;">Date limite : ' + new Date(v.deadline).toLocaleDateString('fr-FR') + (v.hidden ? ' — dépassée, profil masqué des clients' : '') + '</div>' : '') +
                 '<div style="color:' + (d.contract_signed ? '#51cf66' : '#ff6b6b') + ';font-size:12px;font-weight:700;margin-top:4px;">' + (d.contract_signed ? 'Contrat de partenariat signé' : 'Contrat de partenariat NON signé') + '</div>' +
                 '</div>';

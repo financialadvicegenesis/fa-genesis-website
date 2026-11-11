@@ -197,7 +197,8 @@ function sniffDocument(buf) {
 // envoyé (en cours d'examen) ou validé n'est jamais masqué : le retard de l'équipe ne doit pas
 // pénaliser le prestataire.
 function isHiddenForVerification(p, nowMs) {
-    if (!p || !p.verification_deadline) return false;
+    // Prestataire historique (approuvé avant la vérification, décision du 2026-11-11) : jamais masqué.
+    if (!p || p.verification_grandfathered || !p.verification_deadline) return false;
     var st = p.verification && p.verification.status;
     if (st === 'verified' || st === 'submitted') return false;
     var d = Date.parse(p.verification_deadline);
@@ -239,7 +240,8 @@ function partnerView(p) {
         submitted_at: v.submitted_at || null,
         verified_at: v.verified_at || null,
         level: publicLevel(p),
-        deadline: (p && p.verification_deadline) || null,
+        deadline: (p && !p.verification_grandfathered && p.verification_deadline) || null,
+        grandfathered: !!(p && p.verification_grandfathered),
         hidden: isHiddenForVerification(p),
         uses_siret: usesSiret(p && p.country)
     };

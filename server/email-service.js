@@ -1790,6 +1790,26 @@ async function sendPartnerVerificationRequestEmail(partner, deadlineIso, inFranc
         'Vérification de votre compte prestataire', content, 'Email demande de justificatifs');
 }
 
+// Prestataires historiques (inscrits avant la vérification) qui ont reçu la demande de justificatifs
+// le 2026-11-11 : la vérification devient facultative pour eux (décision de FA GENESIS).
+async function sendPartnerVerificationOptionalEmail(partner) {
+    const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    const p = 'margin: 0 0 18px 0; font-size: 16px; color: #333333; line-height: 1.6;';
+    const content = `
+        <p style="${p}">Bonjour ${escapeHtml(partner.prenom || '')},</p>
+        <p style="${p}">Vous avez reçu une demande d’envoi de vos justificatifs avant le 11 décembre. Comme vous faites partie des premiers prestataires de GENESIS, inscrits avant la mise en place de la vérification, celle-ci est <strong>facultative pour vous</strong>.</p>
+        <p style="${p}">Votre profil reste visible des clients, <strong>sans date limite</strong>. Vous n’avez rien à faire.</p>
+        <p style="${p}">Si vous le souhaitez, vous pouvez tout de même vérifier votre compte depuis l’application (Profil › Vérifier mon compte) : vous obtiendrez le badge « Identité vérifiée » ou « Entreprise vérifiée » sur votre fiche.</p>
+        <div style="text-align: center; margin: 22px 0;">
+            <a href="${frontUrl}/app.html#partner:verification"
+               style="display: inline-block; background-color: #FFD700; color: #000; padding: 14px 28px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">Ouvrir mon espace</a>
+        </div>
+        <p style="${p}">Merci de votre confiance,</p>
+        <p style="margin: 26px 0 0 0; font-size: 16px; color: #333333;"><strong style="color: #000000;">L’équipe FA GENESIS</strong></p>
+    `;
+    return _sendPartnerMail(partner, 'Vérification de votre compte : aucune date limite', 'Vérification de votre compte prestataire', content, 'Email vérification facultative');
+}
+
 async function sendPartnerVerificationRejectedEmail(partner, reason) {
     const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
     const p = 'margin: 0 0 18px 0; font-size: 16px; color: #333333; line-height: 1.6;';
@@ -2775,6 +2795,7 @@ module.exports = {
     sendPartnerAccountApprovedEmail,
     sendPartnerVerificationRequestEmail,
     sendPartnerVerificationRejectedEmail,
+    sendPartnerVerificationOptionalEmail,
     sendPartnerWelcomeEmail,
     sendQuoteToClient,
     sendSessionConfirmedEmail,

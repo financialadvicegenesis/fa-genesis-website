@@ -16445,13 +16445,95 @@ app.post('/api/admin/partners/:partnerId/verification/reject', function(req, res
     }
 });
 
+// ── Prestataires historiques (décision de FA GENESIS du 2026-11-11) ──────────────────────────
+// Les prestataires déjà approuvés avant la mise en place de la vérification (10/11/2026) restent tels
+// quels : vérification FACULTATIVE (badge si elle est faite), jamais de date limite ni de masquage.
+// Tout nouveau compte — y compris un compte supprimé puis recréé — passe par la vérification.
+// Marqués une fois au démarrage (idempotent) ; la date limite envoyée par erreur le 2026-11-11 est
+// annulée (gardée dans verification_deadline_cancelled pour le message d'annulation).
+var VERIF_LAUNCH_ISO = '2026-11-10T00:00:00.000Z';
+function grandfatherHistoricalPartners() {
+    var partners = loadPartners(), marked = 0, cleared = 0;
+    var launch = Date.parse(VERIF_LAUNCH_ISO);
+    partners.forEach(function(p) {
+        if (!p || p.verification_grandfathered) return;
+        if (p.accountStatus !== 'active' && p.accountStatus !== 'deactivated') return;
+        var created = Date.parse(p.createdAt || p.created_at || '');
+        if (!isNaN(created) && created >= launch) return;
+        p.verification_grandfathered = true;
+        p.verification_grandfathered_at = new Date().toISOString();
+        if (p.verification_deadline) {
+            p.verification_deadline_cancelled = p.verification_deadline;
+            delete p.verification_deadline;
+            cleared++;
+        }
+        marked++;
+    });
+    if (marked) savePartners(partners);
+    console.log('[VERIF] Prestataires historiques : ' + marked + ' marqué(s), ' + cleared + ' date(s) limite(s) annulée(s)');
+    return { marked: marked, cleared: cleared };
+}
+function verificationOptionalPush() {
+    return {
+        title: 'Vérification de votre compte : facultative',
+        body: 'Vous étiez inscrit avant la mise en place de la vérification : elle est facultative pour vous. Votre profil reste visible, sans date limite.'
+    };
+}
+function _verificationOptionalTargets(partners) {
+    return partners.filter(function(p) {
+        return p.verification_grandfathered && p.verification_deadline_cancelled && !p.verification_optional_notice_at;
+    });
+}
+app.get('/api/admin/partner-verification/historical', function(req, res) {
+    try {
+        var partners = loadPartners();
+        var hist = partners.filter(function(p) { return p.verification_grandfathered; });
+        var st = function(p) { return (p.verification && p.verification.status) || 'none'; };
+        res.json({
+            success: true,
+            historical: hist.length,
+            historical_verified: hist.filter(function(p) { return st(p) === 'verified'; }).length,
+            notice_targets: _verificationOptionalTargets(partners).length,
+            notice_sent: hist.filter(function(p) { return !!p.verification_optional_notice_at; }).length,
+            push_preview: verificationOptionalPush()
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+// Message d'annulation aux prestataires historiques qui ont reçu la demande (une seule fois chacun).
+app.post('/api/admin/partner-verification/historical/notice', function(req, res) {
+    try {
+        if (!req.body || req.body.confirm !== true) return res.status(400).json({ error: 'Confirmation requise.' });
+        var partners = loadPartners();
+        var targets = _verificationOptionalTargets(partners);
+        var now = new Date().toISOString();
+        targets.forEach(function(p) { p.verification_optional_notice_at = now; });
+        if (targets.length) savePartners(partners);
+        var push = verificationOptionalPush();
+        targets.forEach(function(p, i) {
+            setTimeout(function() {
+                try {
+                    notifyUser(p.email, 'partner', 'verification-facultative', push.title, push.body, '/app.html#partner:verification', { jeremie: false });
+                    emailService.sendPartnerVerificationOptionalEmail(p).catch(function(e) { console.warn('[VERIF] e-mail facultatif:', e && e.message); });
+                } catch (e) { console.warn('[VERIF] message facultatif:', e && e.message); }
+            }, i * 2000);
+        });
+        console.log('[VERIF] Message « vérification facultative » envoyé à ' + targets.length + ' prestataire(s) historique(s)');
+        res.json({ success: true, sent: targets.length });
+    } catch (e) {
+        console.error('[VERIF] Message facultatif:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // ── Admin : demande de justificatifs aux prestataires DÉJÀ actifs (délai de 30 jours) ──
 // Une seule fois par prestataire (verification_deadline posé) ; jamais aux comptes déjà vérifiés
 // ou dont le dossier est en cours d'examen.
 function _verificationCampaignTargets(partners) {
     return partners.filter(function(p) {
         var st = p.verification && p.verification.status;
-        return p.accountStatus === 'active' && st !== 'verified' && st !== 'submitted' && !p.verification_deadline;
+        return p.accountStatus === 'active' && st !== 'verified' && st !== 'submitted' && !p.verification_deadline && !p.verification_grandfathered;
     });
 }
 function _verificationDeadlineFromNow() {
@@ -23375,7 +23457,7 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
             if (partners[index].accountStatus === 'pending' && _vst !== 'verified') {
                 return res.status(409).json({ error: 'Justificatifs non validés : ouvrez son dossier de vérification avant de l’approuver.', code: 'verification_required' });
             }
-            if (_vst !== 'verified' && _vst !== 'submitted') {
+            if (_vst !== 'verified' && _vst !== 'submitted' && !partners[index].verification_grandfathered) {
                 var _dl = Date.parse(partners[index].verification_deadline || '');
                 if (isNaN(_dl) || _dl < Date.now()) {
                     partners[index].verification_deadline = _verificationDeadlineFromNow();
@@ -26395,6 +26477,7 @@ var httpServer = app.listen(PORT, async () => {
     // traitement, une fois (idempotent), sur les champs affichés aux autres utilisateurs.
     try { sanitizeStoredUserText(); } catch (e) { console.error('[SANITIZE] Migration impossible:', e.message); }
     try { classifyStoredContactMessages(); } catch (e) { console.error('[ANTI-ABUS] Tri des messages impossible:', e.message); }
+    try { grandfatherHistoricalPartners(); } catch (e) { console.error('[VERIF] Prestataires historiques :', e.message); }
 
     // Comptes de test internes : uniquement en dehors de la production
     if (process.env.NODE_ENV !== 'production') {

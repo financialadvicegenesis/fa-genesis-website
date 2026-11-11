@@ -2677,15 +2677,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261111d"></script>
-<script src="app-i18n-es.js?v=20261111d"></script>
-<script src="app-i18n-hi.js?v=20261111d"></script>
-<script src="app-i18n-pt.js?v=20261111d"></script>
-<script src="app-i18n-ja.js?v=20261111d"></script>
-<script src="app-i18n-zh.js?v=20261111d"></script>
-<script src="app-i18n-ar.js?v=20261111d"></script>
-<script src="app-i18n-it.js?v=20261111d"></script>
-<script src="app-i18n-de.js?v=20261111d"></script>
+<script src="app-i18n-en.js?v=20261111e"></script>
+<script src="app-i18n-es.js?v=20261111e"></script>
+<script src="app-i18n-hi.js?v=20261111e"></script>
+<script src="app-i18n-pt.js?v=20261111e"></script>
+<script src="app-i18n-ja.js?v=20261111e"></script>
+<script src="app-i18n-zh.js?v=20261111e"></script>
+<script src="app-i18n-ar.js?v=20261111e"></script>
+<script src="app-i18n-it.js?v=20261111e"></script>
+<script src="app-i18n-de.js?v=20261111e"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -16823,6 +16823,7 @@ function _pvStatusCard(v){
   if(v.status === 'verified'){ col = '#22c55e'; ico = 'fa-circle-check'; title = 'Compte vérifié'; txt = v.level === 'business' ? 'Le badge « Entreprise vérifiée » est affiché sur votre fiche.' : 'Le badge « Identité vérifiée » est affiché sur votre fiche.'; }
   else if(v.status === 'submitted'){ col = '#3b82f6'; ico = 'fa-hourglass-half'; title = 'Dossier en cours d’examen'; txt = 'Notre équipe examine vos justificatifs, généralement sous 48 h. Vous recevrez une notification.'; }
   else if(v.status === 'rejected'){ col = '#ef4444'; ico = 'fa-triangle-exclamation'; title = 'Justificatifs à compléter'; txt = 'Corrigez ce qui est demandé, puis renvoyez votre dossier.'; extra = '<div class="pv-status-txt" style="color:#fca5a5;margin-top:6px;" data-i18n-skip>'+_escHtml(v.reject_reason || '')+'</div>'; }
+  else if(v.grandfathered){ title = 'Vérification facultative'; txt = 'Votre compte a été créé avant la mise en place de la vérification : elle n’est pas obligatoire et votre profil reste visible. En envoyant vos justificatifs, vous obtenez le badge « Identité vérifiée » ou « Entreprise vérifiée » sur votre fiche.'; }
   else if(v.hidden){ col = '#ef4444'; ico = 'fa-eye-slash'; title = 'Votre profil est masqué des clients'; txt = 'Le délai pour envoyer vos justificatifs est dépassé. Envoyez-les pour redevenir visible.'; }
   else if(v.deadline){ title = 'Date limite :'; extra = '<div class="pv-status-title" style="color:#FFD700;" data-i18n-skip>'+_ptnrFmtLong(v.deadline)+'</div>'; txt = 'Pour la sécurité de tous, GENESIS vérifie désormais chaque prestataire. Passé cette date, votre profil sera masqué des clients jusqu’à la validation de vos documents.'; }
   else if(pending){ title = 'Dernière étape avant la validation de votre compte'; txt = 'Votre profil sera visible des clients une fois vos justificatifs validés par notre équipe.'; }
