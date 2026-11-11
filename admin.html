@@ -509,6 +509,28 @@
         .ptab.on { background: #FFD700; color: #0a0a0a; }
         .ptab:focus-visible { outline: 2px solid #FFD700; outline-offset: 2px; }
         .cli-cat { padding: 8px 14px; font-size: 12px; font-weight: 900; cursor: pointer; background: transparent; }
+        /* Classement clients / prestataires (2026-11-11) */
+        .sidebar-group-label { font-size: 9px; font-weight: 900; letter-spacing: 1.2px; text-transform: uppercase; color: #8a8a8a; padding: 12px 10px 4px; display: flex; align-items: center; gap: 6px; }
+        .sidebar-group-label .sidebar-count { margin-left: auto; }
+        .sidebar-btn.sidebar-sub { padding-left: 22px; }
+        .sidebar-badge + .sidebar-count { margin-left: 6px; }
+        .cls-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .cls-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 16px; border-radius: 12px; border: 2px solid #333; background: #111; cursor: pointer; text-align: left; font-family: inherit; transition: background .15s, border-color .15s; }
+        .cls-tile .cls-num { font-size: 30px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+        .cls-tile .cls-lbl { font-size: 11px; font-weight: 900; letter-spacing: .6px; text-transform: uppercase; color: #d4d4d4; }
+        .cls-tile .cls-sub { font-size: 11px; font-weight: 600; color: #a3a3a3; }
+        .cls-tile:focus-visible { outline: 2px solid #FFD700; outline-offset: 2px; }
+        .cls-tile.on .cls-lbl, .cls-tile.on .cls-sub { color: #0a0a0a; }
+        .cls-tile.on .cls-num { color: #0a0a0a !important; }
+        .cls-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        .cls-split-col { background: #111; border: 1px solid #2a2a2a; border-radius: 14px; padding: 16px 18px; }
+        .cls-split-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .cls-split-title { font-size: 13px; font-weight: 900; letter-spacing: .8px; text-transform: uppercase; color: #FFD700; }
+        .cls-split-total { font-size: 32px; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; }
+        .cls-split-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid #222; cursor: pointer; color: #e5e5e5; font-size: 13px; font-weight: 700; }
+        .cls-split-row:hover { color: #FFD700; }
+        .cls-split-row b { font-size: 18px; font-variant-numeric: tabular-nums; }
+        .cls-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; }
         .cli-cat:focus-visible { outline: 2px solid #FFD700; outline-offset: 2px; }
         .sidebar-badge {
             margin-left: auto;
@@ -894,23 +916,30 @@
                 <button class="sidebar-btn sidebar-active" data-section="dashboard" onclick="showSection('dashboard')">
                     <i class="fas fa-chart-line"></i><span>Dashboard</span>
                 </button>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-group-label"><i class="fas fa-users"></i>Clients</div>
                 <button class="sidebar-btn" data-section="clients" onclick="showSection('clients')">
-                    <i class="fas fa-users"></i><span>Clients</span>
+                    <i class="fas fa-users"></i><span>Tous</span>
+                    <span id="cntClientsAll" class="sidebar-count" style="display:none;"></span>
                 </button>
-                <button class="sidebar-btn" data-section="invites" onclick="showSection('invites')">
-                    <i class="fas fa-user-clock"></i><span>Invités</span>
-                </button>
-                <button class="sidebar-btn" data-section="etudiants" onclick="showSection('etudiants')">
+                <button class="sidebar-btn sidebar-sub" data-section="clients-etudiants" onclick="showSection('clients-etudiants')">
                     <i class="fas fa-graduation-cap"></i><span>Étudiants</span>
-                    <span id="pendingStudentsBadge" class="sidebar-badge" style="display:none;"></span>
+                    <span id="cntEtudiants" class="sidebar-count" style="display:none;"></span>
                 </button>
-                <button class="sidebar-btn" data-section="particuliers" onclick="showSection('particuliers')">
+                <button class="sidebar-btn sidebar-sub" data-section="particuliers" onclick="showSection('particuliers')">
                     <i class="fas fa-user"></i><span>Particuliers</span>
                     <span id="cntParticuliers" class="sidebar-count" style="display:none;"></span>
                 </button>
-                <button class="sidebar-btn" data-section="entreprises" onclick="showSection('entreprises')">
+                <button class="sidebar-btn sidebar-sub" data-section="entreprises" onclick="showSection('entreprises')">
                     <i class="fas fa-building"></i><span>Entreprises</span>
                     <span id="cntEntreprises" class="sidebar-count" style="display:none;"></span>
+                </button>
+                <button class="sidebar-btn sidebar-sub" data-section="etudiants" onclick="showSection('etudiants')">
+                    <i class="fas fa-id-card"></i><span>Certificats étudiants</span>
+                    <span id="pendingStudentsBadge" class="sidebar-badge" style="display:none;"></span>
+                </button>
+                <button class="sidebar-btn sidebar-sub" data-section="invites" onclick="showSection('invites')">
+                    <i class="fas fa-user-clock"></i><span>Invités (sans compte)</span>
                 </button>
                 <button class="sidebar-btn" data-section="messages" onclick="showSection('messages')">
                     <i class="fas fa-envelope"></i><span>Messages</span>
@@ -920,9 +949,19 @@
                     <i class="fas fa-receipt"></i><span>Commandes</span>
                 </button>
                 <div class="sidebar-divider"></div>
+                <div class="sidebar-group-label"><i class="fas fa-handshake"></i>Prestataires</div>
                 <button class="sidebar-btn" data-section="partenaires" onclick="showSection('partenaires')">
-                    <i class="fas fa-handshake"></i><span>Prestataires</span>
+                    <i class="fas fa-handshake"></i><span>Tous</span>
                     <span id="pendingPartnersBadge" class="sidebar-badge" style="display:none;"></span>
+                    <span id="cntPartnersAll" class="sidebar-count" style="display:none;"></span>
+                </button>
+                <button class="sidebar-btn sidebar-sub" data-section="ptn-particuliers" onclick="showSection('ptn-particuliers')">
+                    <i class="fas fa-user-tie"></i><span>Particuliers</span>
+                    <span id="cntPtnParticuliers" class="sidebar-count" style="display:none;"></span>
+                </button>
+                <button class="sidebar-btn sidebar-sub" data-section="ptn-entreprises" onclick="showSection('ptn-entreprises')">
+                    <i class="fas fa-building"></i><span>Entreprises</span>
+                    <span id="cntPtnEntreprises" class="sidebar-count" style="display:none;"></span>
                 </button>
                 <button class="sidebar-btn" data-section="evenements" onclick="showSection('evenements')">
                     <i class="fas fa-calendar-alt"></i><span>Événements</span>
@@ -978,6 +1017,12 @@
                 <h2 class="text-5xl font-black italic uppercase mb-12 text-[var(--genesis-yellow)]">
                     <i class="fas fa-chart-line mr-4"></i>TABLEAU DE BORD
                 </h2>
+
+                <!-- Répartition clients / prestataires (2026-11-11) -->
+                <div class="admin-card neo-shadow mb-8" id="classificationCard">
+                    <h3 class="text-2xl font-black italic uppercase mb-6"><i class="fas fa-sitemap mr-2" style="color:var(--genesis-yellow);"></i>Répartition</h3>
+                    <div class="cls-split" id="classificationSplit"><p class="opacity-50 font-bold">Chargement…</p></div>
+                </div>
 
                 <!-- Statistiques -->
                 <div class="grid md:grid-cols-5 gap-6 mb-12" id="statsContainer">
@@ -1146,7 +1191,7 @@
             <div id="clientsSection" class="container mx-auto max-w-7xl" style="display: none;">
                 <div class="flex justify-between items-center mb-12">
                     <h2 class="text-5xl font-black italic uppercase text-[var(--genesis-yellow)]">
-                        <i class="fas fa-users mr-4"></i>GESTION CLIENTS
+                        <i class="fas fa-users mr-4"></i>CLIENTS<span id="clientsTitleCat"></span>
                     </h2>
                 </div>
 
@@ -1158,11 +1203,11 @@
                             <i class="fas fa-search mr-2"></i>Rechercher
                         </button>
                     </div>
-                    <div class="flex gap-3 flex-wrap" id="clientCatFilters" style="margin-top:14px;">
-                        <button type="button" class="cli-cat" data-cat="all" data-color="#FFD700" onclick="setClientCategory('all')">TOUS <span class="cli-cnt"></span></button>
-                        <button type="button" class="cli-cat" data-cat="particulier" data-color="#22c55e" onclick="setClientCategory('particulier')">PARTICULIERS <span class="cli-cnt"></span></button>
-                        <button type="button" class="cli-cat" data-cat="entreprise" data-color="#60a5fa" onclick="setClientCategory('entreprise')">ENTREPRISES <span class="cli-cnt"></span></button>
-                        <button type="button" class="cli-cat" data-cat="etudiant" data-color="#eab308" onclick="setClientCategory('etudiant')">ÉTUDIANTS <span class="cli-cnt"></span></button>
+                    <div class="cls-tiles" id="clientCatFilters" style="margin-top:16px;">
+                        <button type="button" class="cli-cat cls-tile" data-cat="all" data-color="#FFD700" onclick="setClientCategory('all')"><span class="cls-num cli-cnt">–</span><span class="cls-lbl">Tous les clients</span></button>
+                        <button type="button" class="cli-cat cls-tile" data-cat="etudiant" data-color="#eab308" onclick="setClientCategory('etudiant')"><span class="cls-num cli-cnt">–</span><span class="cls-lbl">Étudiants</span></button>
+                        <button type="button" class="cli-cat cls-tile" data-cat="particulier" data-color="#22c55e" onclick="setClientCategory('particulier')"><span class="cls-num cli-cnt">–</span><span class="cls-lbl">Particuliers</span></button>
+                        <button type="button" class="cli-cat cls-tile" data-cat="entreprise" data-color="#60a5fa" onclick="setClientCategory('entreprise')"><span class="cls-num cli-cnt">–</span><span class="cls-lbl">Entreprises</span></button>
                     </div>
                     <p id="clientCatNote" class="text-xs opacity-60 mt-3 mb-0" style="display:none;"></p>
                 </div>
@@ -1174,7 +1219,7 @@
             <div id="partenairesSection" class="container mx-auto max-w-7xl" style="display: none;">
                 <div class="flex justify-between items-center mb-12 flex-wrap gap-4">
                     <h2 class="text-5xl font-black italic uppercase text-[var(--genesis-yellow)]">
-                        <i class="fas fa-handshake mr-4"></i>PRESTATAIRES
+                        <i class="fas fa-handshake mr-4"></i>PRESTATAIRES<span id="partnersTitleCat"></span>
                     </h2>
                     <button onclick="showCreatePartnerForm()" class="neo-btn-yellow px-6 py-3 text-sm">
                         <i class="fas fa-user-plus mr-2"></i>CRÉER UN PRESTATAIRE
@@ -1273,6 +1318,14 @@
                             <i class="fas fa-times mr-1"></i>Réinitialiser
                         </button>
                     </div>
+                </div>
+
+                <!-- Classement des prestataires (2026-11-11) -->
+                <div class="cls-tiles mb-6" id="partnerCatTiles">
+                    <button type="button" class="cls-tile" data-pcat="all" data-color="#FFD700" onclick="setPartnerCategory('all')"><span class="cls-num">–</span><span class="cls-lbl">Tous les prestataires</span><span class="cls-sub"></span></button>
+                    <button type="button" class="cls-tile" data-pcat="particulier" data-color="#22c55e" onclick="setPartnerCategory('particulier')"><span class="cls-num">–</span><span class="cls-lbl">Particuliers (indépendants)</span><span class="cls-sub"></span></button>
+                    <button type="button" class="cls-tile" data-pcat="entreprise" data-color="#60a5fa" onclick="setPartnerCategory('entreprise')"><span class="cls-num">–</span><span class="cls-lbl">Entreprises</span><span class="cls-sub"></span></button>
+                    <button type="button" class="cls-tile" data-pcat="none" data-color="#f59e0b" onclick="setPartnerCategory('none')" style="display:none;"><span class="cls-num">–</span><span class="cls-lbl">À classer</span><span class="cls-sub">Statut non déclaré</span></button>
                 </div>
 
                 <!-- Liste des partenaires -->
@@ -2274,9 +2327,9 @@
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
                 loadDashboard();
-            } else if (section === 'clients' || section === 'particuliers' || section === 'entreprises') {
+            } else if (section === 'clients' || section === 'particuliers' || section === 'entreprises' || section === 'clients-etudiants') {
                 document.getElementById('clientsSection').style.display = 'block';
-                _clientCatFilter = section === 'particuliers' ? 'particulier' : (section === 'entreprises' ? 'entreprise' : 'all');
+                _clientCatFilter = section === 'particuliers' ? 'particulier' : (section === 'entreprises' ? 'entreprise' : (section === 'clients-etudiants' ? 'etudiant' : 'all'));
                 var _si = document.getElementById('searchInput'); if (_si) _si.value = '';
                 loadClientsList();
             } else if (section === 'messages') {
@@ -2285,8 +2338,11 @@
             } else if (section === 'commandes') {
                 document.getElementById('commandesSection').style.display = 'block';
                 switchCmdTab('orders');
-            } else if (section === 'partenaires') {
+            } else if (section === 'partenaires' || section === 'ptn-particuliers' || section === 'ptn-entreprises') {
                 document.getElementById('partenairesSection').style.display = 'block';
+                _partnerCatFilter = section === 'ptn-particuliers' ? 'particulier' : (section === 'ptn-entreprises' ? 'entreprise' : 'all');
+                var _psi = document.getElementById('partnerSearchInput'); if (_psi) _psi.value = '';
+                if (typeof showPartnerTab === 'function') { try { showPartnerTab('list'); } catch (e) {} }
                 loadPartnersList();
                 loadPendingUploads();
             } else if (section === 'evenements') {
@@ -2368,6 +2424,24 @@
         }
 
 
+        function renderClassificationSplit(users, partners) {
+            var el = document.getElementById('classificationSplit'); if (!el) return;
+            var cn = updateClientCategoryCounts(users || []);
+            var pn = updatePartnerCategoryCounts(Array.isArray(partners) ? partners : []);
+            var row = function(color, label, val, go) { return '<div class="cls-split-row" role="button" tabindex="0" onclick="' + go + '" onkeydown="if(event.key===\'Enter\'){' + go + '}"><span><span class="cls-dot" style="background:' + color + ';"></span>' + label + '</span><b>' + val + '</b></div>'; };
+            el.innerHTML =
+                '<div class="cls-split-col"><div class="cls-split-head"><span class="cls-split-title">Clients</span><span class="cls-split-total">' + cn.all + '</span></div>' +
+                    row('#eab308', 'Étudiants', cn.etudiant, "showSection('clients-etudiants')") +
+                    row('#22c55e', 'Particuliers', cn.particulier, "showSection('particuliers')") +
+                    row('#60a5fa', 'Entreprises', cn.entreprise, "showSection('entreprises')") +
+                '</div>' +
+                '<div class="cls-split-col"><div class="cls-split-head"><span class="cls-split-title">Prestataires</span><span class="cls-split-total">' + pn.all + '</span></div>' +
+                    row('#22c55e', 'Particuliers (indépendants)', pn.particulier, "showSection('ptn-particuliers')") +
+                    row('#60a5fa', 'Entreprises', pn.entreprise, "showSection('ptn-entreprises')") +
+                    (pn.none ? row('#f59e0b', 'À classer (statut non déclaré)', pn.none, "showSection('partenaires');setPartnerCategory('none')") : '') +
+                '</div>';
+        }
+
         async function loadDashboard() {
             try {
                 const [statsResponse, usersResponse, partnersResponse] = await Promise.all([
@@ -2385,6 +2459,7 @@
                 allBackendClients = users;
                 try { updateClientCategoryCounts(users); } catch (e) {}
                 allPartners = allPartnersData;
+                try { renderClassificationSplit(users, allPartnersData); } catch (e) { console.error('[ADMIN] Répartition:', e); }
 
                 const statsHTML = `
                     <div class="stat-card">
@@ -2646,14 +2721,21 @@
                 var el = document.getElementById(x[0]);
                 if (el) { el.textContent = x[1]; el.style.display = ''; }
             });
+            [['cntClientsAll', n.all], ['cntEtudiants', n.etudiant]].forEach(function(x) {
+                var el = document.getElementById(x[0]);
+                if (el) { el.textContent = x[1]; el.style.display = ''; }
+            });
             document.querySelectorAll('#clientCatFilters .cli-cat').forEach(function(btn) {
                 var cat = btn.getAttribute('data-cat'), col = btn.getAttribute('data-color'), on = cat === _clientCatFilter;
-                var cnt = btn.querySelector('.cli-cnt'); if (cnt) cnt.textContent = '(' + (n[cat] || 0) + ')';
-                btn.style.border = '3px solid ' + col;
-                btn.style.background = on ? col : 'transparent';
-                btn.style.color = on ? '#0a0a0a' : col;
+                var cnt = btn.querySelector('.cli-cnt');
+                if (cnt) { cnt.textContent = (n[cat] || 0); cnt.style.color = col; }
+                btn.classList.toggle('on', on);
+                btn.style.borderColor = col;
+                btn.style.background = on ? col : '#111';
                 btn.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
+            var tc = document.getElementById('clientsTitleCat');
+            if (tc) tc.textContent = { etudiant: ' · Étudiants', particulier: ' · Particuliers', entreprise: ' · Entreprises' }[_clientCatFilter] || '';
             var note = document.getElementById('clientCatNote');
             if (note) {
                 var show = untyped && (_clientCatFilter === 'particulier' || _clientCatFilter === 'all');
@@ -2664,7 +2746,7 @@
         }
         function setClientCategory(cat) {
             _clientCatFilter = cat || 'all';
-            var active = { particulier: 'particuliers', entreprise: 'entreprises' }[_clientCatFilter] || 'clients';
+            var active = { particulier: 'particuliers', entreprise: 'entreprises', etudiant: 'clients-etudiants' }[_clientCatFilter] || 'clients';
             document.querySelectorAll('.sidebar-btn').forEach(function(b) { b.classList.toggle('sidebar-active', b.getAttribute('data-section') === active); });
             var q = (document.getElementById('searchInput') || {}).value || '';
             loadClientsList(q || undefined);
@@ -4415,6 +4497,67 @@
         }
 
         // Charger la liste des partenaires
+        // ── Classement des prestataires : particuliers (indépendants) / entreprises ──
+        var _partnerCatFilter = 'all';
+        function partnerCategoryOf(p) { return (p && p.partner_category) || 'none'; }
+        function updatePartnerCategoryCounts(list) {
+            list = Array.isArray(list) ? list : [];
+            var n = { all: list.length, particulier: 0, entreprise: 0, none: 0 }, act = { all: 0, particulier: 0, entreprise: 0, none: 0 };
+            list.forEach(function(p) {
+                var c = partnerCategoryOf(p); n[c]++;
+                if (p.accountStatus === 'active') { act[c]++; act.all++; }
+            });
+            [['cntPartnersAll', n.all], ['cntPtnParticuliers', n.particulier], ['cntPtnEntreprises', n.entreprise]].forEach(function(x) {
+                var el = document.getElementById(x[0]); if (el) { el.textContent = x[1]; el.style.display = ''; }
+            });
+            document.querySelectorAll('#partnerCatTiles .cls-tile').forEach(function(btn) {
+                var cat = btn.getAttribute('data-pcat'), col = btn.getAttribute('data-color'), on = cat === _partnerCatFilter;
+                var num = btn.querySelector('.cls-num'); if (num) { num.textContent = n[cat] || 0; num.style.color = col; }
+                var sub = btn.querySelector('.cls-sub'); if (sub && cat !== 'none') sub.textContent = 'dont ' + (act[cat] || 0) + ' actif' + ((act[cat] || 0) > 1 ? 's' : '');
+                if (cat === 'none') btn.style.display = (n.none || on) ? '' : 'none';
+                btn.classList.toggle('on', on);
+                btn.style.borderColor = col;
+                btn.style.background = on ? col : '#111';
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            var tc = document.getElementById('partnersTitleCat');
+            if (tc) tc.textContent = { particulier: ' · Particuliers', entreprise: ' · Entreprises', none: ' · À classer' }[_partnerCatFilter] || '';
+            return n;
+        }
+        function setPartnerCategory(cat) {
+            _partnerCatFilter = cat || 'all';
+            var active = { particulier: 'ptn-particuliers', entreprise: 'ptn-entreprises' }[_partnerCatFilter] || 'partenaires';
+            document.querySelectorAll('.sidebar-btn').forEach(function(b) { b.classList.toggle('sidebar-active', b.getAttribute('data-section') === active); });
+            var q = (document.getElementById('partnerSearchInput') || {}).value || '';
+            loadPartnersList(q || undefined);
+        }
+        function partnerCategoryPill(p) {
+            var c = partnerCategoryOf(p);
+            var map = { particulier: ['#22c55e', 'PARTICULIER'], entreprise: ['#60a5fa', 'ENTREPRISE'], none: ['#f59e0b', 'À CLASSER'] }[c];
+            return '<span style="background:' + map[0] + ';color:#0a0a0a;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid #0a0a0a;margin-left:6px;vertical-align:middle;">' + map[1] + '</span>';
+        }
+        function partnerCategoryEditorHtml(p) {
+            var c = partnerCategoryOf(p), src = p.partner_category_source;
+            var label = { particulier: 'Particulier (indépendant)', entreprise: 'Entreprise', none: 'À classer' }[c];
+            var why = src === 'admin' ? 'classé par l’admin' : (src === 'declared' ? 'statut déclaré à l’inscription' : 'aucun statut déclaré');
+            var id = String(p.id || '').replace(/'/g, "\\'");
+            var b = function(v, txt, on) { return '<button type="button" onclick="event.stopPropagation();setPartnerAdminCategory(\'' + id + '\',\'' + v + '\')" style="padding:3px 9px;font-size:11px;font-weight:900;border-radius:6px;cursor:pointer;border:1px solid ' + (on ? '#FFD700' : '#444') + ';background:' + (on ? '#FFD700' : 'transparent') + ';color:' + (on ? '#0a0a0a' : '#ddd') + ';">' + txt + '</button>'; };
+            return '<p class="font-black">' + label + ' <span style="font-weight:600;font-size:12px;opacity:.7;">(' + why + ')</span></p>' +
+                '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">' + b('particulier', 'Particulier', src === 'admin' && c === 'particulier') + b('entreprise', 'Entreprise', src === 'admin' && c === 'entreprise') +
+                (src === 'admin' ? b('', 'Revenir au statut déclaré', false) : '') + '</div>';
+        }
+        async function setPartnerAdminCategory(partnerId, cat) {
+            try {
+                var r = await fetch(API_BASE_URL + '/api/admin/partners/' + encodeURIComponent(partnerId), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ admin_category: cat }) });
+                var d = await r.json();
+                if (!r.ok || !d.success) { alert('Erreur : ' + (d.error || r.status)); return; }
+                var i = (allPartners || []).findIndex(function(x) { return x.id === partnerId; });
+                if (i !== -1) { allPartners[i].partner_category = d.partner.partner_category; allPartners[i].partner_category_source = d.partner.partner_category_source; allPartners[i].admin_category = d.partner.admin_category; }
+                openPartnerModal(partnerId);
+                loadPartnersList((document.getElementById('partnerSearchInput') || {}).value || undefined);
+            } catch (e) { alert('Erreur de connexion'); }
+        }
+
         async function loadPartnersList(searchQuery) {
             loadVerificationCampaign();
             var container = document.getElementById('partnersList');
@@ -4441,7 +4584,11 @@
                     else { partnersBadge.style.display = 'none'; }
                 }
 
+                updatePartnerCategoryCounts(allPartners);
                 var partners = allPartners;
+                if (_partnerCatFilter && _partnerCatFilter !== 'all') {
+                    partners = partners.filter(function(p) { return partnerCategoryOf(p) === _partnerCatFilter; });
+                }
 
                 if (searchQuery) {
                     var q = searchQuery.toLowerCase();
@@ -4457,7 +4604,8 @@
                 }
 
                 if (partners.length === 0) {
-                    container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">' + (searchQuery ? 'Aucun résultat pour "' + searchQuery + '".' : 'Aucun prestataire inscrit pour le moment.') + '</p>';
+                    var _pEmpty = { particulier: 'Aucun prestataire particulier.', entreprise: 'Aucune entreprise prestataire.', none: 'Aucun prestataire à classer.' }[_partnerCatFilter] || 'Aucun prestataire inscrit pour le moment.';
+                    container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">' + (searchQuery ? 'Aucun résultat pour "' + _escHtml(searchQuery) + '".' : _pEmpty) + '</p>';
                     return;
                 }
 
@@ -4482,7 +4630,7 @@
                     html += '<div class="client-row" onclick="openPartnerModal(\'' + safeId + '\')">' +
                         '<div class="flex justify-between items-center flex-wrap gap-4">' +
                             '<div class="flex-1 min-w-[200px]">' +
-                                '<div class="font-black text-lg">' + _escHtml((partner.prenom || '') + ' ' + (partner.nom || '')) + riskPillHtml(partner) + verifPillHtml(partner) + '</div>' +
+                                '<div class="font-black text-lg">' + _escHtml((partner.prenom || '') + ' ' + (partner.nom || '')) + partnerCategoryPill(partner) + riskPillHtml(partner) + verifPillHtml(partner) + '</div>' +
                                 '<div class="text-sm font-bold opacity-70">' + _escHtml(partner.email || '') + '</div>' +
                                 ((partner.risk_flags && partner.risk_flags.length) ? '<div class="text-xs font-bold mt-1" style="color:#fbbf24;">' + _escHtml(partner.risk_flags.join(' · ')) + '</div>' : '') +
                                 '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + inscritLe + (partner.telephone ? ' • ' + partner.telephone : '') + '</div>' +
@@ -4581,6 +4729,10 @@
                     '<div>' +
                         '<p class="text-sm font-bold uppercase opacity-70 mb-1">Créé le</p>' +
                         '<p class="font-black">' + ((partner.created_at || partner.createdAt) ? new Date(partner.created_at || partner.createdAt).toLocaleDateString('fr-FR') : 'N/A') + '</p>' +
+                    '</div>' +
+                    '<div>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Classement</p>' +
+                        partnerCategoryEditorHtml(partner) +
                     '</div>' +
                     '<div>' +
                         '<p class="text-sm font-bold uppercase opacity-70 mb-1">Membre Fondateur</p>' +

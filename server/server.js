@@ -23588,6 +23588,20 @@ app.post('/api/admin/setup-test-parrainage', async function(req, res) {
 });
 
 // Lister tous les partenaires
+// Classement des prestataires pour l'admin (2026-11-11) : « particulier » (indépendant /
+// freelance) ou « entreprise ». Choix manuel de l'admin d'abord (comptes inscrits avant le statut
+// juridique), sinon le statut déclaré à l'inscription : micro → particulier, company → entreprise,
+// à l'étranger → selon business_kind. null = à classer.
+function partnerAdminCategory(p) {
+    if (!p) return { category: null, source: null };
+    if (p.admin_category === 'particulier' || p.admin_category === 'entreprise') return { category: p.admin_category, source: 'admin' };
+    var v = p.verification || {};
+    if (v.legal_profile === 'company') return { category: 'entreprise', source: 'declared' };
+    if (v.legal_profile === 'micro') return { category: 'particulier', source: 'declared' };
+    if (v.legal_profile === 'foreign') return { category: v.business_kind === 'company' ? 'entreprise' : 'particulier', source: 'declared' };
+    return { category: null, source: null };
+}
+
 app.get('/api/admin/partners', (req, res) => {
     try {
         const _allPartners = loadPartners();
@@ -23599,6 +23613,9 @@ app.get('/api/admin/partners', (req, res) => {
             // d'autres created_at selon la route d'inscription. On expose les deux pour le front.
             if (!safe.created_at && safe.createdAt) safe.created_at = safe.createdAt;
             if (!safe.createdAt && safe.created_at) safe.createdAt = safe.created_at;
+            var _cat = partnerAdminCategory(p);
+            safe.partner_category = _cat.category;
+            safe.partner_category_source = _cat.source;
             return safe;
         });
         const assignments = loadPartnerAssignments();
@@ -23657,7 +23674,10 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
         if (index === -1) {
             return res.status(404).json({ error: 'Partenaire non trouve' });
         }
-        const { prenom, nom, telephone, partner_type, company, accountStatus, secondary_types } = req.body;
+        const { prenom, nom, telephone, partner_type, company, accountStatus, secondary_types, admin_category } = req.body;
+        if (admin_category !== undefined && ['particulier', 'entreprise', ''].indexOf(admin_category) === -1) {
+            return res.status(400).json({ error: 'Classement inconnu' });
+        }
         const wasActive = partners[index].accountStatus === 'active';
         if (accountStatus && ['active', 'pending', 'deactivated'].indexOf(accountStatus) === -1) {
             return res.status(400).json({ error: 'Statut inconnu' });
@@ -23703,10 +23723,17 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
             });
         }
         if (company !== undefined) partners[index].company = company;
+        // Classement manuel par l'admin ('' = revenir au statut déclaré par le prestataire).
+        if (admin_category !== undefined) {
+            if (admin_category) partners[index].admin_category = admin_category;
+            else delete partners[index].admin_category;
+        }
         if (accountStatus) partners[index].accountStatus = accountStatus;
         partners[index].updatedAt = new Date().toISOString();
         savePartners(partners);
         const { password, ...partnerSafe } = partners[index];
+        var _pc = partnerAdminCategory(partners[index]);
+        partnerSafe.partner_category = _pc.category; partnerSafe.partner_category_source = _pc.source;
         // Approbation (pending/deactivated -> active) : prevenir le partenaire qu'il peut
         // desormais configurer ses prestations et qu'il devient visible des clients.
         if (_sendRequestAfter) _sendVerificationRequest(partnerSafe);
