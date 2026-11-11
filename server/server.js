@@ -11624,6 +11624,10 @@ app.post('/api/auth/register', async (req, res) => {
             // Bonus de bienvenue 40 QG pour tous (filleul compris, décision 2026-11-11) ; le filleul
             // reçoit +50 QG de plus après sa 1re prestation (filleul_bonus_awarded).
             referralBonusQG: WELCOME_BONUS_QG,
+            // Filleul : +50 QG dès l'inscription avec un code (décision 2026-11-11). Le parrain n'est
+            // récompensé (missions) qu'une fois la 1re prestation du filleul terminée.
+            filleul_bonus_awarded: referredBy ? true : undefined,
+            filleul_bonus_at_signup: referredBy ? true : undefined,
             referral_discount: WELCOME_DISCOUNT_ENABLED ? { pct: referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL, applied: false } : null,
             sessionToken: sessionToken,
             student_status: userAccountType === 'etudiant' ? (studentCertificate ? 'pending' : 'unverified') : null,
@@ -11652,7 +11656,14 @@ app.post('/api/auth/register', async (req, res) => {
 
         // Notification bienvenue + bonus QG au nouveau client
         var _bonusQG = WELCOME_BONUS_QG;
-        if (_bonusQG > 0) {
+        if (referredBy) {
+            var _filleulQG = GENESIS_POINT_VALUES.filleulPremierPrestation;
+            notifyUser(email, 'client', 'welcome_bonus',
+                'Bonus de bienvenue — +' + (_bonusQG + _filleulQG) + ' QG !',
+                'Félicitations ' + prenom + ' ! Vous recevez ' + _bonusQG + ' QG de bonus de bienvenue et ' + _filleulQG + ' QG de bonus parrainage. Cumulez des points en réalisant des prestations et montez en niveau !',
+                '/app.html#profil'
+            );
+        } else if (_bonusQG > 0) {
             notifyUser(email, 'client', 'welcome_bonus',
                 'Bonus de bienvenue — +' + _bonusQG + ' QG !',
                 'Félicitations ' + prenom + ' ! Vous recevez ' + _bonusQG + ' QG en bonus de bienvenue. Cumulez des points en réalisant des prestations et montez en niveau !',
@@ -18192,25 +18203,22 @@ function checkReferralAndMissionRewards(clientEmail) {
         var dirty = false;
 
         // 1. FILLEUL : bonus première prestation (+50 QG)
-        if (user.referredBy && !clientFilleulBonusAwarded(user)) {
+        if (user.referredBy && !clientReferralValidated(user)) {
             var completedCount = getClientCompletedOrders(clientEmail);
             if (completedCount >= 1) {
-                users[uIdx].filleul_bonus_awarded = true;
-                users[uIdx].filleul_bonus_awarded_at = new Date().toISOString();
+                // Le filleul a déjà reçu ses 50 QG à l'inscription : rien de plus pour lui ici.
+                users[uIdx].referral_parrain_rewarded = true;
+                users[uIdx].referral_parrain_rewarded_at = new Date().toISOString();
                 dirty = true;
-                // Notification filleul
-                notifyUser(clientEmail, 'client', 'referral_bonus',
-                    '🎁 +50 Points QG débloqués !',
-                    'Félicitations pour votre première prestation ! Vous gagnez 50 Points QG et débloquez la Mission GENESIS « Collaborer avec 3 professionnels différents ».',
-                    '/app.html#profil');
-                // Notification parrain (+100 QG via formule, pas de stockage supplémentaire)
+                // Parrain : QG uniquement via les missions Communauté (voir getClientGenesisPoints).
                 var parrain = users.find(function(u) { return u.id === user.referredBy; });
                 if (parrain) {
                     var parrainIdx = users.findIndex(function(u) { return u.id === user.referredBy; });
                     // Une seule notification pour le parrain : la récompense, les missions de
                     // parrainage atteintes et le classement Top Ambassadeurs (s'il progresse) sont
                     // réunis dans le même message au lieu de 2 à 4 push simultanés.
-                    var _refBody = 'Votre filleul ' + (users[uIdx].prenom || 'votre filleul') + ' vient de réaliser sa première prestation. Vous gagnez +100 Points QG !';
+                    var _refBody = 'Votre filleul ' + (users[uIdx].prenom || 'votre filleul') + ' vient de réaliser sa première prestation : votre parrainage est validé.';
+                    var _refTitle = '🎉 Parrainage validé';
                     if (parrainIdx !== -1) {
                         var parrainRefCount = getClientReferralCount(users[parrainIdx].id);
                         if (!users[parrainIdx].missionBonuses) users[parrainIdx].missionBonuses = {};
@@ -18221,13 +18229,20 @@ function checkReferralAndMissionRewards(clientEmail) {
                             { key: 'ref25', target: 25, qg: GENESIS_POINT_VALUES.missionRef25 },
                             { key: 'ref50', target: 50, qg: GENESIS_POINT_VALUES.missionRef50 }
                         ];
+                        var _refDone = false;
                         _refMilestones.forEach(function(m) {
                             if (parrainRefCount >= m.target && !users[parrainIdx].missionBonuses[m.key]) {
                                 users[parrainIdx].missionBonuses[m.key] = true;
-                                dirty = true;
-                                _refBody += ' Mission communauté accomplie : ' + m.target + (m.target > 1 ? ' membres actifs invités, +' : ' membre actif invité, +') + m.qg + ' Points QG.';
+                                dirty = true; _refDone = true;
+                                _refTitle = '🎉 Mission accomplie : +' + m.qg + ' QG';
+                                _refBody += ' Mission « ' + (m.target > 1 ? 'Inviter ' + m.target + ' nouveaux membres actifs' : 'Inviter 1 nouveau membre actif') + ' » accomplie : +' + m.qg + ' Points QG.';
                             }
                         });
+                        // Pas de palier atteint : progression vers la prochaine mission (ex. 2/5).
+                        if (!_refDone) {
+                            var _nextM = _refMilestones.filter(function(m) { return parrainRefCount < m.target; })[0];
+                            if (_nextM) _refBody += ' Mission « Inviter ' + _nextM.target + ' nouveaux membres actifs » : ' + parrainRefCount + '/' + _nextM.target + '.';
+                        }
                         // Classement Top Ambassadeurs : mentionné seulement s'il progresse (avant,
                         // une notification à chaque parrainage, même sans changement de place).
                         try {
@@ -18251,7 +18266,7 @@ function checkReferralAndMissionRewards(clientEmail) {
                             }
                         } catch(_rankErr) { console.warn('[HOF_RANK]', _rankErr.message); }
                     }
-                    notifyUser(parrain.email, 'client', 'referral_reward', '🎉 Récompense parrainage !', _refBody, '/app.html#profil');
+                    notifyUser(parrain.email, 'client', 'referral_reward', _refTitle, _refBody, '/app.html#profil');
                 }
             }
         }
@@ -18320,8 +18335,16 @@ function clientWelcomeBonusQG(user) {
 function clientFilleulBonusAwarded(user) {
     return !!(user && user.referredBy && (user.filleul_bonus_awarded || user.referralBonusQG === GENESIS_POINT_VALUES.filleulPremierPrestation));
 }
+// Depuis le 2026-11-11 (2e décision), le filleul reçoit ses 50 QG dès l'inscription : tout compte
+// parrainé les a, y compris les anciens.
 function clientFilleulBonusQG(user) {
-    return clientFilleulBonusAwarded(user) ? GENESIS_POINT_VALUES.filleulPremierPrestation : 0;
+    return user && user.referredBy ? GENESIS_POINT_VALUES.filleulPremierPrestation : 0;
+}
+// Parrainage déjà validé (parrain notifié, missions vérifiées) pour ce filleul ? Anciennes données :
+// referralBonusQG = 50, ou filleul_bonus_awarded posé après la 1re prestation (pas à l'inscription).
+function clientReferralValidated(user) {
+    return !!(user && (user.referral_parrain_rewarded || user.referralBonusQG === GENESIS_POINT_VALUES.filleulPremierPrestation
+        || (user.filleul_bonus_awarded && !user.filleul_bonus_at_signup)));
 }
 
 function getClientGenesisPoints(user, completedOrders) {
@@ -18332,9 +18355,11 @@ function getClientGenesisPoints(user, completedOrders) {
     var mb = user.missionBonuses || {};
     // Bonus de bienvenue 40 QG pour tous + 50 QG au filleul après sa 1re prestation (2026-11-11).
     var welcomeBonus = clientWelcomeBonusQG(user) + clientFilleulBonusQG(user);
+    // Parrainage : les QG viennent UNIQUEMENT des missions Communauté (1er filleul +100, 5e +300,
+    // 10e +500, 25e +1000, 50e +2000) — plus de +100 par filleul en plus (doublon supprimé,
+    // décision FA GENESIS 2026-11-11). `referrals` ne sert plus qu'à la progression des missions.
     return (orders * GENESIS_POINT_VALUES.reservationEffectuee)
         + (reviewsLeft * GENESIS_POINT_VALUES.avisLaisse)
-        + (referrals * GENESIS_POINT_VALUES.parrainage)
         + getEventAttendancePoints(user.id)
         + welcomeBonus
         + (mb.multi_collab ? GENESIS_POINT_VALUES.missionMultiCollab : 0)
@@ -18499,11 +18524,11 @@ function buildJeremieSystemPrompt(person, personType, language) {
     lines.push('PROGRESSION CLIENT : le client gagne des points Quotient Genesis (QG) : bonus de bienvenue 40 QG, ' +
         'prestation realisee +' + GENESIS_POINT_VALUES.reservationEffectuee + ' QG, avis laisse +' + GENESIS_POINT_VALUES.avisLaisse +
         ' QG, atelier +' + GENESIS_POINT_VALUES.workshop + ' QG, evenement GENESIS +' + GENESIS_POINT_VALUES.evenement +
-        ' QG, parrainage valide +' + GENESIS_POINT_VALUES.parrainage + ' QG. Ses niveaux : Explorateur (depart), ' +
+        ' QG, missions de parrainage (1er filleul actif +100, 5 filleuls +300, 10 +500, 25 +1000, 50 +2000). Ses niveaux : Explorateur (depart), ' +
         CLIENT_QG_LEVEL_TIERS.slice().reverse().map(function(t) { return t.label + ' (' + t.pts + ' QG)'; }).join(', ') +
-        '. Suivi dans Profil > Mes niveaux GENESIS. PARRAINAGE : le filleul s\'inscrit avec le code du parrain ; il recoit les 40 QG ' +
-        'de bienvenue comme tout le monde, puis +' + GENESIS_POINT_VALUES.filleulPremierPrestation + ' QG apres sa premiere prestation ; le parrain ' +
-        'gagne +' + GENESIS_POINT_VALUES.parrainage + ' QG par filleul actif (plus les missions de parrainage). Il n\'existe AUCUNE reduction de ' +
+        '. Suivi dans Profil > Mes niveaux GENESIS. PARRAINAGE : le filleul s\'inscrit avec le code du parrain ; il recoit des l\'inscription les 40 QG ' +
+        'de bienvenue + ' + GENESIS_POINT_VALUES.filleulPremierPrestation + ' QG de bonus parrainage (90 QG). Le parrain gagne ses QG uniquement via les missions ' +
+        'Communaute, quand ses filleuls terminent leur premiere prestation : 1er filleul +100, 5 filleuls +300, 10 +500, 25 +1000, 50 +2000 (jamais +100 par filleul en plus). Il n\'existe AUCUNE reduction de ' +
         'bienvenue ni de parrainage, ne jamais en promettre. ' +
         'Les Cercles Genesis recompensent les collaborations repetees avec un meme prestataire.');
     lines.push('PROGRESSION PRESTATAIRE (different du client, ne jamais lui parler des niveaux Explorateur/Createur/' +

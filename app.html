@@ -2677,15 +2677,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261111i"></script>
-<script src="app-i18n-es.js?v=20261111i"></script>
-<script src="app-i18n-hi.js?v=20261111i"></script>
-<script src="app-i18n-pt.js?v=20261111i"></script>
-<script src="app-i18n-ja.js?v=20261111i"></script>
-<script src="app-i18n-zh.js?v=20261111i"></script>
-<script src="app-i18n-ar.js?v=20261111i"></script>
-<script src="app-i18n-it.js?v=20261111i"></script>
-<script src="app-i18n-de.js?v=20261111i"></script>
+<script src="app-i18n-en.js?v=20261111j"></script>
+<script src="app-i18n-es.js?v=20261111j"></script>
+<script src="app-i18n-hi.js?v=20261111j"></script>
+<script src="app-i18n-pt.js?v=20261111j"></script>
+<script src="app-i18n-ja.js?v=20261111j"></script>
+<script src="app-i18n-zh.js?v=20261111j"></script>
+<script src="app-i18n-ar.js?v=20261111j"></script>
+<script src="app-i18n-it.js?v=20261111j"></script>
+<script src="app-i18n-de.js?v=20261111j"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -13194,12 +13194,12 @@ function showResumeMensuel() {
         {icon:'fa-star',label:'Avis laissé',pts:30},
         {icon:'fa-chalkboard-teacher',label:'Atelier ou formation',pts:50},
         {icon:'fa-calendar-check',label:'Participation événement',pts:75},
-        {icon:'fa-user-plus',label:'Parrainage validé',pts:100}
+        {icon:'fa-user-plus',label:'Inviter 1 nouveau membre actif',pts:100}
       ];
       // Bonus obtenus
       var bonusEarned = [];
       if(USER.welcomeBonusQG) bonusEarned.push({icon:'fa-gift',label:'Bonus de bienvenue',pts:USER.welcomeBonusQG,earned:true});
-      if(USER.referralBonusQG) bonusEarned.push({icon:'fa-user-plus',label:'Bonus première prestation (filleul)',pts:USER.referralBonusQG,earned:true});
+      if(USER.referralBonusQG) bonusEarned.push({icon:'fa-user-plus',label:'Bonus parrainage (filleul)',pts:USER.referralBonusQG,earned:true});
       if(USER.missionBonuses && USER.missionBonuses.multi_collab) bonusEarned.push({icon:'fa-people-group',label:'Mission : 3 collaborations',pts:75,earned:true});
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
       qgActions.forEach(function(a){
