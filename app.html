@@ -2677,15 +2677,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261111g"></script>
-<script src="app-i18n-es.js?v=20261111g"></script>
-<script src="app-i18n-hi.js?v=20261111g"></script>
-<script src="app-i18n-pt.js?v=20261111g"></script>
-<script src="app-i18n-ja.js?v=20261111g"></script>
-<script src="app-i18n-zh.js?v=20261111g"></script>
-<script src="app-i18n-ar.js?v=20261111g"></script>
-<script src="app-i18n-it.js?v=20261111g"></script>
-<script src="app-i18n-de.js?v=20261111g"></script>
+<script src="app-i18n-en.js?v=20261111h"></script>
+<script src="app-i18n-es.js?v=20261111h"></script>
+<script src="app-i18n-hi.js?v=20261111h"></script>
+<script src="app-i18n-pt.js?v=20261111h"></script>
+<script src="app-i18n-ja.js?v=20261111h"></script>
+<script src="app-i18n-zh.js?v=20261111h"></script>
+<script src="app-i18n-ar.js?v=20261111h"></script>
+<script src="app-i18n-it.js?v=20261111h"></script>
+<script src="app-i18n-de.js?v=20261111h"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -9651,6 +9651,10 @@ function _studentBadgeHtml(){
   // Chaque renouvellement précise l'année scolaire du certificat attendu (« 2027-2028 »).
   var syHtml = USER.student_renewal_school_year ? ' <span data-i18n-skip>'+_escHtml(USER.student_renewal_school_year)+'</span>' : '';
   if(ss === 'expired' && syHtml) label = '<span>Statut étudiant expiré : envoyez votre certificat de scolarité</span>'+syHtml;
+  // Premier envoi (ou refusé) : certificat de l'année scolaire en cours.
+  var curSy = ' <span data-i18n-skip>'+_currentSchoolYear()+'</span>';
+  if(ss === 'unverified') label = '<span>Envoyez votre certificat de scolarité</span>'+curSy;
+  if(ss === 'rejected') label = '<span>Justificatif rejeté : envoyez votre certificat de scolarité</span>'+curSy;
   // Vérification valable pour l'année scolaire (jusqu'au 31 octobre) : rappel à partir de mi-septembre,
   // et un nouveau certificat envoyé ne retire pas les tarifs pendant son examen.
   if(ss === 'verified'){
@@ -9680,7 +9684,7 @@ function _studentVerifyNoticeHtml(services){
     +'<i class="fa-solid fa-graduation-cap" style="color:#eab308;margin-top:2px;"></i>'
     +'<div style="flex:1;font-size:12px;color:#ddd;line-height:1.5;">'
       +'<div style="font-weight:800;color:#eab308;margin-bottom:2px;">'+(pending ? 'Justificatif en cours de vérification' : (expired ? 'Statut étudiant à renouveler' : 'Vérifiez votre statut étudiant'))+'</div>'
-      +'<div>'+(pending ? 'Vous pourrez commander les offres étudiants dès sa validation (sous 24 h).' : (expired && USER.student_renewal_school_year ? '<span>Envoyez votre certificat de scolarité</span> <span data-i18n-skip>'+_escHtml(USER.student_renewal_school_year)+'</span> <span>pour commander à nouveau les offres étudiants.</span>' : (expired ? 'Envoyez votre certificat de scolarité de cette année pour commander à nouveau les offres étudiants.' : 'Les tarifs étudiants sont réservés aux étudiants vérifiés. Envoyez votre justificatif pour pouvoir commander.')))+'</div>'
+      +'<div>'+(pending ? 'Vous pourrez commander les offres étudiants dès sa validation (sous 24 h).' : (expired && USER.student_renewal_school_year ? '<span>Envoyez votre certificat de scolarité</span> <span data-i18n-skip>'+_escHtml(USER.student_renewal_school_year)+'</span> <span>pour commander à nouveau les offres étudiants.</span>' : (expired ? 'Envoyez votre certificat de scolarité de cette année pour commander à nouveau les offres étudiants.' : '<span>Les tarifs étudiants sont réservés aux étudiants vérifiés. Envoyez votre certificat de scolarité</span> <span data-i18n-skip>'+_currentSchoolYear()+'</span> <span>pour pouvoir commander.</span>')))+'</div>'
       +(pending ? '' : '<button onclick="_appUploadNewCert()" style="margin-top:8px;padding:6px 12px;border-radius:8px;background:#eab308;border:none;color:#000;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;">Envoyer mon justificatif</button>')
     +'</div></div>';
 }
@@ -20161,7 +20165,16 @@ function _regCertFileChange(inp){
   fr.readAsDataURL(file);
 }
 
+// Année scolaire en cours, au format « 2026-2027 » : à partir de juillet, celle qui commence en
+// septembre (même règle que le serveur, client-company.js). Le certificat demandé à l'inscription
+// est celui de cette année-là (décision FA GENESIS, 2026-11-11).
+function _currentSchoolYear(){
+  var d = new Date(), y = d.getFullYear();
+  var start = d.getMonth() + 1 >= 7 ? y : y - 1;
+  return start + '-' + (start + 1);
+}
 function _regShowCertSection(){
+  var yEl = document.getElementById('reg-cert-year'); if(yEl) yEl.textContent = _currentSchoolYear();
   var sec = document.getElementById('reg-cert-section');
   if(sec) sec.style.display = (regData.accountType === 'etudiant') ? 'block' : 'none';
 }
@@ -21023,7 +21036,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div id="reg-cert-section" style="display:none;margin-bottom:8px;">
           <div style="background:rgba(234,179,8,.06);border:1.5px solid rgba(234,179,8,.25);border-radius:12px;padding:14px;">
             <div style="font-size:12px;font-weight:800;color:#eab308;margin-bottom:5px;"><i class="fa-solid fa-graduation-cap" style="margin-right:5px;"></i>Justificatif étudiant</div>
-            <div style="font-size:11px;color:#888;margin-bottom:10px;line-height:1.5;">Certificat de scolarité (photo ou PDF). Validé sous 24h — accès immédiat à l'app en attendant.</div>
+            <div style="font-size:11px;color:#888;margin-bottom:10px;line-height:1.5;"><span>Certificat de scolarité</span> <strong id="reg-cert-year" data-i18n-skip style="color:#eab308;"></strong> <span>(photo ou PDF). Validé sous 24h — accès immédiat à l'app en attendant.</span></div>
             <label id="reg-cert-label" style="display:flex;align-items:center;gap:10px;padding:11px;border:2px dashed rgba(234,179,8,.4);border-radius:10px;cursor:pointer;color:#eab308;font-size:12px;font-weight:700;">
               <i class="fa-solid fa-cloud-arrow-up" style="font-size:16px;flex-shrink:0;"></i>
               <span id="reg-cert-text">Sélectionner un fichier</span>
