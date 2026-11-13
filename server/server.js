@@ -10707,7 +10707,8 @@ function buildAccountRiskIndex(users, partners) {
     var byPhone = {};
     (users || []).forEach(function(u) { var k = _phoneKey(u && u.telephone); if (k) (byPhone[k] = byPhone[k] || []).push('client ' + (u.email || u.id)); });
     (partners || []).forEach(function(p) { var k = _phoneKey(p && p.telephone); if (k) (byPhone[k] = byPhone[k] || []).push('prestataire ' + (p.email || p.id)); });
-    return function riskFlags(acc, selfLabel) {
+    // raw = true : tous les signaux, y compris ceux que l'admin a déjà jugés normaux (risk_ack).
+    return function riskFlags(acc, selfLabel, raw) {
         var flags = (acc && Array.isArray(acc.signup_flags)) ? acc.signup_flags.slice() : [];
         var dom = antiAbuse.emailDomain(acc && acc.email);
         if (antiAbuse.isDisposableDomain(dom)) flags.push('Adresse e-mail jetable (' + dom + ')');
@@ -10715,9 +10716,35 @@ function buildAccountRiskIndex(users, partners) {
         var k = _phoneKey(acc && acc.telephone);
         var others = k ? (byPhone[k] || []).filter(function(x) { return x !== selfLabel; }) : [];
         if (others.length) flags.push('Même téléphone que ' + others.length + ' autre' + (others.length > 1 ? 's comptes' : ' compte') + ' : ' + others.slice(0, 3).join(', ') + (others.length > 3 ? '…' : ''));
-        return flags;
+        if (raw) return flags;
+        // Signal déjà examiné par l'admin (« C'est normal ») : masqué tant qu'il est identique.
+        // Un NOUVEAU compte avec le même téléphone change le texte → le signal réapparaît.
+        var ack = (acc && acc.risk_ack && Array.isArray(acc.risk_ack.flags)) ? acc.risk_ack.flags : [];
+        return flags.filter(function(f) { return ack.indexOf(f) === -1; });
     };
 }
+
+// L'admin a examiné les signaux d'un compte et les juge normaux (ses propres comptes de test,
+// un couple qui partage un téléphone…). Les signaux sont recalculés ici, jamais lus de la requête.
+app.post('/api/admin/accounts/risk-ack', function(req, res) {
+    try {
+        var kind = (req.body || {}).kind, id = String((req.body || {}).id || '');
+        var users = loadUsers(), partners = loadPartners();
+        var riskFlags = buildAccountRiskIndex(users, partners);
+        var list = kind === 'partner' ? partners : (kind === 'client' ? users : null);
+        if (!list) return res.status(400).json({ error: 'kind doit être client ou partner' });
+        var acc = list.find(function(x) { return x && x.id === id; });
+        if (!acc) return res.status(404).json({ error: 'Compte introuvable' });
+        var label = (kind === 'partner' ? 'prestataire ' : 'client ') + (acc.email || acc.id);
+        var flags = riskFlags(acc, label, true);
+        acc.risk_ack = { flags: flags, at: new Date().toISOString(), by: (req.admin && req.admin.email) || 'admin' };
+        if (kind === 'partner') savePartners(partners); else saveUsers(users);
+        res.json({ success: true, acknowledged: flags.length });
+    } catch (e) {
+        console.error('[ADMIN] risk-ack:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
 
 app.get('/api/admin/users', function(req, res) {
     try {

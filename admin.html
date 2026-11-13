@@ -2881,7 +2881,7 @@
                         '<div class="flex-1 min-w-[250px]">' +
                             '<div class="font-black text-lg">' + _escHtml((client.prenom || '') + ' ' + (client.nom || '')) + (acctPill ? ' ' + acctPill : '') + riskPillHtml(client) + '</div>' +
                             '<div class="text-sm font-bold opacity-70">' + _escHtml(client.email) + '</div>' +
-                            ((client.risk_flags && client.risk_flags.length) ? '<div class="text-xs font-bold mt-1" style="color:#fbbf24;">' + _escHtml(client.risk_flags.join(' · ')) + '</div>' : '') +
+                            riskDetailHtml(client, 'client') +
                             '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + ((client.createdAt || client.created_at) ? new Date(client.createdAt || client.created_at).toLocaleDateString('fr-FR') : 'N/A') + '</div>' +
                         '</div>' +
                         '<div>' +
@@ -4412,10 +4412,34 @@
         }
         // Signaux anti-abus calculés par le serveur (risk_flags) : adresse jetable, domaine peu
         // fiable, téléphone partagé avec d'autres comptes. Informatif : l'admin décide.
+        // Libellé précis (avant : « À VÉRIFIER », confondu avec la vérification étudiante / d'identité).
         function riskPillHtml(acc) {
             var f = (acc && Array.isArray(acc.risk_flags)) ? acc.risk_flags : [];
             if (!f.length) return '';
-            return ' <span class="risk-pill" title="' + _studEsc(f.join('\n')) + '"><i class="fas fa-triangle-exclamation" style="margin-right:4px;"></i>À VÉRIFIER</span>';
+            var labels = [];
+            f.forEach(function(x) {
+                var l = /^Même téléphone/.test(x) ? 'TÉLÉPHONE PARTAGÉ' : (/jetable/i.test(x) ? 'E-MAIL JETABLE' : (/peu fiable/i.test(x) ? 'E-MAIL DOUTEUX' : 'SIGNAL ANTI-ABUS'));
+                if (labels.indexOf(l) === -1) labels.push(l);
+            });
+            return ' <span class="risk-pill" title="' + _studEsc(f.join('\n')) + '"><i class="fas fa-triangle-exclamation" style="margin-right:4px;"></i>' + labels.join(' · ') + '</span>';
+        }
+        // Ligne de détail + bouton « C'est normal » (masque ces signaux tant qu'ils ne changent pas).
+        function riskDetailHtml(acc, kind) {
+            var f = (acc && Array.isArray(acc.risk_flags)) ? acc.risk_flags : [];
+            if (!f.length) return '';
+            return '<div class="text-xs font-bold mt-1" style="color:#fbbf24;">' + _escHtml(f.join(' · ')) +
+                ' <button onclick="event.stopPropagation();riskAck(\'' + kind + '\',\'' + _studEsc(acc.id) + '\')" title="Vous avez vérifié : ce signal est normal (par exemple vos propres comptes de test). Il réapparaîtra si un nouveau compte partage ce téléphone." style="margin-left:6px;background:transparent;border:1px solid #fbbf24;color:#fbbf24;border-radius:6px;padding:1px 8px;font-size:10px;font-weight:900;cursor:pointer;">C\u2019EST NORMAL</button></div>';
+        }
+        async function riskAck(kind, id) {
+            try {
+                var r = await fetch(API_BASE_URL + '/api/admin/accounts/risk-ack', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: kind, id: id })
+                });
+                var d = await r.json();
+                if (!d.success) { alert('Erreur : ' + (d.error || 'inconnue')); return; }
+            } catch (e) { alert('Erreur de connexion au serveur'); return; }
+            if (kind === 'partner') { if (typeof loadPartnersList === 'function') loadPartnersList(); }
+            else if (typeof loadClientsList === 'function') loadClientsList();
         }
         function partnerSecondaryBadgesHtml(p) {
             return partnerSecondaryTypes(p).map(function(t) {
@@ -4758,7 +4782,7 @@
                             '<div class="flex-1 min-w-[200px]">' +
                                 '<div class="font-black text-lg">' + _escHtml((partner.prenom || '') + ' ' + (partner.nom || '')) + partnerCategoryPill(partner) + riskPillHtml(partner) + verifPillHtml(partner) + '</div>' +
                                 '<div class="text-sm font-bold opacity-70">' + _escHtml(partner.email || '') + '</div>' +
-                                ((partner.risk_flags && partner.risk_flags.length) ? '<div class="text-xs font-bold mt-1" style="color:#fbbf24;">' + _escHtml(partner.risk_flags.join(' · ')) + '</div>' : '') +
+                                riskDetailHtml(partner, 'partner') +
                                 '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + inscritLe + (partner.telephone ? ' • ' + partner.telephone : '') + '</div>' +
                             '</div>' +
                             '<div>' +
