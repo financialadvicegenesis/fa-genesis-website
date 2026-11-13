@@ -12163,28 +12163,29 @@ app.get('/api/client/level-progress', function(req, res) {
         var levelMeta = getGenesisLevel(currentBadge);
 
         var clientLevelAdvantages = {
+            // Textes validés par FA GENESIS le 2026-11-13 (présentation du 20/11) : chaque niveau garde
+            // les avantages des précédents, donc aucune répétition d'un niveau à l'autre.
             bronze: [
                 { id: 'profil_perso',       label: 'Personnalisation du profil (thème, bannière, bio enrichie)' },
-                { id: 'suggestions_ia',     label: 'Jérémie IA — Suggestions personnalisées selon vos habitudes' },
-                { id: 'patrimoine_genesis', label: 'Patrimoine GENESIS' }
+                { id: 'patrimoine_genesis', label: 'Patrimoine GENESIS' },
+                { id: 'suggestions_ia',     label: 'Jérémie vous propose des prestataires précis, adaptés à votre demande' }
             ],
             argent: [
                 { id: 'webinaires',        label: 'Invitations aux webinaires et ateliers GENESIS' },
                 { id: 'alertes_ia',        label: 'Alertes prioritaires sur les prestataires des catégories que vous choisissez' },
                 { id: 'campagnes',         label: 'Accès prioritaire aux campagnes et aux jeux concours' },
-                { id: 'jeremie_plus',      label: 'Jérémie IA Plus — Analyse des habitudes & recommandations automatiques' }
+                { id: 'jeremie_plus',      label: 'Jérémie IA Plus — analyse vos habitudes (rythme, budget, catégories) et vous suggère la suite avant même que vous la demandiez' }
             ],
             or: [
                 { id: 'events_prives',     label: 'Invitations aux événements privés & soirées networking GENESIS' },
-                { id: 'avant_premiere',    label: 'Accès anticipé aux nouvelles fonctionnalités de l\'application GENESIS' },
-                { id: 'priority_events',   label: 'Priorité d\'inscription aux événements à capacité limitée' },
-                { id: 'jeremie_pro',       label: 'Jérémie IA Pro — Comparaison multicritères & préparation de projet' }
+                { id: 'avant_premiere',    label: 'Les nouvelles fonctionnalités de l\'application en avant-première' },
+                { id: 'priority_events',   label: 'Priorité d\'inscription aux événements à places limitées' },
+                { id: 'jeremie_pro',       label: 'Jérémie IA Pro — compare les prestataires point par point (budget, délai, note) et construit le cahier des charges de votre projet' }
             ],
             elite: [
                 { id: 'vip',            label: 'Invitations VIP aux événements GENESIS' },
-                { id: 'fonct_exp',      label: 'Accès anticipé aux nouvelles fonctionnalités de l\'application GENESIS' },
-                { id: 'cadeau_annuel',  label: 'Cadeau annuel de fidélité' },
-                { id: 'jeremie_expert', label: 'Jérémie IA Expert — Assistant personnel multi-projets & conseils continus' }
+                { id: 'cadeau_annuel',  label: 'Un cadeau de fidélité chaque année' },
+                { id: 'jeremie_expert', label: 'Jérémie IA Expert — votre assistant personnel suit plusieurs projets en parallèle et vous propose une feuille de route sur plusieurs mois' }
             ]
         };
         var clientLevelDescriptions = {

@@ -2715,15 +2715,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261113g"></script>
-<script src="app-i18n-es.js?v=20261113g"></script>
-<script src="app-i18n-hi.js?v=20261113g"></script>
-<script src="app-i18n-pt.js?v=20261113g"></script>
-<script src="app-i18n-ja.js?v=20261113g"></script>
-<script src="app-i18n-zh.js?v=20261113g"></script>
-<script src="app-i18n-ar.js?v=20261113g"></script>
-<script src="app-i18n-it.js?v=20261113g"></script>
-<script src="app-i18n-de.js?v=20261113g"></script>
+<script src="app-i18n-en.js?v=20261113h"></script>
+<script src="app-i18n-es.js?v=20261113h"></script>
+<script src="app-i18n-hi.js?v=20261113h"></script>
+<script src="app-i18n-pt.js?v=20261113h"></script>
+<script src="app-i18n-ja.js?v=20261113h"></script>
+<script src="app-i18n-zh.js?v=20261113h"></script>
+<script src="app-i18n-ar.js?v=20261113h"></script>
+<script src="app-i18n-it.js?v=20261113h"></script>
+<script src="app-i18n-de.js?v=20261113h"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -13153,10 +13153,10 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     var _luIconMap = { bronze: 'fa-fire', argent: 'fa-bolt', or: 'fa-crown', elite: 'fa-infinity' };
     var _luIconClass = _luIconMap[levelIcon] || 'fa-crown';
     var _luAdvMap = {
-      bronze: ['Personnalisation du profil','Patrimoine GENESIS','Jérémie IA personnalisé'],
-      argent: ['Webinaires & ateliers GENESIS','Alertes prioritaires','Campagnes & jeux concours','Jérémie IA Plus'],
-      or:     ['Événements privés & networking GENESIS','Accès bêta & avant-première','Priorité événements','Jérémie IA Pro'],
-      elite:  ['Invitations VIP aux événements GENESIS','Accès anticipé aux nouvelles fonctionnalités de l\'application GENESIS','Cadeau annuel de fidélité','Jérémie IA Expert']
+      bronze: ['Personnalisation du profil','Patrimoine GENESIS','Jérémie : des prestataires adaptés à votre demande'],
+      argent: ['Webinaires & ateliers GENESIS','Alertes prioritaires','Priorité aux campagnes & jeux concours','Jérémie IA Plus'],
+      or:     ['Événements privés & soirées networking','Nouvelles fonctionnalités en avant-première','Priorité aux inscriptions à places limitées','Jérémie IA Pro'],
+      elite:  ['Invitations VIP aux événements GENESIS','Un cadeau de fidélité chaque année','Jérémie IA Expert']
     };
     var _luAdvs = (_luAdvMap[levelIcon] || []);
     var _luAdvHtml = _luAdvs.length ? '<div style="text-align:left;margin:0 0 16px;">'
@@ -14215,12 +14215,12 @@ function showClientLevels(scrollToLevel, _afterNav) {
       var html = '<div style="background:#0a120a;border:1px solid #1a2e1a;border-radius:14px;padding:13px 15px;margin-bottom:18px;">'
         + '<div style="font-size:12px;color:#7ec87e;font-weight:700;line-height:1.5;margin-bottom:8px;">'
         + '<i class="fa-solid fa-circle-check" style="color:#22c55e;margin-right:7px;font-size:11px;"></i>'
-        + 'Tous les utilisateurs disposent dès leur inscription de l\'ensemble des fonctionnalités essentielles de GENESIS.'
+        + 'Dès votre inscription : 40 points QG (90 avec un code de parrainage), Jérémie qui répond à vos questions et vous oriente, le parrainage et les missions GENESIS.'
         + '</div>'
         + '<div style="height:1px;background:#1a2e1a;margin-bottom:8px;"></div>'
         + '<div style="font-size:11px;color:#888;line-height:1.5;">'
         + '<i class="fa-solid fa-bolt" style="color:var(--yellow);margin-right:6px;font-size:10px;"></i>'
-        + 'Les niveaux GENESIS vous permettent de débloquer des avantages exclusifs au fur et à mesure de votre progression.'
+        + 'Chaque prestation terminée et chaque avis vous rapportent des points. Chaque niveau débloque de nouveaux avantages et conserve ceux des niveaux précédents.'
         + '</div>'
         + '</div>';
       // ── Comment gagner des QG
