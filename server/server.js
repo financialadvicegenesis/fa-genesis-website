@@ -12172,7 +12172,7 @@ app.get('/api/client/level-progress', function(req, res) {
             ],
             argent: [
                 { id: 'webinaires',        label: 'Invitations aux webinaires et ateliers GENESIS' },
-                { id: 'alertes_ia',        label: 'Alertes intelligentes — nouveau prestataire correspondant à vos préférences' },
+                { id: 'alertes_ia',        label: 'Alertes prioritaires sur les prestataires des catégories que vous choisissez' },
                 { id: 'campagnes',         label: 'Accès prioritaire aux campagnes et aux jeux concours' },
                 { id: 'jeremie_plus',      label: 'Jérémie IA Plus — Analyse des habitudes & recommandations automatiques' }
             ],
