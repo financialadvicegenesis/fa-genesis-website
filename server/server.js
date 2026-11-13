@@ -12165,8 +12165,6 @@ app.get('/api/client/level-progress', function(req, res) {
         var clientLevelAdvantages = {
             bronze: [
                 { id: 'profil_perso',       label: 'Personnalisation du profil (thème, bannière, bio enrichie)' },
-                { id: 'parrainage',         label: 'Programme de parrainage' },
-                { id: 'defis_qg',           label: 'Missions GENESIS pour gagner davantage de points' },
                 { id: 'suggestions_ia',     label: 'Jérémie IA — Suggestions personnalisées selon vos habitudes' },
                 { id: 'patrimoine_genesis', label: 'Patrimoine GENESIS' }
             ],

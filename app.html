@@ -2715,15 +2715,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261113f"></script>
-<script src="app-i18n-es.js?v=20261113f"></script>
-<script src="app-i18n-hi.js?v=20261113f"></script>
-<script src="app-i18n-pt.js?v=20261113f"></script>
-<script src="app-i18n-ja.js?v=20261113f"></script>
-<script src="app-i18n-zh.js?v=20261113f"></script>
-<script src="app-i18n-ar.js?v=20261113f"></script>
-<script src="app-i18n-it.js?v=20261113f"></script>
-<script src="app-i18n-de.js?v=20261113f"></script>
+<script src="app-i18n-en.js?v=20261113g"></script>
+<script src="app-i18n-es.js?v=20261113g"></script>
+<script src="app-i18n-hi.js?v=20261113g"></script>
+<script src="app-i18n-pt.js?v=20261113g"></script>
+<script src="app-i18n-ja.js?v=20261113g"></script>
+<script src="app-i18n-zh.js?v=20261113g"></script>
+<script src="app-i18n-ar.js?v=20261113g"></script>
+<script src="app-i18n-it.js?v=20261113g"></script>
+<script src="app-i18n-de.js?v=20261113g"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -9212,17 +9212,14 @@ function showParrainageScreen(){
   var c = document.getElementById('profilContent'); if(!c) return;
   if(!USER || GUEST){ renderProfil(); return; }
   _saveProfilScroll('showParrainageScreen');
-  var lockedHtml = '<div style="background:rgba(255,215,0,.04);border:1.5px solid rgba(255,215,0,.15);border-radius:16px;padding:24px;text-align:center;">'
-    +'<i class="fa-solid fa-user-plus" style="font-size:36px;color:#555;margin-bottom:12px;display:block;"></i>'
-    +'<div style="font-size:14px;font-weight:800;color:#888;margin-bottom:8px;">Programme de parrainage</div>'
-    +'<div style="font-size:12px;color:#555;line-height:1.7;">Atteignez le niveau <strong style="color:#FFD700;">Créateur</strong> (100 QG) pour débloquer votre code et inviter des amis.</div>'
-    +'</div>';
+  // Parrainage ouvert dès l'inscription (décision FA GENESIS, 2026-11-13) : le parrain n'est
+  // récompensé que lorsque son filleul termine une vraie prestation, aucun risque de faux comptes.
   var rankBtn = '<button onclick="showTopAmbassadeurs()" style="width:100%;margin-top:16px;background:#111;border:1px solid #2a2a2a;color:#888;border-radius:12px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;">'
     +'<i class="fa-solid fa-trophy" style="color:#FFD700;margin-right:7px;"></i>Voir le classement Top Ambassadeurs</button>';
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Parrainage</div></div>'
     +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
-    +(USER.badge ? referralBoxHtml() : lockedHtml)
+    +referralBoxHtml()
     +rankBtn
     +'</div></div>';
 }
@@ -9587,7 +9584,8 @@ function showGenesisMissions(){
   var c = document.getElementById('profilContent'); if(!c) return;
   if(!USER || GUEST){ renderProfil(); return; }
   _saveProfilScroll('showGenesisMissions');
-  var _gmLocked = !USER.badge;
+  // Missions ouvertes dès l'inscription (2026-11-13) : leurs points étaient déjà crédités sans niveau.
+  var _gmLocked = false;
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Missions GENESIS</div></div>'
     +(_gmLocked
@@ -9632,7 +9630,8 @@ function showGenesisMissions(){
           +'</div>';
       }
       // Bannière d'invitation pour les filleuls sans niveau Créateur
-      var _filleulUnlock = USER.referralBonusQG && !USER.badge;
+      // Ancien bandeau « Atteignez Créateur pour démarrer les missions » : missions ouvertes à tous.
+      var _filleulUnlock = false;
       var _filleulBanner = _filleulUnlock
         ? '<div style="background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">'
           +'<i class="fa-solid fa-gift" style="color:#FFD700;font-size:16px;flex-shrink:0;"></i>'
@@ -10148,17 +10147,8 @@ function renderProfil(){
     ? '<button class="plus-logout" onclick="deconnexion()">Déconnexion</button>' : '';
 
   var _referralSection = '';
-  if (USER && !GUEST) {
-    if (USER.badge) {
-      _referralSection = referralBoxHtml();
-    } else {
-      _referralSection = '<div class="ref-box-v2" style="opacity:.55;pointer-events:none;user-select:none;">'
-        + '<div class="ref-box-v2-title"><i class="fa-solid fa-lock" style="color:#333;"></i> Parrainage</div>'
-        + '<div style="font-size:12px;color:#444;text-align:center;padding:8px 0 4px;">&#128274; Atteignez le niveau <strong style="color:#555;">Créateur</strong> (100 QG) pour débloquer le programme de parrainage.</div>'
-        + '<button class="ref-box-v2-share" onclick="showClientLevels()" style="background:#1a1a1a;color:#555;border-color:#1e1e1e;pointer-events:auto;"><i class="fa-solid fa-crown"></i> Voir mes niveaux</button>'
-        + '</div>';
-    }
-  }
+  // Code de parrainage visible dès l'inscription (2026-11-13).
+  if (USER && !GUEST) _referralSection = referralBoxHtml();
   c.innerHTML = header + monEspace + espacePartenaire + params + infos + _referralSection + accountMgmtClient + logout
     + _genesisVersionFooter();
 }
@@ -13163,7 +13153,7 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     var _luIconMap = { bronze: 'fa-fire', argent: 'fa-bolt', or: 'fa-crown', elite: 'fa-infinity' };
     var _luIconClass = _luIconMap[levelIcon] || 'fa-crown';
     var _luAdvMap = {
-      bronze: ['Programme de parrainage','Missions GENESIS','Patrimoine GENESIS','Jérémie IA personnalisé'],
+      bronze: ['Personnalisation du profil','Patrimoine GENESIS','Jérémie IA personnalisé'],
       argent: ['Webinaires & ateliers GENESIS','Alertes prioritaires','Campagnes & jeux concours','Jérémie IA Plus'],
       or:     ['Événements privés & networking GENESIS','Accès bêta & avant-première','Priorité événements','Jérémie IA Pro'],
       elite:  ['Invitations VIP aux événements GENESIS','Accès anticipé aux nouvelles fonctionnalités de l\'application GENESIS','Cadeau annuel de fidélité','Jérémie IA Expert']
