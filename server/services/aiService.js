@@ -117,8 +117,71 @@ function summarizeQuoteRequest(systemPrompt, requestText) {
     });
 }
 
+// ============================================================
+// BROUILLON DE RÉPONSE À UN MESSAGE DU FORMULAIRE DE CONTACT (admin, 2026-11-14)
+// Rédige seulement : l'envoi reste une action de l'équipe dans l'admin. Sortie structurée
+// (catégorie + brouillon + passages à compléter) ; repli automatique si le modèle refuse.
+// ============================================================
+var CONTACT_DRAFT_MODEL = 'claude-opus-5-5';
+var CONTACT_CATEGORIES = ['client', 'futur_prestataire', 'partenariat', 'presse', 'demarchage', 'support', 'autre'];
+var CONTACT_DRAFT_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['category', 'category_note', 'language', 'draft', 'to_complete', 'recommend_no_reply'],
+    properties: {
+        category: { type: 'string', enum: CONTACT_CATEGORIES },
+        category_note: { type: 'string' },
+        language: { type: 'string' },
+        draft: { type: 'string' },
+        to_complete: { type: 'array', items: { type: 'string' } },
+        recommend_no_reply: { type: 'boolean' }
+    }
+};
+
+/**
+ * @param {string} systemPrompt - règles et faits GENESIS (construits par server.js)
+ * @param {string} userContent - le message reçu (balisé comme donnée) + consigne éventuelle de l'équipe
+ * @returns {Promise<Object>} { success, result:{category,...}, model, usage } ou { success:false, unavailable, error }
+ */
+function draftContactReply(systemPrompt, userContent) {
+    var client = _getAnthropicClient();
+    if (!client) return Promise.resolve({ success: false, unavailable: true, error: 'Clé API Claude absente.' });
+    var params = {
+        model: CONTACT_DRAFT_MODEL,
+        max_tokens: 8000,
+        output_config: { effort: 'medium', format: { type: 'json_schema', schema: CONTACT_DRAFT_SCHEMA } },
+        system: systemPrompt,
+        messages: [{ role: 'user', content: String(userContent || '') }]
+    };
+    // Avec repli automatique si le modèle refuse ; si l'API rejette la combinaison (400),
+    // nouvelle tentative simple, sans repli.
+    return client.beta.messages.create(Object.assign({ betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' }, params), { timeout: 90000 })
+    .catch(function(err) {
+        if (Anthropic && err instanceof Anthropic.BadRequestError) {
+            console.warn('[CONTACT-IA] 400 avec repli, nouvelle tentative sans :', err.message);
+            return client.messages.create(params, { timeout: 90000 });
+        }
+        throw err;
+    }).then(function(response) {
+        if (response.stop_reason === 'refusal') return { success: false, error: 'Le modèle a refusé de rédiger une réponse à ce message.' };
+        if (response.stop_reason === 'max_tokens') return { success: false, error: 'Réponse incomplète, réessayez.' };
+        var text = (response.content || []).filter(function(b) { return b.type === 'text'; })
+            .map(function(b) { return b.text; }).join('').trim();
+        var parsed = null;
+        try { parsed = JSON.parse(text); } catch (e) {}
+        if (!parsed || typeof parsed.draft !== 'string') return { success: false, error: 'Réponse illisible, réessayez.' };
+        if (CONTACT_CATEGORIES.indexOf(parsed.category) === -1) parsed.category = 'autre';
+        if (!Array.isArray(parsed.to_complete)) parsed.to_complete = [];
+        return { success: true, result: parsed, model: response.model, usage: response.usage };
+    }).catch(function(err) {
+        var label = (Anthropic && err instanceof Anthropic.APIError && err.status) ? 'API ' + err.status + ' : ' : '';
+        return { success: false, error: label + ((err && err.message) || String(err)) };
+    });
+}
+
 module.exports = {
     askJeremie: askJeremie,
     isJeremieAvailable: isJeremieAvailable,
-    summarizeQuoteRequest: summarizeQuoteRequest
+    summarizeQuoteRequest: summarizeQuoteRequest,
+    draftContactReply: draftContactReply
 };

@@ -3657,6 +3657,76 @@
             updateMsgBulkBar(filtered);
         }
 
+        // ── AGENT IA : brouillon de réponse (l'équipe relit et envoie) ──────────────
+        function _aiDraftRender(messageId, d, loading, error) {
+            var panel = document.getElementById('aiDraftPanel');
+            if (!panel) return;
+            panel.style.display = 'block';
+            var box = 'background:#13112a;border:1px solid #4c1d95;border-radius:10px;padding:14px 16px;color:#ddd6fe;font-size:13px;line-height:1.5;';
+            if (loading) {
+                panel.innerHTML = '<div style="' + box + '"><i class="fas fa-spinner fa-spin mr-2"></i>L\u2019IA rédige un brouillon… (10 à 30 secondes)</div>';
+                return;
+            }
+            if (error) {
+                panel.innerHTML = '<div style="' + box + 'border-color:#7f1d1d;color:#fca5a5;"><i class="fas fa-triangle-exclamation mr-2"></i>' + _escHtml(error) +
+                    ' <button onclick="aiDraftGenerate(\'' + messageId + '\')" style="margin-left:8px;background:#262626;color:#e0e0e0;border:1px solid #444;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;">Réessayer</button></div>';
+                return;
+            }
+            var chipColor = d.category === 'demarchage' ? '#f59e0b' : (d.category === 'support' ? '#60a5fa' : '#a78bfa');
+            var html = '<div style="' + box + '">' +
+                '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px;">' +
+                    '<span style="font-size:11px;font-weight:900;letter-spacing:.5px;color:#a78bfa;"><i class="fas fa-wand-magic-sparkles mr-1"></i>BROUILLON IA</span>' +
+                    '<span style="border:1px solid ' + chipColor + ';color:' + chipColor + ';border-radius:20px;padding:1px 10px;font-size:11px;font-weight:800;">' + _escHtml(d.category_label || '') + '</span>' +
+                    (d.language ? '<span style="color:#8b8aa8;font-size:11px;">Langue : ' + _escHtml(d.language) + '</span>' : '') +
+                '</div>' +
+                (d.category_note ? '<div style="margin-bottom:6px;">' + _escHtml(d.category_note) + '</div>' : '') +
+                (d.recommend_no_reply ? '<div style="color:#fbbf24;font-weight:700;margin-bottom:6px;"><i class="fas fa-circle-info mr-1"></i>L\u2019IA conseille de ne pas forcément répondre. Le brouillon ci-dessous est un refus poli, si vous souhaitez répondre.</div>' : '') +
+                (d.to_complete && d.to_complete.length ? '<div style="color:#fca5a5;margin-bottom:6px;"><i class="fas fa-pen-to-square mr-1"></i>À compléter avant l\u2019envoi : ' + d.to_complete.map(_escHtml).join(' · ') + '</div>' : '') +
+                '<div style="color:#8b8aa8;font-size:12px;margin-bottom:10px;">Relisez et modifiez le texte ci-dessous : il ne part que lorsque vous cliquez sur ENVOYER. « Bonjour » et la signature sont ajoutés automatiquement à l\u2019e-mail.</div>' +
+                '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">' +
+                    '<button onclick="aiDraftGenerate(\'' + messageId + '\')" style="background:#262626;color:#e0e0e0;border:1px solid #444;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;"><i class="fas fa-rotate mr-1"></i>Autre version</button>' +
+                    '<button onclick="aiDraftGenerate(\'' + messageId + '\',\'Plus court.\')" style="background:#262626;color:#e0e0e0;border:1px solid #444;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;">Plus court</button>' +
+                    '<button onclick="aiDraftGenerate(\'' + messageId + '\',\'Plus chaleureux.\')" style="background:#262626;color:#e0e0e0;border:1px solid #444;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;">Plus chaleureux</button>' +
+                    '<input id="aiDraftInstruction" type="text" maxlength="300" placeholder="Votre consigne (ex. : proposer un appel)" style="flex:1;min-width:180px;background:#0f0f0f;color:#e0e0e0;border:1px solid #444;border-radius:6px;padding:5px 8px;font-size:12px;">' +
+                    '<button onclick="aiDraftGenerate(\'' + messageId + '\',(document.getElementById(\'aiDraftInstruction\')||{}).value)" style="background:#4c1d95;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;">Appliquer</button>' +
+                '</div></div>';
+            panel.innerHTML = html;
+        }
+        function aiDraftOpen(messageId) {
+            var msg = allMessages.find(function(m) { return m.id === messageId; });
+            var form = document.getElementById('replyFormContainer');
+            if (form) form.style.display = 'block';
+            var tgl = document.getElementById('replyToggleBtn'); if (tgl) tgl.style.display = 'none';
+            var b = document.getElementById('aiDraftBtn'); if (b) b.style.display = 'none';
+            if (msg && msg.ai_draft) {
+                _aiDraftRender(messageId, msg.ai_draft);
+                var ta = document.getElementById('replyTextarea');
+                if (ta && !ta.value.trim()) ta.value = msg.ai_draft.text || '';
+            } else {
+                aiDraftGenerate(messageId);
+            }
+        }
+        async function aiDraftGenerate(messageId, instruction) {
+            var ta = document.getElementById('replyTextarea');
+            if (ta && ta.value.trim() && !confirm('Remplacer le texte actuel par un nouveau brouillon de l\u2019IA ?')) return;
+            _aiDraftRender(messageId, null, true);
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/messages/' + encodeURIComponent(messageId) + '/ai-draft', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ instruction: String(instruction || '').trim() })
+                });
+                var data = await resp.json();
+                if (!resp.ok || !data.success) { _aiDraftRender(messageId, null, false, data.error || 'Brouillon impossible pour le moment.'); return; }
+                var msg = allMessages.find(function(m) { return m.id === messageId; });
+                if (msg) msg.ai_draft = data.draft;
+                _aiDraftRender(messageId, data.draft);
+                ta = document.getElementById('replyTextarea');
+                if (ta) { ta.value = data.draft.text || ''; ta.focus(); }
+            } catch (e) {
+                _aiDraftRender(messageId, null, false, 'Erreur de connexion au serveur.');
+            }
+        }
+
         async function openMessage(messageId) {
             var msg = allMessages.find(function(m) { return m.id === messageId; });
             if (!msg) return;
@@ -3693,13 +3763,14 @@
                     '<p style="white-space:pre-wrap;font-size:15px;line-height:1.6;color:#e8e8e8;word-break:break-word;">' + _e(msg.message) + '</p>' +
                 '</div>' +
                 '<div id="replyFormContainer" style="display:none;margin:20px 0;">' +
+                    '<div id="aiDraftPanel" style="display:none;margin-bottom:12px;"></div>' +
                     '<label class="text-sm font-black uppercase opacity-60 block mb-2"><i class="fas fa-pen mr-1"></i>Votre r\u00e9ponse :</label>' +
-                    '<textarea id="replyTextarea" rows="6" style="width:100%;padding:15px;border:4px solid black;font-size:14px;font-family:inherit;resize:vertical;background:#fff;" placeholder="\u00c9crivez votre r\u00e9ponse ici..."></textarea>' +
+                    '<textarea id="replyTextarea" rows="8" style="width:100%;padding:15px;border:1px solid #555;border-radius:8px;font-size:14px;line-height:1.6;font-family:inherit;resize:vertical;background:#0f0f0f;color:#f0f0f0;" placeholder="\u00c9crivez votre r\u00e9ponse ici..."></textarea>' +
                     '<div class="flex gap-3 mt-3">' +
                         '<button onclick="sendReply(\'' + msg.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm" id="sendReplyBtn">' +
                             '<i class="fas fa-paper-plane mr-2"></i>ENVOYER' +
                         '</button>' +
-                        '<button onclick="document.getElementById(\'replyFormContainer\').style.display=\'none\';document.getElementById(\'replyToggleBtn\').style.display=\'inline-block\';" class="px-6 py-3 text-sm font-black" style="background:#262626;color:#e0e0e0;border:1px solid #444;">' +
+                        '<button onclick="document.getElementById(\'replyFormContainer\').style.display=\'none\';document.getElementById(\'replyToggleBtn\').style.display=\'inline-block\';var _ab=document.getElementById(\'aiDraftBtn\');if(_ab)_ab.style.display=\'inline-block\';" class="px-6 py-3 text-sm font-black" style="background:#262626;color:#e0e0e0;border:1px solid #444;">' +
                             '<i class="fas fa-times mr-2"></i>ANNULER' +
                         '</button>' +
                     '</div>' +
@@ -3708,6 +3779,11 @@
                     '<button id="replyToggleBtn" onclick="document.getElementById(\'replyFormContainer\').style.display=\'block\';this.style.display=\'none\';document.getElementById(\'replyTextarea\').focus();" class="neo-btn-yellow px-6 py-3 text-sm">' +
                         '<i class="fas fa-reply mr-2"></i>RÉPONDRE PAR EMAIL' +
                     '</button>' +
+                    // Agent IA : rédige un brouillon, l'envoi reste manuel (bouton ENVOYER).
+                    (msg.status === 'spam' ? '' :
+                    '<button id="aiDraftBtn" onclick="aiDraftOpen(\'' + msg.id + '\')" class="px-6 py-3 text-sm font-black" style="background:#1e1b4b;color:#c4b5fd;border:1px solid #6d28d9;">' +
+                        '<i class="fas fa-wand-magic-sparkles mr-2"></i>' + (msg.ai_draft ? 'VOIR LE BROUILLON IA' : 'PROPOSER UNE RÉPONSE (IA)') +
+                    '</button>') +
                     (msg.status === 'spam'
                         ? '<button onclick="updateMessageStatus(\'' + msg.id + '\', \'read\');closeClientModal()" class="px-6 py-3 text-sm font-black" style="background:#262626;color:#e0e0e0;border:1px solid #444;">' +
                             '<i class="fas fa-check mr-2"></i>CE N\u2019EST PAS INDÉSIRABLE' +
@@ -3761,6 +3837,10 @@
         async function sendReply(messageId) {
             var textarea = document.getElementById('replyTextarea');
             var replyMessage = textarea.value.trim();
+            if (/\[\s*à compléter/i.test(replyMessage)) {
+                alert('Le brouillon contient encore un passage « [à compléter : …] ». Remplacez-le avant d\u2019envoyer.');
+                return;
+            }
 
             if (!replyMessage) {
                 alert('Veuillez \u00e9crire une r\u00e9ponse avant d\'envoyer.');
