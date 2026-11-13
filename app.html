@@ -2677,15 +2677,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261111l"></script>
-<script src="app-i18n-es.js?v=20261111l"></script>
-<script src="app-i18n-hi.js?v=20261111l"></script>
-<script src="app-i18n-pt.js?v=20261111l"></script>
-<script src="app-i18n-ja.js?v=20261111l"></script>
-<script src="app-i18n-zh.js?v=20261111l"></script>
-<script src="app-i18n-ar.js?v=20261111l"></script>
-<script src="app-i18n-it.js?v=20261111l"></script>
-<script src="app-i18n-de.js?v=20261111l"></script>
+<script src="app-i18n-en.js?v=20261113a"></script>
+<script src="app-i18n-es.js?v=20261113a"></script>
+<script src="app-i18n-hi.js?v=20261113a"></script>
+<script src="app-i18n-pt.js?v=20261113a"></script>
+<script src="app-i18n-ja.js?v=20261113a"></script>
+<script src="app-i18n-zh.js?v=20261113a"></script>
+<script src="app-i18n-ar.js?v=20261113a"></script>
+<script src="app-i18n-it.js?v=20261113a"></script>
+<script src="app-i18n-de.js?v=20261113a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -9888,6 +9888,7 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-route"></i>','#0a1200','Suivi des prestations',null,'showSuiviPrestations()')
       +pli('<i class="fa-solid fa-box-open"></i>','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('<i class="fa-solid fa-heart"></i>','#1a0014','Mes favoris',null,'showFavoris()')
+      +pli('<i class="fa-solid fa-tag"></i>','#1a0a0a','Offres promotionnelles',null,'_profilBackTarget=null;showAvantagesPartenaires()')
       +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions GENESIS',null,'showGenesisMissions()')
       +pli('<i class="fa-solid fa-trophy"></i>','#1a1400','Hall of Fame GENESIS',null,'showHallOfFameProfil()')
       +pli('<i class="fa-solid fa-gem"></i>','#0a1414','Patrimoine GENESIS',null,'showGenesisPatrimoine()')
@@ -12987,7 +12988,7 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     var _luIconClass = _luIconMap[levelIcon] || 'fa-crown';
     var _luAdvMap = {
       bronze: ['Programme de parrainage','Missions GENESIS','Patrimoine GENESIS','Jérémie IA personnalisé'],
-      argent: ['Offres promo prestataires','Webinaires & ateliers GENESIS','Alertes intelligentes','Campagnes & jeux concours','Jérémie IA Plus'],
+      argent: ['Webinaires & ateliers GENESIS','Alertes intelligentes','Campagnes & jeux concours','Jérémie IA Plus'],
       or:     ['Événements privés & networking GENESIS','Accès bêta & avant-première','Priorité événements','Jérémie IA Pro'],
       elite:  ['Invitations VIP aux événements GENESIS','Accès anticipé aux nouvelles fonctionnalités de l\'application GENESIS','Cadeau annuel de fidélité','Jérémie IA Expert']
     };
@@ -13231,20 +13232,21 @@ function showResumeMensuel() {
     });
 }
 
-// ── OFFRES PROMOTIONNELLES PRESTATAIRES (avantage Bâtisseur+) ──────
+// ── OFFRES PROMOTIONNELLES PRESTATAIRES ──────
+// Ouvert à tous les clients dès l'inscription (décision FA GENESIS, 2026-11-13) : ce n'est plus un
+// avantage du niveau Bâtisseur. Les mêmes promotions étaient déjà visibles de tous sur les fiches
+// et dans les notifications d'offres ; seul cet écran était verrouillé.
 function showAvantagesPartenaires() {
   var c = document.getElementById('profilContent'); if(!c) return;
   _saveProfilScroll('showAvantagesPartenaires');
-  var _argentBadges = ['argent','or','elite'];
-  if(!USER || GUEST || _argentBadges.indexOf(USER.badge) === -1){
+  if(!USER || GUEST){
     c.innerHTML = '<div class="espace-view">'
       +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Offres promotionnelles</div></div>'
       +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
       +'<div style="background:rgba(59,130,246,.06);border:1.5px solid rgba(59,130,246,.2);border-radius:16px;padding:28px 20px;text-align:center;margin-top:20px;">'
-      +'<i class="fa-solid fa-lock" style="color:#60a5fa;font-size:28px;margin-bottom:12px;display:block;"></i>'
-      +'<div style="font-size:14px;font-weight:900;color:#60a5fa;margin-bottom:8px;">Niveau Bâtisseur requis</div>'
-      +'<div style="font-size:12px;color:#555;line-height:1.6;">Les offres promotionnelles sont accessibles à partir de <strong style="color:#60a5fa;">300 Points QG</strong>.</div>'
-      +'<button onclick="showClientLevels()" style="margin-top:18px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:12px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-bolt"></i> Voir mes niveaux</button>'
+      +'<i class="fa-solid fa-tag" style="color:#60a5fa;font-size:28px;margin-bottom:12px;display:block;"></i>'
+      +'<div style="font-size:14px;font-weight:900;color:#60a5fa;margin-bottom:8px;">Offres des prestataires</div>'
+      +'<div style="font-size:12px;color:#aaa;line-height:1.6;">Créez votre compte gratuit pour voir les offres en cours des prestataires GENESIS.</div>'
       +'</div></div></div>';
     return;
   }
@@ -13258,7 +13260,7 @@ function showAvantagesPartenaires() {
       var el = document.getElementById('avantages-ptnr-content'); if(!el) return;
       var promos = (data && data.promotions) || [];
       var html = '<div style="background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.15);border-radius:14px;padding:14px;margin-bottom:16px;">';
-      html += '<div style="font-size:12px;color:#ccc;line-height:1.6;">Les prestataires FA GENESIS proposent des avantages exclusifs réservés aux membres Bâtisseur et plus. Ces offres sont mises à jour régulièrement.</div>';
+      html += '<div style="font-size:12px;color:#ccc;line-height:1.6;">Les prestataires GENESIS publient ici leurs offres en cours. Elles sont mises à jour régulièrement.</div>';
       html += '</div>';
       if(!promos.length) {
         html += '<div class="espace-empty"><i class="fa-solid fa-tag" style="font-size:28px;color:#2a2a2a;margin-bottom:8px;"></i><div>Aucune offre disponible pour le moment.</div><div style="font-size:11px;color:#444;margin-top:4px;">Revenez régulièrement — les partenaires publient de nouvelles offres.</div></div>';
