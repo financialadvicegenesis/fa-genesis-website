@@ -2715,15 +2715,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261114c"></script>
-<script src="app-i18n-es.js?v=20261114c"></script>
-<script src="app-i18n-hi.js?v=20261114c"></script>
-<script src="app-i18n-pt.js?v=20261114c"></script>
-<script src="app-i18n-ja.js?v=20261114c"></script>
-<script src="app-i18n-zh.js?v=20261114c"></script>
-<script src="app-i18n-ar.js?v=20261114c"></script>
-<script src="app-i18n-it.js?v=20261114c"></script>
-<script src="app-i18n-de.js?v=20261114c"></script>
+<script src="app-i18n-en.js?v=20261114d"></script>
+<script src="app-i18n-es.js?v=20261114d"></script>
+<script src="app-i18n-hi.js?v=20261114d"></script>
+<script src="app-i18n-pt.js?v=20261114d"></script>
+<script src="app-i18n-ja.js?v=20261114d"></script>
+<script src="app-i18n-zh.js?v=20261114d"></script>
+<script src="app-i18n-ar.js?v=20261114d"></script>
+<script src="app-i18n-it.js?v=20261114d"></script>
+<script src="app-i18n-de.js?v=20261114d"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -9145,11 +9145,13 @@ function referralBoxHtml(){
     + '<button class="ref-box-v2-copy" onclick="copyReferralCode()">Copier</button>'
     + '</div></div>'
     + '<button class="ref-box-v2-share" onclick="shareReferralCode()"><i class="fa-solid fa-share-nodes"></i> Inviter un ami</button>'
-    + '<div style="background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.15);border-radius:14px;padding:16px;margin-top:16px;">'
+    // Récompense = missions Communauté uniquement (pas de +100 QG par filleul) — décision 2026-11-11.
+    + '<div style="background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.15);border-radius:14px;padding:16px;margin-top:16px;text-align:center;">'
     + '<div style="font-size:10px;color:#888;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Parrainages validés</div>'
-    + '<div style="font-size:44px;font-weight:900;color:#FFD700;line-height:1;margin-bottom:10px;">'+count+'</div>'
-    + '<div style="font-size:11px;color:#888;margin-bottom:5px;">Chaque parrainage validé vous rapporte :</div>'
-    + '<div style="font-size:13px;color:#4caf50;font-weight:800;"><i class="fa-solid fa-circle-check" style="margin-right:5px;"></i>+100 Points QG</div>'
+    + '<div data-i18n-skip style="font-size:44px;font-weight:900;color:#FFD700;line-height:1;margin-bottom:10px;">'+count+'</div>'
+    + '<div style="font-size:11px;color:#888;margin-bottom:5px;">Chaque parrainage validé fait avancer vos missions Communauté :</div>'
+    + '<div style="font-size:13px;color:#4caf50;font-weight:800;line-height:1.5;"><i class="fa-solid fa-circle-check" style="margin-right:5px;"></i>+100 QG au 1er filleul, puis +300 à 5, +500 à 10, +1 000 à 25 et +2 000 à 50</div>'
+    + '<div style="font-size:10px;color:#666;margin-top:8px;line-height:1.5;">Un parrainage est validé quand votre filleul termine sa première prestation.</div>'
     + '</div></div>';
 }
 // navigator.clipboard/navigator.share ne sont pas fiables dans la WebView Android
@@ -9748,7 +9750,8 @@ function showGenesisPatrimoine(){
   // chiffres du client ; ce n'est plus un avantage du niveau Créateur.
   var p = USER.patrimoineGenesis || {};
   var level = USER.genesisLevel || {label:'Explorateur',icon:'fa-seedling'};
-  var ancienneteLabel = (p.ancienneteJours||0) >= 30 ? Math.floor((p.ancienneteJours||0)/30)+' '+_tr('mois') : (p.ancienneteJours||0)+' '+_tr('jours');
+  var _jrs = p.ancienneteJours||0;
+  var ancienneteLabel = _jrs >= 30 ? Math.floor(_jrs/30)+' '+_tr('mois') : _jrs+' '+_tr(_jrs <= 1 ? 'jour' : 'jours');
   var cards = [
     {icon:'fa-chart-line', label:'Quotient Genesis', value: USER.genesisPoints||0},
     {icon:'fa-receipt', label:'Commandes effectuées', value: p.prestationsRealisees||0},
