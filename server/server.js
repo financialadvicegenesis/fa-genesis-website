@@ -12175,7 +12175,6 @@ app.get('/api/client/level-progress', function(req, res) {
             // les avantages des précédents, donc aucune répétition d'un niveau à l'autre.
             bronze: [
                 { id: 'profil_perso',       label: 'Personnalisation du profil (thème, bannière, bio enrichie)' },
-                { id: 'patrimoine_genesis', label: 'Patrimoine GENESIS' },
                 { id: 'suggestions_ia',     label: 'Jérémie vous propose des prestataires précis, adaptés à votre demande' }
             ],
             argent: [
