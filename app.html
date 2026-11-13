@@ -2715,15 +2715,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261113h"></script>
-<script src="app-i18n-es.js?v=20261113h"></script>
-<script src="app-i18n-hi.js?v=20261113h"></script>
-<script src="app-i18n-pt.js?v=20261113h"></script>
-<script src="app-i18n-ja.js?v=20261113h"></script>
-<script src="app-i18n-zh.js?v=20261113h"></script>
-<script src="app-i18n-ar.js?v=20261113h"></script>
-<script src="app-i18n-it.js?v=20261113h"></script>
-<script src="app-i18n-de.js?v=20261113h"></script>
+<script src="app-i18n-en.js?v=20261114a"></script>
+<script src="app-i18n-es.js?v=20261114a"></script>
+<script src="app-i18n-hi.js?v=20261114a"></script>
+<script src="app-i18n-pt.js?v=20261114a"></script>
+<script src="app-i18n-ja.js?v=20261114a"></script>
+<script src="app-i18n-zh.js?v=20261114a"></script>
+<script src="app-i18n-ar.js?v=20261114a"></script>
+<script src="app-i18n-it.js?v=20261114a"></script>
+<script src="app-i18n-de.js?v=20261114a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -6808,6 +6808,17 @@ function rankedDirectoryCard(p){
 
 // ── ÉVÉNEMENTS FA GENESIS (Explorer) ─────────────────────────────
 var EVENT_TYPE_LABELS_DIR = {workshop:'Workshop', webinaire:'Webinaire', atelier:'Atelier', conference:'Conférence', soiree:'Soirée', masterclass:'Masterclass'};
+// Événements réservés à un niveau (privés Visionnaire, VIP Générateur…) — vérifié aussi par le serveur.
+var EV_LEVEL_RANK = {bronze:1, argent:2, or:3, elite:4};
+var EV_ACCESS_CHIP = {argent:'Bâtisseur+', or:'Visionnaire+', elite:'Générateur'};
+var EV_ACCESS_TEXT = {argent:'Réservé aux membres Bâtisseur et plus', or:'Réservé aux membres Visionnaire et plus', elite:'Réservé aux membres Générateur'};
+var EV_ACCESS_REQUIRED = {argent:'Niveau Bâtisseur requis', or:'Niveau Visionnaire requis', elite:'Niveau Générateur requis'};
+function _evUserBadge(){ return USER && !GUEST ? (USER.badge || USER.currentBadge || null) : null; }
+function _evCanAccess(ev){
+  var acc = ev && ev.access_level;
+  if(!acc || !EV_LEVEL_RANK[acc]) return true;
+  return (EV_LEVEL_RANK[_evUserBadge()] || 0) >= EV_LEVEL_RANK[acc];
+}
 var _eventsCache = {};
 function eventDateLabel(iso){
   if(!iso) return '';
@@ -6828,8 +6839,11 @@ function eventCard(ev){
       ? '<div style="position:absolute;top:4px;right:4px;background:#ff6b6b;color:#fff;font-size:9px;font-weight:800;border-radius:6px;padding:2px 6px;letter-spacing:.5px;">COMPLET</div>'
       : '<div style="position:absolute;top:4px;right:4px;background:'+badgeColor+';color:#fff;font-size:9px;font-weight:800;border-radius:6px;padding:2px 6px;">'+spotsLeft+' place'+(spotsLeft>1?'s':'')+'</div>';
   }
+  var accessChip = (ev.access_level && EV_ACCESS_CHIP[ev.access_level])
+    ? '<div style="position:absolute;top:4px;left:4px;background:rgba(168,85,247,.92);color:#fff;font-size:9px;font-weight:800;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:3px;"><i class="fa-solid '+(_evCanAccess(ev)?'fa-crown':'fa-lock')+'" style="font-size:8px;"></i>'+_tr(EV_ACCESS_CHIP[ev.access_level])+'</div>'
+    : '';
   return '<div class="p-event-card" onclick="openEventDetail(\''+ev.id+'\')" style="position:relative;">'
-    +capacityBadge
+    +capacityBadge+accessChip
     +'<div class="p-event-tag">'+typeLabel+'</div>'
     +'<div class="p-event-photo">'+photoHtml+'</div>'
     +'<div class="p-event-body">'
@@ -6875,9 +6889,20 @@ function openEventDetail(eventId){
         +'</div>';
     }
   }
+  var accessInfo = '';
+  var canAccess = _evCanAccess(ev);
+  if(ev.access_level && EV_ACCESS_TEXT[ev.access_level]){
+    accessInfo = '<div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:#c084fc;display:flex;align-items:center;gap:8px;">'
+      +'<i class="fa-solid '+(canAccess?'fa-crown':'fa-lock')+'"></i><span>'+_tr(EV_ACCESS_TEXT[ev.access_level])+'</span>'
+      +(USER && !GUEST && canAccess ? '<span style="color:#4caf50;margin-left:auto;font-size:11px;">'+_tr('Vous êtes invité(e)')+'</span>' : '')
+      +'</div>';
+  }
   var rsvpHtml = '';
   if(USER && !GUEST){
-    if(isFull && !isVisionnaire){
+    if(!canAccess){
+      rsvpHtml = '<button class="detail-cta" disabled style="opacity:.5;cursor:not-allowed;"><i class="fa-solid fa-lock"></i> '+_tr(EV_ACCESS_REQUIRED[ev.access_level])+'</button>'
+        +'<button class="detail-close-btn" onclick="closeDetail();nav(\'profil\');setTimeout(function(){ if(typeof showClientLevels===\'function\') showClientLevels(); },400);"><i class="fa-solid fa-crown"></i> '+_tr('Voir mes niveaux')+'</button>';
+    } else if(isFull && !isVisionnaire){
       rsvpHtml = '<button class="detail-cta" disabled style="opacity:.4;cursor:not-allowed;"><i class="fa-solid fa-circle-xmark"></i> Complet</button>';
     } else {
       var rsvpLabel = isFull && isVisionnaire ? '<i class="fa-solid fa-crown"></i> Inscription prioritaire' : '<i class="fa-solid fa-check"></i> Je participe';
@@ -6890,6 +6915,7 @@ function openEventDetail(eventId){
     +'<div class="detail-sub">'+typeLabel+'</div>'
     +'<div class="detail-price">'+eventDateLabel(ev.date)+'</div>'
     +(ev.location?'<div class="detail-payment"><i class="fa-solid fa-location-dot"></i> '+ev.location+'</div>':'')
+    +accessInfo
     +capacityInfo
     +(ev.description?'<div class="p-dir-detail-bio">'+ev.description+'</div>':'')
     +rsvpHtml
@@ -6905,7 +6931,9 @@ function rsvpEvent(eventId){
     method:'POST', headers:{'Authorization':'Bearer '+USER._token}
   }).then(function(r){ return r.json().then(function(d){ return {status:r.status, data:d}; }); })
   .then(function(res){
-    if(res.status === 409 && res.data.full){
+    if(res.status === 403 && res.data.level_required){
+      if(btn){ btn.disabled = true; btn.style.opacity = '.5'; btn.innerHTML = '<i class="fa-solid fa-lock"></i> '+_tr(EV_ACCESS_REQUIRED[res.data.access_level] || 'Niveau requis'); }
+    } else if(res.status === 409 && res.data.full){
       if(btn){ btn.disabled = false; btn.style.background='rgba(255,107,107,.15)'; btn.style.color='#ff6b6b'; btn.style.borderColor='rgba(255,107,107,.3)'; btn.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Complet'; btn.disabled = true; }
     } else if(res.data.success || res.data.alreadyRsvp){
       if(btn){ btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Inscrit'; btn.disabled = true; }
@@ -13492,6 +13520,7 @@ function showAlertesIA() {
     +'<div style="font-size:12px;color:#9ecbe8;line-height:1.6;">'
     +'<i class="fa-solid fa-bell" style="margin-right:6px;"></i>'
     +'Choisissez les types de prestataires qui vous intéressent. Vous serez alerté en priorité dès qu\'un nouveau prestataire de ces catégories rejoint GENESIS.'
+    +'<div style="margin-top:6px;color:#7fa9c7;">Pour les recevoir aussi sur votre téléphone, activez <strong style="color:#ccc;">Nouveautés et promos</strong> dans votre profil.</div>'
     +'</div></div>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">';
   _alCatsList.forEach(function(cat){
@@ -13570,7 +13599,7 @@ function showAvantPremiere() {
     +'<span>Dès qu\'une nouvelle fonctionnalité GENESIS est lancée, vous en êtes informé immédiatement dans vos notifications.</span></div>'
     +'<div style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#aaa;">'
     +'<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:2px;flex-shrink:0;"></i>'
-    +'<span>Les membres sans niveau ou au niveau Créateur reçoivent la même notification <strong style="color:#ccc;">24h plus tard</strong>.</span></div>'
+    +'<span>Les autres membres reçoivent la même notification <strong style="color:#ccc;">24h plus tard</strong>.</span></div>'
     +'<div style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#aaa;">'
     +'<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:2px;flex-shrink:0;"></i>'
     +'<span>Pour la recevoir aussi sur votre téléphone, activez <strong style="color:#ccc;">Nouveautés et promos</strong> dans votre profil.</span></div>'
@@ -13603,12 +13632,12 @@ function showInvitationsVIP() {
     +'<div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px;">'
     +_gAdvRow('fa-crown','Accès VIP garanti','Votre place est réservée en priorité absolue à tous les événements GENESIS, même lorsque les places sont épuisées.')
     +_gAdvRow('fa-users','Espaces Générateur','Accès aux espaces et sessions réservés exclusivement aux membres Générateur lors des soirées et événements GENESIS.')
-    +_gAdvRow('fa-envelope','Invitation personnalisée','Vous recevez les invitations directement par email et notification, bien avant que l\'événement ne soit annoncé publiquement.')
+    +_gAdvRow('fa-envelope','Invitation personnalisée','Vous êtes invité à chaque événement GENESIS dès sa publication, y compris aux événements réservés aux Générateurs.')
     +_gAdvRow('fa-handshake','Networking de haut niveau','Rencontres en petit comité avec d\'autres Générateurs, partenaires premium et intervenants exclusifs de la plateforme.')
     +'</div>'
     +'<div style="background:#0a120a;border:1px solid #1a2e1a;border-radius:12px;padding:13px 15px;margin-bottom:16px;">'
     +'<div style="font-size:11px;color:#4caf50;font-weight:700;margin-bottom:8px;"><i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Comment ça marche ?</div>'
-    +'<div style="font-size:12px;color:#888;line-height:1.6;">Dès qu\'un événement GENESIS est programmé, vous êtes prévenu en premier par email et dans vos notifications. Pour les événements à capacité limitée, votre inscription est prioritaire — aucune place ne vous sera refusée.</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.6;">Dès qu\'un événement GENESIS est publié, vous recevez votre invitation dans vos notifications (et par email pour les événements à places limitées). Même complet, votre inscription reste ouverte : aucune place ne vous sera refusée.</div>'
     +'</div>'
     +'<button onclick="profilBack();setTimeout(goToEventsExplorer,100);" style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;color:#1a1200;cursor:pointer;"><i class="fa-solid fa-calendar-days"></i> Voir les événements GENESIS</button>'
     +'</div></div>';
@@ -18823,6 +18852,8 @@ function _handleNotifHash(hash, _retryCount){
     nav('reservations');
   } else if(hash === 'tab:wallet'){
     nav('profil'); setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
+  } else if(hash === 'client:campagnes'){
+    nav('profil'); setTimeout(function(){ if(typeof showCampagnesJeux==='function') showCampagnesJeux(); }, 600);
   } else if(hash === 'client:niveaux'){
     nav('profil'); setTimeout(function(){ if(typeof showClientLevels==='function') showClientLevels(); }, 600);
   } else if(hash === 'mes-contrats'){

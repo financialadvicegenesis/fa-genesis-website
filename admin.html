@@ -1391,6 +1391,16 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="mb-4">
+                            <label class="block font-black mb-2 uppercase text-sm">Accès</label>
+                            <select id="eventAccess">
+                                <option value="">Tous les membres</option>
+                                <option value="argent">Bâtisseur et plus</option>
+                                <option value="or">Visionnaire et plus (événement privé)</option>
+                                <option value="elite">Générateur uniquement (VIP)</option>
+                            </select>
+                            <p class="text-xs opacity-50 mt-1">Invitations envoyées à la publication : Générateur = tous les événements ; événement réservé = tous les membres du niveau ; Visionnaire+ = soirées et places limitées ; Bâtisseur+ = webinaires, ateliers, workshops, masterclasses. Les autres membres ne peuvent pas s'inscrire à un événement réservé.</p>
+                        </div>
                         <div class="grid md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block font-black mb-2 uppercase text-sm">Date</label>
@@ -1499,7 +1509,7 @@
                     </div>
                     <div class="mb-6 flex items-center gap-3">
                         <input type="checkbox" id="campagneActive" checked style="width:18px;height:18px;accent-color:var(--genesis-yellow);">
-                        <label for="campagneActive" class="font-black uppercase text-sm">Actif (visible pour les Bâtisseur+)</label>
+                        <label for="campagneActive" class="font-black uppercase text-sm">Actif (visible pour les Bâtisseur+ — ils sont prévenus à l'ouverture)</label>
                     </div>
                     <div class="flex gap-3">
                         <button onclick="saveCampagne()" class="neo-btn-yellow px-6 py-3 font-black uppercase text-sm"><i class="fas fa-save mr-2"></i>Enregistrer</button>
@@ -1521,15 +1531,9 @@
                 </div>
                 <div class="admin-card neo-shadow mb-6">
                     <h3 class="text-xl font-black uppercase mb-4"><i class="fas fa-bell mr-2"></i>Envoyer une annonce</h3>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-                        <div style="background:#1a1200;border:1px solid #3a2e00;border-radius:10px;padding:12px 14px;">
-                            <div style="font-size:11px;color:#FFD700;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-rocket mr-1"></i>Standard</div>
-                            <div style="font-size:11px;color:#888;line-height:1.5;"><strong style="color:#FFD700;">Bâtisseur+</strong> (argent/or/elite) : immédiat<br><strong style="color:#cd7f32;">Créateur/sans niveau</strong> : 24h plus tard</div>
-                        </div>
-                        <div style="background:#1a0000;border:1px solid #3a0000;border-radius:10px;padding:12px 14px;">
-                            <div style="font-size:11px;color:#a855f7;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-flask mr-1"></i>Expérimental</div>
-                            <div style="font-size:11px;color:#888;line-height:1.5;"><strong style="color:#a855f7;">Générateur</strong> (elite) : immédiat<br><strong style="color:#666;">Tous les autres</strong> : 24h plus tard</div>
-                        </div>
+                    <div style="background:#1a1200;border:1px solid #3a2e00;border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+                        <div style="font-size:11px;color:#FFD700;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-rocket mr-1"></i>Avant-première (avantage Visionnaire)</div>
+                        <div style="font-size:11px;color:#888;line-height:1.5;"><strong style="color:#FFD700;">Visionnaire et Générateur</strong> : immédiat<br><strong style="color:#cd7f32;">Tous les autres membres</strong> : 24h plus tard</div>
                     </div>
                     <div class="mb-4">
                         <label class="block font-black mb-2 uppercase text-sm">Titre *</label>
@@ -1542,15 +1546,6 @@
                     <div class="mb-4">
                         <label class="block font-black mb-2 uppercase text-sm">Lien (optionnel)</label>
                         <input type="text" id="nfLink" placeholder="/app.html ou https://...">
-                    </div>
-                    <div class="mb-4">
-                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px 14px;background:#120012;border:1px solid #2e0036;border-radius:10px;">
-                            <input type="checkbox" id="nfExperimental" style="width:17px;height:17px;margin-top:1px;cursor:pointer;flex-shrink:0;">
-                            <div>
-                                <div style="font-size:12px;font-weight:900;color:#c084fc;text-transform:uppercase;letter-spacing:.5px;"><i class="fas fa-flask mr-1"></i>Fonctionnalité expérimentale</div>
-                                <div style="font-size:11px;color:#666;margin-top:3px;line-height:1.5;">Réservé aux <strong style="color:#c084fc;">Générateurs</strong> en avant-première. Tous les autres membres recevront la notification 24h plus tard.</div>
-                            </div>
-                        </label>
                     </div>
                     <div id="nfFeedback" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;font-size:13px;font-weight:700;"></div>
                     <button onclick="sendFeatureAnnouncement()" class="neo-btn-yellow px-8 py-3 text-sm">
@@ -1572,6 +1567,7 @@
                 <p style="font-size:13px;color:#888;margin-bottom:20px;line-height:1.6;">
                     Vue en temps réel des clients par niveau GENESIS — utile avant d'envoyer des emails ciblés sur une nouvelle fonctionnalité.
                 </p>
+                <div id="loyaltyGiftsBox" style="margin-bottom:24px;"></div>
                 <div id="niveauxContent">
                     <p style="color:#888;text-align:center;padding:40px 0;"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</p>
                 </div>
@@ -2202,13 +2198,8 @@
                 if (result.success) {
                     if (fb) {
                         fb.style.background = 'rgba(76,175,80,.15)'; fb.style.color = '#4caf50';
-                        if (experimental) {
-                            fb.textContent = '🔬 Expérimental · Envoyé immédiatement à ' + result.immediate + ' Générateur(s). '
-                                + result.scheduled + ' autre(s) client(s) recevront la notification dans 24h.';
-                        } else {
-                            fb.textContent = '✓ Envoyé immédiatement à ' + result.immediate + ' client(s) Bâtisseur+. '
-                                + result.scheduled + ' client(s) Créateur/sans niveau recevront la notification dans 24h.';
-                        }
+                        fb.textContent = '✓ Envoyé immédiatement à ' + result.immediate + ' client(s) Visionnaire/Générateur. '
+                            + result.scheduled + ' autre(s) client(s) recevront la notification dans 24h.';
                         // Le push sur le téléphone ne part qu'aux clients ayant accepté « Nouveautés et promos »
                         // (dans la limite de 1 par jour / 3 par semaine) ; les autres la voient dans l'app.
                         fb.textContent += ' Sur le téléphone : ' + (result.pushed || 0) + ' maintenant (clients ayant accepté « Nouveautés et promos »). Les autres la voient dans leurs notifications de l’app.';
@@ -2225,9 +2216,62 @@
                 if (fb) { fb.style.background = 'rgba(255,0,0,.1)'; fb.style.color = '#ff6b6b'; fb.textContent = 'Erreur de connexion'; }
             }
         }
+        // Cadeau annuel de fidélité (avantage Générateur) : à préparer à la date anniversaire d'inscription.
+        async function loadLoyaltyGifts() {
+            var box = document.getElementById('loyaltyGiftsBox');
+            if (!box) return;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/loyalty-gifts');
+                var data = await resp.json();
+                if (!data.success) { box.innerHTML = ''; return; }
+                var gifts = data.gifts || [];
+                var esc = function(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+                var html = '<div class="admin-card neo-shadow" style="border:1.5px solid #FFD70044;">'
+                    + '<h3 style="font-size:15px;font-weight:900;color:#FFD700;margin:0 0 6px;"><i class="fas fa-gift mr-2"></i>CADEAUX DE FIDÉLITÉ — GÉNÉRATEURS <span style="color:#666;font-weight:400;font-size:13px;">(' + gifts.length + ')</span></h3>'
+                    + '<p style="font-size:12px;color:#888;margin:0 0 12px;">Un cadeau par an, à la date anniversaire de l\'inscription. Rappel dans vos notifications ' + (data.reminder_days || 14) + ' jours avant.</p>';
+                if (!gifts.length) {
+                    html += '<p style="font-size:12px;color:#555;">Aucun client n\'a encore atteint le niveau Générateur (1 000 QG).</p>';
+                } else {
+                    html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="color:#666;font-size:11px;">'
+                        + '<th style="text-align:left;padding:5px 10px;border-bottom:1px solid #2a2a2a;">CLIENT</th>'
+                        + '<th style="text-align:left;padding:5px 10px;border-bottom:1px solid #2a2a2a;">ANNIVERSAIRE</th>'
+                        + '<th style="text-align:left;padding:5px 10px;border-bottom:1px solid #2a2a2a;">STATUT</th>'
+                        + '<th style="padding:5px 10px;border-bottom:1px solid #2a2a2a;"></th></tr></thead><tbody>';
+                    gifts.forEach(function(g) {
+                        var when = g.anniversary ? new Date(g.anniversary).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+                        var status = g.sent_at ? '<span style="color:#4caf50;font-weight:800;">Envoyé le ' + new Date(g.sent_at).toLocaleDateString('fr-FR') + '</span>'
+                            : (g.to_prepare ? '<span style="color:#ff922b;font-weight:800;">À préparer (J-' + Math.max(0, g.days_until) + ')</span>'
+                            : '<span style="color:#888;">Dans ' + g.days_until + ' jours</span>');
+                        var btn = !g.year ? '' : (g.sent_at
+                            ? '<button onclick="markLoyaltyGift(\'' + g.id + '\',\'' + g.year + '\',false)" style="background:#262626;border:1px solid #444;border-radius:6px;color:#aaa;padding:4px 10px;font-size:11px;cursor:pointer;">Annuler</button>'
+                            : '<button onclick="markLoyaltyGift(\'' + g.id + '\',\'' + g.year + '\',true)" class="neo-btn-yellow" style="padding:4px 10px;font-size:11px;">Marquer envoyé</button>');
+                        html += '<tr style="border-bottom:1px solid #1e1e1e;">'
+                            + '<td style="padding:7px 10px;"><div style="font-weight:700;color:#ddd;">' + esc((g.prenom + ' ' + g.nom).trim() || '—') + '</div><div style="font-size:11px;color:#777;">' + esc(g.email) + '</div></td>'
+                            + '<td style="padding:7px 10px;color:#ccc;">' + when + '</td>'
+                            + '<td style="padding:7px 10px;">' + status + '</td>'
+                            + '<td style="padding:7px 10px;text-align:right;">' + btn + '</td></tr>';
+                    });
+                    html += '</tbody></table></div>';
+                }
+                box.innerHTML = html + '</div>';
+            } catch (e) {
+                box.innerHTML = '<p style="color:#ff6b6b;font-size:12px;">Cadeaux de fidélité : erreur de connexion au serveur.</p>';
+            }
+        }
+        async function markLoyaltyGift(id, year, sent) {
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/loyalty-gifts/' + encodeURIComponent(id), {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ year: year, sent: sent })
+                });
+                var r = await resp.json();
+                if (!r.success) alert('Erreur : ' + (r.error || 'inconnue'));
+            } catch (e) { alert('Erreur de connexion au serveur'); }
+            loadLoyaltyGifts();
+        }
         async function loadUsersByLevel() {
             var container = document.getElementById('niveauxContent');
             if (!container) return;
+            loadLoyaltyGifts();
             container.innerHTML = '<p style="color:#888;text-align:center;padding:40px 0;"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement en temps réel...</p>';
             try {
                 var resp = await fetch(API_BASE_URL + '/api/admin/users-by-level');
@@ -5159,6 +5203,7 @@
             document.getElementById('eventPublished').checked = true;
             document.getElementById('eventCapacityLimited').checked = false;
             document.getElementById('eventCapacity').value = '';
+            document.getElementById('eventAccess').value = '';
             document.getElementById('eventImage').value = '';
             var prev = document.getElementById('eventImagePreview');
             if (prev) prev.style.display = 'none';
@@ -5187,6 +5232,7 @@
             document.getElementById('eventPublished').checked = ev.published !== false;
             document.getElementById('eventCapacityLimited').checked = !!ev.capacity_limited;
             document.getElementById('eventCapacity').value = ev.capacity || '';
+            document.getElementById('eventAccess').value = ev.access_level || '';
             var prev = document.getElementById('eventImagePreview');
             var prevImg = document.getElementById('eventImagePreviewImg');
             if (ev.image && prev && prevImg) { prevImg.src = ev.image; prev.style.display = ''; }
@@ -5214,7 +5260,8 @@
                     link: document.getElementById('eventLink').value,
                     published: document.getElementById('eventPublished').checked,
                     capacity_limited: document.getElementById('eventCapacityLimited').checked,
-                    capacity: capacityVal ? parseInt(capacityVal, 10) : null
+                    capacity: capacityVal ? parseInt(capacityVal, 10) : null,
+                    access_level: document.getElementById('eventAccess').value
                 };
 
                 try {
@@ -5274,6 +5321,7 @@
                         '</div>' +
                         '<div>' +
                             '<span style="background:var(--genesis-yellow);color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + typeLabel.toUpperCase() + '</span>' +
+                            (ev.access_level ? ' <span style="background:#7c3aed;color:white;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + ({ argent: 'BÂTISSEUR+', or: 'VISIONNAIRE+', elite: 'GÉNÉRATEUR' }[ev.access_level] || '') + '</span>' : '') +
                         '</div>' +
                         '<div>' +
                             '<span style="background:' + statusColor + ';color:white;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +

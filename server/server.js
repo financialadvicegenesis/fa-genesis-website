@@ -7901,6 +7901,11 @@ app.get('/api/admin/genesis-projects', function(req, res) {
 // GET /api/campagnes — campagnes et jeux concours actifs (Bâtisseur+)
 app.get('/api/campagnes', function(req, res) {
     try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        if (!clientLevelAtLeast(clientCurrentBadge(user), 'argent')) {
+            return res.status(403).json({ ok: false, error: 'Niveau Bâtisseur requis', level_required: true, campagnes: [], jeux: [] });
+        }
         var all = loadCampagnes().filter(function(c) { return c.active !== false; });
         var campagnes = all.filter(function(c) { return c.type === 'campagne'; });
         var jeux = all.filter(function(c) { return c.type === 'jeu'; });
@@ -17581,6 +17586,17 @@ function getClientQGBadge(points) {
     return null;
 }
 
+// Niveau actuel d'un client (calculé, jamais stocké) et comparaison de niveaux.
+var CLIENT_LEVEL_RANK = { bronze: 1, argent: 2, or: 3, elite: 4 };
+var CLIENT_LEVEL_NAMES = { bronze: 'Créateur', argent: 'Bâtisseur', or: 'Visionnaire', elite: 'Générateur' };
+function clientCurrentBadge(user) {
+    try { return getClientQGBadge(getClientGenesisPoints(user, getClientCompletedOrders(user.email))); } catch (e) { return null; }
+}
+function clientLevelAtLeast(badge, min) {
+    if (!min) return true;
+    return (CLIENT_LEVEL_RANK[badge] || 0) >= (CLIENT_LEVEL_RANK[min] || 0);
+}
+
 function getClientQGBadgeProgress(points) {
     var p = parseInt(points) || 0;
     var currentBadge = getClientQGBadge(p);
@@ -18894,10 +18910,33 @@ function buildJeremieSystemPrompt(person, personType, language) {
                 lines.push('3. Vision strategique : aide-le a structurer une roadmap de contenu ou de croissance sur plusieurs mois. ' +
                     'Identifie les types de prestataires GENESIS a mobiliser selon les etapes, les budgets a prevoir, et les ' +
                     'indicateurs a surveiller. Va au-dela de la prestation unitaire : pense en termes de strategie globale.');
-                lines.push('4. Acces VIP et experimental : rappelle-lui proactivement les evenements VIP GENESIS disponibles, les ' +
-                    'fonctionnalites experimentales auxquelles il a acces en avant-premiere, et les opportunites exclusives de la ' +
-                    'plateforme reservees aux Generateurs. Sois son conseiller de reference, pas seulement un assistant de commande.');
+                lines.push('4. Acces VIP : rappelle-lui proactivement les evenements GENESIS de la liste ci-dessous (il est invite a ' +
+                    'tous, y compris ceux reserves aux Generateurs) et les nouveautes de l\'application qu\'il recoit en avant-premiere. ' +
+                    'Sois son conseiller de reference, pas seulement un assistant de commande.');
             }
+            // Événements réels à venir, avec le droit d'inscription de CE client (niveau d'accès de l'événement).
+            try {
+                var _evNow = Date.now();
+                var _evs = loadEvents().filter(function(e) { return e.published !== false && new Date(e.date).getTime() >= _evNow; })
+                    .sort(function(a, b) { return new Date(a.date) - new Date(b.date); }).slice(0, 6);
+                lines.push('');
+                if (_evs.length) {
+                    lines.push('EVENEMENTS GENESIS A VENIR (liste reelle, n\'en invente jamais d\'autre ; inscription depuis Explorer > Evenements) :');
+                    _evs.forEach(function(e) {
+                        var acc = eventAccessLevel(e.access_level);
+                        var full = e.capacity_limited && e.capacity && (e.attendees || []).length >= e.capacity;
+                        var canJoin = clientLevelAtLeast(badge, acc) && (!full || clientLevelAtLeast(badge, 'or'));
+                        lines.push('- ' + e.title + ' (' + (e.type || 'evenement') + ') le ' +
+                            new Date(e.date).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) +
+                            (e.location ? ', ' + e.location : '') +
+                            (acc ? ', reserve aux membres ' + CLIENT_LEVEL_NAMES[acc] + (acc === 'elite' ? '' : ' et plus') : '') +
+                            (e.capacity_limited && e.capacity ? (full ? ', complet' : ', places limitees') : '') +
+                            ' -> ' + (canJoin ? 'ce client peut s\'inscrire' : (acc && !clientLevelAtLeast(badge, acc) ? 'ce client n\'a pas encore le niveau requis' : 'complet pour ce client')));
+                    });
+                } else {
+                    lines.push('EVENEMENTS GENESIS A VENIR : aucun pour le moment. N\'en invente pas ; dis qu\'ils apparaitront dans Explorer > Evenements.');
+                }
+            } catch (_evErr) {}
         } else {
             var summary = getPartnerRatingSummary(person.id);
             var missionsCompleted = getPartnerMissionsCompleted(person.id);
@@ -19594,13 +19633,14 @@ app.post('/api/admin/events/create', function(req, res) {
             published: body.published !== false,
             capacity_limited: body.capacity_limited === true || body.capacity_limited === 'true',
             capacity: body.capacity ? parseInt(body.capacity, 10) : null,
+            access_level: eventAccessLevel(body.access_level),
             createdAt: new Date().toISOString(),
             attendees: []
         };
         events.push(event);
         saveEvents(events);
-        if (event.published && event.capacity_limited) {
-            try { notifyCapacityLimitedEvent(event); } catch(ne) { console.error('[EVENT_NOTIFY] Create:', ne); }
+        if (event.published) {
+            try { notifyEventInvitations(event); } catch(ne) { console.error('[EVENT_NOTIFY] Create:', ne); }
         }
         res.json({ success: true, event: event });
     } catch (e) {
@@ -19633,10 +19673,11 @@ app.put('/api/admin/events/:id', function(req, res) {
         });
         if (body.capacity_limited !== undefined) events[idx].capacity_limited = body.capacity_limited === true || body.capacity_limited === 'true';
         if (body.capacity !== undefined) events[idx].capacity = body.capacity ? parseInt(body.capacity, 10) : null;
+        if (body.access_level !== undefined) events[idx].access_level = eventAccessLevel(body.access_level);
         events[idx].updatedAt = new Date().toISOString();
         saveEvents(events);
-        if (!wasPublished && events[idx].published && events[idx].capacity_limited) {
-            try { notifyCapacityLimitedEvent(events[idx]); } catch(ne) { console.error('[EVENT_NOTIFY] Update:', ne); }
+        if (!wasPublished && events[idx].published) {
+            try { notifyEventInvitations(events[idx]); } catch(ne) { console.error('[EVENT_NOTIFY] Update:', ne); }
         }
         res.json({ success: true, event: events[idx] });
     } catch (e) {
@@ -19710,6 +19751,7 @@ app.get('/api/events', function(req, res) {
                     capacity_limited: e.capacity_limited || false,
                     capacity: e.capacity || null,
                     spots_left: (e.capacity_limited && e.capacity) ? Math.max(0, e.capacity - rsvpCount) : null,
+                    access_level: eventAccessLevel(e.access_level) || null,
                     lat: coords ? coords[0] : (e.lat || null),
                     lng: coords ? coords[1] : (e.lng || null),
                     city: e.city || e.location || null
@@ -19745,18 +19787,21 @@ app.post('/api/events/:id/rsvp', function(req, res) {
         events[idx].attendees = events[idx].attendees || [];
         var already = events[idx].attendees.find(function(a) { return a.id === person.id; });
         if (already) return res.json({ success: true, event: events[idx], alreadyRsvp: true });
+        var clientBadge = personType === 'client' ? clientCurrentBadge(person) : null;
+
+        // Événement réservé à un niveau (privé Visionnaire, VIP Générateur…) : vérifié ici, pas
+        // seulement dans l'app. Les prestataires ne sont pas concernés par les niveaux clients.
+        var accessLevel = eventAccessLevel(events[idx].access_level);
+        if (personType === 'client' && accessLevel && !clientLevelAtLeast(clientBadge, accessLevel)) {
+            return res.status(403).json({ error: 'Niveau ' + CLIENT_LEVEL_NAMES[accessLevel] + ' requis', level_required: true, access_level: accessLevel });
+        }
 
         // Vérification capacité limitée
         if (events[idx].capacity_limited && events[idx].capacity) {
             var rsvpCount = events[idx].attendees.length;
             if (rsvpCount >= events[idx].capacity) {
                 // Visionnaire+ (or/elite) ont la priorité — ils peuvent toujours s'inscrire
-                var isPriority = false;
-                if (personType === 'client') {
-                    var qgForPriority = getClientGenesisPoints(person, getClientCompletedOrders(person.email));
-                    var badgeForPriority = getClientQGBadge(qgForPriority);
-                    isPriority = ['or', 'elite'].indexOf(badgeForPriority) !== -1;
-                }
+                var isPriority = clientLevelAtLeast(clientBadge, 'or');
                 if (!isPriority) {
                     return res.status(409).json({ error: 'Complet', full: true, spots_left: 0,
                         message: 'Cet événement est complet. Les membres Visionnaire+ ont un accès prioritaire.' });
@@ -20242,6 +20287,25 @@ app.get('/api/events', (req, res) => {
 
 // ── ADMIN CAMPAGNES & JEUX CONCOURS ──────────────────────────────────────────
 
+// Avantage Bâtisseur « accès prioritaire aux campagnes et aux jeux concours » : à l'ouverture
+// d'une campagne ou d'un jeu, les membres Bâtisseur et + sont prévenus (notification dans l'app ;
+// push seulement s'ils ont accepté « Nouveautés et promos », 1 par jour / 3 par semaine).
+// Les autres niveaux n'y ont pas accès (GET /api/campagnes vérifie le niveau).
+function notifyCampagneBatisseurs(item) {
+    try {
+        var title = (item.type === 'jeu' ? 'Nouveau jeu concours : ' : 'Nouvelle campagne : ') + item.titre;
+        var body = 'Réservé aux membres Bâtisseur et plus. Participez depuis Campagnes & jeux concours.';
+        var log = loadDiscoveryLog(), now = Date.now(), pushed = false, n = 0;
+        loadUsers().forEach(function(u) {
+            if (!u || !u.email || !clientLevelAtLeast(clientCurrentBadge(u), 'argent')) return;
+            if (notifyAnnouncement(u, 'campagne_jeu', title, body, '/app.html#client:campagnes', log, now)) pushed = true;
+            n++;
+        });
+        if (pushed) saveDiscoveryLog(log);
+        return n;
+    } catch (e) { console.error('[CAMPAGNES] Notification:', e.message); return 0; }
+}
+
 // Liste toutes les campagnes/jeux (admin)
 app.get('/api/admin/campagnes', function(req, res) {
     try { res.json({ ok: true, campagnes: loadCampagnes() }); }
@@ -20269,7 +20333,8 @@ app.post('/api/admin/campagnes', function(req, res) {
         var all = loadCampagnes();
         all.push(item);
         saveCampagnes(all);
-        res.json({ success: true, item: item });
+        var notified = item.active ? notifyCampagneBatisseurs(item) : 0;
+        res.json({ success: true, item: item, notified: notified });
     } catch(e) {
         console.error('[ADMIN] Erreur creation campagne:', e);
         res.status(500).json({ error: 'Erreur création campagne' });
@@ -20286,11 +20351,13 @@ app.put('/api/admin/campagnes/:id', function(req, res) {
         if (body.titre !== undefined) all[idx].titre = body.titre.trim();
         if (body.description !== undefined) all[idx].description = body.description.trim();
         if (body.lien !== undefined) all[idx].lien = body.lien.trim();
+        var wasActive = all[idx].active !== false;
         if (body.active !== undefined) all[idx].active = body.active === true;
         if (body.type !== undefined && ['campagne','jeu'].indexOf(body.type) !== -1) all[idx].type = body.type;
         all[idx].updated_at = new Date().toISOString();
         saveCampagnes(all);
-        res.json({ success: true, item: all[idx] });
+        var notified = (!wasActive && all[idx].active) ? notifyCampagneBatisseurs(all[idx]) : 0;
+        res.json({ success: true, item: all[idx], notified: notified });
     } catch(e) {
         console.error('[ADMIN] Erreur modif campagne:', e);
         res.status(500).json({ error: 'Erreur modification campagne' });
@@ -20313,8 +20380,10 @@ app.delete('/api/admin/campagnes/:id', function(req, res) {
 });
 
 // ── ANNONCES DE NOUVELLES FONCTIONNALITÉS ──────────────────────────
-// Bâtisseur+ (argent/or/elite) reçoivent la notification immédiatement.
-// Créateur (bronze) et sans niveau : notification différée de 24h via processScheduledNotifs().
+// Avantage « nouvelles fonctionnalités en avant-première » = niveau Visionnaire (cumulé par Générateur) :
+// Visionnaire et Générateur reçoivent l'annonce immédiatement, tous les autres 24 h plus tard
+// via processScheduledNotifs(). L'option « expérimentale » suit la même règle (l'ancien avantage
+// Générateur « fonctionnalités expérimentales » a été retiré des niveaux).
 app.post('/api/admin/feature-announcement', function(req, res) {
     try {
         var body = req.body || {};
@@ -20333,9 +20402,7 @@ app.post('/api/admin/feature-announcement', function(req, res) {
 
         loadUsers().forEach(function(user) {
             if (!user.email) return;
-            var qg = getClientGenesisPoints(user, getClientCompletedOrders(user.email));
-            var badge = getClientQGBadge(qg);
-            var isImmediate = experimental ? (badge === 'elite') : (['argent', 'or', 'elite'].indexOf(badge) !== -1);
+            var isImmediate = clientLevelAtLeast(clientCurrentBadge(user), 'or');
             if (isImmediate) {
                 // Push seulement si le client a accepté « Nouveautés et promos » (voir notifyAnnouncement).
                 if (notifyAnnouncement(user, notifType, title, description, link, annLog, annNow)) pushedCount++;
@@ -20359,34 +20426,63 @@ app.post('/api/admin/feature-announcement', function(req, res) {
     }
 });
 
-// Notifie les clients quand un evenement a capacite limitee est publie
-// Visionnaire (or) + Generateur (elite) : notification immediate + email
-// Createur (bronze), sans niveau (null), Batisseur (argent) : 24h plus tard
-function notifyCapacityLimitedEvent(event) {
+// Niveau d'accès d'un événement : '' = tous les membres ; sinon niveau minimum.
+function eventAccessLevel(v) {
+    return ['argent', 'or', 'elite'].indexOf(v) !== -1 ? v : '';
+}
+var EVENT_LEARNING_TYPES = ['webinaire', 'atelier', 'workshop', 'masterclass'];
+// Qui est invité, et quand, à la publication d'un événement (avantages des niveaux) :
+//  - Générateur : invité à TOUS les événements (Invitations VIP) ;
+//  - événement réservé à un niveau : tous les membres de ce niveau et au-dessus ;
+//  - Visionnaire : soirées networking et événements à places limitées ;
+//  - Bâtisseur et + : webinaires, ateliers, workshops, masterclasses ;
+//  - places limitées : les autres membres sont prévenus 24 h plus tard (priorité Visionnaire+).
+// Renvoie 'now', 'later' ou null.
+function eventInvitationTiming(event, badge) {
+    var access = eventAccessLevel(event.access_level);
+    if (!clientLevelAtLeast(badge, access)) return null;
+    if (badge === 'elite') return 'now';
+    if (access) return 'now';
+    if (badge === 'or' && (event.capacity_limited || event.type === 'soiree')) return 'now';
+    if (clientLevelAtLeast(badge, 'argent') && EVENT_LEARNING_TYPES.indexOf(event.type) !== -1) return 'now';
+    if (event.capacity_limited) return 'later';
+    return null;
+}
+// Notification dans l'app pour tous les invités ; push seulement pour ceux qui ont accepté
+// « Nouveautés et promos » (notifyAnnouncement). E-mail : uniquement pour les places limitées, comme avant.
+function notifyEventInvitations(event) {
     try {
-        var title = 'Événement exclusif : ' + event.title;
-        var body = 'Un événement à places limitées est disponible dans Événements. Réservez vite !';
         var link = '/app.html#evenement-' + event.id;
+        var access = eventAccessLevel(event.access_level);
+        var inviteTitle = 'Invitation : ' + event.title;
+        var inviteBody = access ? 'Événement réservé à votre niveau GENESIS. Inscrivez-vous dans Événements.'
+            : (event.capacity_limited ? 'Places limitées : vous êtes invité(e) en priorité. Inscrivez-vous dans Événements.'
+                : 'Vous êtes invité(e) à cet événement GENESIS. Inscrivez-vous dans Événements.');
+        var laterTitle = 'Événement exclusif : ' + event.title;
+        var laterBody = 'Un événement à places limitées est disponible dans Événements. Réservez vite !';
         var later24h = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
         var scheduled = loadScheduledNotifs();
         var annLog = loadDiscoveryLog(), annNow = Date.now(), annPushed = false;
+        var counts = { now: 0, later: 0 };
         loadUsers().forEach(function(user) {
             if (!user.email) return;
-            var qg = getClientGenesisPoints(user, getClientCompletedOrders(user.email));
-            var badge = getClientQGBadge(qg);
-            if (['or', 'elite'].indexOf(badge) !== -1) {
-                if (notifyAnnouncement(user, 'evenement_capacite_limitee', title, body, link, annLog, annNow)) annPushed = true;
-                emailService.sendCapacityLimitedEventEmail(user.email, user.prenom, event.title, link).catch(function(e) {
-                    console.warn('[EVENT_NOTIFY] Email prioritaire:', e.message);
-                });
-            } else {
+            var timing = eventInvitationTiming(event, clientCurrentBadge(user));
+            if (timing === 'now') {
+                if (notifyAnnouncement(user, 'evenement_capacite_limitee', inviteTitle, inviteBody, link, annLog, annNow)) annPushed = true;
+                if (event.capacity_limited) {
+                    emailService.sendCapacityLimitedEventEmail(user.email, user.prenom, event.title, link).catch(function(e) {
+                        console.warn('[EVENT_NOTIFY] Email prioritaire:', e.message);
+                    });
+                }
+                counts.now++;
+            } else if (timing === 'later') {
                 scheduled.push({
                     id: uuidv4(),
                     email: user.email,
                     role: 'client',
                     type: 'evenement_capacite_limitee',
-                    title: title,
-                    body: body,
+                    title: laterTitle,
+                    body: laterBody,
                     link: link,
                     emailType: 'capacity_limited_event',
                     emailEventTitle: event.title,
@@ -20395,15 +20491,96 @@ function notifyCapacityLimitedEvent(event) {
                     sent: false,
                     createdAt: new Date().toISOString()
                 });
+                counts.later++;
             }
         });
         if (annPushed) saveDiscoveryLog(annLog);
-        saveScheduledNotifs(scheduled);
-        console.log('[EVENT_NOTIFY] notifyCapacityLimitedEvent planifie pour:', event.title);
+        if (counts.later) saveScheduledNotifs(scheduled);
+        console.log('[EVENT_NOTIFY] ' + event.title + ' : ' + counts.now + ' invitation(s), ' + counts.later + ' dans 24 h');
+        return counts;
     } catch(e) {
-        console.error('[EVENT_NOTIFY] notifyCapacityLimitedEvent:', e);
+        console.error('[EVENT_NOTIFY] notifyEventInvitations:', e);
+        return { now: 0, later: 0 };
     }
 }
+
+// ── CADEAU ANNUEL DE FIDÉLITÉ (avantage Générateur) ─────────────────
+// Le cadeau est préparé et envoyé par l'équipe GENESIS à la date anniversaire de l'inscription.
+// L'admin voit la liste des Générateurs avec leur prochaine date, reçoit un rappel 14 jours avant,
+// et marque le cadeau comme envoyé (users[].loyalty_gifts = { 'AAAA': date d'envoi }).
+var LOYALTY_GIFT_REMINDER_DAYS = 14;
+function _loyaltyAnniversary(createdAt, nowMs) {
+    var d = new Date(createdAt);
+    if (isNaN(d.getTime())) return null;
+    var now = new Date(nowMs);
+    // Anniversaire de cette année ; s'il est passé depuis plus de 30 jours, celui de l'an prochain.
+    var y = now.getUTCFullYear();
+    var a = new Date(Date.UTC(y, d.getUTCMonth(), d.getUTCDate(), 12));
+    if (a.getTime() < nowMs - 30 * 86400000) a = new Date(Date.UTC(y + 1, d.getUTCMonth(), d.getUTCDate(), 12));
+    // Pas de cadeau avant le premier anniversaire.
+    if (a.getUTCFullYear() <= d.getUTCFullYear()) a = new Date(Date.UTC(d.getUTCFullYear() + 1, d.getUTCMonth(), d.getUTCDate(), 12));
+    return a;
+}
+function buildLoyaltyGiftList(nowMs) {
+    var now = nowMs || Date.now();
+    var list = [];
+    loadUsers().forEach(function(u) {
+        if (!u || !u.email || clientCurrentBadge(u) !== 'elite') return;
+        var created = u.createdAt || u.created_at;
+        var a = created ? _loyaltyAnniversary(created, now) : null;
+        var year = a ? String(a.getUTCFullYear()) : null;
+        var gifts = u.loyalty_gifts || {};
+        var days = a ? Math.ceil((a.getTime() - now) / 86400000) : null;
+        list.push({
+            id: u.id, prenom: u.prenom || '', nom: u.nom || '', email: u.email,
+            member_since: created || null, anniversary: a ? a.toISOString() : null, year: year,
+            days_until: days, sent_at: year ? (gifts[year] || null) : null,
+            to_prepare: !!(year && !gifts[year] && days !== null && days <= LOYALTY_GIFT_REMINDER_DAYS)
+        });
+    });
+    list.sort(function(x, y) { return (x.days_until === null ? 1e9 : x.days_until) - (y.days_until === null ? 1e9 : y.days_until); });
+    return list;
+}
+function runLoyaltyGiftReminders(nowMs) {
+    try {
+        var now = nowMs || Date.now(), users = null, changed = false, n = 0;
+        buildLoyaltyGiftList(now).forEach(function(g) {
+            if (!g.to_prepare) return;
+            users = users || loadUsers();
+            var u = users.find(function(x) { return x.id === g.id; });
+            if (!u) return;
+            u.loyalty_gift_reminded = u.loyalty_gift_reminded || {};
+            if (u.loyalty_gift_reminded[g.year]) return;
+            u.loyalty_gift_reminded[g.year] = new Date(now).toISOString();
+            changed = true; n++;
+            var when = new Date(g.anniversary).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
+            notifyUser(null, 'admin', 'loyalty_gift', 'Cadeau de fidélité à préparer',
+                ((g.prenom + ' ' + g.nom).trim() || g.email) + ' (Générateur) : anniversaire d\'inscription le ' + when + '.', '/admin.html#niveaux');
+        });
+        if (changed) saveUsers(users);
+        return n;
+    } catch (e) { console.error('[CADEAU] Rappels:', e.message); return 0; }
+}
+setInterval(runLoyaltyGiftReminders, 6 * 3600 * 1000);
+setTimeout(runLoyaltyGiftReminders, 120 * 1000);
+app.get('/api/admin/loyalty-gifts', function(req, res) {
+    try { res.json({ success: true, gifts: buildLoyaltyGiftList(Date.now()), reminder_days: LOYALTY_GIFT_REMINDER_DAYS }); }
+    catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+app.post('/api/admin/loyalty-gifts/:id', function(req, res) {
+    try {
+        var year = String((req.body || {}).year || '');
+        if (!/^\d{4}$/.test(year)) return res.status(400).json({ error: 'Année invalide' });
+        var users = loadUsers();
+        var u = users.find(function(x) { return x.id === req.params.id; });
+        if (!u) return res.status(404).json({ error: 'Client introuvable' });
+        u.loyalty_gifts = u.loyalty_gifts || {};
+        if ((req.body || {}).sent === false) delete u.loyalty_gifts[year];
+        else u.loyalty_gifts[year] = new Date().toISOString();
+        saveUsers(users);
+        res.json({ success: true, loyalty_gifts: u.loyalty_gifts });
+    } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
 
 // Admin : utilisateurs par niveau QG en temps reel
 app.get('/api/admin/users-by-level', function(req, res) {
@@ -26607,7 +26784,7 @@ var ANNOUNCEMENT_TYPES = ['nouvelle_fonctionnalite', 'fonctionnalite_experimenta
 function _announcementPushAllowed(user, log, now) {
     if (!user || user.offers_push !== true || !user.id) return false;
     var key = 'user:' + user.id, weekAgo = now - 7 * 86400000, today = _parisNow(new Date(now)).date;
-    var mine = log.filter(function(e) { return e && e.recipient === key; });
+    var mine = log.filter(function(e) { return e && e.recipient === key && e.pushed !== false; });
     if (mine.filter(function(e) { return new Date(e.sent_at).getTime() > weekAgo; }).length >= DISCOVERY_MAX_PER_WEEK) return false;
     return !mine.some(function(e) { return _parisNow(new Date(e.sent_at)).date === today; });
 }
@@ -26651,12 +26828,13 @@ function _discoveryPartnerFor(p, aud) {
 // Construit le message de la meilleure nouveauté pour un destinataire, ou null.
 function pickDiscoveryFor(recipient, ctx) {
     var now = ctx.now;
-    var mine = ctx.logByRecipient[recipient.key] || [];
+    var all = ctx.logByRecipient[recipient.key] || [];
+    var mine = all.filter(function(e) { return e.pushed !== false; });
     var weekAgo = now - 7 * 86400000;
     if (mine.filter(function(e) { return new Date(e.sent_at).getTime() > weekAgo; }).length >= DISCOVERY_MAX_PER_WEEK) return null;
     if (mine.some(function(e) { return _parisNow(new Date(e.sent_at)).date === ctx.today; })) return null;
     var seenPartners = {}, seenPromos = {};
-    mine.forEach(function(e) { if (e.partner_id) seenPartners[e.partner_id] = true; if (e.promo_id) seenPromos[e.promo_id] = true; });
+    all.forEach(function(e) { if (e.partner_id) seenPartners[e.partner_id] = true; if (e.promo_id) seenPromos[e.promo_id] = true; });
     var favs = recipient.favoris || [];
     var prefs = recipient.preferred || [];
     var cands = [];
@@ -26783,6 +26961,59 @@ function runDiscoveryPushes(opts) {
     console.log('[OFFERS-PUSH] Passage du jour : ' + planned.length + ' notification(s)', JSON.stringify(byKind));
     return { sent: planned.length, by_kind: byKind };
 }
+
+// ── ALERTES PRIORITAIRES (avantage Bâtisseur) ─────────────────────────
+// Dès qu'un nouveau prestataire devient visible dans une catégorie choisie dans « Alertes
+// prioritaires » (preferred_partner_types), les clients Bâtisseur et + reçoivent une alerte
+// immédiate dans l'app ; le push suit le circuit des annonces (« Nouveautés et promos » accepté,
+// 1 par jour, 3 par semaine). Les autres clients ne le découvrent que via les suggestions du soir.
+// Premier passage : on mémorise les prestataires déjà visibles, sans rien envoyer.
+function runPriorityCategoryAlerts(nowMs) {
+    try {
+        var now = nowMs || Date.now(), iso = new Date(now).toISOString();
+        var st = loadDiscoveryState();
+        var listed = loadPartners().filter(function(p) { return _discoveryPartnerFor(p, null); });
+        if (!st.priority_alert_seen) {
+            st.priority_alert_seen = {};
+            listed.forEach(function(p) { st.priority_alert_seen[p.id] = iso; });
+            saveDiscoveryState(st);
+            return { seeded: listed.length, sent: 0 };
+        }
+        var fresh = listed.filter(function(p) { return !st.priority_alert_seen[p.id]; });
+        if (!fresh.length) return { sent: 0 };
+        fresh.forEach(function(p) { st.priority_alert_seen[p.id] = iso; });
+        saveDiscoveryState(st); // verrouillé AVANT l'envoi : jamais deux alertes pour le même prestataire
+        var log = loadDiscoveryLog(), sent = 0, pushed = 0;
+        loadUsers().forEach(function(u) {
+            if (!u || !u.email || !u.id) return;
+            var prefs = Array.isArray(u.preferred_partner_types) ? u.preferred_partner_types : [];
+            if (!prefs.length) return;
+            var badge = clientCurrentBadge(u);
+            if (!badge || !clientLevelAtLeast(badge, 'argent')) return;
+            var em = u.email.toLowerCase(), aud = clientAudienceOfUser(u);
+            fresh.forEach(function(raw) {
+                if (!partnerTypesOf(raw).some(function(t) { return prefs.indexOf(t) !== -1; })) return;
+                var p = _discoveryPartnerFor(raw, aud);
+                if (!p || (p.email || '').toLowerCase() === em) return;
+                var push = _announcementPushAllowed(u, log, now);
+                var id = 'OFR-' + crypto.randomBytes(6).toString('hex');
+                notifyUser(u.email, 'client', 'alerte_prioritaire', 'Alerte prioritaire',
+                    _partnerDisplayName(p) + ' (' + _partnerTypeLabel(p) + ') vient de rejoindre GENESIS. Découvrez ses prestations.',
+                    '/app.html#decouverte:' + id + ':' + p.id, { push: push });
+                log.push({ id: id, recipient: 'user:' + u.id, recipient_type: 'user', kind: 'alerte_prioritaire', partner_id: p.id, promo_id: null, sent_at: iso, opened_at: null, pushed: push });
+                sent++; if (push) pushed++;
+            });
+        });
+        if (sent) saveDiscoveryLog(log);
+        if (sent) console.log('[ALERTES] ' + fresh.length + ' nouveau(x) prestataire(s) : ' + sent + ' alerte(s), ' + pushed + ' push');
+        return { sent: sent, pushed: pushed };
+    } catch (e) {
+        console.error('[ALERTES] Passage:', e.message);
+        return { sent: 0, error: e.message };
+    }
+}
+setInterval(runPriorityCategoryAlerts, 10 * 60 * 1000);
+setTimeout(runPriorityCategoryAlerts, 90 * 1000);
 
 // Vérifie toutes les 10 min ; un seul passage par jour, verrouillé AVANT l'envoi (survit à un
 // redémarrage : last_run_date est persisté dans MongoDB).
