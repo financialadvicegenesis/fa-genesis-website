@@ -2677,15 +2677,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261113a"></script>
-<script src="app-i18n-es.js?v=20261113a"></script>
-<script src="app-i18n-hi.js?v=20261113a"></script>
-<script src="app-i18n-pt.js?v=20261113a"></script>
-<script src="app-i18n-ja.js?v=20261113a"></script>
-<script src="app-i18n-zh.js?v=20261113a"></script>
-<script src="app-i18n-ar.js?v=20261113a"></script>
-<script src="app-i18n-it.js?v=20261113a"></script>
-<script src="app-i18n-de.js?v=20261113a"></script>
+<script src="app-i18n-en.js?v=20261113b"></script>
+<script src="app-i18n-es.js?v=20261113b"></script>
+<script src="app-i18n-hi.js?v=20261113b"></script>
+<script src="app-i18n-pt.js?v=20261113b"></script>
+<script src="app-i18n-ja.js?v=20261113b"></script>
+<script src="app-i18n-zh.js?v=20261113b"></script>
+<script src="app-i18n-ar.js?v=20261113b"></script>
+<script src="app-i18n-it.js?v=20261113b"></script>
+<script src="app-i18n-de.js?v=20261113b"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -7198,7 +7198,29 @@ function _svcDiscountTagHtml(s){
   if(!_svcHasDiscount(s)) return '';
   var end = '';
   if(s.discount_ends_at){ try{ end = new Date(s.discount_ends_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',timeZone:'Europe/Paris'}); }catch(e){} }
-  return '<div><span class="svc-disc-tag"><i class="fa-solid fa-tag"></i><span data-i18n-skip>-'+s.discount_pct+' %</span>'+(end?'<span>jusqu\'au</span><span data-i18n-skip>'+end+'</span>':'')+'</span></div>';
+  return '<div><span class="svc-disc-tag"><i class="fa-solid fa-tag"></i><span data-i18n-skip>'+(s.discount_label ? _escHtml(s.discount_label) : ('-'+s.discount_pct+' %'))+'</span>'+(end?'<span>jusqu\'au</span><span data-i18n-skip>'+end+'</span>':'')+'</span></div>';
+}
+// Promotions en cours du prestataire (fiche) : en % / € déjà appliquées au prix des prestations
+// (et au paiement) ; les autres offres sont des engagements du prestataire.
+function _partnerPromosHtml(p){
+  var list = (p && Array.isArray(p.promotions)) ? p.promotions : [];
+  if(!list.length) return '';
+  var fmt = function(d){ try{ return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',timeZone:'Europe/Paris'}); }catch(e){ return ''; } };
+  var rows = list.map(function(pr){
+    var amount = pr.kind === 'amount';
+    var val = amount ? (pr.type === 'percentage' ? ('-'+pr.value+' %') : ('-'+String(pr.value).replace('.',',')+' €')) : '';
+    return '<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid rgba(255,77,77,.15);">'
+      +'<i class="fa-solid '+(amount?'fa-tag':'fa-gift')+'" style="color:#ff4d4d;margin-top:2px;"></i>'
+      +'<div style="flex:1;min-width:0;font-size:12px;color:#ddd;line-height:1.5;">'
+        +'<div style="font-weight:800;color:#fff;"><span data-i18n-skip>'+_escHtml(pr.title)+'</span>'+(val?' <span data-i18n-skip style="color:#ff4d4d;">'+val+'</span>':'')+'</div>'
+        +(amount
+          ? '<div><span>Appliquée automatiquement au paiement des prestations à prix fixe.</span>'+(pr.min_amount?' <span>Dès</span> <span data-i18n-skip>'+pr.min_amount+' €</span>.':'')+'</div>'
+          : '<div>'+(pr.perk_label && pr.perk_label !== pr.title ? '<span data-i18n-skip>'+_escHtml(pr.perk_label)+'</span> · ' : '')+'<span>Offre du prestataire, à honorer par lui : précisez-la lors de votre commande.</span></div>')
+        +(pr.end_date?'<div style="color:#999;"><span>Jusqu’au</span> <span data-i18n-skip>'+fmt(pr.end_date)+'</span></div>':'')
+      +'</div></div>';
+  }).join('');
+  return '<div style="margin:0 0 14px;padding:12px 14px 6px;border-radius:12px;background:rgba(255,59,48,.07);border:1px solid rgba(255,59,48,.3);">'
+    +'<div style="font-size:12px;font-weight:900;color:#ff4d4d;margin-bottom:4px;"><i class="fa-solid fa-fire"></i> <span>Offres en cours</span></div>'+rows+'</div>';
 }
 function _ptnrRenderServiceCards(services, audience, p){
   var filtered = services.filter(function(s){ return (s.audience||'particulier')===audience; });
@@ -7400,7 +7422,7 @@ function openPartnerDetail(partnerId){
           }).join('')+'</div>'
         : '';
       var servicesHtml = services.length
-        ? _studentVerifyNoticeHtml(services) + _companyNoticeHtml() + svcTabsHtml + '<div class="pf-svcs" id="p-svc-grid">'+_ptnrRenderProfileSvcCards(services, _partnerDetailAudience, p)+'</div>'
+        ? _studentVerifyNoticeHtml(services) + _companyNoticeHtml() + _partnerPromosHtml(p) + svcTabsHtml + '<div class="pf-svcs" id="p-svc-grid">'+_ptnrRenderProfileSvcCards(services, _partnerDetailAudience, p)+'</div>'
         : (_viewAud
           ? '<div class="p-dir-review-empty">'+({ etudiant: 'Ce prestataire ne propose pas encore d\'offres pour les étudiants.', particulier: 'Ce prestataire ne propose pas encore d\'offres pour les particuliers.', entreprise: 'Ce prestataire ne propose pas encore d\'offres pour les entreprises.' })[_viewAud]+'</div>'
           : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>');
@@ -18917,6 +18939,18 @@ function _showPbPayUI(partner, service, existingOrderId, skipContract, requestId
   var nm=document.getElementById('pb-service-name'); if(nm) nm.textContent=service.label;
   var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='avec '+(partner.prenom||'')+' '+(partner.nom||'');
   var tot=document.getElementById('pb-total-amt'); if(tot) tot.textContent=total+' €';
+  // Promotion du prestataire : déjà comprise dans le prix (prix barré) ; offres non chiffrées à honorer par lui.
+  var _pbPn=document.getElementById('pb-promo-note');
+  if(_pbPn){
+    var _pbH='';
+    if(service.promotion_title && service.price_before_discount){
+      _pbH+='<div><i class="fa-solid fa-tag" style="color:#ff4d4d;margin-right:6px;"></i><span>Promotion du prestataire appliquée :</span> <strong data-i18n-skip>'+_escHtml(service.promotion_title)+'</strong> <span data-i18n-skip>('+Number(service.price_before_discount).toFixed(2).replace('.00','')+' € → '+total+' €)</span></div>';
+    }
+    (service.promotion_perks||[]).forEach(function(pk){
+      _pbH+='<div style="margin-top:4px;"><i class="fa-solid fa-gift" style="color:#ff4d4d;margin-right:6px;"></i><span>Offre du prestataire :</span> <strong data-i18n-skip>'+_escHtml(pk.title)+'</strong> <span>— à honorer par le prestataire, à confirmer avec lui.</span></div>';
+    });
+    _pbPn.innerHTML=_pbH; _pbPn.style.display=_pbH?'block':'none';
+  }
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
   var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='none';
   var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
@@ -20838,6 +20872,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div id="pb-hold-msg" style="display:none;background:#0a1a0a;border:1px solid #1a3a1a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#6dbf6d;line-height:1.5;">
           <i class="fas fa-lock" style="margin-right:6px;"></i>Votre paiement est <strong>retenu en sécurité</strong> par GENESIS SAFE™ et ne sera versé au prestataire qu'après confirmation de la livraison.
         </div>
+        <div id="pb-promo-note" style="display:none;background:rgba(255,59,48,.07);border:1px solid rgba(255,59,48,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:#ddd;line-height:1.5;"></div>
         <p style="font-size:11px;color:#666;font-weight:700;text-align:center;margin-bottom:14px;">Total prestation : <span id="pb-total-amt"></span></p>
         <div class="cwb-actions" style="grid-template-columns:1fr;">
           <button class="cwb-btn cwb-btn-yellow" id="pb-pay-btn" onclick="pbPayDeposit()">PAYER L'ACOMPTE</button>
@@ -22974,7 +23009,11 @@ function _ptnrLoadPromotions(){
     // En cours d'abord, puis suspendues, puis terminées / expirées (les plus récentes d'abord)
     var _rank = function(pr){ var past = pr.status==='ended' || new Date(pr.end_date) < new Date(); return past ? 2 : (pr.status==='suspended' ? 1 : 0); };
     promos = promos.slice().sort(function(a, b){ return (_rank(a) - _rank(b)) || (new Date(b.created_at||0) - new Date(a.created_at||0)); });
-    var html = '<button onclick="_ptnrOpenPromoForm()" style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:14px;padding:14px;font-size:13px;font-weight:900;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa-solid fa-plus"></i> Créer une promotion</button>';
+    var html = '<div style="background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#ccc;line-height:1.55;">'
+      +'<div><i class="fa-solid fa-circle-info" style="color:#FFD700;margin-right:6px;"></i><span>Une promotion en % ou en € s’applique automatiquement au paiement de vos prestations à prix fixe (pas aux devis). C’est vous qui la financez : la commission GENESIS de 5 % est calculée sur le prix remisé.</span></div>'
+      +'<div style="margin-top:6px;"><span>Les autres offres (déplacement offert, consultation gratuite…) sont affichées aux clients : c’est à vous de les honorer.</span></div>'
+      +'</div>'
+      +'<button onclick="_ptnrOpenPromoForm()" style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:14px;padding:14px;font-size:13px;font-weight:900;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa-solid fa-plus"></i> Créer une promotion</button>';
     if(!promos.length){
       html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-tag"></i></div><div class="ptnr-empty-txt">Aucune promotion créée</div><div class="ptnr-empty-sub">Vos promotions apparaîtront ici et seront visibles dans l\'annuaire.</div></div>';
     } else {

@@ -948,6 +948,100 @@ function isPromoActive(promo) {
     return true;
 }
 
+// ── Promotions des prestataires APPLIQUÉES AU PAIEMENT (décision FA GENESIS, 2026-11-13) ──
+// Une promotion en % ou en € baisse automatiquement le prix d'une prestation à prix fixe. C'est
+// le prestataire qui la finance : le total de la commande est le prix remisé, et la commission
+// GENESIS (5 %) comme le versement au prestataire se calculent sur ce prix (pas de rajout comme
+// pour l'ancienne remise de bienvenue). Pas de cumul avec la remise par prestation
+// (serviceCurrentPrice) : le prix le plus avantageux pour le client s'applique. Les devis (prix
+// négocié) ne sont pas concernés. Les autres offres (déplacement offert, consultation gratuite…)
+// ne changent pas le prix : elles sont affichées au client et enregistrées sur la commande, et le
+// prestataire s'engage à les honorer lui-même.
+var PROMO_AMOUNT_TYPES = ['percentage', 'fixed'];
+var PROMO_PERK_LABELS = { free_service: 'Prestation offerte', bonus: 'Bonus offert', free_consultation: 'Consultation gratuite', free_travel: 'Déplacement offert', promo_code: 'Offre spéciale' };
+function _promoAppliesToService(pr, service, partner) {
+    if (Array.isArray(pr.services) && pr.services.length && pr.services.indexOf(service.id) === -1) return false;
+    if (Array.isArray(pr.categories) && pr.categories.length && pr.categories.indexOf(serviceCategoryOf(service, partner)) === -1) return false;
+    return true;
+}
+function _promoPublic(pr) {
+    var amount = PROMO_AMOUNT_TYPES.indexOf(pr.type) !== -1;
+    return {
+        id: pr.id, kind: amount ? 'amount' : 'perk', type: pr.type, value: amount ? pr.value : null,
+        title: publicText(pr.title || '') || (amount ? 'Promotion' : (PROMO_PERK_LABELS[pr.type] || 'Offre')),
+        perk_label: amount ? '' : (PROMO_PERK_LABELS[pr.type] || 'Offre'),
+        description: publicText(pr.description || ''), min_amount: pr.min_amount || null, end_date: pr.end_date
+    };
+}
+function promoDiscountLabel(pr) {
+    if (!pr) return '';
+    return pr.type === 'percentage' ? ('-' + pr.value + ' %') : ('-' + String(pr.value).replace('.', ',') + ' €');
+}
+// Prix réellement payé pour une prestation à prix fixe, promotion du prestataire comprise.
+function partnerServicePricing(partner, service, promos) {
+    var full = parseFloat(service && service.price) || 0;
+    var res = { price: serviceCurrentPrice(service), full_price: full, service_discount_pct: serviceDiscountPct(service), promotion: null, promo_discount_amount: 0, perks: [] };
+    if (!partner || !service || service.pricing_type === 'quote' || service.audience === 'promo' || full <= 0) return res;
+    var list = (Array.isArray(promos) ? promos : loadPromotions()).filter(function(pr) {
+        return pr && pr.partner_id === partner.id && isPromoActive(pr) && _promoAppliesToService(pr, service, partner);
+    });
+    var best = null;
+    list.forEach(function(pr) {
+        if (PROMO_AMOUNT_TYPES.indexOf(pr.type) === -1) { res.perks.push(_promoPublic(pr)); return; }
+        if (pr.min_amount && full < parseFloat(pr.min_amount)) return;
+        var v = parseFloat(pr.value) || 0;
+        if (v <= 0) return;
+        var after = pr.type === 'percentage' ? full * (1 - Math.min(v, 99) / 100) : full - v;
+        after = Math.round(Math.max(after, 0.5) * 100) / 100;   // minimum de paiement en ligne : 0,50 €
+        if (!best || after < best.after) best = { pr: pr, after: after };
+    });
+    if (best && best.after < res.price - 0.004) {
+        res.price = best.after;
+        res.promotion = _promoPublic(best.pr);
+        res.promo_discount_amount = Math.round((full - best.after) * 100) / 100;
+        res.service_discount_pct = 0;
+    }
+    return res;
+}
+// Champs de promotion enregistrés sur une commande (traçabilité, factures, litiges).
+function orderPromotionFields(pricing) {
+    if (!pricing) return {};
+    var f = {};
+    if (pricing.promotion) {
+        f.promotion_id = pricing.promotion.id;
+        f.promotion_title = pricing.promotion.title;
+        f.promotion_type = pricing.promotion.type;
+        f.promotion_value = pricing.promotion.value;
+        f.promo_discount_amount = pricing.promo_discount_amount;
+        f.price_before_promotion = pricing.full_price;
+        f.promotion_funded_by = 'partner';
+    }
+    if (pricing.perks && pricing.perks.length) {
+        f.promotion_perks = pricing.perks.map(function(p) { return { id: p.id, title: p.title, perk_label: p.perk_label, description: p.description }; });
+    }
+    return f;
+}
+// Une utilisation est comptée au 1er paiement de la commande (jamais à sa simple création, pour ne
+// pas épuiser une offre limitée avec des paniers abandonnés). Idempotent (promotion_counted).
+function _countPromotionUse(order) {
+    try {
+        var ids = [];
+        if (order.promotion_id) ids.push(order.promotion_id);
+        (order.promotion_perks || []).forEach(function(p) { if (p && p.id && ids.indexOf(p.id) === -1) ids.push(p.id); });
+        if (!ids.length) return;
+        var promos = loadPromotions(), changed = false;
+        promos.forEach(function(pr) {
+            if (ids.indexOf(pr.id) === -1) return;
+            pr.current_uses = (parseInt(pr.current_uses, 10) || 0) + 1;
+            pr.bookings_generated = (parseInt(pr.bookings_generated, 10) || 0) + 1;
+            if (pr.id === order.promotion_id) pr.revenue_generated = Math.round(((parseFloat(pr.revenue_generated) || 0) + (parseFloat(order.total_amount) || 0)) * 100) / 100;
+            pr.updated_at = new Date().toISOString();
+            changed = true;
+        });
+        if (changed) savePromotions(promos);
+    } catch (e) { console.error('[PROMO] Comptage utilisation:', e.message); }
+}
+
 // ── Notifications persistantes ──
 function loadNotifications() {
     try {
@@ -3829,11 +3923,16 @@ function updateOrder(orderId, updates) {
     if (index === -1) return null;
 
     orders[index] = { ...orders[index], ...updates, updated_at: new Date().toISOString() };
+    // Promotion du prestataire : une utilisation comptée au premier paiement (une seule fois).
+    var _countPromo = updates.deposit_paid === true && !orders[index].promotion_counted
+        && (orders[index].promotion_id || (orders[index].promotion_perks || []).length);
+    if (_countPromo) orders[index].promotion_counted = true;
     // Dès que l'acompte est payé : fixer les dates d'échéance des mensualités suivantes
     if (updates.deposit_paid === true && orders[index].installments && orders[index].installments.length > 1) {
         orders[index] = setInstallmentDueDates(orders[index]);
     }
     saveOrders(orders);
+    if (_countPromo) _countPromotionUse(orders[index]);
     // Si la commande fait partie d'un Projet GENESIS, vérifier si toutes les prestations sont terminées
     if (updates.status === 'completed' && orders[index].project_id) {
         checkAndCompleteGenesisProject(orders[index].project_id, orders);
@@ -4927,8 +5026,9 @@ app.post('/api/orders/create', (req, res) => {
                 var psiService = (psiPartner.services || []).find(function(s) { return s.id === psiItem.serviceId && s.active !== false; });
                 if (!psiService) return res.status(404).json({ error: 'Prestation non trouvée chez ' + (psiPartner.prenom||'') });
 
-                // Prix remisé si le prestataire a mis une remise sur cette prestation.
-                var psiTotal = serviceCurrentPrice(psiService);
+                // Prix remisé (remise par prestation ou promotion du prestataire, sans cumul).
+                var psiPricing = partnerServicePricing(psiPartner, psiService);
+                var psiTotal = psiPricing.price;
                 var psiFullPrice = psiTotal;
                 var psiWelcomeAmt = 0;
                 // Avantage bienvenue : s'applique sur la première commande, une seule fois au total
@@ -4953,6 +5053,7 @@ app.post('/api/orders/create', (req, res) => {
                 psiValidated.push({
                     partner: psiPartner,
                     service: psiService,
+                    pricing: psiPricing,
                     total: psiTotal,
                     fullPrice: psiFullPrice,
                     welcomeAmt: psiWelcomeAmt,
@@ -5007,6 +5108,7 @@ app.post('/api/orders/create', (req, res) => {
                     client_info: projClientInfo,
                     total_amount: v.total,
                     welcome_discount_amount: v.welcomeAmt,
+                    ...orderPromotionFields(v.pricing),
                     deposit_amount: v.deposit,
                     balance_amount: v.balance,
                     installments_count: v.installments.length,
@@ -5185,7 +5287,8 @@ app.post('/api/orders/create', (req, res) => {
             // retourner cet ordre plutôt que d'en créer un doublon.
             // On compare aussi le total_amount : si le prix a changé depuis la création de l'ordre,
             // on ne réutilise pas l'ordre obsolète (nouveau calcul avec le prix actuel).
-            var _currentServicePrice = serviceCurrentPrice(service);
+            var _psoPricing = partnerServicePricing(partner, service);
+            var _currentServicePrice = _psoPricing.price;
             var _existingPso = loadOrders().find(function(o) {
                 return o.status === 'pending_deposit'
                     && !o.deposit_paid
@@ -5205,8 +5308,9 @@ app.post('/api/orders/create', (req, res) => {
             // le client doit d'abord avoir une demande au statut 'signed' pour ce couple partenaire/prestation.
             // Prix remisé si le prestataire a mis une remise sur cette prestation (serviceCurrentPrice) :
             // le versement au prestataire se calcule sur ce prix, c'est lui qui finance sa remise.
-            var psoPartnerDiscountPct = serviceDiscountPct(service);
-            var psoTotal = serviceCurrentPrice(service);
+            // Promotion du prestataire (% ou €) appliquée ici, financée par lui (partnerServicePricing).
+            var psoPartnerDiscountPct = _psoPricing.service_discount_pct;
+            var psoTotal = _psoPricing.price;
             var psoFullPrice = psoTotal;
             var psoWelcomeDiscountAmount = 0;
             // Avantage bienvenue -10% : s'applique automatiquement à toute première commande,
@@ -5318,6 +5422,7 @@ app.post('/api/orders/create', (req, res) => {
                 total_amount: psoTotal,
                 partner_discount_pct: psoPartnerDiscountPct || 0,
                 price_before_partner_discount: psoPartnerDiscountPct ? parseFloat(service.price) : null,
+                ...orderPromotionFields(_psoPricing),
                 welcome_discount_pct: psoWelcomeDiscountAmount > 0 ? psoDiePct : 0,
                 welcome_discount_amount: psoWelcomeDiscountAmount,
                 deposit_amount: psoDeposit,
@@ -19576,6 +19681,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
             return res.status(404).json({ error: 'Partenaire non trouve' });
         }
         const fromPrice = getPartnerFromPrice(partner);
+        const _fichePromos = loadPromotions();
         const activeServices = (partner.services || []).filter(s => s.active !== false)
             .map(s => {
                 var sPrice = parseFloat(s.price);
@@ -19583,8 +19689,12 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 // pricing_type 'quote' uniquement si explicitement défini ET pas de prix valide
                 var pricingType = (s.pricing_type === 'quote' && !isValidPrice) ? 'quote' : (isValidPrice ? 'fixed' : 'quote');
                 // Remise en cours : price = prix remisé (celui facturé), prix d'origine à part.
+                // Promotion du prestataire comprise (même calcul qu'à la commande, partnerServicePricing).
                 var sDisc = isValidPrice ? serviceDiscountPct(s) : 0;
-                return { id: s.id, category: serviceCategoryOf(s, partner), label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? (sDisc ? serviceCurrentPrice(s) : sPrice) : null, price_before_discount: sDisc ? sPrice : null, discount_pct: sDisc || null, discount_ends_at: sDisc ? (s.discount_ends_at || null) : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: imageIsPublic(s.image_moderation) ? (s.image || '') : '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
+                var sPr = isValidPrice ? partnerServicePricing(partner, s, _fichePromos) : null;
+                var sPromo = sPr && sPr.promotion;
+                if (sPromo) sDisc = Math.max(1, Math.round((1 - sPr.price / sPrice) * 100));
+                return { id: s.id, category: serviceCategoryOf(s, partner), label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? (sPromo ? sPr.price : (sDisc ? serviceCurrentPrice(s) : sPrice)) : null, price_before_discount: sDisc ? sPrice : null, discount_pct: sDisc || null, discount_ends_at: sPromo ? sPromo.end_date : (sDisc ? (s.discount_ends_at || null) : null), discount_label: sPromo ? promoDiscountLabel(sPromo) : null, promotion_title: sPromo ? sPromo.title : null, promotion_perks: sPr && sPr.perks.length ? sPr.perks.map(function(p) { return { title: p.title, perk_label: p.perk_label }; }) : [], pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: imageIsPublic(s.image_moderation) ? (s.image || '') : '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
             });
         // Liens externes et images non validées retirés D'ABORD, puis 5 médias max : un
         // prestataire dont les 5 premiers éléments sont d'anciens liens doit quand même voir ses
@@ -19643,7 +19753,10 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 verification_level: PartnerVerif.publicLevel(partner),
                 cercleGenesis: cercleGenesis,
                 // Réduction Cercle supprimée (fidélisation v2) et jamais appliquée au paiement : ne plus l'afficher.
-                cercleDiscountPct: 0
+                cercleDiscountPct: 0,
+                // Promotions en cours du prestataire (bandeau de la fiche) : en % / € appliquées au paiement,
+                // les autres offres à honorer par le prestataire.
+                promotions: _fichePromos.filter(function(pr) { return pr && pr.partner_id === partner.id && isPromoActive(pr); }).map(_promoPublic)
             },
             reviews: reviews
         });
@@ -20708,7 +20821,7 @@ app.post('/api/partner-requests', function(req, res) {
             service_label: service.label,
             // Catégorie du devis, figée à la création (voir requestAudience).
             audience: audienceForServiceRequest(service, _reqAud),
-            price: serviceCurrentPrice(service),
+            price: partnerServicePricing(partner, service).price,
             budget_note: (req.body.budgetNote || '').toString().substring(0, 300),
             desired_date: req.body.desiredDate || null,
             location: (req.body.location || '').toString().substring(0, 200),
