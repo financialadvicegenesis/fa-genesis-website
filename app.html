@@ -2715,15 +2715,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261113e"></script>
-<script src="app-i18n-es.js?v=20261113e"></script>
-<script src="app-i18n-hi.js?v=20261113e"></script>
-<script src="app-i18n-pt.js?v=20261113e"></script>
-<script src="app-i18n-ja.js?v=20261113e"></script>
-<script src="app-i18n-zh.js?v=20261113e"></script>
-<script src="app-i18n-ar.js?v=20261113e"></script>
-<script src="app-i18n-it.js?v=20261113e"></script>
-<script src="app-i18n-de.js?v=20261113e"></script>
+<script src="app-i18n-en.js?v=20261113f"></script>
+<script src="app-i18n-es.js?v=20261113f"></script>
+<script src="app-i18n-hi.js?v=20261113f"></script>
+<script src="app-i18n-pt.js?v=20261113f"></script>
+<script src="app-i18n-ja.js?v=20261113f"></script>
+<script src="app-i18n-zh.js?v=20261113f"></script>
+<script src="app-i18n-ar.js?v=20261113f"></script>
+<script src="app-i18n-it.js?v=20261113f"></script>
+<script src="app-i18n-de.js?v=20261113f"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -13164,7 +13164,7 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     var _luIconClass = _luIconMap[levelIcon] || 'fa-crown';
     var _luAdvMap = {
       bronze: ['Programme de parrainage','Missions GENESIS','Patrimoine GENESIS','Jérémie IA personnalisé'],
-      argent: ['Webinaires & ateliers GENESIS','Alertes intelligentes','Campagnes & jeux concours','Jérémie IA Plus'],
+      argent: ['Webinaires & ateliers GENESIS','Alertes prioritaires','Campagnes & jeux concours','Jérémie IA Plus'],
       or:     ['Événements privés & networking GENESIS','Accès bêta & avant-première','Priorité événements','Jérémie IA Pro'],
       elite:  ['Invitations VIP aux événements GENESIS','Accès anticipé aux nouvelles fonctionnalités de l\'application GENESIS','Cadeau annuel de fidélité','Jérémie IA Expert']
     };
@@ -13494,7 +13494,7 @@ function showAlertesIA() {
     try{ var stored = JSON.parse(localStorage.getItem('fa_genesis_alerts_prefs_v2')||'{}'); _alPrefsCache = stored; }catch(e){}
   }
   c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Alertes Intelligentes</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Alertes prioritaires</div></div>'
     +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;" id="alertes-ia-body"></div>'
     +'</div>';
   var el = document.getElementById('alertes-ia-body'); if(!el) return;
