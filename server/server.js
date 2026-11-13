@@ -1120,7 +1120,7 @@ function saveCertificates(data) {
 // Les promotions restent ouvertes à tous.
 var STUDENT_NOT_VERIFIED_MESSAGE = 'Les tarifs étudiants sont réservés aux étudiants vérifiés. Envoyez votre justificatif depuis votre profil : il est vérifié sous 24 h.';
 function studentPriceBlocked(service, user) {
-    if (!service || !user || user.accountType !== 'etudiant' || ClientCo.isStudentVerified(user) || service.pricing_type === 'free') return false;
+    if (!service || !user || user.accountType !== 'etudiant' || ClientCo.isStudentVerified(user)) return false;
     var a = Array.isArray(service.audience) ? service.audience : [service.audience || 'particulier'];
     return a.indexOf('etudiant') !== -1 && a.indexOf('promo') === -1;
 }
@@ -5032,7 +5032,6 @@ app.post('/api/orders/create', (req, res) => {
                 if (!partnerIsListed(psiPartner)) return res.status(400).json({ error: 'Le partenaire ' + (psiPartner.prenom||'') + ' n\'est pas disponible' });
                 var psiService = (psiPartner.services || []).find(function(s) { return s.id === psiItem.serviceId && s.active !== false; });
                 if (!psiService) return res.status(404).json({ error: 'Prestation non trouvée chez ' + (psiPartner.prenom||'') });
-                if (psiService.pricing_type === 'free') return res.status(400).json({ error: 'Cette prestation est gratuite : envoyez une demande au prestataire depuis sa fiche.', code: 'free_service' });
 
                 // Prix remisé (remise par prestation ou promotion du prestataire, sans cumul).
                 var psiPricing = partnerServicePricing(psiPartner, psiService);
@@ -5290,9 +5289,6 @@ app.post('/api/orders/create', (req, res) => {
             });
             if (!service) {
                 return res.status(404).json({ error: 'Prestation non trouvee' });
-            }
-            if (service.pricing_type === 'free') {
-                return res.status(400).json({ error: 'Cette prestation est gratuite : envoyez une demande au prestataire depuis sa fiche.', code: 'free_service' });
             }
             // Idempotence : si un ordre identique (même client + partenaire + service + prix) est déjà en pending_deposit,
             // retourner cet ordre plutôt que d'en créer un doublon.
@@ -16210,17 +16206,15 @@ app.put('/api/partner/services', authenticatePartner, async (req, res) => {
                     if (rejectExternalLink(res, f.trim(), null, 'service_feature')) return;
                 }
             }
-            // Prestation gratuite (2026-11-13) : affichée « Gratuit », demandée au prestataire, sans paiement.
-            const isFree = s.pricing_type === 'free';
             const isQuote = s.pricing_type === 'quote';
-            const price = (isQuote || isFree) ? 0 : Number(s.price);
-            if (!isQuote && !isFree && (!Number.isFinite(price) || price <= 0)) {
+            const price = isQuote ? 0 : Number(s.price);
+            if (!isQuote && (!Number.isFinite(price) || price <= 0)) {
                 return res.status(400).json({ error: 'Chaque prestation doit avoir un prix numerique superieur a 0' });
             }
             // Modes de paiement définis par le prestataire par prestation
             var VALID_PAY_MODES = ['single', 'deposit_balance', 'installments'];
             var rawPayMode = typeof s.payment_mode === 'string' ? s.payment_mode : null;
-            var paymentMode = isFree ? null : (VALID_PAY_MODES.indexOf(rawPayMode) !== -1 ? rawPayMode : (isQuote ? 'single' : null));
+            var paymentMode = VALID_PAY_MODES.indexOf(rawPayMode) !== -1 ? rawPayMode : (isQuote ? 'single' : null);
             var rawDepPct = s.deposit_pct != null ? Number(s.deposit_pct) : null;
             var depositPct = (paymentMode === 'deposit_balance' && rawDepPct != null && Number.isFinite(rawDepPct))
                 ? Math.max(0, Math.min(100, Math.round(rawDepPct)))
@@ -16235,7 +16229,7 @@ app.put('/api/partner/services', authenticatePartner, async (req, res) => {
                 return res.status(400).json({ error: 'Choisissez la catégorie de clients de la prestation « ' + s.label.trim() + ' » : Étudiant, Particulier, Entreprise ou Promo.', field: 'service_audience', serviceId: s.id || null });
             }
             var _audIn = s.audience;
-            if (!isQuote && !isFree && _audIn !== 'promo' && s.discount_pct != null && s.discount_pct !== '' && Number(s.discount_pct) !== 0) {
+            if (!isQuote && _audIn !== 'promo' && s.discount_pct != null && s.discount_pct !== '' && Number(s.discount_pct) !== 0) {
                 var _dPct = Math.round(Number(s.discount_pct));
                 if (!Number.isFinite(_dPct) || _dPct < SERVICE_DISCOUNT_MIN_PCT || _dPct > SERVICE_DISCOUNT_MAX_PCT) {
                     return res.status(400).json({ error: 'La remise de « ' + s.label.trim() + ' » doit être comprise entre ' + SERVICE_DISCOUNT_MIN_PCT + ' % et ' + SERVICE_DISCOUNT_MAX_PCT + ' %.', field: 'service_discount', serviceId: s.id || null });
@@ -16261,7 +16255,7 @@ app.put('/api/partner/services', authenticatePartner, async (req, res) => {
                 label: s.label.trim(),
                 description: (s.description || '').trim(),
                 price: price,
-                pricing_type: isFree ? 'free' : (isQuote ? 'quote' : 'fixed'),
+                pricing_type: isQuote ? 'quote' : 'fixed',
                 active: s.active !== false,
                 audience: _audIn,
                 discount_pct: discountPct,
@@ -17456,7 +17450,7 @@ function getPartnerFromPrice(partner) {
     // qu'il soit tagué 'fixed' ou 'quote' en base (données legacy). Les vrais "devis" ont price:0.
     // Promotion du prestataire comprise (2026-11-13) : même prix qu'à la commande.
     const activePrices = (partner.services || [])
-        .filter(s => s.active !== false && s.pricing_type !== 'free')
+        .filter(s => s.active !== false)
         .map(s => partner.id ? partnerServicePricing(partner, s).price : serviceCurrentPrice(s))
         .filter(p => !isNaN(p) && isFinite(p) && p > 0);
     return activePrices.length ? Math.min(...activePrices) : null;
@@ -19118,7 +19112,7 @@ function buildPartnerContextForJeremie(message, audience, out) {
             parts.push('portfolio : ' + (p.portfolio || []).filter(function(it) { return !isPortfolioExternalLink(it) && imageIsPublic(it.moderation); }).slice(0, PORTFOLIO_MAX_ITEMS).length + ' élément(s)');
             if (svcs.length) parts.push('prestations : ' + svcs.slice(0, 4).map(function(s) {
                 var _jd = serviceDiscountPct(s);
-                return (publicText(s.label) || 'Prestation') + ' (' + (s.pricing_type === 'free' ? 'gratuit, sur demande au prestataire' : (s.pricing_type === 'quote' ? 'sur devis' : (_jd ? serviceCurrentPrice(s) + ' € au lieu de ' + s.price + ' €, remise -' + _jd + ' %' : s.price + ' €'))) + ')';
+                return (publicText(s.label) || 'Prestation') + ' (' + (s.pricing_type === 'quote' ? 'sur devis' : (_jd ? serviceCurrentPrice(s) + ' € au lieu de ' + s.price + ' €, remise -' + _jd + ' %' : s.price + ' €')) + ')';
             }).join(', '));
             if (modes.length) parts.push('modes de paiement : ' + modes.join(', '));
             if (p.bio && publicText(p.bio)) parts.push('présentation : ' + publicText(String(p.bio)).replace(/\s+/g, ' ').substring(0, 160));
@@ -19701,7 +19695,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 var sPrice = parseFloat(s.price);
                 var isValidPrice = !isNaN(sPrice) && isFinite(sPrice) && sPrice > 0;
                 // pricing_type 'quote' uniquement si explicitement défini ET pas de prix valide
-                var pricingType = s.pricing_type === 'free' ? 'free' : ((s.pricing_type === 'quote' && !isValidPrice) ? 'quote' : (isValidPrice ? 'fixed' : 'quote'));
+                var pricingType = (s.pricing_type === 'quote' && !isValidPrice) ? 'quote' : (isValidPrice ? 'fixed' : 'quote');
                 // Remise en cours : price = prix remisé (celui facturé), prix d'origine à part.
                 // Promotion du prestataire comprise (même calcul qu'à la commande, partnerServicePricing).
                 var sDisc = isValidPrice ? serviceDiscountPct(s) : 0;
@@ -20853,8 +20847,7 @@ app.post('/api/partner-requests', function(req, res) {
             // Catégorie du devis, figée à la création (voir requestAudience).
             audience: audienceForServiceRequest(service, _reqAud),
             price: partnerServicePricing(partner, service).price,
-            is_free: service.pricing_type === 'free',
-            budget_note: service.pricing_type === 'free' ? '' : (req.body.budgetNote || '').toString().substring(0, 300),
+            budget_note: (req.body.budgetNote || '').toString().substring(0, 300),
             desired_date: req.body.desiredDate || null,
             location: (req.body.location || '').toString().substring(0, 200),
             description: (req.body.description || '').toString().substring(0, 1500),
@@ -21060,7 +21053,7 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
                 // choix du client.
                 return r.partner_id === req.partner.id
                     && r.hidden_by_partner !== true
-                    && ['pending', 'transfer_accepted', 'accepted', 'proposed', 'signed', 'completed', 'free_confirmed'].indexOf(r.status) !== -1;
+                    && ['pending', 'transfer_accepted', 'accepted', 'proposed', 'signed', 'completed'].indexOf(r.status) !== -1;
             })
             .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); })
             .map(function(r) {
@@ -21120,7 +21113,7 @@ app.post('/api/partner/requests/:id/hide', authenticatePartner, function(req, re
         var livrables = order ? loadLivrables().filter(function(l) { return l.order_id === order.id; }) : [];
         var hasReview = !!(dispatch && loadPartnerReviews().some(function(rv) { return rv.dispatchId === dispatch.id; }));
         var displayStatus = computeMissionDisplayStatus(r, dispatch, order, livrables, hasReview);
-        if (r.status !== 'free_confirmed' && (!displayStatus || (displayStatus.key !== 'completed' && displayStatus.key !== 'reviewed'))) {
+        if (!displayStatus || (displayStatus.key !== 'completed' && displayStatus.key !== 'reviewed')) {
             return res.status(400).json({ error: 'Seule une mission terminée peut être supprimée de la liste.' });
         }
 
@@ -21166,18 +21159,6 @@ app.post('/api/partner/requests/:id/accept', authenticatePartner, function(req, 
                 else notifyQuoteTransferAccepted(requests, requests[_taOrigIdx], _taFirst);
             }
             return res.json({ success: true, transfer: true, message: 'Acceptation envoyée. Le client choisit parmi les prestataires qui ont accepté : vous serez notifié s\'il vous retient.' });
-        }
-
-        // Prestation gratuite : rien à chiffrer ni à payer — confirmée dès l'acceptation, le client et
-        // le prestataire s'organisent par message (aucune commande, aucune commission).
-        if (requests[idx].is_free) {
-            requests[idx].status = 'free_confirmed';
-            requests[idx].responded_at = new Date().toISOString();
-            savePartnerRequests(requests);
-            notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Prestation gratuite confirmée ✅',
-                _partnerDisplayName(req.partner) + ' a accepté votre demande pour la prestation gratuite « ' + requests[idx].service_label + ' ». Échangez avec lui par message pour en organiser les détails.',
-                '/app.html#client:proposal:' + requests[idx].id);
-            return res.json({ success: true, free: true, message: 'Prestation gratuite confirmée. Organisez les détails avec le client par message.' });
         }
 
         requests[idx].status = 'accepted';
