@@ -488,15 +488,18 @@ function processScheduledNotifs() {
         var annLog = null, annPushed = false, annUsers = null;
         notifs.forEach(function(n) {
             if (!n.sent && new Date(n.sendAt).getTime() <= now) {
+                var annUser = null;
                 if (ANNOUNCEMENT_TYPES.indexOf(n.type) !== -1) {
                     if (!annLog) { annLog = loadDiscoveryLog(); annUsers = loadUsers(); }
                     var em = String(n.email || '').toLowerCase();
-                    var annUser = annUsers.find(function(u) { return u.email && u.email.toLowerCase() === em; });
+                    annUser = annUsers.find(function(u) { return u.email && u.email.toLowerCase() === em; });
                     if (annUser) { if (notifyAnnouncement(annUser, n.type, n.title, n.body, n.link, annLog, now)) annPushed = true; }
                 } else {
                     notifyUser(n.email, n.role, n.type, n.title, n.body, n.link);
                 }
-                if (n.emailType === 'capacity_limited_event') {
+                // E-mail d'événement = communication promotionnelle : uniquement aux clients ayant
+                // accepté « Nouveautés et promos » (offers_push === true), vérifié au moment de l'envoi.
+                if (n.emailType === 'capacity_limited_event' && annUser && annUser.offers_push === true) {
                     emailService.sendCapacityLimitedEventEmail(n.email, n.userPrenom, n.emailEventTitle, n.link).catch(function(e) {
                         console.warn('[SCHED_NOTIF] Email event capacite:', e.message);
                     });
@@ -20448,8 +20451,8 @@ function eventInvitationTiming(event, badge) {
     if (event.capacity_limited) return 'later';
     return null;
 }
-// Notification dans l'app pour tous les invités ; push seulement pour ceux qui ont accepté
-// « Nouveautés et promos » (notifyAnnouncement). E-mail : uniquement pour les places limitées, comme avant.
+// Notification dans l'app pour tous les invités ; push ET e-mail seulement pour ceux qui ont accepté
+// « Nouveautés et promos » (notifyAnnouncement). E-mail : uniquement pour les places limitées.
 function notifyEventInvitations(event) {
     try {
         var link = '/app.html#evenement-' + event.id;
@@ -20469,7 +20472,8 @@ function notifyEventInvitations(event) {
             var timing = eventInvitationTiming(event, clientCurrentBadge(user));
             if (timing === 'now') {
                 if (notifyAnnouncement(user, 'evenement_capacite_limitee', inviteTitle, inviteBody, link, annLog, annNow)) annPushed = true;
-                if (event.capacity_limited) {
+                // E-mail seulement si le client a accepté « Nouveautés et promos » (jamais à son insu).
+                if (event.capacity_limited && user.offers_push === true) {
                     emailService.sendCapacityLimitedEventEmail(user.email, user.prenom, event.title, link).catch(function(e) {
                         console.warn('[EVENT_NOTIFY] Email prioritaire:', e.message);
                     });
