@@ -9115,10 +9115,10 @@ function referralBoxHtml(){
   var link = 'https://fagenesis.com/ref/' + code;
   var count = Math.max(0, USER.referralCount || 0);
   return '<div class="ref-box-v2">'
-    + '<div style="margin-bottom:16px;">'
+    + '<div style="margin-bottom:16px;text-align:center;">'
     + '<div style="font-size:10px;color:#888;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;">Votre code de parrainage</div>'
-    + '<div style="display:flex;align-items:center;gap:8px;">'
-    + '<span class="ref-box-v2-code" id="p-ref-code-val">'+code+'</span>'
+    + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">'
+    + '<span class="ref-box-v2-code" id="p-ref-code-val" data-i18n-skip style="flex:0 1 auto;">'+code+'</span>'
     + '<button class="ref-box-v2-copy" onclick="copyReferralCode()">Copier</button>'
     + '</div></div>'
     + '<button class="ref-box-v2-share" onclick="shareReferralCode()"><i class="fa-solid fa-share-nodes"></i> Inviter un ami</button>'
