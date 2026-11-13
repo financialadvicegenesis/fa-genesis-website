@@ -1578,13 +1578,6 @@ a{text-decoration:none;color:inherit}
 /* ── ACCUEIL — CATÉGORIES POPULAIRES ──────────────────── */
 .home-cat-chip{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;font-family:inherit;transition:border-color .15s,color .15s;}
 .home-cat-chip:hover,.home-cat-chip:active{border-color:var(--yellow);color:var(--yellow);}
-/* ── ACCUEIL — COMPOSEZ VOTRE PROJET ─────────────────── */
-.home-compose-box{margin:8px 16px 16px;padding:20px;background:linear-gradient(135deg,#0f0f0f,#1a1a1a);border:1.5px solid #2a2a2a;border-radius:16px;text-align:center;}
-.home-compose-eyebrow{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;color:var(--yellow);margin-bottom:6px;}
-.home-compose-sub{font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;}
-.home-compose-roles{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;justify-content:center;}
-.home-compose-role{display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid #333;border-radius:20px;padding:6px 12px;font-size:11px;font-weight:700;color:#ddd;}
-.home-compose-cta{width:100%;background:var(--yellow);color:#000;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.5px;border:none;border-radius:10px;padding:13px;cursor:pointer;font-family:inherit;}
 /* ── EXPLORER — CARTE / LISTE / FILTRES ──────────────── */
 .exp-view-row{display:flex;align-items:center;gap:8px;padding:0 16px 10px;}
 .exp-view-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--card);border:2px solid var(--border);border-radius:10px;padding:10px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s;}
@@ -3128,7 +3121,6 @@ function _genesisVersionFooter(){
       <div id="home-populaires"></div>
       <div id="home-nouveaux-talents"></div>
       <div id="home-recommandes"></div>
-      <div id="home-composer-projet"></div>
       <div id="home-promos"></div>
       <div style="height:24px"></div>
 
@@ -4939,7 +4931,6 @@ function loadAccueilSections(){
   _loadHomePopulaires();
   _loadHomeNouveauxTalents();
   _loadHomeRecommandes();
-  _renderHomeComposerProjet();
   _loadHomePromos();
 }
 
@@ -5105,22 +5096,8 @@ function _loadHomeRecommandes(){
     }).catch(function(){wrap.innerHTML='';});
 }
 
-function _renderHomeComposerProjet(){
-  var wrap=document.getElementById('home-composer-projet');
-  if(!wrap)return;
-  wrap.innerHTML='<div class="home-compose-box">'
-    +'<div class="home-compose-eyebrow"><i class="fa-solid fa-layer-group" style="margin-right:5px;"></i>Composez votre projet</div>'
-    +'<div class="home-compose-sub">Besoin de plusieurs professionnels ? Construisez votre projet GENESIS en quelques clics.</div>'
-    +'<div class="home-compose-roles">'
-    +'<span class="home-compose-role"><i class="fa-solid fa-video" style="color:var(--yellow);"></i>Vidéaste</span>'
-    +'<span class="home-compose-role"><i class="fa-solid fa-camera" style="color:var(--yellow);"></i>Photographe</span>'
-    +'<span class="home-compose-role"><i class="fa-solid fa-chart-line" style="color:var(--yellow);"></i>Marketeur</span>'
-    +'<span class="home-compose-role"><i class="fa-solid fa-newspaper" style="color:var(--yellow);"></i>Média</span>'
-    +'</div>'
-    +'<button class="home-compose-cta" onclick="nav(\'explorer\')">'
-    +'<i class="fa-solid fa-magnifying-glass" style="margin-right:6px;"></i>Explorer les prestations</button>'
-    +'</div>';
-}
+// Bloc « Composez votre projet » retiré de l'accueil (2026-11-14) : il promettait un outil de
+// composition qui n'existe pas (le bouton ouvrait seulement Explorer) et ses métiers n'étaient pas cliquables.
 
 function _loadHomePromos(){
   var wrap=document.getElementById('home-promos');
