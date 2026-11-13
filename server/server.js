@@ -1918,6 +1918,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                     }
                     orders[oIdx].updatedAt = new Date().toISOString();
                     saveOrders(orders);
+                    try { _scheduleClientRewards(orders[oIdx]); } catch (_srE) {}
 
                     // Si ce succeeded vient de la capture manuelle GENESIS SAFE™ (le partenaire
                     // a déclaré terminé → capturePaymentIntent → succeeded ici), le dispatch et
@@ -3940,6 +3941,7 @@ function updateOrder(orderId, updates) {
     }
     saveOrders(orders);
     if (_countPromo) _countPromotionUse(orders[index]);
+    if (updates.balance_paid === true || updates.client_validated === true) _scheduleClientRewards(orders[index]);
     // Si la commande fait partie d'un Projet GENESIS, vérifier si toutes les prestations sont terminées
     if (updates.status === 'completed' && orders[index].project_id) {
         checkAndCompleteGenesisProject(orders[index].project_id, orders);
@@ -17621,16 +17623,39 @@ function isClientFirstPaidOrder(email) {
     });
 }
 
+// ── Prestation TERMINÉE pour le client : règle unique, quel que soit le mode de paiement ──
+// (2026-11-13) Paiement unique GENESIS SAFE™ : pas de solde séparé → terminée quand le client
+// valide la livraison (ou validation automatique au bout de 7 jours : client_validated). Acompte +
+// solde, mensualités, Stripe ou PayPal : terminée quand le solde est payé (balance_paid) — ou
+// validée. Jamais si annulée ou remboursée. Utilisée pour les points QG, les missions, les
+// filleuls actifs, le Top Ambassadeurs et les Hall of Fame : ne JAMAIS retester balance_paid seul.
+function clientOrderCompleted(o) {
+    if (!o || o.status === 'cancelled' || o.status === 'refunded' || o.refunded_at) return false;
+    return o.balance_paid === true || o.client_validated === true;
+}
+// Date à laquelle la prestation a été terminée (validation, sinon paiement du solde).
+function clientOrderCompletedAt(o) {
+    return (o && (o.client_validated_at || o.balance_paid_at || o.completed_at || o.updated_at || o.created_at)) || null;
+}
+// Récompenses du client et de son parrain (missions, parrainage) dès qu'une prestation se
+// termine — y compris par validation d'un paiement unique (avant : seulement au paiement d'un
+// solde, le parrain attendait que son filleul ouvre « Mes niveaux »). Idempotent.
+function _scheduleClientRewards(order) {
+    try {
+        var em = order && ((order.client_info && order.client_info.email) || order.client_email || order.email);
+        if (!em || !clientOrderCompleted(order)) return;
+        setImmediate(function() { try { checkReferralAndMissionRewards(em); } catch (e) { console.error('[REWARDS]', e.message); } });
+    } catch (e) {}
+}
+
 function getClientCompletedOrders(email) {
     if (!email) return 0;
     const needle = email.toLowerCase();
     return loadOrders().filter(o => {
         const oe = (o.client_info && o.client_info.email) || o.email || '';
         if (oe.toLowerCase() !== needle) return false;
-        // Flow acompte/solde classique : commande realisee = solde paye.
-        // Flow GENESIS SAFE™ paiement unique (payment_tier 'small') : pas de solde separe,
-        // la commande est realisee des que le client valide (ou auto-liberation 7j).
-        return o.balance_paid === true || o.client_validated === true;
+        // Tous modes de paiement, annulées/remboursées exclues (clientOrderCompleted).
+        return clientOrderCompleted(o);
     }).length;
 }
 
@@ -17708,7 +17733,7 @@ function getClientPartnerCollabCount(clientEmail, partnerId) {
         // Finalisée = solde payé OU livraison validée par le client (paiement unique GENESIS SAFE,
         // sans solde séparé) — même règle que getClientCompletedOrders. Avant 2026-11-11, seules les
         // commandes avec solde comptaient : le Cercle Alliance ignorait les paiements uniques.
-        if (orderIds.indexOf(o.id) === -1 || !(o.balance_paid === true || o.client_validated === true)) return;
+        if (orderIds.indexOf(o.id) === -1 || !clientOrderCompleted(o)) return;
         const oe = (o.client_info && o.client_info.email) || o.email || '';
         if (oe.toLowerCase() === needle) seen[o.id] = true;
     });
@@ -17763,7 +17788,7 @@ function getClientDistinctPartnerCount(clientEmail) {
     loadDispatches().forEach(d => {
         if (!d.claimed_by_partner_id) return;
         const order = orders.find(o => o.id === d.order_id);
-        if (!order || !(order.balance_paid === true || order.client_validated === true)) return;
+        if (!order || !clientOrderCompleted(order)) return;
         const oe = (order.client_info && order.client_info.email) || order.email || '';
         if (oe.toLowerCase() === needle) partnerIds[d.claimed_by_partner_id] = true;
     });
@@ -18073,8 +18098,8 @@ function computeHallOfFameForMonth(monthStr) {
     // Meilleur client : le plus de commandes au solde paye dans le mois
     var clientCounts = {};
     orders.forEach(function(o) {
-        if (!o.balance_paid) return;
-        var date = o.balance_paid_at || o.updated_at || o.created_at;
+        if (!clientOrderCompleted(o)) return;
+        var date = clientOrderCompletedAt(o);
         if (!_hofDateInMonth(date, monthStr)) return;
         var email = ((o.client_info && o.client_info.email) || o.email || '').toLowerCase();
         if (!email) return;
@@ -18098,8 +18123,8 @@ function computeHallOfFameForMonth(monthStr) {
         if (!u.referredBy) return;
         var paidDates = orders.filter(function(o) {
             var email = ((o.client_info && o.client_info.email) || o.email || '').toLowerCase();
-            return email === u.email.toLowerCase() && o.balance_paid === true;
-        }).map(function(o) { return o.balance_paid_at || o.updated_at || o.created_at; }).sort();
+            return email === u.email.toLowerCase() && clientOrderCompleted(o);
+        }).map(function(o) { return clientOrderCompletedAt(o); }).sort();
         if (paidDates.length && _hofDateInMonth(paidDates[0], monthStr)) {
             referrerCounts[u.referredBy] = (referrerCounts[u.referredBy] || 0) + 1;
         }
@@ -18411,7 +18436,7 @@ function checkReferralAndMissionRewards(clientEmail) {
                             users.forEach(function(u) {
                                 if (u.referredBy && _orders.some(function(o) {
                                     var em = (o.client_email || (o.client_info && o.client_info.email) || '').toLowerCase();
-                                    return em === (u.email || '').toLowerCase() && o.balance_paid;
+                                    return em === (u.email || '').toLowerCase() && clientOrderCompleted(o);
                                 })) { _refMap[u.referredBy] = (_refMap[u.referredBy] || 0) + 1; }
                             });
                             var _sorted = Object.keys(_refMap).sort(function(a,b){ return _refMap[b] - _refMap[a]; });
@@ -19340,13 +19365,8 @@ var HOF_CATEGORY_LABELS = { etudiant: 'Étudiants', particulier: 'Particuliers',
 function clientHofCategory(u) {
     return u && u.accountType === 'etudiant' ? 'etudiant' : (u && u.accountType === 'entreprise' ? 'entreprise' : 'particulier');
 }
-function _hofOrderCounted(o) {
-    if (!o || o.status === 'cancelled' || o.status === 'refunded' || o.refunded_at) return false;
-    return o.balance_paid === true || o.client_validated === true;
-}
-function _hofOrderDate(o) {
-    return o.client_validated_at || o.balance_paid_at || o.completed_at || o.updated_at || o.created_at || null;
-}
+function _hofOrderCounted(o) { return clientOrderCompleted(o); }
+function _hofOrderDate(o) { return clientOrderCompletedAt(o); }
 var _hofMonthFmt = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit' });
 function _hofMonthKey(dateLike) {
     var d = new Date(dateLike);
@@ -19483,10 +19503,11 @@ app.get('/api/hall-of-fame/ambassadeurs', function(req, res) {
         var limit = Math.max(1, Math.min(limitParam, 100));
         var users = loadUsers();
         var orders = loadOrders();
-        // Marque les filleuls qui ont au moins une prestation payée (balance_paid)
+        // Filleuls actifs : au moins une prestation terminée, quel que soit le mode de paiement
+        // (clientOrderCompleted — avant : solde payé seulement, les paiements uniques étaient oubliés).
         var filleulsActifs = new Set();
         orders.forEach(function(o) {
-            if (o.balance_paid) {
+            if (clientOrderCompleted(o)) {
                 var em = (o.client_email || (o.client_info && o.client_info.email) || '').toLowerCase();
                 if (em) filleulsActifs.add(em);
             }
@@ -21173,7 +21194,7 @@ app.get('/api/my-partner-collabs', function(req, res) {
         var paidOrderIds = {};
         loadOrders().forEach(function(o) {
             var oe = (o.client_info && o.client_info.email) || o.email || '';
-            if (oe.toLowerCase() === needle && o.balance_paid === true) paidOrderIds[o.id] = true;
+            if (oe.toLowerCase() === needle && clientOrderCompleted(o)) paidOrderIds[o.id] = true;
         });
         var collabIds = {};
         loadDispatches().forEach(function(d) {
@@ -25643,6 +25664,7 @@ app.post('/api/payments/stripe/sync-intent', async function(req, res) {
                     orders[oIdx].paymentStatus   = 'fully_paid';
                     orders[oIdx].updatedAt       = now;
                     saveOrders(orders);
+                    try { _scheduleClientRewards(orders[oIdx]); } catch (_srE) {}
                 }
             } else {
                 if (!orders[oIdx].deposit_paid) {
