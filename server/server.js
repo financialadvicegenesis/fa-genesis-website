@@ -17648,6 +17648,20 @@ function _scheduleClientRewards(order) {
     } catch (e) {}
 }
 
+// Rattrapage (démarrage) : parrainages dont le filleul a DÉJÀ terminé une prestation non
+// récompensée (paiements uniques avant le 2026-11-13). Idempotent : checkReferralAndMissionRewards
+// ne valide chaque parrainage qu'une fois.
+function backfillReferralRewards() {
+    var n = 0;
+    loadUsers().forEach(function(u) {
+        if (!u || !u.referredBy || !u.email || clientReferralValidated(u)) return;
+        if (getClientCompletedOrders(u.email) < 1) return;
+        if (checkReferralAndMissionRewards(u.email)) n++;
+    });
+    if (n) console.log('[REFERRAL] Rattrapage : ' + n + ' parrainage(s) validé(s)');
+    return n;
+}
+
 function getClientCompletedOrders(email) {
     if (!email) return 0;
     const needle = email.toLowerCase();
@@ -27039,6 +27053,7 @@ var httpServer = app.listen(PORT, async () => {
     try { grandfatherHistoricalPartners(); } catch (e) { console.error('[VERIF] Prestataires historiques :', e.message); }
     try { runStudentRenewalSweep(); } catch (e) { console.error('[STUDENTS] Passage année scolaire:', e.message); }
     try { anonymizeOrphanReviews(); } catch (e) { console.error('[PURGE] Avis orphelins:', e.message); }
+    try { backfillReferralRewards(); } catch (e) { console.error('[REFERRAL] Rattrapage:', e.message); }
 
     // Comptes de test internes : uniquement en dehors de la production
     if (process.env.NODE_ENV !== 'production') {
