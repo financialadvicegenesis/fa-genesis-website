@@ -557,6 +557,44 @@ a{text-decoration:none;color:inherit}
   letter-spacing:.8px;margin-top:4px}
 /* Toggle switch */
 .tgl{position:relative;width:46px;height:26px;flex-shrink:0}
+/* Hall of Fame clients (2026-11-13) */
+.hof-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#0f0f0f;border:1px solid #222;border-radius:14px;padding:4px;margin-bottom:14px}
+.hof-seg-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px;border:none;border-radius:10px;background:transparent;color:#888;font-size:11px;font-weight:900;cursor:pointer;font-family:inherit}
+.hof-seg-btn i{font-size:15px}
+.hof-seg-btn.on{background:#FFD700;color:#0a0a0a}
+.hof-seg-btn:focus-visible{outline:2px solid #FFD700;outline-offset:2px}
+.hof-cat{font-size:12px;color:#bbb;margin:0 2px 12px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.hof-cat i{color:#FFD700}
+.hof-cat strong{color:#FFD700}
+.hof-me{display:flex;gap:14px;align-items:center;background:linear-gradient(135deg,rgba(255,215,0,.12),rgba(255,215,0,.03));border:1px solid rgba(255,215,0,.35);border-radius:16px;padding:14px 16px;margin-bottom:16px}
+.hof-me-rank{font-size:34px;font-weight:900;color:#FFD700;line-height:1;font-variant-numeric:tabular-nums;min-width:58px;text-align:center}
+.hof-me-hash{font-size:18px;opacity:.7;margin-right:1px}
+.hof-me-title{font-size:13px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hof-me-of{font-size:11px;font-weight:700;color:#999}
+.hof-me-count{font-size:12px;color:#ccc;margin-top:3px;line-height:1.4}
+.hof-me-gap{font-size:11px;color:#9fd8a8;margin-top:5px;line-height:1.4}
+.hof-move{display:inline-flex;align-items:center;gap:2px;font-weight:900;padding:1px 6px;border-radius:999px}
+.hof-move.up{color:#22c55e;background:rgba(34,197,94,.12)}
+.hof-move.down{color:#ef4444;background:rgba(239,68,68,.12)}
+.hof-move.same{color:#999;background:#1a1a1a}
+.hof-move.new{color:#60a5fa;background:rgba(96,165,250,.12)}
+.hof-podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;background:linear-gradient(180deg,rgba(255,215,0,.07),transparent);border-radius:16px;padding:16px 8px 0;margin-bottom:14px}
+.hof-pod{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;max-width:110px;min-width:0}
+.hof-pod-name{font-size:12px;font-weight:900;color:#fff;text-align:center;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hof-pod.me .hof-pod-name{color:#FFD700}
+.hof-pod-count{font-size:11px;color:#FFD700;font-weight:800;text-align:center}
+.hof-pod-bar{width:100%;border-radius:8px 8px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;font-size:16px;font-weight:900;color:#0a0a0a}
+.hof-list{display:flex;flex-direction:column;gap:7px}
+.hof-row{display:flex;align-items:center;gap:10px;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:9px 12px}
+.hof-row.me{border-color:rgba(255,215,0,.55);background:rgba(255,215,0,.06)}
+.hof-row-rank{width:26px;text-align:center;font-size:14px;font-weight:900;color:#888;font-variant-numeric:tabular-nums}
+.hof-row-name{flex:1;min-width:0;font-size:13px;font-weight:800;color:#eee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hof-row-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.hof-row-count{font-size:12px;font-weight:800;color:#FFD700;white-space:nowrap}
+.hof-you{font-size:10px;font-weight:900;color:#0a0a0a;background:#FFD700;border-radius:999px;padding:1px 7px;margin-left:4px}
+.hof-rules{font-size:11px;color:#888;line-height:1.5;margin:16px 2px 12px}
+.hof-rules i{color:#FFD700}
+.hof-privacy{display:flex;gap:12px;align-items:center;background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:12px 14px}
 .tgl input{opacity:0;width:0;height:0;position:absolute}
 .tgl-slider{position:absolute;inset:0;background:#2a2a2a;border-radius:26px;
   cursor:pointer;transition:background .22s}
@@ -2677,15 +2715,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261113d"></script>
-<script src="app-i18n-es.js?v=20261113d"></script>
-<script src="app-i18n-hi.js?v=20261113d"></script>
-<script src="app-i18n-pt.js?v=20261113d"></script>
-<script src="app-i18n-ja.js?v=20261113d"></script>
-<script src="app-i18n-zh.js?v=20261113d"></script>
-<script src="app-i18n-ar.js?v=20261113d"></script>
-<script src="app-i18n-it.js?v=20261113d"></script>
-<script src="app-i18n-de.js?v=20261113d"></script>
+<script src="app-i18n-en.js?v=20261113e"></script>
+<script src="app-i18n-es.js?v=20261113e"></script>
+<script src="app-i18n-hi.js?v=20261113e"></script>
+<script src="app-i18n-pt.js?v=20261113e"></script>
+<script src="app-i18n-ja.js?v=20261113e"></script>
+<script src="app-i18n-zh.js?v=20261113e"></script>
+<script src="app-i18n-ar.js?v=20261113e"></script>
+<script src="app-i18n-it.js?v=20261113e"></script>
+<script src="app-i18n-de.js?v=20261113e"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -9188,48 +9226,162 @@ function showParrainageScreen(){
     +rankBtn
     +'</div></div>';
 }
+// ── HALL OF FAME CLIENTS (2026-11-13) ── classement par nombre de prestations terminées et
+// payées, limité à la catégorie du client (Étudiants / Particuliers / Entreprises) ; mois en cours
+// ou classement général ; Top Ambassadeurs (parrainage) en 3e onglet. Données :
+// GET /api/hall-of-fame/clients (calcul et départage côté serveur, buildClientHallOfFame).
+var _hofCurTab = 'month';
 function showHallOfFameProfil(){
   var c = document.getElementById('profilContent'); if(!c) return;
   if(USER && !GUEST) _saveProfilScroll('showHallOfFameProfil');
+  var seg = function(id, tab, ico, label){
+    return '<button type="button" id="'+id+'" onclick="_hofTab(\''+tab+'\')" class="hof-seg-btn"><i class="fa-solid '+ico+'"></i><span>'+label+'</span></button>';
+  };
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Hall of Fame GENESIS</div></div>'
     +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
-    // Boutons de navigation entre les deux classements
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">'
-    +'<button onclick="_hofTab(\'ambassadeurs\')" id="hof-btn-amb" style="padding:12px 8px;border-radius:12px;border:2px solid #FFD700;background:rgba(255,215,0,.1);color:#FFD700;font-size:12px;font-weight:900;cursor:pointer;">'
-    +'<i class="fa-solid fa-user-plus" style="display:block;font-size:18px;margin-bottom:4px;"></i>Top Ambassadeurs</button>'
-    +'<button onclick="_hofTab(\'mensuel\')" id="hof-btn-men" style="padding:12px 8px;border-radius:12px;border:1px solid #2a2a2a;background:#111;color:#666;font-size:12px;font-weight:900;cursor:pointer;">'
-    +'<i class="fa-solid fa-calendar-star" style="display:block;font-size:18px;margin-bottom:4px;"></i>Palmarès du mois</button>'
+    +'<div class="hof-seg">'
+      +seg('hof-btn-month','month','fa-calendar-day','Ce mois-ci')
+      +seg('hof-btn-all','all','fa-ranking-star','Général')
+      +seg('hof-btn-amb','ambassadeurs','fa-user-plus','Ambassadeurs')
     +'</div>'
-    +'<div id="hof-panel-ambassadeurs"></div>'
-    +'<div id="hof-panel-mensuel" style="display:none;"></div>'
+    +'<div id="hof-panel-clients"></div>'
+    +'<div id="hof-panel-ambassadeurs" style="display:none;"></div>'
     +'</div></div>';
-  _hofTab('ambassadeurs');
+  _hofTab(_hofCurTab || 'month');
 }
 function _hofTab(tab){
-  var btnAmb = document.getElementById('hof-btn-amb');
-  var btnMen = document.getElementById('hof-btn-men');
-  var panAmb = document.getElementById('hof-panel-ambassadeurs');
-  var panMen = document.getElementById('hof-panel-mensuel');
-  if(!panAmb || !panMen) return;
-  var activeStyle = 'padding:12px 8px;border-radius:12px;border:2px solid #FFD700;background:rgba(255,215,0,.1);color:#FFD700;font-size:12px;font-weight:900;cursor:pointer;';
-  var inactStyle = 'padding:12px 8px;border-radius:12px;border:1px solid #2a2a2a;background:#111;color:#666;font-size:12px;font-weight:900;cursor:pointer;';
+  _hofCurTab = tab;
+  ['month','all','ambassadeurs'].forEach(function(t){
+    var b = document.getElementById(t==='ambassadeurs'?'hof-btn-amb':'hof-btn-'+t);
+    if(b) b.classList.toggle('on', t===tab);
+  });
+  var pc = document.getElementById('hof-panel-clients'), pa = document.getElementById('hof-panel-ambassadeurs');
+  if(!pc || !pa) return;
   if(tab === 'ambassadeurs'){
-    if(btnAmb) btnAmb.style.cssText = activeStyle;
-    if(btnMen) btnMen.style.cssText = inactStyle;
-    panAmb.style.display=''; panMen.style.display='none';
-    if(!panAmb.dataset.loaded){ panAmb.dataset.loaded='1'; _hofLoadAmbassadeurs(panAmb); }
-  } else {
-    if(btnAmb) btnAmb.style.cssText = inactStyle;
-    if(btnMen) btnMen.style.cssText = activeStyle;
-    panAmb.style.display='none'; panMen.style.display='';
-    if(!panMen.dataset.loaded){ panMen.dataset.loaded='1'; _hofLoadMensuel(panMen); }
+    pc.style.display='none'; pa.style.display='';
+    if(!pa.dataset.loaded){ pa.dataset.loaded='1'; _hofLoadAmbassadeurs(pa); }
+    return;
   }
+  pa.style.display='none'; pc.style.display='';
+  _hofLoadClients(tab, pc);
+}
+function _hofAvatar(e, size, ring){
+  var st = 'width:'+size+'px;height:'+size+'px;border-radius:50%;flex-shrink:0;'+(ring?'border:2px solid '+ring+';':'');
+  if(e.photo) return '<img src="'+_escHtml(e.photo)+'" alt="" style="'+st+'object-fit:cover;">';
+  var ini = e.hidden && !e.me ? '<i class="fa-solid fa-user-secret"></i>' : _escHtml((e.name||'?').charAt(0).toUpperCase());
+  return '<div style="'+st+'background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:'+Math.round(size*0.38)+'px;font-weight:900;color:#888;">'+ini+'</div>';
+}
+function _hofMoveHtml(mv, small){
+  var fs = small ? '10px' : '11px';
+  if(mv === 'new') return '<span class="hof-move new" style="font-size:'+fs+';"><span>Nouveau</span></span>';
+  if(typeof mv !== 'number') return '';
+  if(mv > 0) return '<span class="hof-move up" style="font-size:'+fs+';"><i class="fa-solid fa-caret-up"></i> <span data-i18n-skip>'+mv+'</span></span>';
+  if(mv < 0) return '<span class="hof-move down" style="font-size:'+fs+';"><i class="fa-solid fa-caret-down"></i> <span data-i18n-skip>'+(-mv)+'</span></span>';
+  return '<span class="hof-move same" style="font-size:'+fs+';">=</span>';
+}
+function _hofCountHtml(n){
+  return '<span data-i18n-skip>'+n+'</span> <span>'+(n>1?'prestations':'prestation')+'</span>';
+}
+function _hofLoadClients(period, el){
+  if(!USER || GUEST || !USER._token){
+    el.innerHTML = '<div class="espace-empty"><span>Connectez-vous pour voir le classement de votre catégorie.</span></div>';
+    return;
+  }
+  el.innerHTML = '<div class="espace-loading">Chargement...</div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/hall-of-fame/clients?period='+period, { headers: { 'Authorization': 'Bearer '+USER._token } })
+    .then(function(r){ if(r.status===401){ _handleStaleSession(); return null; } return r.json(); })
+    .then(function(d){
+      if(!d) return;
+      if(!d.success){ el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>'; return; }
+      if(_hofCurTab !== period) return;
+      el.innerHTML = _hofRenderClients(d);
+    }).catch(function(){ el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>'; });
+}
+function _hofRenderClients(d){
+  var catIco = { etudiant: 'fa-graduation-cap', particulier: 'fa-user', entreprise: 'fa-building' }[d.category] || 'fa-user';
+  var monthly = d.period === 'month';
+  var html = '<div class="hof-cat"><i class="fa-solid '+catIco+'"></i> <span>Classement</span> <strong><span>'+_escHtml(d.category_label)+'</span></strong>'
+    +' · '+(monthly ? '<span data-i18n-skip>'+_escHtml(hofMonthLabel(d.month))+'</span>' : '<span>depuis le début</span>')+'</div>';
+  // Ma position
+  var me = d.me || {};
+  html += '<div class="hof-me">';
+  if(me.rank){
+    html += '<div class="hof-me-rank"><span class="hof-me-hash">#</span><span data-i18n-skip>'+me.rank+'</span></div>'
+      +'<div style="flex:1;min-width:0;">'
+        +'<div class="hof-me-title"><span>Votre position</span> <span class="hof-me-of"><span>sur</span> <span data-i18n-skip>'+d.total+'</span></span> '+_hofMoveHtml(me.movement)+'</div>'
+        +'<div class="hof-me-count">'+_hofCountHtml(me.count)+' <span>'+(me.count>1?'validées':'validée')+'</span>'+(monthly?' <span>ce mois-ci</span>':'')+'</div>'
+        +(me.gap ? '<div class="hof-me-gap"><i class="fa-solid fa-arrow-trend-up"></i> <span>Encore</span> <strong data-i18n-skip>'+me.gap.count_needed+'</strong> <span>'+(me.gap.count_needed>1?'prestations pour dépasser le':'prestation pour dépasser le')+'</span> <strong data-i18n-skip>'+me.gap.rank+(me.gap.rank===1?'ᵉʳ':'ᵉ')+'</strong></div>'
+                 : (me.rank===1 ? '<div class="hof-me-gap" style="color:#FFD700;"><i class="fa-solid fa-crown"></i> <span>Vous êtes en tête de votre catégorie !</span></div>' : ''))
+      +'</div>';
+  } else {
+    html += '<div class="hof-me-rank" style="color:#555;"><span>–</span></div>'
+      +'<div style="flex:1;min-width:0;"><div class="hof-me-title"><span>Vous n’êtes pas encore classé</span></div>'
+      +'<div class="hof-me-count"><span>'+(monthly?'Une prestation terminée et payée ce mois-ci suffit pour entrer dans le classement.':'Une prestation terminée et payée suffit pour entrer dans le classement.')+'</span></div></div>';
+  }
+  html += '</div>';
+  var top = d.top || [];
+  if(!top.length){
+    html += '<div class="espace-empty" style="padding:26px 10px;"><i class="fa-solid fa-trophy" style="font-size:26px;color:#2a2a2a;margin-bottom:8px;"></i><div><span>'+(monthly?'Aucune prestation validée ce mois-ci dans votre catégorie.':'Aucune prestation validée pour le moment dans votre catégorie.')+'</span></div><div style="font-size:12px;color:#888;margin-top:4px;"><span>Soyez le premier du classement !</span></div></div>';
+  } else {
+    // Podium
+    var top3 = top.slice(0,3), order = top3.length>=3?[1,0,2]:(top3.length===2?[0,1]:[0]);
+    var ring = ['#FFD700','#C0C0C0','#cd7f32'], medal = ['🥇','🥈','🥉'], hgt = [74,56,44];
+    html += '<div class="hof-podium">';
+    order.forEach(function(i){
+      var e = top3[i]; if(!e) return;
+      html += '<div class="hof-pod'+(e.me?' me':'')+'">'
+        +'<div style="font-size:'+(i===0?'22px':'18px')+';">'+medal[i]+'</div>'
+        +_hofAvatar(e, i===0?58:48, ring[i])
+        +'<div class="hof-pod-name" data-i18n-skip>'+_escHtml(e.name)+'</div>'
+        +'<div class="hof-pod-count">'+_hofCountHtml(e.count)+'</div>'
+        +'<div class="hof-pod-bar" style="height:'+hgt[i]+'px;background:'+ring[i]+';"><span data-i18n-skip>'+(i+1)+'</span></div>'
+      +'</div>';
+    });
+    html += '</div>';
+    // Liste
+    var rest = top.slice(3);
+    if(rest.length){
+      html += '<div class="hof-list">'+rest.map(function(e){
+        return '<div class="hof-row'+(e.me?' me':'')+'">'
+          +'<div class="hof-row-rank" data-i18n-skip>'+e.rank+'</div>'
+          +_hofAvatar(e, 38)
+          +'<div class="hof-row-name"><span data-i18n-skip>'+_escHtml(e.name)+'</span>'+(e.me?' <span class="hof-you"><span>Vous</span></span>':'')+'</div>'
+          +'<div class="hof-row-right"><div class="hof-row-count">'+_hofCountHtml(e.count)+'</div>'+_hofMoveHtml(e.movement, true)+'</div>'
+        +'</div>';
+      }).join('')+'</div>';
+    }
+    if(me.rank && me.rank > top.length){
+      html += '<div class="hof-row me" style="margin-top:8px;"><div class="hof-row-rank" data-i18n-skip>'+me.rank+'</div>'
+        +_hofAvatar({name:USER.prenom||'?', photo:USER.photo||null, me:true}, 38)
+        +'<div class="hof-row-name"><span>Vous</span></div><div class="hof-row-right"><div class="hof-row-count">'+_hofCountHtml(me.count)+'</div></div></div>';
+    }
+  }
+  // Règles + confidentialité
+  html += '<div class="hof-rules"><i class="fa-solid fa-circle-info"></i> <span>Seules les prestations terminées et payées comptent (les annulations et remboursements sont exclus). À égalité, le premier à atteindre ce nombre passe devant.</span>'
+    +(monthly?' <span>Évolution : comparée à votre place du mois dernier.</span>':' <span>Évolution : comparée à votre place au début du mois.</span>')+'</div>';
+  html += '<div class="hof-privacy">'
+    +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#fff;"><span>Afficher ma photo et mon prénom</span></div>'
+    +'<div style="font-size:11px;color:#888;line-height:1.45;margin-top:2px;"><span>Visible uniquement par les clients de votre catégorie. Désactivé : vous apparaissez « Membre GENESIS », sans photo, à la même place.</span></div></div>'
+    +'<label class="tgl"><input type="checkbox"'+(me.visible!==false?' checked':'')+' onchange="_hofSetVisible(this.checked)"><span class="tgl-slider"></span></label>'
+    +'</div>';
+  return html;
+}
+function _hofSetVisible(v){
+  if(!USER || !USER._token) return;
+  _cliFetch('/api/client/hall-of-fame/visibility','POST',{visible:!!v}).then(function(r){
+    if(r && r.success){
+      USER.hof_visible = r.visible;
+      showToast(r.visible ? 'Photo et prénom affichés' : 'Identité masquée dans le Hall of Fame','','success');
+      var pc = document.getElementById('hof-panel-clients'); if(pc && _hofCurTab !== 'ambassadeurs') _hofLoadClients(_hofCurTab, pc);
+      var pa = document.getElementById('hof-panel-ambassadeurs'); if(pa) pa.dataset.loaded='';
+    } else showToast('Erreur', (r && r.error) || 'Réessayez', 'error');
+  }).catch(function(){ showToast('Erreur réseau','Réessayez','error'); });
 }
 function _hofLoadAmbassadeurs(container){
   container.innerHTML = '<div class="espace-loading">Chargement...</div>';
   _taPage = 0; _taSearch = '';
-  fetch((window.FA_GENESIS_API||API)+'/api/hall-of-fame/ambassadeurs?limit=100')
+  fetch((window.FA_GENESIS_API||API)+'/api/hall-of-fame/ambassadeurs?limit=100', { headers: (USER && !GUEST && USER._token) ? { 'Authorization': 'Bearer '+USER._token } : {} })
     .then(function(r){ return r.json(); })
     .then(function(d){
       _taAllData = d.ambassadeurs || [];

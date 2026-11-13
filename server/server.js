@@ -12092,6 +12092,7 @@ app.get('/api/auth/me', (req, res) => {
             missionBonuses: user.missionBonuses || {},
             accountType: user.accountType || null,
             student_status: user.student_status || null,
+            hof_visible: user.hof_visible !== false,
             student_verified_until: user.student_status === 'verified' ? (user.student_verified_until || null) : null,
             student_renewal_pending: !!user.student_renewal_pending,
             // Certificat attendu au renouvellement / après expiration (« 2027-2028 »).
@@ -19322,6 +19323,156 @@ app.get('/api/hall-of-fame', function(req, res) {
 });
 
 // ============================================================
+// HALL OF FAME CLIENTS (2026-11-13) — classement des clients par nombre de prestations
+// terminées et payées, SEGMENTÉ par catégorie de compte (Étudiants / Particuliers / Entreprises) :
+// un client ne voit que le classement de sa catégorie. Deux périodes : mois en cours (heure de
+// Paris) et classement général.
+//   • Compte : commande validée par le client OU payée en totalité, ni annulée ni remboursée.
+//   • Départage : à nombre égal, celui qui a atteint ce nombre le PREMIER passe devant (date de sa
+//     dernière prestation comptée), puis l'ancienneté du compte.
+//   • Évolution : général = rang actuel comparé au rang au 1er du mois ; mensuel = comparé au rang
+//     du mois précédent.
+//   • Affichage : prénom + initiale du nom, photo, rang, nombre de prestations — rien d'autre.
+//     Le client peut masquer sa photo et son identité (hof_visible = false) : il apparaît alors
+//     « Membre GENESIS », sans photo, mais garde sa place.
+// ============================================================
+var HOF_CATEGORY_LABELS = { etudiant: 'Étudiants', particulier: 'Particuliers', entreprise: 'Entreprises' };
+function clientHofCategory(u) {
+    return u && u.accountType === 'etudiant' ? 'etudiant' : (u && u.accountType === 'entreprise' ? 'entreprise' : 'particulier');
+}
+function _hofOrderCounted(o) {
+    if (!o || o.status === 'cancelled' || o.status === 'refunded' || o.refunded_at) return false;
+    return o.balance_paid === true || o.client_validated === true;
+}
+function _hofOrderDate(o) {
+    return o.client_validated_at || o.balance_paid_at || o.completed_at || o.updated_at || o.created_at || null;
+}
+var _hofMonthFmt = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit' });
+function _hofMonthKey(dateLike) {
+    var d = new Date(dateLike);
+    if (isNaN(d.getTime())) return '';
+    return _hofMonthFmt.format(d).slice(0, 7);   // « 2026-11 »
+}
+function _hofPrevMonthKey(key) {
+    var y = parseInt(key.slice(0, 4), 10), m = parseInt(key.slice(5, 7), 10) - 1;
+    if (m === 0) { y--; m = 12; }
+    return y + '-' + String(m).padStart(2, '0');
+}
+function hofDisplayName(u) {
+    var pr = String((u && u.prenom) || '').trim();
+    var ini = String((u && u.nom) || '').trim().charAt(0).toUpperCase();
+    return (pr || 'Membre') + (ini ? ' ' + ini + '.' : '');
+}
+// Classement d'une catégorie. filter(monthKey) : null = toutes les prestations ;
+// { only: 'YYYY-MM' } = ce mois seulement ; { before: 'YYYY-MM' } = avant ce mois.
+function _hofRanking(users, ordersByEmail, filter) {
+    var rows = [];
+    users.forEach(function(u) {
+        var list = ordersByEmail[(u.email || '').toLowerCase()] || [];
+        var count = 0, reached = null;
+        list.forEach(function(o) {
+            var mk = o.month;
+            if (filter && filter.only && mk !== filter.only) return;
+            if (filter && filter.before && !(mk && mk < filter.before)) return;
+            count++;
+            if (!reached || o.at > reached) reached = o.at;
+        });
+        if (count > 0) rows.push({ user: u, count: count, reached: reached || '', created: u.createdAt || '' });
+    });
+    rows.sort(function(a, b) {
+        return (b.count - a.count) || (a.reached < b.reached ? -1 : a.reached > b.reached ? 1 : 0)
+            || (a.created < b.created ? -1 : a.created > b.created ? 1 : 0);
+    });
+    var rankOf = {};
+    rows.forEach(function(r, i) { r.rank = i + 1; rankOf[r.user.id] = i + 1; });
+    return { rows: rows, rankOf: rankOf };
+}
+function buildClientHallOfFame(viewer, period, nowMs, limit) {
+    var category = clientHofCategory(viewer);
+    var users = loadUsers().filter(function(u) { return u && u.email && clientHofCategory(u) === category; });
+    var ordersByEmail = {};
+    loadOrders().forEach(function(o) {
+        if (!_hofOrderCounted(o)) return;
+        var em = String((o.client_info && o.client_info.email) || o.client_email || o.email || '').toLowerCase();
+        if (!em) return;
+        var at = _hofOrderDate(o) || '';
+        (ordersByEmail[em] = ordersByEmail[em] || []).push({ at: String(at), month: _hofMonthKey(at) });
+    });
+    var curMonth = _hofMonthKey(nowMs || Date.now());
+    var monthly = period === 'month';
+    var now = _hofRanking(users, ordersByEmail, monthly ? { only: curMonth } : null);
+    var prev = _hofRanking(users, ordersByEmail, monthly ? { only: _hofPrevMonthKey(curMonth) } : { before: curMonth });
+    function movement(uid) {
+        var a = now.rankOf[uid], b = prev.rankOf[uid];
+        if (!a) return null;
+        if (!b) return 'new';
+        return b - a;   // > 0 : a gagné des places
+    }
+    function entry(r) {
+        var mine = viewer && r.user.id === viewer.id;
+        var visible = r.user.hof_visible !== false;
+        return {
+            rank: r.rank,
+            name: (visible || mine) ? hofDisplayName(r.user) : 'Membre GENESIS',
+            photo: (visible || mine) ? (r.user.photo || null) : null,
+            hidden: !visible,
+            count: r.count,
+            me: !!mine,
+            movement: movement(r.user.id)
+        };
+    }
+    var myRow = viewer ? now.rows.filter(function(r) { return r.user.id === viewer.id; })[0] : null;
+    var me = { rank: myRow ? myRow.rank : null, count: myRow ? myRow.count : 0, movement: viewer ? movement(viewer.id) : null, visible: !viewer || viewer.hof_visible !== false, gap: null };
+    // Ce qu'il manque pour dépasser le suivant (ou entrer dans le classement).
+    if (myRow && myRow.rank > 1) {
+        var ahead = now.rows[myRow.rank - 2];
+        me.gap = { count_needed: ahead.count - myRow.count + 1, rank: ahead.rank };
+    } else if (!myRow && now.rows.length) {
+        me.gap = { count_needed: 1, rank: now.rows.length + 1 };
+    }
+    return {
+        category: category,
+        category_label: HOF_CATEGORY_LABELS[category],
+        period: monthly ? 'month' : 'all',
+        month: curMonth,
+        total: now.rows.length,
+        top: now.rows.slice(0, limit || 50).map(entry),
+        me: me
+    };
+}
+
+// GET /api/hall-of-fame/clients?period=month|all — classement de la catégorie du client connecté.
+app.get('/api/hall-of-fame/clients', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    try {
+        var period = req.query.period === 'month' ? 'month' : 'all';
+        res.json(Object.assign({ success: true }, buildClientHallOfFame(user, period, Date.now(), 50)));
+    } catch (e) {
+        console.error('[HOF_CLIENTS] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/client/hall-of-fame/visibility { visible } — afficher ou non sa photo et son prénom.
+app.post('/api/client/hall-of-fame/visibility', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    try {
+        var visible = !(req.body && req.body.visible === false);
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.id === user.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Compte introuvable' });
+        users[idx].hof_visible = visible;
+        users[idx].updatedAt = new Date().toISOString();
+        saveUsers(users);
+        res.json({ success: true, visible: visible });
+    } catch (e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
 // TOP AMBASSADEURS GENESIS — classement cumulatif (tous les temps) basé sur
 // le nombre de filleuls ayant réalisé leur première prestation (balance_paid).
 // Calculé dynamiquement à la volée en un seul passage sur users + orders.
@@ -19347,18 +19498,23 @@ app.get('/api/hall-of-fame/ambassadeurs', function(req, res) {
                 refMap[u.referredBy] = (refMap[u.referredBy] || 0) + 1;
             }
         });
-        var totalAmbassadeurs = Object.keys(refMap).length;
+        // Client connecté : uniquement les ambassadeurs de SA catégorie (comme le Hall of Fame).
+        var _ambViewer = null;
+        try { var _ambTok = (req.headers.authorization || '').replace('Bearer ', '').trim(); _ambViewer = _ambTok ? findUserByToken(_ambTok) : null; } catch (e) {}
+        var _ambCat = _ambViewer ? clientHofCategory(_ambViewer) : null;
+        var totalAmbassadeurs = users.filter(function(u) { return (refMap[u.id] || 0) > 0 && (!_ambCat || clientHofCategory(u) === _ambCat); }).length;
         // Construit le classement
         var leaderboard = users
-            .filter(function(u) { return (refMap[u.id] || 0) > 0; })
+            .filter(function(u) { return (refMap[u.id] || 0) > 0 && (!_ambCat || clientHofCategory(u) === _ambCat); })
             .map(function(u) {
                 var count = refMap[u.id] || 0;
                 var qg = getClientGenesisPoints(u);
+                var _vis = u.hof_visible !== false || (_ambViewer && _ambViewer.id === u.id);
                 return {
                     id: u.id,
-                    name: ((u.prenom || '') + ' ' + (u.nom || '')).trim() || 'Membre GENESIS',
-                    prenom: u.prenom || '',
-                    photo: u.photo || null,
+                    name: _vis ? hofDisplayName(u) : 'Membre GENESIS',
+                    prenom: _vis ? (u.prenom || '') : '',
+                    photo: _vis ? (u.photo || null) : null,
                     badge: getClientQGBadge(qg),
                     genesisPoints: qg,
                     referralCount: count
