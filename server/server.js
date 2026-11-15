@@ -17589,10 +17589,20 @@ function getPartnerFromPrice(partner) {
     return activePrices.length ? Math.min(...activePrices) : null;
 }
 
+// Un seul avis par mission (le plus récent) : avant le 2026-11-15, rien n'empêchait un client de
+// noter plusieurs fois la même prestation (note faussée, +30 QG à chaque envoi). Les doublons déjà
+// enregistrés sont ignorés partout où l'on compte des avis.
+function uniqueReviewsPerMission(list) {
+    var seen = {};
+    return (list || []).slice().sort(function(a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); })
+        .filter(function(r) { var k = r.dispatchId || r.id; if (seen[k]) return false; seen[k] = true; return true; });
+}
+function publishedPartnerReviews(partnerId) {
+    return uniqueReviewsPerMission(loadPartnerReviews().filter(function(r) { return r.partnerId === partnerId && r.status === 'published'; }));
+}
+
 function getPartnerRatingSummary(partnerId) {
-    const reviews = loadPartnerReviews().filter(
-        r => r.partnerId === partnerId && r.status === 'published'
-    );
+    const reviews = publishedPartnerReviews(partnerId);
     if (reviews.length === 0) return { average: 0, count: 0 };
     const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
     return { average: Math.round((sum / reviews.length) * 10) / 10, count: reviews.length };
@@ -17626,7 +17636,7 @@ function getPartnerMissionsCompleted(partnerId) {
 }
 
 function getPartnerSatisfactionRate(partnerId) {
-    const reviews = loadPartnerReviews().filter(r => r.partnerId === partnerId && r.status === 'published');
+    const reviews = publishedPartnerReviews(partnerId);
     if (reviews.length === 0) return 0;
     const satisfied = reviews.filter(r => (r.rating || 0) >= 4).length;
     return satisfied / reviews.length;
@@ -18702,7 +18712,7 @@ function getClientGenesisPoints(user, completedOrders) {
     if (!user) return 0;
     var orders = typeof completedOrders === 'number' ? completedOrders : getClientCompletedOrders(user.email);
     var referrals = getClientReferralCount(user.id);
-    var reviewsLeft = loadPartnerReviews().filter(function(r) { return (r.userEmail || '').toLowerCase() === user.email.toLowerCase(); }).length;
+    var reviewsLeft = uniqueReviewsPerMission(loadPartnerReviews().filter(function(r) { return (r.userEmail || '').toLowerCase() === user.email.toLowerCase(); })).length;
     var mb = user.missionBonuses || {};
     // Bonus de bienvenue 40 QG pour tous + 50 QG au filleul après sa 1re prestation (2026-11-11).
     var welcomeBonus = clientWelcomeBonusQG(user) + clientFilleulBonusQG(user);
@@ -19115,7 +19125,7 @@ function buildJeremieSystemPrompt(person, personType, language) {
                 '(Plus = badge Argent, Pro = badge Or, Expert = badge Elite).');
             try {
                 if (_pTier >= 2) {
-                    var _pReviews = loadPartnerReviews().filter(function(r) { return r.partnerId === person.id && r.status === 'published'; })
+                    var _pReviews = publishedPartnerReviews(person.id)
                         .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); }).slice(0, 10);
                     lines.push('');
                     lines.push('Jeremie IA Plus (badge Argent+) — derniers avis clients publies (' + _pReviews.length + ') : ' +
@@ -20896,6 +20906,14 @@ app.post('/api/partner-reviews', (req, res) => {
         if (!order || !order.client_info || (order.client_info.email || '').toLowerCase() !== user.email.toLowerCase()) {
             return res.status(403).json({ success: false, message: 'Accès refusé à cette mission' });
         }
+        // L'avis porte sur une prestation TERMINÉE (tous modes de paiement : clientOrderCompleted).
+        if (!clientOrderCompleted(order)) {
+            return res.status(403).json({ success: false, message: 'Vous pourrez donner votre avis une fois la prestation terminée.' });
+        }
+        // Un seul avis par mission.
+        if (dispatch.review_submitted || loadPartnerReviews().some(function(r) { return r.dispatchId === dispatch.id; })) {
+            return res.status(409).json({ success: false, already: true, message: 'Vous avez déjà donné votre avis sur cette prestation. Merci !' });
+        }
 
         var review = {
             id: 'PRV-' + uuidv4().split('-')[0],
@@ -20917,12 +20935,14 @@ app.post('/api/partner-reviews', (req, res) => {
         dispatches[dIdx].review_submitted = true;
         saveDispatches(dispatches);
 
+        // Avis 5 étoiles : message affiché au prestataire à sa prochaine visite de « Mes badges »
+        // (sans points QG : les prestataires n'en ont plus depuis le 2026-11-11).
         if (rating === 5 && review.partnerId) {
             var allPtnrs = loadPartners();
             var rvPIdx = allPtnrs.findIndex(function(p) { return p.id === review.partnerId; });
             if (rvPIdx !== -1) {
                 if (!Array.isArray(allPtnrs[rvPIdx].pendingQGGains)) allPtnrs[rvPIdx].pendingQGGains = [];
-                allPtnrs[rvPIdx].pendingQGGains.push({ type: 'avisCinqEtoiles', amount: GENESIS_POINT_VALUES.avisCinqEtoiles, from: review.userName, created_at: review.createdAt });
+                allPtnrs[rvPIdx].pendingQGGains.push({ type: 'avisCinqEtoiles', from: _clientFirstName(review.userName, 'un client'), created_at: review.createdAt });
                 savePartners(allPtnrs);
             }
         }
