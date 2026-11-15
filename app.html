@@ -22711,7 +22711,7 @@ function _ptnrLoadReputation(){
         var _repMissRem = Math.max(0, _repNext.missions - _repMissions);
         var _repRatingOk = _repAvg >= _repNext.rating;
         html += '<div style="background:#111;border-radius:14px;padding:14px 16px;margin-bottom:16px;">'
-          + '<div style="font-size:10px;color:var(--yellow);font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;"><i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Comment progresser ?</div>'
+          + '<div style="font-size:10px;color:var(--yellow);font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;text-align:center;"><i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Comment progresser ?</div>'
           + '<div style="background:#0e0e0e;border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;">'
           + '<div style="text-align:center;flex:1;">'
           + '<div style="font-size:18px;font-weight:900;color:#fff;">'+_repMissions+'</div>'
@@ -22774,7 +22774,7 @@ function _ptnrLoadReputation(){
       { id: 'elite',  label: 'Élite',  icon: 'fa-infinity', missions: 100, rating: 5.0,
         advs: ['Bonus de classement ×6 par rapport au Bronze','Badge Élite Premium visible sur le profil public','Jérémie IA Expert — suit vos revenus mois par mois, prévoit votre activité et bâtit votre plan de développement sur plusieurs mois'] }
     ];
-    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;"><i class="fa-solid fa-trophy" style="margin-right:4px;"></i>Badges professionnels</div>';
+    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;text-align:center;"><i class="fa-solid fa-trophy" style="margin-right:4px;"></i>Badges professionnels</div>';
     html += '<div style="font-size:11px;color:#888;line-height:1.5;margin-bottom:10px;">Jérémie IA vous accompagne dès l\'inscription. Chaque badge le rend plus puissant et conserve les avantages des badges précédents.</div>';
     _ptnrBadgeDefs.forEach(function(bDef) {
       var bOrder = _ptnrBadgeOrder.indexOf(bDef.id);
@@ -22819,7 +22819,7 @@ function _ptnrLoadReputation(){
 
     // ── Boost de visibilité mensuel ──
     var _bst = data.boostStatus || { quota: 0, used: 0, remaining: 0, active: false, active_until: null };
-    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px;"><i class="fa-solid fa-rocket" style="margin-right:4px;"></i>Boost de visibilité</div>';
+    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px;text-align:center;"><i class="fa-solid fa-rocket" style="margin-right:4px;"></i>Boost de visibilité</div>';
     if (_bst.quota <= 0) {
       html += '<div style="background:#0e0e0e;border:1.5px solid #1a1a1a;border-radius:13px;padding:14px 16px;font-size:12px;color:#555;text-align:center;">'
         + '<i class="fa-solid fa-lock" style="margin-right:6px;color:#333;"></i>Débloquez le badge <strong style="color:#666;">Argent</strong> pour obtenir des boosts de visibilité mensuels.'
@@ -22849,7 +22849,7 @@ function _ptnrLoadReputation(){
 
     // ── Distinctions ──
     var _dists = data.distinctions || [];
-    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px;"><i class="fa-solid fa-handshake" style="margin-right:4px;"></i>Distinctions</div>';
+    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px;text-align:center;"><i class="fa-solid fa-handshake" style="margin-right:4px;"></i>Distinctions</div>';
     var _DIST_DEFS = [
       { id: 'ambassador', label: 'Ambassadeur GENESIS', icon: 'fa-medal',    color: '#FFD700',
         desc: 'Attribuée quand un prestataire que vous avez parrainé réalise sa première prestation validée sur FA GENESIS.',
@@ -22862,9 +22862,9 @@ function _ptnrLoadReputation(){
       var owned = _dists.some(function(d) { return d.id === def.id; });
       var ownedDist = _dists.find(function(d) { return d.id === def.id; });
       html += '<div style="background:#0e0e0e;border:1.5px solid '+(owned?def.color:'#1a1a1a')+';border-radius:13px;padding:12px 14px;margin-bottom:10px;">';
-      html += '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;">'
+      html += '<div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:9px;margin-bottom:8px;text-align:center;">'
         +'<i class="fa-solid '+def.icon+'" style="font-size:16px;color:'+(owned?def.color:'#333')+';width:20px;text-align:center;flex-shrink:0;"></i>'
-        +'<div style="flex:1;"><span style="font-size:14px;font-weight:800;color:'+(owned?def.color:'#444')+';">'+def.label+'</span>'
+        +'<div><span style="font-size:14px;font-weight:800;color:'+(owned?def.color:'#444')+';">'+def.label+'</span>'
         +(owned && ownedDist && ownedDist.granted_at ? '<span style="font-size:10px;color:#555;margin-left:8px;">obtenue le '+new Date(ownedDist.granted_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})+'</span>' : '')
         +'</div>'
         +(owned ? '<i class="fa-solid fa-circle-check" style="font-size:16px;color:'+def.color+';"></i>' : '<span style="font-size:16px;color:#252525;">&#128274;</span>')
