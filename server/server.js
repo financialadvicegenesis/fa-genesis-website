@@ -19005,7 +19005,13 @@ function buildJeremieSystemPrompt(person, personType, language) {
                     lines.push('- Derniere commande il y a ' + habits.daysSinceLast + ' jour' + (habits.daysSinceLast > 1 ? 's' : '') + '.');
                     if (habits.avgGapDays !== null) lines.push('- Rythme moyen : une nouvelle prestation toutes les environ ' + habits.avgGapDays + ' jours.');
                     if (habits.avgValue) lines.push('- Panier moyen : ' + habits.avgValue + ' EUR.');
-                    if (habits.topCategories.length) lines.push('- Categories les plus utilisees : ' + habits.topCategories.join(', ') + '.');
+                    if (habits.topCategories.length) lines.push('- Categories les plus utilisees : ' + habits.topCategories.map(function(t) { return partnerTypeLabelFor(null, t); }).join(', ') + '.');
+                    if (habits.avgGapDays !== null) {
+                        var _nextIn = habits.avgGapDays - habits.daysSinceLast;
+                        lines.push('- Prochaine prestation probable selon son rythme : ' + (_nextIn > 0 ? 'dans environ ' + _nextIn + ' jours' : 'des maintenant (rythme habituel depasse de ' + (-_nextIn) + ' jours)') + '.');
+                    }
+                    lines.push('ANTICIPATION (Jeremie IA Plus) : des le debut de la conversation, sans attendre qu\'il le demande, propose-lui ' +
+                        'sa prochaine prestation probable (categorie, budget habituel, moment) en une ou deux phrases, puis reponds a sa question.');
                     lines.push('Utilise ces habitudes pour emettre des recommandations proactives personnalisees : si le rythme ' +
                         'est irregulier, suggere de planifier la prochaine prestation ; si le client revient souvent sur les memes ' +
                         'categories, propose de decouvrir des prestataires complementaires ou les offres Promo disponibles ; ' +
@@ -19023,11 +19029,14 @@ function buildJeremieSystemPrompt(person, personType, language) {
                 lines.push('Jeremie IA Pro — Mode Visionnaire (comparaison multicriteres & preparation de projet) :');
                 lines.push('Tu as des capacites enrichies pour ce client de niveau Visionnaire ou superieur :');
                 lines.push('1. Comparaison multicriteres : si le client demande a comparer des types de prestataires ou des offres, ' +
-                    'structure une analyse sur au moins 3 criteres (budget, delai de livraison, specialite, note moyenne GENESIS). ' +
-                    'Base-toi uniquement sur les donnees reelles de la plateforme ; ne pas inventer de chiffres.');
-                lines.push('2. Preparation de projet : aide a construire un brief complet (objectif du projet, cible, budget global, ' +
-                    'calendrier, indicateurs de reussite, types de prestataires GENESIS requis et dans quel ordre les mobiliser). ' +
-                    'Si le projet mobilise plusieurs types de prestataires, propose un sequencage logique des etapes.');
+                    'compare-les point par point sur au moins 3 criteres : budget (prix fournis), delai (temps de reponse et delai moyen ' +
+                    'de livraison constate, fournis dans la liste de prestataires), note moyenne GENESIS et nombre d\'avis, specialite. ' +
+                    'Presente la comparaison prestataire par prestataire, critere par critere. Base-toi uniquement sur les donnees ' +
+                    'fournies ; si une donnee manque (par exemple aucune mission livree), ecris-le au lieu d\'inventer un chiffre.');
+                lines.push('2. Cahier des charges : construis avec lui le cahier des charges de son projet (objectif, cible, livrables ' +
+                    'attendus, budget global, calendrier, indicateurs de reussite, types de prestataires GENESIS requis et ordre ' +
+                    'd\'intervention). Pose les questions qui manquent, puis rends-le sous une forme claire qu\'il peut copier dans sa ' +
+                    'demande de devis. Si le projet mobilise plusieurs types de prestataires, propose un sequencage logique des etapes.');
                 lines.push('3. Recommandations networking : signale systematiquement les evenements prives GENESIS, webinaires et ' +
                     'sessions reseau disponibles qui correspondent au secteur ou aux projets du client.');
             }
@@ -19046,6 +19055,10 @@ function buildJeremieSystemPrompt(person, personType, language) {
                 lines.push('3. Vision strategique : aide-le a structurer une roadmap de contenu ou de croissance sur plusieurs mois. ' +
                     'Identifie les types de prestataires GENESIS a mobiliser selon les etapes, les budgets a prevoir, et les ' +
                     'indicateurs a surveiller. Va au-dela de la prestation unitaire : pense en termes de strategie globale.');
+                var _proj = buildClientActiveProjects(person.email);
+                lines.push('PROJETS EN COURS DE CE CLIENT (donnees reelles ; base ton pilotage dessus, n\'en invente pas) :');
+                if (_proj.length) _proj.forEach(function(l) { lines.push('- ' + l); });
+                else lines.push('- aucune commande ni demande de devis en cours pour le moment.');
                 lines.push('4. Acces VIP : rappelle-lui proactivement les evenements GENESIS de la liste ci-dessous (il est invite a ' +
                     'tous, y compris ceux reserves aux Generateurs) et les nouveautes de l\'application qu\'il recoit en avant-premiere. ' +
                     'Sois son conseiller de reference, pas seulement un assistant de commande.');
@@ -19172,10 +19185,43 @@ function buildJeremieSystemPrompt(person, personType, language) {
 }
 
 // Jérémie IA Plus (Bâtisseur+) : analyse des habitudes de commande du client
+// Projets réels d'un client (Jérémie IA Expert) : commandes payées non terminées + demandes de devis
+// encore ouvertes. Ce que Jérémie « pilote » : il s'appuie sur ces données, pas sur sa mémoire seule.
+function buildClientActiveProjects(email) {
+    var out = [];
+    try {
+        var em = String(email || '').toLowerCase();
+        if (!em) return out;
+        var partners = loadPartners();
+        var pName = function(id) { var p = partners.find(function(x) { return x.id === id; }); return p ? ((p.prenom || '') + ' ' + (p.nom || '')).trim() || p.company || 'prestataire' : 'prestataire'; };
+        var fmt = function(iso) { try { return new Date(iso).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long' }); } catch (e) { return ''; } };
+        loadOrders().filter(function(o) {
+            return o.client_info && (o.client_info.email || '').toLowerCase() === em && o.deposit_paid
+                && !clientOrderCompleted(o) && ['cancelled', 'refunded'].indexOf(o.status) === -1;
+        }).slice(-8).forEach(function(o) {
+            out.push('Commande en cours : ' + (o.product_name || 'prestation') + ' avec ' + pName(o.partner_id) +
+                (o.total_amount || o.total_price ? ', ' + (o.total_amount || o.total_price) + ' EUR' : '') +
+                (o.balance_paid ? ', solde paye' : (o.deposit_paid ? ', acompte paye' : '')) +
+                ', commandee le ' + fmt(o.created_at));
+        });
+        var closed = ['declined', 'completed', 'expired', 'transfer_closed', 'transfer_refused', 'cancelled', 'paid'];
+        loadPartnerRequests().filter(function(r) {
+            return (r.client_email || '').toLowerCase() === em && closed.indexOf(r.status) === -1 && !r.order_id;
+        }).slice(-8).forEach(function(r) {
+            var st = { pending: 'en attente de reponse du prestataire', proposed: 'proposition recue, a examiner', accepted: 'accepte par le prestataire',
+                signed: 'contrat signe, paiement a faire', transfer_accepted: 'transmis par Jeremie, prestataire a choisir' }[r.status] || r.status;
+            out.push('Demande de devis : ' + (r.service_label || 'prestation') + ' aupres de ' + pName(r.partner_id) + ' (' + st + ')' +
+                (r.desired_date ? ', date souhaitee ' + r.desired_date : '') + ', envoyee le ' + fmt(r.created_at));
+        });
+    } catch (e) {}
+    return out;
+}
+
 function buildClientHabitAnalysis(email) {
     try {
         var clientOrders = loadOrders().filter(function(o) {
-            return o.client_info && (o.client_info.email || '').toLowerCase() === email.toLowerCase() && o.deposit_paid;
+            return o.client_info && (o.client_info.email || '').toLowerCase() === email.toLowerCase() && o.deposit_paid
+                && ['cancelled', 'refunded'].indexOf(o.status) === -1 && !o.refunded;
         });
         if (!clientOrders.length) return null;
         clientOrders.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
@@ -19216,7 +19262,12 @@ function detectPartnerSearchIntent(message) {
         'marketing', 'marketeur', 'community', 'social media', 'réseaux sociaux',
         'rédact', 'redact', 'copywriting', 'contenu', 'article',
         'développ', 'devlopp', 'site web', 'application mobile',
-        'podcast', 'coach', 'formateur', 'formation', 'atelier'
+        'podcast', 'coach', 'formateur', 'formation', 'atelier',
+        // 2026-11-15 : tous les métiers GENESIS, les favoris et les comparaisons (IA Pro)
+        'drone', 'aérien', 'événement', 'evenement', 'animat', 'soirée', 'mariage', ' dj',
+        'influenc', 'ugc', 'coworking', 'bureau', 'espace de travail', 'salle de réunion',
+        'consultant', 'conseil', 'média', 'media', 'presse', 'magazine',
+        'favori', 'compar', 'propos', 'lequel', 'laquelle'
     ];
     return keywords.some(function(kw) { return lc.indexOf(kw) !== -1; });
 }
@@ -19249,7 +19300,13 @@ function buildPartnerContextForJeremie(message, audience, out, opts) {
             marketing:     ['marketing', 'marketeur', 'community', 'social media', 'réseaux', 'instagram', 'tiktok', 'campagne'],
             redaction:     ['rédact', 'redact', 'texte', 'contenu', 'article', 'copywriting', 'seo'],
             developpement: ['développ', 'devlopp', 'site web', 'application', 'web', 'app'],
-            coaching:      ['coach', 'formateur', 'formation', 'atelier', 'accompagnement']
+            coaching:      ['coach', 'formateur', 'formation', 'atelier', 'accompagnement'],
+            drone:         ['drone', 'aérien', 'vue du ciel'],
+            evenementiel:  ['événement', 'evenement', 'animat', 'soirée', 'mariage', 'anniversaire', ' dj'],
+            influence:     ['influenc', 'ugc', 'créateur de contenu', 'createur de contenu'],
+            coworking:     ['coworking', 'bureau', 'espace de travail', 'salle de réunion'],
+            conseil:       ['consultant', 'conseil en', 'stratégie d\'entreprise', 'business plan'],
+            media:         ['média', 'media', 'presse', 'podcast', 'magazine', 'interview']
         };
 
         var detectedCats = [];
@@ -19266,7 +19323,9 @@ function buildPartnerContextForJeremie(message, audience, out, opts) {
             photo: ['photographer', 'pilote_drone'], video: ['videographer', 'pilote_drone'],
             graphisme: ['graphiste'], marketing: ['marketer', 'community_manager', 'influencer', 'media'],
             redaction: ['media', 'community_manager', 'marketer'], developpement: ['developpeur_web'],
-            coaching: ['consultant', 'animateur_evenementiel']
+            coaching: ['consultant', 'animateur_evenementiel'],
+            drone: ['pilote_drone'], evenementiel: ['animateur_evenementiel'], influence: ['influencer'],
+            coworking: ['coworking'], conseil: ['consultant'], media: ['media']
         };
         var filtered = allPartners, _matchedTypes = [];
         if (detectedCats.length) {
@@ -19275,10 +19334,19 @@ function buildPartnerContextForJeremie(message, audience, out, opts) {
             var byType = allPartners.filter(function(p) { return wanted.some(function(t) { return partnerListedInType(p, t); }); });
             if (byType.length) { filtered = byType; _matchedTypes = wanted; }
         }
+        // Catégories du client (Créateur+, déduites de ses favoris et commandes) : c'est SA catégorie,
+        // présentée comme telle (cartes « dans votre catégorie »), jamais un classement général.
         if (!_matchedTypes.length && Array.isArray(opts.preferTypes) && opts.preferTypes.length) {
             var byPref = allPartners.filter(function(p) { return opts.preferTypes.some(function(t) { return partnerListedInType(p, t); }); });
-            if (byPref.length) filtered = byPref;
+            if (byPref.length) { filtered = byPref; _matchedTypes = opts.preferTypes.slice(0, 3); }
         }
+        // Prestataires cités par leur nom dans le message (ex. « compare Léa Martin et Studio Lumière ») :
+        // toujours fournis, en tête, pour que la comparaison porte sur eux et non sur d'autres.
+        var _named = allPartners.filter(function(p) {
+            var full = ((p.prenom || '') + ' ' + (p.nom || '')).trim().toLowerCase();
+            var comp = String(p.company || p.company_name || '').trim().toLowerCase();
+            return (full.length >= 5 && lc.indexOf(full) !== -1) || (comp.length >= 4 && lc.indexOf(comp) !== -1);
+        });
 
         // Trier par note décroissante
         filtered = filtered.slice().sort(function(a, b) {
@@ -19293,7 +19361,11 @@ function buildPartnerContextForJeremie(message, audience, out, opts) {
             filtered = filtered.filter(function(p) { return _favs.indexOf(p.id) !== -1; })
                 .concat(filtered.filter(function(p) { return _favs.indexOf(p.id) === -1; }));
         }
-        var top = filtered.slice(0, _limit);
+        if (_named.length) {
+            var _namedIds = _named.map(function(p) { return p.id; });
+            filtered = _named.concat(filtered.filter(function(p) { return _namedIds.indexOf(p.id) === -1; }));
+        }
+        var top = filtered.slice(0, Math.max(_limit, _named.length));
         if (!top.length) return '';
         if (out) {
             out.ids = top.map(function(p) { return p.id; });
@@ -19306,11 +19378,28 @@ function buildPartnerContextForJeremie(message, audience, out, opts) {
             'Instruction : recommande uniquement des prestataires présents dans cette liste. Explique brièvement pourquoi chacun correspond au besoin exprimé. Ne communique jamais leur email ni téléphone ; invite toujours à consulter leur profil dans l\'onglet Prestataires de l\'application FA GENESIS.',
             ''
         ];
+        if (!_matchedTypes.length && !_named.length) {
+            lines.splice(2, 0, 'ATTENTION : aucun métier précis n\'a été reconnu dans la demande ; cette liste est un simple classement des mieux notés. ' +
+                'Ne la présente pas comme adaptée à sa demande : demande-lui d\'abord quel type de prestataire il cherche (photographe, vidéaste, graphiste…), ' +
+                'ou présente-la clairement comme « les prestataires les mieux notés du moment ».');
+        }
 
         // Fiche enrichie : avant, seuls nom/catégorie/ville/prix minimum/note étaient fournis, d'où des
         // comparaisons vides ("tarifs non renseignés" pour un prestataire qui travaille en fait sur
         // devis, aucune info sur les prestations, le portfolio ou la réactivité).
         var _payModeLabel = { single: 'paiement en une fois', deposit_balance: 'acompte + solde', installments: 'paiement en plusieurs fois' };
+        // Délai moyen de livraison constaté sur GENESIS (acceptation → livraison), par prestataire.
+        var _delivery = {};
+        try {
+            loadDispatches().forEach(function(d) {
+                var pid = d.claimed_by_partner_id || d.partner_id;
+                if (!pid || !d.delivered_at) return;
+                var start = new Date(d.accepted_at || d.created_at).getTime(), end = new Date(d.delivered_at).getTime();
+                if (!(end > start)) return;
+                var e = _delivery[pid] = _delivery[pid] || { days: 0, n: 0 };
+                e.days += (end - start) / 86400000; e.n++;
+            });
+        } catch (dErr) {}
         top.forEach(function(p) {
             var rating  = getPartnerRatingSummary(p.id);
             var price   = getPartnerFromPrice(p);
@@ -19338,6 +19427,9 @@ function buildPartnerContextForJeremie(message, audience, out, opts) {
             parts.push('missions réalisées : ' + getPartnerMissionsCompleted(p.id));
             if (badge) parts.push('badge ' + ({ bronze: 'Bronze', argent: 'Argent', or: 'Or', elite: 'Élite', fondateur: 'Fondateur' }[badge] || badge));
             if (resp !== null) parts.push('répond en ' + (resp >= 60 ? Math.round(resp / 60) + ' h' : resp + ' min') + ' environ');
+            var _dl = _delivery[p.id];
+            parts.push(_dl ? ('délai moyen de livraison constaté : ' + Math.max(1, Math.round(_dl.days / _dl.n)) + ' jour(s) sur ' + _dl.n + ' mission(s)')
+                : 'délai de livraison : pas encore de mission livrée sur GENESIS');
             parts.push('portfolio : ' + (p.portfolio || []).filter(function(it) { return !isPortfolioExternalLink(it) && imageIsPublic(it.moderation); }).slice(0, PORTFOLIO_MAX_ITEMS).length + ' élément(s)');
             if (svcs.length) parts.push('prestations : ' + svcs.slice(0, 4).map(function(s) {
                 var _jd = serviceDiscountPct(s);
