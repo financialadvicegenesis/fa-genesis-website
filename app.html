@@ -2708,15 +2708,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261115f"></script>
-<script src="app-i18n-es.js?v=20261115f"></script>
-<script src="app-i18n-hi.js?v=20261115f"></script>
-<script src="app-i18n-pt.js?v=20261115f"></script>
-<script src="app-i18n-ja.js?v=20261115f"></script>
-<script src="app-i18n-zh.js?v=20261115f"></script>
-<script src="app-i18n-ar.js?v=20261115f"></script>
-<script src="app-i18n-it.js?v=20261115f"></script>
-<script src="app-i18n-de.js?v=20261115f"></script>
+<script src="app-i18n-en.js?v=20261115g"></script>
+<script src="app-i18n-es.js?v=20261115g"></script>
+<script src="app-i18n-hi.js?v=20261115g"></script>
+<script src="app-i18n-pt.js?v=20261115g"></script>
+<script src="app-i18n-ja.js?v=20261115g"></script>
+<script src="app-i18n-zh.js?v=20261115g"></script>
+<script src="app-i18n-ar.js?v=20261115g"></script>
+<script src="app-i18n-it.js?v=20261115g"></script>
+<script src="app-i18n-de.js?v=20261115g"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -22766,13 +22766,13 @@ function _ptnrLoadReputation(){
     // Jérémie est disponible dès l'inscription : ce n'est pas un avantage du Bronze.
     var _ptnrBadgeDefs = [
       { id: 'bronze', label: 'Bronze', icon: 'fa-fire',     missions: 5,   rating: 4.0,
-        advs: ['Bonus de classement dans l\'annuaire','Badge Bronze visible sur le profil public'] },
+        advs: ['Visibilité : bonus de classement permanent dans l\'annuaire','Badge Bronze visible sur le profil public'] },
       { id: 'argent', label: 'Argent', icon: 'fa-bolt',     missions: 20,  rating: 4.3,
-        advs: ['Bonus de classement ×2 par rapport au Bronze','2 boosts de visibilité de 48 h par mois','Badge Argent visible sur le profil public','Jérémie IA Plus — analyse les avis de vos clients et vous dit quoi améliorer dans vos prestations'] },
+        advs: ['Visibilité : classement ×2 en permanence + 2 boosts de 48 h par mois','Badge Argent visible sur le profil public','Jérémie IA Plus — analyse les avis de vos clients et vous dit quoi améliorer dans vos prestations'] },
       { id: 'or',     label: 'Or',     icon: 'fa-crown',    missions: 50,  rating: 4.5,
-        advs: ['Bonus de classement ×4 par rapport au Bronze','4 boosts de visibilité de 48 h par mois','Inscription prioritaire aux événements GENESIS : une place garantie, même complet','Badge Or visible sur le profil public','Jérémie IA Pro — étudie vos devis, vos revenus et vos prix, et vous donne une stratégie pour décrocher plus de missions'] },
+        advs: ['Visibilité : classement ×4 en permanence + 4 boosts de 48 h par mois','Inscription prioritaire aux événements GENESIS : une place garantie, même complet','Badge Or visible sur le profil public','Jérémie IA Pro — étudie vos devis, vos revenus et vos prix, et vous donne une stratégie pour décrocher plus de missions'] },
       { id: 'elite',  label: 'Élite',  icon: 'fa-infinity', missions: 100, rating: 5.0,
-        advs: ['Bonus de classement ×6 par rapport au Bronze','8 boosts de visibilité de 48 h par mois','Badge Élite Premium visible sur le profil public','Jérémie IA Expert — suit vos revenus mois par mois, prévoit votre activité et bâtit votre plan de développement sur plusieurs mois'] }
+        advs: ['Visibilité : classement ×6 en permanence + 8 boosts de 48 h par mois','Badge Élite Premium visible sur le profil public','Jérémie IA Expert — suit vos revenus mois par mois, prévoit votre activité et bâtit votre plan de développement sur plusieurs mois'] }
     ];
     html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;text-align:center;"><i class="fa-solid fa-trophy" style="margin-right:4px;"></i>Badges professionnels</div>';
     html += '<div style="font-size:11px;color:#888;line-height:1.5;margin-bottom:10px;text-align:center;">Jérémie IA vous accompagne dès l\'inscription. Chaque badge le rend plus puissant et conserve les avantages des badges précédents.</div>';
@@ -25517,9 +25517,9 @@ var _TUTO_P = [
    html:'<div style="font-size:12px;color:#888;text-align:center;margin-bottom:10px;">Complétez des missions et obtenez de bonnes notes pour débloquer des badges et des avantages.</div>'
      +'<div style="display:flex;flex-direction:column;gap:5px;">'
      +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-fire" style="color:#cd7f32;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Bronze</span><div style="font-size:10px;color:#555;">5 missions · ≥ 4.0★ — Bonus de classement</div></div></div>'
-     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-bolt" style="color:#b0b0b0;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Argent</span><div style="font-size:10px;color:#555;">20 missions · ≥ 4.3★ — Bonus ×2 + Jérémie IA Plus</div></div></div>'
-     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-crown" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Or</span><div style="font-size:10px;color:#555;">50 missions · ≥ 4.5★ — Bonus ×4 + événements prioritaires + Jérémie IA Pro</div></div></div>'
-     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-infinity" style="color:#a78bfa;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Élite</span><div style="font-size:10px;color:#555;">100 missions · ≥ 5.0★ — Bonus ×6 + Jérémie IA Expert</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-bolt" style="color:#b0b0b0;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Argent</span><div style="font-size:10px;color:#555;">20 missions · ≥ 4.3★ — Bonus ×2 + 2 boosts/mois + Jérémie IA Plus</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-crown" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Or</span><div style="font-size:10px;color:#555;">50 missions · ≥ 4.5★ — Bonus ×4 + 4 boosts/mois + événements prioritaires + Jérémie IA Pro</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-infinity" style="color:#a78bfa;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Élite</span><div style="font-size:10px;color:#555;">100 missions · ≥ 5.0★ — Bonus ×6 + 8 boosts/mois + Jérémie IA Expert</div></div></div>'
      +'</div>'
      +'<div style="font-size:10px;color:#555;text-align:center;margin-top:8px;padding:7px;background:rgba(255,215,0,.04);border-radius:8px;border:1px solid rgba(255,215,0,.1);">Suivez votre progression dans <strong style="color:#FFD700;">Mes badges</strong> (onglet Profil).</div>'},
   {ico:'<i class="fa-solid fa-rocket"></i>', title:'C\'est parti !',
