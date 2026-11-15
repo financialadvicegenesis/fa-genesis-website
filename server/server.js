@@ -12306,13 +12306,13 @@ app.get('/api/client/level-progress', function(req, res) {
             // les avantages des précédents, donc aucune répétition d'un niveau à l'autre.
             bronze: [
                 { id: 'profil_perso',       label: 'Personnalisation du profil (thème, bannière, bio enrichie)' },
-                { id: 'suggestions_ia',     label: 'Jérémie va plus loin : des suggestions qui tiennent compte de vos favoris et de vos catégories préférées, à faire défiler en cartes' }
+                { id: 'suggestions_ia',     label: 'Jérémie IA personnalisé — sélectionne des prestataires à partir de vos favoris, à faire défiler en cartes' }
             ],
             argent: [
                 { id: 'webinaires',        label: 'Invitations aux webinaires et ateliers GENESIS' },
                 { id: 'alertes_ia',        label: 'Alertes prioritaires sur les prestataires des catégories que vous choisissez' },
                 { id: 'campagnes',         label: 'Accès prioritaire aux campagnes et aux jeux concours' },
-                { id: 'jeremie_plus',      label: 'Jérémie IA Plus — analyse vos habitudes (rythme, budget, catégories) et vous suggère la suite avant même que vous la demandiez' }
+                { id: 'jeremie_plus',      label: 'Jérémie IA Plus — analyse votre historique de commandes (rythme, budget) et anticipe votre prochaine prestation' }
             ],
             or: [
                 { id: 'events_prives',     label: 'Invitations aux événements privés & soirées networking GENESIS' },
@@ -12323,7 +12323,7 @@ app.get('/api/client/level-progress', function(req, res) {
             elite: [
                 { id: 'vip',            label: 'Invitations VIP aux événements GENESIS' },
                 { id: 'cadeau_annuel',  label: 'Un cadeau de fidélité chaque année' },
-                { id: 'jeremie_expert', label: 'Jérémie IA Expert — votre assistant personnel suit plusieurs projets en parallèle et vous propose une feuille de route sur plusieurs mois' }
+                { id: 'jeremie_expert', label: 'Jérémie IA Expert — votre assistant personnel pilote plusieurs projets en parallèle et établit votre feuille de route sur plusieurs mois' }
             ]
         };
         var clientLevelDescriptions = {
@@ -18977,9 +18977,9 @@ function buildJeremieSystemPrompt(person, personType, language) {
             lines.push('Paliers Jeremie client (cumulatifs), exactement comme affiches dans Mes niveaux GENESIS : ' +
                 'Explorateur (des l\'inscription) = reponses aux questions et 2 a 3 vrais prestataires adaptes a sa demande, ' +
                 'pris dans la liste fournie, avec leurs points forts ; ' +
-                'Createur (100 QG) = suggestions plus riches qui tiennent compte de ses favoris et de ses categories preferees ' +
+                'Createur (100 QG) = Jeremie IA personnalise : selection de prestataires a partir de ses favoris ' +
                 '(2 a 4 prestataires, favoris signales en premier s\'ils conviennent) et cartes de prestataires a faire defiler ; ' +
-                'Batisseur (300 QG) = Jeremie IA Plus : analyse de ses habitudes de commande et recommandations automatiques ; ' +
+                'Batisseur (300 QG) = Jeremie IA Plus : analyse de son historique de commandes (rythme, budget) pour anticiper sa prochaine prestation ; ' +
                 'Visionnaire (600 QG) = Jeremie IA Pro : comparaison multicriteres structuree entre prestataires et preparation ' +
                 'de projet ; Generateur (1000 QG) = Jeremie IA Expert : assistant multi-projets et conseils continus.');
             lines.push('Ce client est au palier : ' + ['Explorateur', 'Createur', 'Batisseur', 'Visionnaire', 'Generateur'][_cTier] +
