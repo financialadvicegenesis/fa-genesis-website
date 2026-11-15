@@ -272,15 +272,15 @@ a{text-decoration:none;color:inherit;}
 .reg-footer a{color:var(--orange);font-weight:600;}
 </style>
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261101b"></script>
-<script src="app-i18n-es.js?v=20261101b"></script>
-<script src="app-i18n-pt.js?v=20261101b"></script>
-<script src="app-i18n-ar.js?v=20261101b"></script>
-<script src="app-i18n-de.js?v=20261101b"></script>
-<script src="app-i18n-zh.js?v=20261101b"></script>
-<script src="app-i18n-it.js?v=20261101b"></script>
-<script src="app-i18n-ja.js?v=20261101b"></script>
-<script src="app-i18n-hi.js?v=20261101b"></script>
+<script src="app-i18n-en.js?v=20261115e"></script>
+<script src="app-i18n-es.js?v=20261115e"></script>
+<script src="app-i18n-pt.js?v=20261115e"></script>
+<script src="app-i18n-ar.js?v=20261115e"></script>
+<script src="app-i18n-de.js?v=20261115e"></script>
+<script src="app-i18n-zh.js?v=20261115e"></script>
+<script src="app-i18n-it.js?v=20261115e"></script>
+<script src="app-i18n-ja.js?v=20261115e"></script>
+<script src="app-i18n-hi.js?v=20261115e"></script>
 <script>if (typeof AppI18n !== 'undefined') AppI18n.initAppLanguage();</script>
 <script src="site-lang-picker.js?v=20261014"></script>
 </head>
@@ -338,6 +338,10 @@ a{text-decoration:none;color:inherit;}
       <div class="frm-group">
         <label for="password" class="frm-label">Mot de passe <span style="color:var(--t3);font-weight:400;">(6 caractères min.)</span></label>
         <input type="password" id="password" name="password" minlength="6" class="frm-input" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <div class="frm-group">
+        <label for="referralCode" class="frm-label">Code de parrainage <span style="color:var(--t3);font-weight:400;">(optionnel)</span></label>
+        <input type="text" id="referralCode" name="referralCode" class="frm-input" placeholder="PTR-XXXXXXXX" autocomplete="off" autocapitalize="characters" spellcheck="false">
       </div>
       <div class="frm-group">
         <label for="country" class="frm-label">Pays de résidence <span style="color:#f87171;">*</span></label>
@@ -724,7 +728,8 @@ a{text-decoration:none;color:inherit;}
             email: document.getElementById('email').value.trim(),
             telephone: document.getElementById('telephone').value.trim(),
             password: document.getElementById('password').value,
-            country: document.getElementById('country').value
+            country: document.getElementById('country').value,
+            referralCode: ((document.getElementById('referralCode') || {}).value || '').trim()
         };
 
         submitBtn.disabled = true;
@@ -1046,5 +1051,14 @@ a{text-decoration:none;color:inherit;}
     renderWizardProgress(1);
 </script>
 <script src="pwa-init.js?v=20261016"></script>
+<script>
+(function () {
+    try {
+        var ref = new URLSearchParams(window.location.search).get('ref') || '';
+        var el = document.getElementById('referralCode');
+        if (el && /^[A-Za-z0-9-]{3,40}$/.test(ref)) el.value = ref.toUpperCase();
+    } catch (e) {}
+})();
+</script>
 </body>
 </html>

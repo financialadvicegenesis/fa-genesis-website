@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>GENESIS</title>
+<script>
+// GitHub Pages sert cette page pour toute adresse inconnue.
+// Liens de parrainage partagés depuis l'app : https://fagenesis.com/ref/<CODE>
+//   - code prestataire (PTR-…) → inscription prestataire, code pré-rempli
+//   - code client (USR-…)       → inscription client, code pré-rempli
+// Sans ce relais, tous les liens de parrainage menaient à « Page not found » (constaté le 2026-11-15).
+(function () {
+    var m = /^\/ref\/([A-Za-z0-9-]{3,40})\/?$/.exec(window.location.pathname || '');
+    if (!m) return;
+    var code = m[1].toUpperCase();
+    var target = (code.indexOf('PTR-') === 0 ? '/partner-register.html' : '/register.html') + '?ref=' + encodeURIComponent(code);
+    window.location.replace(target);
+})();
+</script>
+<style>
+  :root { --bg:#050505; --card:#0f0f0f; --border:#1e1e1e; --gold:#FFD700; --text:rgba(255,255,255,.92); --muted:rgba(255,255,255,.5); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { min-height:100%; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  body { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px 16px; }
+  .box { width:100%; max-width:420px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:32px 24px; text-align:center; }
+  .brand { color:var(--gold); font-weight:900; letter-spacing:2px; font-size:14px; margin-bottom:18px; }
+  h1 { font-size:20px; margin-bottom:10px; text-wrap:balance; }
+  p { color:var(--muted); font-size:14px; line-height:1.55; margin-bottom:22px; }
+  a.btn { display:inline-block; background:var(--gold); color:#0a0a0a; font-weight:800; text-decoration:none; padding:12px 22px; border-radius:10px; font-size:14px; }
+  a.btn:focus-visible { outline:2px solid #fff; outline-offset:3px; }
+</style>
+</head>
+<body>
+  <main class="box">
+    <div class="brand">GENESIS</div>
+    <h1>Page introuvable</h1>
+    <p>Cette adresse n’existe pas ou a changé.</p>
+    <a class="btn" href="/">Retour à l’accueil</a>
+  </main>
+</body>
+</html>

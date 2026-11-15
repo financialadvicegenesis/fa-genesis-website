@@ -2708,15 +2708,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261115d"></script>
-<script src="app-i18n-es.js?v=20261115d"></script>
-<script src="app-i18n-hi.js?v=20261115d"></script>
-<script src="app-i18n-pt.js?v=20261115d"></script>
-<script src="app-i18n-ja.js?v=20261115d"></script>
-<script src="app-i18n-zh.js?v=20261115d"></script>
-<script src="app-i18n-ar.js?v=20261115d"></script>
-<script src="app-i18n-it.js?v=20261115d"></script>
-<script src="app-i18n-de.js?v=20261115d"></script>
+<script src="app-i18n-en.js?v=20261115e"></script>
+<script src="app-i18n-es.js?v=20261115e"></script>
+<script src="app-i18n-hi.js?v=20261115e"></script>
+<script src="app-i18n-pt.js?v=20261115e"></script>
+<script src="app-i18n-ja.js?v=20261115e"></script>
+<script src="app-i18n-zh.js?v=20261115e"></script>
+<script src="app-i18n-ar.js?v=20261115e"></script>
+<script src="app-i18n-it.js?v=20261115e"></script>
+<script src="app-i18n-de.js?v=20261115e"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -22768,11 +22768,11 @@ function _ptnrLoadReputation(){
       { id: 'bronze', label: 'Bronze', icon: 'fa-fire',     missions: 5,   rating: 4.0,
         advs: ['Bonus de classement dans l\'annuaire','Badge Bronze visible sur le profil public'] },
       { id: 'argent', label: 'Argent', icon: 'fa-bolt',     missions: 20,  rating: 4.3,
-        advs: ['Bonus de classement ×2 par rapport au Bronze','Badge Argent visible sur le profil public','Jérémie IA Plus — analyse les avis de vos clients et vous dit quoi améliorer dans vos prestations'] },
+        advs: ['Bonus de classement ×2 par rapport au Bronze','2 boosts de visibilité de 48 h par mois','Badge Argent visible sur le profil public','Jérémie IA Plus — analyse les avis de vos clients et vous dit quoi améliorer dans vos prestations'] },
       { id: 'or',     label: 'Or',     icon: 'fa-crown',    missions: 50,  rating: 4.5,
-        advs: ['Bonus de classement ×4 par rapport au Bronze','Inscription prioritaire aux événements GENESIS : une place garantie, même complet','Badge Or visible sur le profil public','Jérémie IA Pro — étudie vos devis, vos revenus et vos prix, et vous donne une stratégie pour décrocher plus de missions'] },
+        advs: ['Bonus de classement ×4 par rapport au Bronze','4 boosts de visibilité de 48 h par mois','Inscription prioritaire aux événements GENESIS : une place garantie, même complet','Badge Or visible sur le profil public','Jérémie IA Pro — étudie vos devis, vos revenus et vos prix, et vous donne une stratégie pour décrocher plus de missions'] },
       { id: 'elite',  label: 'Élite',  icon: 'fa-infinity', missions: 100, rating: 5.0,
-        advs: ['Bonus de classement ×6 par rapport au Bronze','Badge Élite Premium visible sur le profil public','Jérémie IA Expert — suit vos revenus mois par mois, prévoit votre activité et bâtit votre plan de développement sur plusieurs mois'] }
+        advs: ['Bonus de classement ×6 par rapport au Bronze','8 boosts de visibilité de 48 h par mois','Badge Élite Premium visible sur le profil public','Jérémie IA Expert — suit vos revenus mois par mois, prévoit votre activité et bâtit votre plan de développement sur plusieurs mois'] }
     ];
     html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;text-align:center;"><i class="fa-solid fa-trophy" style="margin-right:4px;"></i>Badges professionnels</div>';
     html += '<div style="font-size:11px;color:#888;line-height:1.5;margin-bottom:10px;text-align:center;">Jérémie IA vous accompagne dès l\'inscription. Chaque badge le rend plus puissant et conserve les avantages des badges précédents.</div>';
@@ -22822,7 +22822,8 @@ function _ptnrLoadReputation(){
     html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px;text-align:center;"><i class="fa-solid fa-rocket" style="margin-right:4px;"></i>Boost de visibilité</div>';
     if (_bst.quota <= 0) {
       html += '<div style="background:#0e0e0e;border:1.5px solid #1a1a1a;border-radius:13px;padding:14px 16px;font-size:12px;color:#555;text-align:center;">'
-        + '<i class="fa-solid fa-lock" style="margin-right:6px;color:#333;"></i>Débloquez le badge <strong style="color:#666;">Argent</strong> pour obtenir des boosts de visibilité mensuels.'
+        + '<div style="color:#888;"><i class="fa-solid fa-lock" style="margin-right:6px;color:#444;"></i>Remontez dans l\'annuaire pendant 48 h, quand vous le décidez.</div>'
+        + '<div style="margin-top:6px;font-size:11px;font-weight:700;color:#666;">Argent : 2 boosts par mois · Or : 4 · Élite : 8</div>'
         + '</div>';
     } else {
       var _bstActiveHtml = '';
@@ -22843,7 +22844,7 @@ function _ptnrLoadReputation(){
         + '<button id="ptnr-boost-btn" onclick="_ptnrActivateBoost(this)" '+(_bstCanActivate?'':'disabled')+' style="width:100%;padding:12px;border-radius:10px;border:none;font-weight:800;font-size:12px;letter-spacing:.3px;cursor:'+(_bstCanActivate?'pointer':'not-allowed')+';background:'+(_bstCanActivate?'#FFD700':'#1a1a1a')+';color:'+(_bstCanActivate?'#000':'#444')+';">'
         + (_bstCanActivate ? '<i class="fa-solid fa-rocket" style="margin-right:6px;"></i>Booster mon profil (48h)' : 'Quota épuisé — réinitialisation le mois prochain')
         + '</button>'
-        + '<div style="font-size:10px;color:#555;margin-top:8px;text-align:center;line-height:1.5;">Votre profil passe temporairement en tête des résultats de recherche de l\'annuaire.</div>'
+        + '<div style="font-size:10px;color:#555;margin-top:8px;text-align:center;line-height:1.5;">Votre profil remonte dans les résultats de l\'annuaire pendant 48 h.</div>'
         + '</div>';
     }
 
@@ -22853,9 +22854,11 @@ function _ptnrLoadReputation(){
     var _DIST_DEFS = [
       { id: 'ambassador', label: 'Ambassadeur GENESIS', icon: 'fa-medal',    color: '#FFD700',
         desc: 'Attribuée quand un prestataire que vous avez parrainé réalise sa première prestation validée sur FA GENESIS.',
+        perk: '+ 7 jours de mise en avant dans l\'annuaire',
         how: 'Partagez votre code de parrainage et accompagnez votre filleul jusqu\'à sa première mission.' },
       { id: 'new_talent', label: 'Nouveau Talent',       icon: 'fa-seedling', color: '#a78bfa',
         desc: 'Distingue les nouveaux professionnels ayant réalisé leur première prestation. Visible jusqu\'à l\'obtention du badge Bronze.',
+        perk: '+ 4 jours de mise en avant dans l\'annuaire',
         how: 'Réalisez votre première prestation validée sur FA GENESIS.' }
     ];
     _DIST_DEFS.forEach(function(def) {
@@ -22870,6 +22873,7 @@ function _ptnrLoadReputation(){
         +(owned ? '<i class="fa-solid fa-circle-check" style="font-size:16px;color:'+def.color+';"></i>' : '<span style="font-size:16px;color:#252525;">&#128274;</span>')
         +'</div>';
       html += '<div style="font-size:11px;color:'+(owned?'#bbb':'#444')+';line-height:1.5;margin-bottom:'+(owned?'0':'6px')+';text-align:center;">'+def.desc+'</div>';
+      if (def.perk) html += '<div style="font-size:11px;font-weight:800;color:'+(owned?def.color:'#666')+';text-align:center;margin:'+(owned?'6px 0 0':'0 0 6px')+';">'+def.perk+'</div>';
       if (!owned) {
         html += '<div style="margin-top:6px;background:rgba(255,215,0,.04);border:1px solid #252500;border-radius:8px;padding:8px 10px;font-size:10px;color:#555;text-align:center;">'
           +'<i class="fa-solid fa-circle-info" style="margin-right:4px;color:#333;"></i>'

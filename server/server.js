@@ -12411,17 +12411,20 @@ app.get('/api/partner/badge-progress-full', function(req, res) {
             ],
             argent: [
                 { id: 'classement', label: 'Bonus de classement ×2 par rapport au Bronze' },
+                { id: 'boosts', label: '2 boosts de visibilité de 48 h par mois' },
                 { id: 'badge_public', label: 'Badge Argent visible sur le profil public' },
                 { id: 'jeremie_plus', label: 'Jérémie IA Plus — analyse les avis de vos clients et vous dit quoi améliorer dans vos prestations' }
             ],
             or: [
                 { id: 'classement', label: 'Bonus de classement ×4 par rapport au Bronze' },
+                { id: 'boosts', label: '4 boosts de visibilité de 48 h par mois' },
                 { id: 'events', label: 'Inscription prioritaire aux événements GENESIS : une place garantie, même complet' },
                 { id: 'badge_public', label: 'Badge Or visible sur le profil public' },
                 { id: 'jeremie_pro', label: 'Jérémie IA Pro — étudie vos devis, vos revenus et vos prix, et vous donne une stratégie pour décrocher plus de missions' }
             ],
             elite: [
                 { id: 'classement', label: 'Bonus de classement ×6 par rapport au Bronze' },
+                { id: 'boosts', label: '8 boosts de visibilité de 48 h par mois' },
                 { id: 'badge_public', label: 'Badge Élite Premium visible sur le profil public' },
                 { id: 'jeremie_expert', label: 'Jérémie IA Expert — suit vos revenus mois par mois, prévoit votre activité et bâtit votre plan de développement sur plusieurs mois' }
             ]
