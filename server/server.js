@@ -12403,34 +12403,27 @@ app.get('/api/partner/badge-progress-full', function(req, res) {
         var badgeOrder = [null, 'bronze', 'argent', 'or', 'elite'];
         var currentOrder = badgeOrder.indexOf(badge);
 
+        // Alignée sur l'écran « Mes badges » de l'app (avantages réels, audit 2026-11-15).
         var badgeAdvantages = {
             bronze: [
-                { id: 'presence_annuaire', label: 'Présence dans l\'annuaire' },
-                { id: 'dashboard', label: 'Tableau de bord professionnel' },
-                { id: 'formations', label: 'Accès aux formations FA GENESIS' },
-                { id: 'boost_bienvenue', label: 'Boost de visibilité de bienvenue (30 jours)' },
-                { id: 'jeremie_essentiel', label: 'Jérémie IA Essentiel — Optimisation profil & annonces' }
+                { id: 'classement', label: 'Bonus de classement dans l\'annuaire' },
+                { id: 'badge_public', label: 'Badge Bronze visible sur le profil public' }
             ],
             argent: [
-                { id: 'stats_avancees', label: 'Statistiques avancées de performance' },
-                { id: 'meilleur_classement', label: 'Meilleur classement dans l\'annuaire' },
-                { id: 'boosts_2', label: '2 boosts mensuels de visibilité' },
-                { id: 'ateliers', label: 'Accès prioritaire aux ateliers professionnels' },
-                { id: 'jeremie_plus', label: 'Jérémie IA Plus — Analyse des avis & taux de conversion' }
+                { id: 'classement', label: 'Bonus de classement ×2 par rapport au Bronze' },
+                { id: 'badge_public', label: 'Badge Argent visible sur le profil public' },
+                { id: 'jeremie_plus', label: 'Jérémie IA Plus — analyse les avis de vos clients et vous dit quoi améliorer dans vos prestations' }
             ],
             or: [
-                { id: 'classement_renforce', label: 'Classement renforcé dans l\'annuaire' },
-                { id: 'boosts_4', label: '4 boosts mensuels de visibilité' },
-                { id: 'outils_anticipes', label: 'Accès anticipé aux nouveaux outils' },
-                { id: 'events', label: 'Accès aux événements FA GENESIS' },
-                { id: 'jeremie_pro', label: 'Jérémie IA Pro — Conseils marketing & optimisation revenus' }
+                { id: 'classement', label: 'Bonus de classement ×4 par rapport au Bronze' },
+                { id: 'events', label: 'Inscription prioritaire aux événements GENESIS : une place garantie, même complet' },
+                { id: 'badge_public', label: 'Badge Or visible sur le profil public' },
+                { id: 'jeremie_pro', label: 'Jérémie IA Pro — étudie vos devis, vos revenus et vos prix, et vous donne une stratégie pour décrocher plus de missions' }
             ],
             elite: [
-                { id: 'badge_premium', label: 'Badge premium affiché dans l\'annuaire' },
-                { id: 'priorite_classement', label: 'Priorité de classement (à profil équivalent)' },
-                { id: 'boosts_8', label: '8 boosts mensuels de visibilité' },
-                { id: 'events_pro', label: 'Invitations aux événements professionnels exclusifs' },
-                { id: 'jeremie_expert', label: 'Jérémie IA Expert — Assistant stratégique & prévisions d\'activité' }
+                { id: 'classement', label: 'Bonus de classement ×6 par rapport au Bronze' },
+                { id: 'badge_public', label: 'Badge Élite Premium visible sur le profil public' },
+                { id: 'jeremie_expert', label: 'Jérémie IA Expert — suit vos revenus mois par mois, prévoit votre activité et bâtit votre plan de développement sur plusieurs mois' }
             ]
         };
 
@@ -19165,9 +19158,9 @@ function buildJeremieSystemPrompt(person, personType, language) {
                     lines.push('Jeremie IA Expert (badge Elite) — revenus des 6 derniers mois : ' + Object.keys(_pByMonth).map(function(k) {
                         return k + ' : ' + _pByMonth[k].toFixed(2) + ' EUR';
                     }).join(', ') + '. Note moyenne : ' + (summary && summary.average ? summary.average : '-') + '/5 sur ' + (summary ? summary.count : 0) + ' avis.');
-                    lines.push('Agis comme son accompagnateur de carriere : tendance et prevision d\'activite a partir de ces mois ' +
-                        '(sans jamais inventer de chiffre), priorites strategiques sur plusieurs mois, diversification, et ' +
-                        'reponses prioritaires et detaillees.');
+                    lines.push('Agis comme son accompagnateur : suis ses revenus mois par mois, donne la tendance et une prevision ' +
+                        'd\'activite a partir de ces mois (sans jamais inventer de chiffre ; si l\'historique est trop court, dis-le), ' +
+                        'puis construis avec lui un plan de developpement sur plusieurs mois (objectifs, prix, offres, categories de clients, portfolio).');
                 }
             } catch (tierErr) {
                 console.error('[JEREMIE] Erreur paliers prestataire:', tierErr);
@@ -20046,7 +20039,10 @@ app.post('/api/events/:id/rsvp', function(req, res) {
             var rsvpCount = events[idx].attendees.length;
             if (rsvpCount >= events[idx].capacity) {
                 // Visionnaire+ (or/elite) ont la priorité — ils peuvent toujours s'inscrire
-                var isPriority = clientLevelAtLeast(clientBadge, 'or');
+                // Clients Visionnaire+ ; prestataires badge Or, Élite ou Fondateur (avantage « Inscription prioritaire »).
+                var isPriority = personType === 'partner'
+                    ? ['or', 'elite', 'fondateur'].indexOf(getPartnerBadge(person)) !== -1
+                    : clientLevelAtLeast(clientBadge, 'or');
                 if (!isPriority) {
                     return res.status(409).json({ error: 'Complet', full: true, spots_left: 0,
                         message: 'Cet événement est complet. Les membres Visionnaire+ ont un accès prioritaire.' });
