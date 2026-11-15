@@ -12306,7 +12306,7 @@ app.get('/api/client/level-progress', function(req, res) {
             // les avantages des précédents, donc aucune répétition d'un niveau à l'autre.
             bronze: [
                 { id: 'profil_perso',       label: 'Personnalisation du profil (thème, bannière, bio enrichie)' },
-                { id: 'suggestions_ia',     label: 'Jérémie vous propose des prestataires précis, adaptés à votre demande' }
+                { id: 'suggestions_ia',     label: 'Jérémie va plus loin : des suggestions qui tiennent compte de vos favoris et de vos catégories préférées, à faire défiler en cartes' }
             ],
             argent: [
                 { id: 'webinaires',        label: 'Invitations aux webinaires et ateliers GENESIS' },
@@ -18975,9 +18975,10 @@ function buildJeremieSystemPrompt(person, personType, language) {
             // Createur = suggestions personnalisees, Batisseur = IA Plus, Visionnaire = IA Pro, Generateur = IA Expert.
             var _cTier = ({ bronze: 1, argent: 2, or: 3, elite: 4 })[badge] || 0;
             lines.push('Paliers Jeremie client (cumulatifs), exactement comme affiches dans Mes niveaux GENESIS : ' +
-                'Explorateur = questions generales et orientation vers l\'annuaire, sans recommander de prestataire precis ; ' +
-                'Createur (100 QG) = suggestions personnalisees de vrais prestataires correspondant a sa demande, ses habitudes ' +
-                'et ses categories preferees (presenter 2 a 4 prestataires adaptes avec leurs points forts) ; ' +
+                'Explorateur (des l\'inscription) = reponses aux questions et 2 a 3 vrais prestataires adaptes a sa demande, ' +
+                'pris dans la liste fournie, avec leurs points forts ; ' +
+                'Createur (100 QG) = suggestions plus riches qui tiennent compte de ses favoris et de ses categories preferees ' +
+                '(2 a 4 prestataires, favoris signales en premier s\'ils conviennent) et cartes de prestataires a faire defiler ; ' +
                 'Batisseur (300 QG) = Jeremie IA Plus : analyse de ses habitudes de commande et recommandations automatiques ; ' +
                 'Visionnaire (600 QG) = Jeremie IA Pro : comparaison multicriteres structuree entre prestataires et preparation ' +
                 'de projet ; Generateur (1000 QG) = Jeremie IA Expert : assistant multi-projets et conseils continus.');
@@ -18988,8 +18989,10 @@ function buildJeremieSystemPrompt(person, personType, language) {
                 'permet (par exemple, au niveau Createur : presenter les prestataires pertinents avec leurs atouts, sans ' +
                 'tableau comparatif critere par critere). Ses QG actuels : ' + genesisPoints + '.');
             if (_cTier === 0) {
-                lines.push('A ce niveau, ne recommande aucun prestataire nominativement : oriente-le vers l\'onglet Prestataires ' +
-                    'et l\'annuaire, en l\'aidant a choisir le bon type de prestataire.');
+                lines.push('A ce niveau (Explorateur) : si une liste de prestataires GENESIS t\'est fournie, presente 2 a 3 ' +
+                    'prestataires de cette liste qui correspondent a sa demande, avec leurs points forts ; sans liste, aide-le a ' +
+                    'choisir le bon type de prestataire et oriente-le vers l\'onglet Prestataires. Ne tiens pas compte de ses ' +
+                    'favoris ni de ses habitudes (c\'est l\'avantage Createur et au-dela) et ne fais pas de comparaison detaillee.');
             }
             // Jérémie IA Plus : analyse des habitudes pour les clients Bâtisseur+ (argent/or/elite)
             if (['argent','or','elite'].indexOf(badge) !== -1) {
@@ -19222,7 +19225,13 @@ function detectPartnerSearchIntent(message) {
 // découverte interactive (cartes « Découvrir les professionnels »). matched = au moins un métier
 // reconnu dans le message ET des prestataires de ce métier : sans cela, la liste n'est qu'un
 // classement général, jamais présenté comme « correspondant à votre besoin ».
-function buildPartnerContextForJeremie(message, audience, out) {
+// opts.limit : nombre de prestataires fournis (Explorateur = 3, Créateur+ = 8).
+// opts.preferTypes / opts.favorites (Créateur+) : sans métier reconnu dans le message, on part des
+// catégories préférées du client ; ses favoris passent en tête et sont signalés à Jérémie.
+function buildPartnerContextForJeremie(message, audience, out, opts) {
+    opts = opts || {};
+    var _limit = opts.limit || 8;
+    var _favs = Array.isArray(opts.favorites) ? opts.favorites : [];
     try {
         // Mêmes prestataires que l'annuaire (accountStatus === 'active') : l'ancien filtre
         // isActive !== false laissait passer des comptes en attente de validation ou désactivés.
@@ -19266,6 +19275,10 @@ function buildPartnerContextForJeremie(message, audience, out) {
             var byType = allPartners.filter(function(p) { return wanted.some(function(t) { return partnerListedInType(p, t); }); });
             if (byType.length) { filtered = byType; _matchedTypes = wanted; }
         }
+        if (!_matchedTypes.length && Array.isArray(opts.preferTypes) && opts.preferTypes.length) {
+            var byPref = allPartners.filter(function(p) { return opts.preferTypes.some(function(t) { return partnerListedInType(p, t); }); });
+            if (byPref.length) filtered = byPref;
+        }
 
         // Trier par note décroissante
         filtered = filtered.slice().sort(function(a, b) {
@@ -19276,7 +19289,11 @@ function buildPartnerContextForJeremie(message, audience, out) {
             return (rb.count || 0) - (ra.count || 0);
         });
 
-        var top = filtered.slice(0, 8);
+        if (_favs.length) {
+            filtered = filtered.filter(function(p) { return _favs.indexOf(p.id) !== -1; })
+                .concat(filtered.filter(function(p) { return _favs.indexOf(p.id) === -1; }));
+        }
+        var top = filtered.slice(0, _limit);
         if (!top.length) return '';
         if (out) {
             out.ids = top.map(function(p) { return p.id; });
@@ -19312,6 +19329,7 @@ function buildPartnerContextForJeremie(message, audience, out) {
             var badge = getPartnerBadge(p);
 
             var parts = [name, type];
+            if (_favs.indexOf(p.id) !== -1) parts.push('dans les favoris du client');
             if (p.city) parts.push(p.city + (p.country && p.country !== 'FR' ? ' (' + p.country + ')' : ''));
             if (p.serviceMode === 'remote') parts.push('travaille uniquement à distance');
             else if (p.serviceMode === 'both') parts.push('sur place et à distance');
@@ -19429,20 +19447,22 @@ app.post('/api/jeremie/chat', function(req, res) {
         var history = (entry.messages || []).slice(-20).map(function(m) { return { role: m.role, content: m.content }; });
         var systemPrompt = buildJeremieSystemPrompt(person, personType, person.language || (req.body && req.body.language) || 'fr');
 
-        // Suggestion de prestataires réels : à partir du niveau Créateur (bronze+). C'est l'avantage
-        // "Jérémie IA — Suggestions personnalisées selon vos habitudes" promis au niveau Créateur dans
-        // Mes niveaux GENESIS ; il n'était débloqué qu'à Bâtisseur, laissant le Créateur sans rien de plus
-        // qu'un Explorateur.
-        var _jerDiscovery = {};
+        // Suggestion de prestataires réels (décision FA GENESIS, 2026-11-15) : DÈS L'INSCRIPTION,
+        // 3 prestataires adaptés à la demande ; à partir de Créateur, suggestions enrichies (8 prestataires,
+        // catégories préférées, favoris en tête) et cartes à faire glisser.
+        var _jerDiscovery = {}, _jerCards = false;
         if (personType === 'client' && detectPartnerSearchIntent(message)) {
             try {
                 var _cOrders = getClientCompletedOrders(person.email);
                 var _cPoints = getClientGenesisPoints(person, _cOrders);
                 var _cBadge  = getClientQGBadge(_cPoints);
-                if (['bronze', 'argent', 'or', 'elite'].indexOf(_cBadge) !== -1) {
-                    var _pCtx = buildPartnerContextForJeremie(message, clientAudienceOfUser(person), _jerDiscovery);
-                    if (_pCtx) systemPrompt += '\n\n' + _pCtx;
-                }
+                _jerCards = ['bronze', 'argent', 'or', 'elite'].indexOf(_cBadge) !== -1;
+                var _pOpts = _jerCards
+                    ? { limit: 8, favorites: Array.isArray(person.favoris) ? person.favoris : [],
+                        preferTypes: (person.preferred_partner_types && person.preferred_partner_types.length) ? person.preferred_partner_types : getClientPreferredCategories(person.email) }
+                    : { limit: 3 };
+                var _pCtx = buildPartnerContextForJeremie(message, clientAudienceOfUser(person), _jerDiscovery, _pOpts);
+                if (_pCtx) systemPrompt += '\n\n' + _pCtx;
             } catch (pCtxErr) {
                 console.error('[JEREMIE] Erreur injection prestataires:', pCtxErr);
             }
@@ -19460,7 +19480,7 @@ app.post('/api/jeremie/chat', function(req, res) {
             memory[person.id] = entry;
             saveJeremieMemory(memory);
             // Découverte interactive : uniquement de vrais prestataires du métier demandé.
-            var _disc = (_jerDiscovery.matched && _jerDiscovery.ids && _jerDiscovery.ids.length)
+            var _disc = (_jerCards && _jerDiscovery.matched && _jerDiscovery.ids && _jerDiscovery.ids.length)
                 ? { partner_ids: _jerDiscovery.ids, label: _jerDiscovery.label || '' } : null;
             res.json({ success: true, reply: result.reply, discovery: _disc });
         }).catch(function(err) {
