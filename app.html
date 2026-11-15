@@ -22776,6 +22776,33 @@ function _ptnrLoadReputation(){
     ];
     html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;text-align:center;"><i class="fa-solid fa-trophy" style="margin-right:4px;"></i>Badges professionnels</div>';
     html += '<div style="font-size:11px;color:#888;line-height:1.5;margin-bottom:10px;text-align:center;">Jérémie IA vous accompagne dès l\'inscription. Chaque badge le rend plus puissant et conserve les avantages des badges précédents.</div>';
+    // ── Boost de visibilité mensuel (2026-11-15) : plus de section à part — les quotas sont écrits
+    // sur les cartes Argent / Or / Élite ; le bouton d'activation vit dans la carte du badge actuel.
+    var _bst = data.boostStatus || { quota: 0, used: 0, remaining: 0, active: false, active_until: null };
+    var _bstCtrlHtml = '';
+    if (_bst.quota > 0) {
+      var _bstActiveHtml = '';
+      if (_bst.active && _bst.active_until) {
+        var _bstUntil = new Date(_bst.active_until);
+        var _bstUntilLabel = _bstUntil.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) + ' à ' + _bstUntil.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        _bstActiveHtml = '<div style="margin-bottom:10px;background:rgba(76,175,80,.08);border:1px solid #1a3a1a;border-radius:9px;padding:8px 12px;font-size:11px;color:#4caf50;text-align:center;">'
+          + '<i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Boost actif jusqu\'au ' + _bstUntilLabel
+          + '</div>';
+      }
+      var _bstCanActivate = _bst.remaining > 0;
+      _bstCtrlHtml = '<div id="ptnr-boost-ctrl" style="margin-top:12px;border-top:1px solid #1f1f1f;padding-top:12px;">'
+        + _bstActiveHtml
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+        + '<div style="font-size:12px;color:#ccc;">Boosts restants ce mois-ci</div>'
+        + '<div style="font-size:16px;font-weight:900;color:'+(_bstCanActivate?'#FFD700':'#555')+';">'+_bst.remaining+' / '+_bst.quota+'</div>'
+        + '</div>'
+        + '<button id="ptnr-boost-btn" onclick="_ptnrActivateBoost(this)" '+(_bstCanActivate?'':'disabled')+' style="width:100%;padding:12px;border-radius:10px;border:none;font-weight:800;font-size:12px;letter-spacing:.3px;cursor:'+(_bstCanActivate?'pointer':'not-allowed')+';background:'+(_bstCanActivate?'#FFD700':'#1a1a1a')+';color:'+(_bstCanActivate?'#000':'#444')+';">'
+        + (_bstCanActivate ? '<i class="fa-solid fa-rocket" style="margin-right:6px;"></i>Booster mon profil (48h)' : 'Quota épuisé — réinitialisation le mois prochain')
+        + '</button>'
+        + '<div style="font-size:10px;color:#555;margin-top:8px;text-align:center;line-height:1.5;">Votre profil remonte dans les résultats de l\'annuaire pendant 48 h.</div>'
+        + '</div>';
+    }
+    var _bstPlaced = false;
     _ptnrBadgeDefs.forEach(function(bDef) {
       var bOrder = _ptnrBadgeOrder.indexOf(bDef.id);
       var unlocked = _ptnrCurOrder >= bOrder && bOrder > 0;
@@ -22814,39 +22841,11 @@ function _ptnrLoadReputation(){
           + 'Débloquez le badge <strong style="color:#444;">'+bDef.label+'</strong> pour accéder à ces avantages'
           + '</div>';
       }
+      if (_bstCtrlHtml && !_bstPlaced && bDef.id === data.badge) { html += _bstCtrlHtml; _bstPlaced = true; }
       html += '</div></div>';
     });
 
-    // ── Boost de visibilité mensuel ──
-    var _bst = data.boostStatus || { quota: 0, used: 0, remaining: 0, active: false, active_until: null };
-    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px;text-align:center;"><i class="fa-solid fa-rocket" style="margin-right:4px;"></i>Boost de visibilité</div>';
-    if (_bst.quota <= 0) {
-      html += '<div style="background:#0e0e0e;border:1.5px solid #1a1a1a;border-radius:13px;padding:14px 16px;font-size:12px;color:#555;text-align:center;">'
-        + '<div style="color:#888;"><i class="fa-solid fa-lock" style="margin-right:6px;color:#444;"></i>Remontez dans l\'annuaire pendant 48 h, quand vous le décidez.</div>'
-        + '<div style="margin-top:6px;font-size:11px;font-weight:700;color:#666;">Argent : 2 boosts par mois · Or : 4 · Élite : 8</div>'
-        + '</div>';
-    } else {
-      var _bstActiveHtml = '';
-      if (_bst.active && _bst.active_until) {
-        var _bstUntil = new Date(_bst.active_until);
-        var _bstUntilLabel = _bstUntil.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) + ' à ' + _bstUntil.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        _bstActiveHtml = '<div style="margin-bottom:10px;background:rgba(76,175,80,.08);border:1px solid #1a3a1a;border-radius:9px;padding:8px 12px;font-size:11px;color:#4caf50;text-align:center;">'
-          + '<i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Boost actif jusqu\'au ' + _bstUntilLabel
-          + '</div>';
-      }
-      var _bstCanActivate = _bst.remaining > 0;
-      html += '<div style="background:#0e0e0e;border:1.5px solid #1a1a1a;border-radius:13px;padding:14px 16px;">'
-        + _bstActiveHtml
-        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
-        + '<div style="font-size:12px;color:#ccc;">Boosts restants ce mois-ci</div>'
-        + '<div style="font-size:16px;font-weight:900;color:'+(_bstCanActivate?'#FFD700':'#555')+';">'+_bst.remaining+' / '+_bst.quota+'</div>'
-        + '</div>'
-        + '<button id="ptnr-boost-btn" onclick="_ptnrActivateBoost(this)" '+(_bstCanActivate?'':'disabled')+' style="width:100%;padding:12px;border-radius:10px;border:none;font-weight:800;font-size:12px;letter-spacing:.3px;cursor:'+(_bstCanActivate?'pointer':'not-allowed')+';background:'+(_bstCanActivate?'#FFD700':'#1a1a1a')+';color:'+(_bstCanActivate?'#000':'#444')+';">'
-        + (_bstCanActivate ? '<i class="fa-solid fa-rocket" style="margin-right:6px;"></i>Booster mon profil (48h)' : 'Quota épuisé — réinitialisation le mois prochain')
-        + '</button>'
-        + '<div style="font-size:10px;color:#555;margin-top:8px;text-align:center;line-height:1.5;">Votre profil remonte dans les résultats de l\'annuaire pendant 48 h.</div>'
-        + '</div>';
-    }
+    if (_bstCtrlHtml && !_bstPlaced) html += '<div style="background:#0e0e0e;border:1.5px solid #1a1a1a;border-radius:13px;padding:2px 14px 14px;margin-bottom:10px;">' + _bstCtrlHtml + '</div>';
 
     // ── Distinctions ──
     var _dists = data.distinctions || [];
