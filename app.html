@@ -2708,15 +2708,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261115e"></script>
-<script src="app-i18n-es.js?v=20261115e"></script>
-<script src="app-i18n-hi.js?v=20261115e"></script>
-<script src="app-i18n-pt.js?v=20261115e"></script>
-<script src="app-i18n-ja.js?v=20261115e"></script>
-<script src="app-i18n-zh.js?v=20261115e"></script>
-<script src="app-i18n-ar.js?v=20261115e"></script>
-<script src="app-i18n-it.js?v=20261115e"></script>
-<script src="app-i18n-de.js?v=20261115e"></script>
+<script src="app-i18n-en.js?v=20261115f"></script>
+<script src="app-i18n-es.js?v=20261115f"></script>
+<script src="app-i18n-hi.js?v=20261115f"></script>
+<script src="app-i18n-pt.js?v=20261115f"></script>
+<script src="app-i18n-ja.js?v=20261115f"></script>
+<script src="app-i18n-zh.js?v=20261115f"></script>
+<script src="app-i18n-ar.js?v=20261115f"></script>
+<script src="app-i18n-it.js?v=20261115f"></script>
+<script src="app-i18n-de.js?v=20261115f"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -22781,26 +22781,25 @@ function _ptnrLoadReputation(){
     var _bst = data.boostStatus || { quota: 0, used: 0, remaining: 0, active: false, active_until: null };
     var _bstCtrlHtml = '';
     if (_bst.quota > 0) {
-      var _bstActiveHtml = '';
+      // Un seul élément compact (2026-11-15) : le quota est déjà écrit sur la carte.
+      var _bstLeft = _bst.remaining || 0;
       if (_bst.active && _bst.active_until) {
         var _bstUntil = new Date(_bst.active_until);
-        var _bstUntilLabel = _bstUntil.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) + ' à ' + _bstUntil.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        _bstActiveHtml = '<div style="margin-bottom:10px;background:rgba(76,175,80,.08);border:1px solid #1a3a1a;border-radius:9px;padding:8px 12px;font-size:11px;color:#4caf50;text-align:center;">'
-          + '<i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Boost actif jusqu\'au ' + _bstUntilLabel
+        var _bstLang = 'fr'; try { _bstLang = localStorage.getItem('fa_genesis_app_lang') || 'fr'; } catch (e) {}
+        var _bstLoc = _bstLang === 'fr' ? 'fr-FR' : _bstLang;
+        var _bstUntilLabel = _bstUntil.toLocaleDateString(_bstLoc, { day: 'numeric', month: 'short' }) + ' ' + _bstUntil.toLocaleTimeString(_bstLoc, { hour: '2-digit', minute: '2-digit' });
+        _bstCtrlHtml = '<div id="ptnr-boost-ctrl" style="margin-top:10px;background:rgba(76,175,80,.08);border:1px solid #1a3a1a;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:700;color:#4caf50;text-align:center;">'
+          + '<i class="fa-solid fa-bolt" style="margin-right:6px;"></i>Boost actif jusqu\'au <span data-i18n-skip>' + _bstUntilLabel + '</span>'
+          + '</div>';
+      } else if (_bstLeft > 0) {
+        _bstCtrlHtml = '<button id="ptnr-boost-btn" onclick="_ptnrActivateBoost(this)" style="margin-top:10px;width:100%;padding:11px;border-radius:10px;border:none;font-weight:800;font-size:12px;letter-spacing:.3px;cursor:pointer;background:#FFD700;color:#000;font-family:inherit;">'
+          + '<i class="fa-solid fa-rocket" style="margin-right:6px;"></i><span>Booster mon profil (48h)</span><span data-i18n-skip> · ' + _bstLeft + ' </span><span>' + (_bstLeft > 1 ? 'restants' : 'restant') + '</span>'
+          + '</button>';
+      } else {
+        _bstCtrlHtml = '<div id="ptnr-boost-ctrl" style="margin-top:10px;border:1px solid #1f1f1f;border-radius:10px;padding:10px 12px;font-size:11px;color:#555;text-align:center;">'
+          + 'Quota épuisé — réinitialisation le mois prochain'
           + '</div>';
       }
-      var _bstCanActivate = _bst.remaining > 0;
-      _bstCtrlHtml = '<div id="ptnr-boost-ctrl" style="margin-top:12px;border-top:1px solid #1f1f1f;padding-top:12px;">'
-        + _bstActiveHtml
-        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
-        + '<div style="font-size:12px;color:#ccc;">Boosts restants ce mois-ci</div>'
-        + '<div style="font-size:16px;font-weight:900;color:'+(_bstCanActivate?'#FFD700':'#555')+';">'+_bst.remaining+' / '+_bst.quota+'</div>'
-        + '</div>'
-        + '<button id="ptnr-boost-btn" onclick="_ptnrActivateBoost(this)" '+(_bstCanActivate?'':'disabled')+' style="width:100%;padding:12px;border-radius:10px;border:none;font-weight:800;font-size:12px;letter-spacing:.3px;cursor:'+(_bstCanActivate?'pointer':'not-allowed')+';background:'+(_bstCanActivate?'#FFD700':'#1a1a1a')+';color:'+(_bstCanActivate?'#000':'#444')+';">'
-        + (_bstCanActivate ? '<i class="fa-solid fa-rocket" style="margin-right:6px;"></i>Booster mon profil (48h)' : 'Quota épuisé — réinitialisation le mois prochain')
-        + '</button>'
-        + '<div style="font-size:10px;color:#555;margin-top:8px;text-align:center;line-height:1.5;">Votre profil remonte dans les résultats de l\'annuaire pendant 48 h.</div>'
-        + '</div>';
     }
     var _bstPlaced = false;
     _ptnrBadgeDefs.forEach(function(bDef) {
