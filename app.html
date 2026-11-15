@@ -22775,7 +22775,7 @@ function _ptnrLoadReputation(){
         advs: ['Bonus de classement ×6 par rapport au Bronze','Badge Élite Premium visible sur le profil public','Jérémie IA Expert — suit vos revenus mois par mois, prévoit votre activité et bâtit votre plan de développement sur plusieurs mois'] }
     ];
     html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;text-align:center;"><i class="fa-solid fa-trophy" style="margin-right:4px;"></i>Badges professionnels</div>';
-    html += '<div style="font-size:11px;color:#888;line-height:1.5;margin-bottom:10px;">Jérémie IA vous accompagne dès l\'inscription. Chaque badge le rend plus puissant et conserve les avantages des badges précédents.</div>';
+    html += '<div style="font-size:11px;color:#888;line-height:1.5;margin-bottom:10px;text-align:center;">Jérémie IA vous accompagne dès l\'inscription. Chaque badge le rend plus puissant et conserve les avantages des badges précédents.</div>';
     _ptnrBadgeDefs.forEach(function(bDef) {
       var bOrder = _ptnrBadgeOrder.indexOf(bDef.id);
       var unlocked = _ptnrCurOrder >= bOrder && bOrder > 0;
@@ -22869,9 +22869,9 @@ function _ptnrLoadReputation(){
         +'</div>'
         +(owned ? '<i class="fa-solid fa-circle-check" style="font-size:16px;color:'+def.color+';"></i>' : '<span style="font-size:16px;color:#252525;">&#128274;</span>')
         +'</div>';
-      html += '<div style="font-size:11px;color:'+(owned?'#bbb':'#444')+';line-height:1.5;margin-bottom:'+(owned?'0':'6px')+';">'+def.desc+'</div>';
+      html += '<div style="font-size:11px;color:'+(owned?'#bbb':'#444')+';line-height:1.5;margin-bottom:'+(owned?'0':'6px')+';text-align:center;">'+def.desc+'</div>';
       if (!owned) {
-        html += '<div style="margin-top:6px;background:rgba(255,215,0,.04);border:1px solid #252500;border-radius:8px;padding:8px 10px;font-size:10px;color:#555;">'
+        html += '<div style="margin-top:6px;background:rgba(255,215,0,.04);border:1px solid #252500;border-radius:8px;padding:8px 10px;font-size:10px;color:#555;text-align:center;">'
           +'<i class="fa-solid fa-circle-info" style="margin-right:4px;color:#333;"></i>'
           +def.how
           +'</div>';
