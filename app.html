@@ -4983,7 +4983,7 @@ function _homeServiceCard(p,svc){
   var avatarHtml=p.photo?'<img src="'+p.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;">'
     :'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:22px;font-weight:900;color:var(--yellow);">'+initials+'</div>';
   var ratingBadge=(p.rating&&p.rating.count)
-    ?'<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>'
+    ?'<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+_fmtAvg(p.rating.average)+'</div>'
     :'<div class="p-reco-rating-badge">Nouveau</div>';
   return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')" style="cursor:pointer;">'
     +'<div class="p-reco-photo" style="background:#1a1a1a;">'+avatarHtml+ratingBadge+'</div>'
@@ -5384,7 +5384,7 @@ function recoPartnerCard(p, idx, tagOverride){
   var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
+  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+_fmtAvg(p.rating.average)+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
   var tag = tagOverride ? '<div class="p-reco-tag">'+tagOverride+'</div>' : (idx===0 ? '<div class="p-reco-tag">Top</div>' : '');
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')">'
@@ -5402,7 +5402,7 @@ function hofPremiumCard(p, idx){
   var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
+  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+_fmtAvg(p.rating.average)+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
   var badgeHtml = tierBadgeHtml(p.badge);
   var constellationHtml = constellationBadgeHtml(p.constellation);
   return '<div class="p-hof-card" onclick="openPartnerDetail(\''+p.id+'\')">'
@@ -5420,7 +5420,7 @@ function bigCategoryCard(p, idx){
   var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
+  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+_fmtAvg(p.rating.average)+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
   var badgeHtml = genesisUnifiedBadgesHtml(p.badge, p.constellation);
   return '<div class="p-big-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +favHeartHtml(p.id)
@@ -6332,7 +6332,7 @@ function _openMapQuickPreview(p){
     ? '<img src="'+p.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">'
     : initials;
   var ratingHtml = (p.rating && p.rating.count)
-    ? '<span class="exp-q-chip"><i class="fa-solid fa-star"></i> '+p.rating.average+' ('+p.rating.count+')</span>'
+    ? '<span class="exp-q-chip"><i class="fa-solid fa-star"></i> '+_fmtAvg(p.rating.average)+' ('+p.rating.count+')</span>'
     : '<span class="exp-q-chip" style="color:#666;">Pas encore d\'avis</span>';
   var badgeMap = {bronze:'Créateur',argent:'Bâtisseur',or:'Visionnaire',elite:'Générateur',fondateur:'Fondateur'};
   var badgeHtml = (p.badge && badgeMap[p.badge])
@@ -6753,7 +6753,7 @@ function partnerListRow(p){
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
   var badgeHtml = genesisUnifiedBadgesHtml(p.badge, p.constellation);
-  var starsHtml = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var starsHtml = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star"></i> '+_fmtAvg(p.rating.average)+' ('+p.rating.count+')') : 'Nouveau';
   var resp = partnerResponseLabel(p);
   var promoPct = (USER && USER.referralDiscount && USER.referralDiscount.pct) ? USER.referralDiscount.pct : 15;
   var promoTag = (USER && !GUEST && USER.welcomeDiscountEligible)
@@ -7192,7 +7192,7 @@ function _pfCloseLightbox(){
 function directoryCard(p){
   var label = partnerTypeLabel(p);
   var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('dès '+p.fromPrice+' €');
-  var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+_fmtAvg(p.rating.average)+' ('+p.rating.count+')') : 'Nouveau';
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var photoHtml = p.photo
     ? '<img src="'+p.photo+'" alt="'+(p.prenom||'')+'">'
@@ -7395,7 +7395,7 @@ function openPartnerDetail(partnerId){
       + '</div>';
 
       // ── HUD stats glassmorphism ──
-      var ratingVal = (p.rating && p.rating.count) ? (p.rating.average+'<small style="font-size:9px;font-weight:700;color:#666;margin-left:2px;">('+p.rating.count+')</small>') : '<span style="font-size:11px;color:#333;">—</span>';
+      var ratingVal = (p.rating && p.rating.count) ? (_fmtAvg(p.rating.average)+'<small style="font-size:9px;font-weight:700;color:#666;margin-left:2px;">('+p.rating.count+')</small>') : '<span style="font-size:11px;color:#333;">—</span>';
       var hudHtml = '<div class="pf-hud">'
         + '<div class="pf-hud-cell"><div class="pf-hud-ico"><i class="fa-solid fa-star"></i></div><div class="pf-hud-val">'+ratingVal+'</div><div class="pf-hud-lbl">Note</div></div>'
         + '<div class="pf-hud-sep"></div>'
@@ -7878,7 +7878,7 @@ function renderTransferCard(r){
       ? '<img src="'+c.partner_photo+'" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;">'
       : '<div style="width:44px;height:44px;border-radius:50%;background:rgba(255,215,0,.08);border:1.5px solid rgba(255,215,0,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;color:var(--yellow);font-size:16px;" data-i18n-skip>'+_escHtml(ini)+'</div>';
     var stars = (c.rating && c.rating.count)
-      ? '<i class="fa-solid fa-star" style="color:var(--yellow)"></i> <span data-i18n-skip>'+c.rating.average+' ('+c.rating.count+')</span>'
+      ? '<i class="fa-solid fa-star" style="color:var(--yellow)"></i> <span data-i18n-skip>'+_fmtAvg(c.rating.average)+' ('+c.rating.count+')</span>'
       : '<span>Nouveau</span>';
     var typeLbl = partnerTypeLabel({partner_type:c.partner_type, partner_type_other:c.partner_type_other});
     return '<div style="margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.02);">'
@@ -8115,7 +8115,7 @@ function _partnerInfoHtml(r){
 
     var _rating = r.partner_rating;
     var _ratingHtml = (_rating && _rating.count > 0)
-      ? '<span style="color:var(--yellow);font-weight:700;font-size:11px;"><i class="fa-solid fa-star" style="font-size:9px;margin-right:2px;"></i>'+_rating.average+'</span><span style="color:var(--muted);font-size:11px;"> ('+_rating.count+' '+_tr('avis')+')</span>'
+      ? '<span style="color:var(--yellow);font-weight:700;font-size:11px;"><i class="fa-solid fa-star" style="font-size:9px;margin-right:2px;"></i>'+_fmtAvg(_rating.average)+'</span><span style="color:var(--muted);font-size:11px;"> ('+_rating.count+' '+_tr('avis')+')</span>'
       : '<span style="color:var(--muted);font-size:11px;">Pas encore d\'avis</span>';
 
     var _badge = r.partner_badge;
@@ -9025,6 +9025,8 @@ function _tierRoadmapHtml(progress){
     return html;
   } catch(_e) { return ''; }
 }
+// Note moyenne affichée TOUJOURS avec une décimale : le serveur renvoie un nombre (4.0 arrive en 4).
+function _fmtAvg(v){ var n = parseFloat(v); return isNaN(n) ? '—' : n.toFixed(1); }
 function partnerBadgeProgressHtml(progress){
   if(!progress) return '';
   var _pbl = {bronze:'Bronze',argent:'Argent',or:'Or',elite:'Élite',fondateur:'Fondateur'};
@@ -9033,7 +9035,7 @@ function partnerBadgeProgressHtml(progress){
   var curIcon  = progress.currentBadge ? (_pbi[progress.currentBadge]||'fa-medal') : 'fa-user';
   var _missions = progress.missionsCurrent || 0;
   var _mTarget  = progress.missionsTarget  || 0;
-  var _rating   = (Number(progress.ratingCurrent)||0).toFixed(1);
+  var _rating   = Number(progress.ratingCurrent) > 0 ? _fmtAvg(progress.ratingCurrent)+'★' : '—'; // note >= 1 dès le 1er avis
   var _rTarget  = progress.ratingTarget ? progress.ratingTarget.toFixed(1) : '—';
   var pct       = progress.percent || 0;
   var _pBadgePhrases = {
@@ -9067,7 +9069,7 @@ function partnerBadgeProgressHtml(progress){
     +'<div class="badge-progress-stats">'
     +'<div><i class="fa-solid fa-briefcase"></i><span>'+_tr('Missions :')+' <b>'+_missions+' / '+_mTarget+'</b></span>'
     +(_missOk ? '&nbsp;<i class="fa-solid fa-check-circle" style="color:#4caf50;font-size:11px;"></i>' : '')+'</div>'
-    +'<div><i class="fa-solid fa-star"></i><span>'+_tr('Note :')+' <b>'+_rating+'★</b> '+_tr('(seuil')+' '+_rTarget+'★)</span>'
+    +'<div><i class="fa-solid fa-star"></i><span>'+_tr('Note :')+' <b>'+_rating+'</b> '+_tr('(seuil')+' '+_rTarget+'★)</span>'
     +(_ratingOk ? '&nbsp;<i class="fa-solid fa-check-circle" style="color:#4caf50;font-size:11px;"></i>' : '')+'</div>'
     +'</div>'
     +'</div>';
@@ -12514,7 +12516,7 @@ function _jdCardHtml(p, under){
   var meta = '<span>'+partnerTypesLabelHtml(p)+'</span>'
     + (place ? '<span><i class="fa-solid fa-location-dot"></i> <span data-i18n-skip>'+_escHtml(place)+'</span></span>' : '')
     + (_partnerIsRemote(p) ? '<span style="color:#4ade80;"><i class="fa-solid fa-laptop"></i> '+_tr('À distance')+'</span>' : '')
-    + ((p.rating && p.rating.count) ? '<span class="jd-star"><i class="fa-solid fa-star"></i> <span data-i18n-skip>'+p.rating.average+' ('+p.rating.count+')</span></span>' : '');
+    + ((p.rating && p.rating.count) ? '<span class="jd-star"><i class="fa-solid fa-star"></i> <span data-i18n-skip>'+_fmtAvg(p.rating.average)+' ('+p.rating.count+')</span></span>' : '');
   var price = (p.fromPrice !== null && p.fromPrice !== undefined) ? ('<span>'+_tr('dès')+'</span> <span data-i18n-skip>'+p.fromPrice+' €</span>') : (_jdQuoteService(p) ? _tr('Sur devis') : '');
   var thumbs = (p.portfolio || []).filter(function(it){ return it && it.type === 'photo' && it.url && (!media || it.url !== media.url); }).slice(0, 3)
     .map(function(it){ return '<img src="'+it.url+'" alt="">'; }).join('');
@@ -23726,14 +23728,10 @@ function _ptnrLoadProfil(){
 
   // Badge
   var _repData = _ptnrLastRepData || {};
-  var missions  = parseInt(_repData.totalMissions||0);
-  var avg       = parseFloat(_repData.averageRating||0);
-  var badgeName = 'Nouveau prestataire';
-  var badgeCol  = '#666';
-  if(missions>=100 && avg>=5.0){ badgeName='Élite';  badgeCol='#a855f7'; }
-  else if(missions>=50 && avg>=4.5){ badgeName='Or';   badgeCol='#f59e0b'; }
-  else if(missions>=20 && avg>=4.3){ badgeName='Argent'; badgeCol='#94a3b8'; }
-  else if(missions>=5  && avg>=4.0){ badgeName='Bronze'; badgeCol='#b45309'; }
+  var _srvBadge = _repData.founderBadge ? 'fondateur' : _repData.badge;
+  var _bdgDef = {elite:['Élite','#a855f7'], or:['Or','#f59e0b'], argent:['Argent','#94a3b8'], bronze:['Bronze','#b45309'], fondateur:['Fondateur','#FFD700']}[_srvBadge];
+  var badgeName = _bdgDef ? _bdgDef[0] : 'Nouveau prestataire';
+  var badgeCol  = _bdgDef ? _bdgDef[1] : '#666';
   var badgeHtml = '<span style="background:'+badgeCol+'18;border:1px solid '+badgeCol+'44;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:900;color:'+badgeCol+';letter-spacing:.3px;">'+badgeName+'</span>';
 
   // Avatar
