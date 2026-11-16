@@ -7219,7 +7219,7 @@ function _ptnrRenderProfileSvcCards(services, audience, p){
     var isQuote = s.pricing_type === 'quote';
     var priceHtml = isQuote
       ? '<div class="pf-svc-quote"><i class="fa-solid fa-file-lines"></i> Sur devis</div>'
-      : '<div class="pf-svc-price">'+_svcOldPriceHtml(s)+s.price+' €</div>'+_svcDiscountTagHtml(s);
+      : '<div class="pf-svc-price">'+_svcOldPriceHtml(s)+s.price+' €'+_cwPriceSuffixHtml(s)+'</div>'+_svcDiscountTagHtml(s);
     var featHtml = (s.features && s.features.length)
       ? '<div class="pf-svc-feats">'+s.features.slice(0,3).map(function(f){ return '<div class="pf-svc-feat"><i class="fa-solid fa-check"></i>'+f+'</div>'; }).join('')+'</div>'
       : '';
@@ -7449,9 +7449,12 @@ function openServiceDetail(partnerId, serviceId){
   }
   var priceHtml = isQuote
     ? '<div class="svc-detail-price quote"><i class="fa-solid fa-file-lines"></i> Tarif sur devis — personnalisé selon votre besoin</div>'+_sdQuotePay
-    : '<div class="svc-detail-price">'+_svcOldPriceHtml(service)+Number(service.price).toFixed(2)+' €</div>'+_svcDiscountTagHtml(service)+_sdPayBadge;
+    : '<div class="svc-detail-price">'+_svcOldPriceHtml(service)+Number(service.price).toFixed(2)+' €'+_cwPriceSuffixHtml(service)+'</div>'+_svcDiscountTagHtml(service)+(_cwIsSlot(service)?'':_sdPayBadge);
+  // Coworking : un espace réservable par créneau se réserve (date, horaire, places), jamais via le panier.
   var ctaHtml = isQuote
     ? '<button class="svc-detail-cta secondary" onclick="closeServiceDetail();openPartnerRequest(\''+partnerId+'\',\''+serviceId+'\')"><i class="fa-solid fa-paper-plane"></i> Demander un devis</button>'
+    : _cwIsSlot(service)
+    ? '<button class="svc-detail-cta" onclick="closeServiceDetail();openCoworkingBooking(\''+partnerId+'\',\''+serviceId+'\')"><i class="fa-solid fa-calendar-check"></i> <span>Réserver un créneau</span></button>'
     : '<button class="svc-detail-cta" onclick="addServiceToMainCart(\''+partnerId+'\',\''+serviceId+'\')"><i class="fa-solid fa-cart-shopping"></i> Ajouter au panier</button>';
   var content = heroHtml
     +'<div class="svc-detail-body">'
@@ -7573,13 +7576,15 @@ function renderResaTab(){
     .then(function(r){return r.json();})
     .then(function(d){ return (d&&Array.isArray(d.requests)) ? d.requests.filter(function(r){ return (r.status==='pending'&&!r.transfer)||r.status==='accepted'||r.status==='proposed'||(r.status==='signed'&&!r.order_id)||_transferCardVisible(r); }) : []; })
     .catch(function(){ return []; });
+  // Créneaux coworking réservés dans l'app (2026-11-16) : code d'arrivée, adresse, annulation.
+  var _resaCwPromise = _cwFetchMyBookings();
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
-      return _resaProposalsPromise.then(function(proposals){ return {data:data, proposals:proposals}; });
+      return Promise.all([_resaProposalsPromise, _resaCwPromise]).then(function(rs){ return {data:data, proposals:rs[0], cwBookings:rs[1]}; });
     })
     .then(function(combined){
-      var data = combined.data, proposals = combined.proposals;
+      var data = combined.data, proposals = combined.proposals, cwBookings = combined.cwBookings || [];
       var list = Array.isArray(data)?data:[];
       var coworking = list.filter(function(r){ return r.type==='coworking'||(r.product_type==='coworking'); });
       var events    = list.filter(function(r){ return r.type==='event'||(r.product_type==='event'); });
@@ -7625,7 +7630,7 @@ function renderResaTab(){
           +'</div></div>';
       }
 
-      if(!all.length){
+      if(!all.length && !cwBookings.length){
         el.innerHTML = proposalsHtml
           // Section Coworking
           +'<div style="margin-bottom:24px;">'
@@ -7633,7 +7638,7 @@ function renderResaTab(){
           +'<div class="resa-card" style="border-style:dashed;opacity:.6;text-align:center;padding:20px;">'
           +'<i class="fa-solid fa-building" style="font-size:24px;color:#60a5fa;display:block;margin-bottom:8px;"></i>'
           +'<div style="font-size:13px;font-weight:700;color:#e5e5e5;margin-bottom:4px;">Aucun créneau réservé</div>'
-          +'<div style="font-size:11px;color:var(--muted);line-height:1.5;">Réservez un espace de coworking depuis la fiche d\'un partenaire dans l\'Explorer.</div>'
+          +'<div style="font-size:11px;color:var(--muted);line-height:1.5;">Réservez un créneau depuis la fiche d’un espace coworking, dans l’onglet Prestataires.</div>'
           +'</div></div>'
           // Section Événements
           +'<div>'
@@ -7647,8 +7652,9 @@ function renderResaTab(){
         return;
       }
 
-      var cwHtml = coworking.length
-        ? '<div class="detail-feats-title" style="margin:0 0 10px;color:#60a5fa;"><i class="fa-solid fa-building"></i> '+_tr('Espaces Coworking')+' ('+coworking.length+')</div>'+coworking.map(resaCard).join('')
+      var _cwCount = coworking.length + cwBookings.length;
+      var cwHtml = _cwCount
+        ? '<div class="detail-feats-title" style="margin:0 0 10px;color:#60a5fa;"><i class="fa-solid fa-building"></i> '+_tr('Espaces Coworking')+' ('+_cwCount+')</div>'+cwBookings.map(_cwBookingCard).join('')+coworking.map(resaCard).join('')
         : '';
       var evHtml = events.length
         ? '<div class="detail-feats-title" style="margin:'+(cwHtml?'20px':'0')+' 0 10px;color:var(--yellow);"><i class="fa-solid fa-ticket"></i> '+_tr('Événements GENESIS')+' ('+events.length+')</div>'+events.map(resaCard).join('')
@@ -18637,6 +18643,9 @@ function _handleNotifHash(hash, _retryCount){
     if(typeof _jdOpenTransfer==='function') _jdOpenTransfer(decodeURIComponent(clientDiscoverMatch[1]));
     return;
   }
+  // Réservation coworking (confirmation, rappel, fin, annulation) → Mes réservations / planning.
+  if(hash === 'client:coworking'){ nav('reservations'); return; }
+  if(hash === 'partner:coworking'){ nav('partner'); setTimeout(function(){ if(typeof _cwpOpen==='function') _cwpOpen(); }, 500); return; }
   var clientProposalMatch = hash.match(/^client:proposal:(.+)$/);
   if(clientProposalMatch){
     _pendingScrollProposalId = decodeURIComponent(clientProposalMatch[1]);
@@ -18950,6 +18959,7 @@ function openPartnerBooking(partnerId, serviceId){
 }
 // Affiche l'écran de paiement de l'acompte (commun à la fiche partenaire et à "Mes demandes")
 function _showPbPayUI(partner, service, existingOrderId, skipContract, requestId){
+  _cwbPayingOrderId = null; // réaffecté par _cwbPay() juste après l'appel
   _pbPartner = partner; _pbService = service; _pbMode = 'pay';
   _pbSelectedInstallments = 1;
   _pbExistingOrderId = existingOrderId || null;
@@ -19558,6 +19568,7 @@ function _pbShowSuccessScreen(){
       if(APP_CART.length !== _pbCartBefore){ _saveCart(); if(typeof renderCartBody==='function') renderCartBody(); }
     }
   }catch(e){}
+  if(_cwbPayingOrderId){ _cwbOnPaid(); return; }
   var sm=document.getElementById('pb-success-msg');
   if(sm) sm.textContent = 'Paiement confirmé ! Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire à la livraison. Retrouvez votre contrat dans "Mes contrats".';
   launchConfetti(); showToast('Paiement sécurisé !','Protégé par GENESIS SAFE™','success');
@@ -23638,6 +23649,7 @@ function _ptnrLoadProfil(){
   var activite = '<div class="plus-section">'
     +'<div class="plus-section-title">MON ACTIVITÉ</div>'
     +'<div class="plus-group">'
+    +(p.partner_type==='coworking' ? pli('<i class="fa-solid fa-calendar-check"></i>', '#0a1220','Mes disponibilités', null, '_cwpOpen()') : '')
     +pli('<i class="fa-solid fa-calendar-days"></i>',     '#0a1a0a','Mes séances',          null,"_ptnrNav('seances')")
     +pli('<i class="fa-solid fa-comment-dots"></i>',      '#0d1a1a','Messages clients',     null,"_ptnrNav('messages')")
     +pli('<i class="fa-solid fa-bolt"></i>',              '#1a0a00','Mes missions',         null,"_ptnrNav('missions')")
@@ -24662,9 +24674,10 @@ function _ptnrRenderServiceItemRow(service){
         + '<input type="hidden" class="ptnr-svc-pricing-type" value="'+(isQuote?'quote':'fixed')+'">'
       + '</div>'
       + _ptnrSvcDiscountHtml(service, isQuote)
+      + _cwSvcEditorHtml(service, isQuote)
       // Modalité de paiement : aussi pour une prestation « sur devis » (affichée au client sur la
       // fiche, et pré-remplie dans chaque proposition de devis, où elle reste modifiable).
-      + ('<div style="margin-top:10px;">'
+      + ('<div class="ptnr-svc-paymode-wrap" style="margin-top:10px;display:'+(service.cw_unit&&!isQuote?'none':'block')+';">'
         +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#FFD700;letter-spacing:.4px;margin-bottom:6px;"><i class="fa-solid fa-lock" style="margin-right:3px;"></i>GENESIS SAFE™ — Mode de paiement</div>'
         +'<div class="ptnr-svc-quote-pay-hint" style="display:'+(isQuote?'block':'none')+';font-size:9px;color:#888;line-height:1.4;margin:-2px 0 6px;">Modalité prévue pour vos devis : affichée au client et reprise dans chaque proposition (modifiable).</div>'
         +'<div style="display:flex;gap:4px;margin-bottom:8px;">'
@@ -24809,6 +24822,12 @@ function _ptnrSelectPricingMode(btn, mode){
   // Remise : prix fixe uniquement (un devis est chiffré au cas par cas).
   var discWrap = card.querySelector('.ptnr-svc-discount');
   if(discWrap) discWrap.style.display = mode==='quote' ? 'none' : 'block';
+  // Réservation par créneau : prix fixe uniquement.
+  var cwWrap = card.querySelector('.ptnr-svc-cw');
+  if(cwWrap) cwWrap.style.display = mode==='quote' ? 'none' : 'block';
+  var cwUnit = card.querySelector('.ptnr-svc-cw-unit');
+  var payWrap = card.querySelector('.ptnr-svc-paymode-wrap');
+  if(payWrap) payWrap.style.display = (mode!=='quote' && cwUnit && cwUnit.value) ? 'none' : 'block';
   if(mode==='quote'){
     if(priceEl){ priceEl.value=''; priceEl.remove(); }
     if(!quoteEl && pricingRow){
@@ -24993,6 +25012,8 @@ function _ptnrCollectServiceItems(audience){
       discount_ends_at: disc ? disc.ends : null,
       image: imageAttr ? decodeURIComponent(imageAttr) : ''
     });
+    // Coworking : unité de prix, places, mode (ignoré par le serveur pour les autres métiers).
+    if(!isQuote) Object.assign(services[services.length-1], _cwSvcCollect(cards[i]));
   }
   return services;
 }
@@ -25279,6 +25300,523 @@ function _updateGreeting(){
     });
   });
 })();
+</script>
+
+<style>
+/* ── COWORKING : réservation de créneaux (2026-11-16) ── */
+#cwb-overlay,#cwp-overlay{display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.78);align-items:flex-end;justify-content:center;}
+#cwb-overlay.open,#cwp-overlay.open{display:flex;}
+#cwb-sheet{width:100%;max-width:480px;max-height:92vh;overflow-y:auto;background:#0a0a0a;border:1.5px solid rgba(255,215,0,.35);border-bottom:none;border-radius:22px 22px 0 0;padding:18px 16px 30px;box-sizing:border-box;}
+#cwp-sheet{width:100%;max-width:480px;height:100%;overflow-y:auto;background:#0a0a0a;box-sizing:border-box;padding:0 0 40px;}
+.cw-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
+.cw-title{font-size:17px;font-weight:900;color:#fff;line-height:1.25;}
+.cw-sub{font-size:11px;color:#888;margin-top:3px;}
+.cw-x{background:#1a1a1a;border:1px solid #2a2a2a;color:#aaa;width:32px;height:32px;border-radius:50%;font-size:15px;cursor:pointer;flex-shrink:0;}
+.cw-lbl{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:#FFD700;margin:16px 0 8px;}
+.cw-days{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}
+.cw-days::-webkit-scrollbar{display:none;}
+.cw-day{flex-shrink:0;width:52px;padding:7px 0;border-radius:11px;border:1px solid #2a2a2a;background:#141414;color:#ddd;text-align:center;cursor:pointer;font-family:inherit;}
+.cw-day .d1{font-size:9px;text-transform:uppercase;color:#888;font-weight:700;}
+.cw-day .d2{font-size:16px;font-weight:900;margin-top:1px;}
+.cw-day .d3{font-size:8px;color:#666;margin-top:1px;}
+.cw-day.on{background:#FFD700;border-color:#FFD700;color:#000;}
+.cw-day.on .d1,.cw-day.on .d3{color:#3a3000;}
+.cw-day[disabled]{opacity:.35;cursor:default;}
+.cw-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.cw-chip{padding:8px 12px;border-radius:10px;border:1px solid #2a2a2a;background:#141414;color:#ddd;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;font-variant-numeric:tabular-nums;}
+.cw-chip.on{background:#FFD700;border-color:#FFD700;color:#000;}
+.cw-chip[disabled]{opacity:.3;cursor:default;text-decoration:line-through;}
+.cw-step{display:flex;align-items:center;gap:12px;}
+.cw-step button{width:36px;height:36px;border-radius:50%;border:1px solid #333;background:#141414;color:#FFD700;font-size:18px;font-weight:900;cursor:pointer;}
+.cw-step span{font-size:18px;font-weight:900;color:#fff;min-width:26px;text-align:center;font-variant-numeric:tabular-nums;}
+.cw-sum{margin-top:16px;background:#121212;border:1px solid #242424;border-radius:13px;padding:12px 13px;font-size:12px;color:#bbb;line-height:1.6;}
+.cw-sum strong{color:#fff;}
+.cw-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:6px;padding-top:8px;border-top:1px solid #222;}
+.cw-total b{font-size:20px;color:#FFD700;font-variant-numeric:tabular-nums;}
+.cw-note{font-size:11px;color:#999;line-height:1.5;margin-top:10px;display:flex;gap:7px;}
+.cw-note i{color:#FFD700;margin-top:2px;}
+.cw-cta{display:block;width:100%;margin-top:14px;background:#FFD700;color:#000;border:none;border-radius:13px;padding:14px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;}
+.cw-cta[disabled]{opacity:.45;cursor:default;}
+.cw-cta.ghost{background:transparent;color:#aaa;border:1px solid #333;font-weight:700;margin-top:8px;}
+.cw-err{display:none;margin-top:10px;font-size:12px;color:#f87171;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:9px;padding:8px 10px;}
+.cw-err.on{display:block;}
+.cw-empty{font-size:12px;color:#777;padding:10px 0;}
+.cw-unit{font-size:.8em;font-weight:700;color:#999;}
+.cw-code{margin-top:10px;background:rgba(255,215,0,.07);border:1px dashed rgba(255,215,0,.45);border-radius:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.cw-code .k{font-size:9px;font-weight:900;color:#FFD700;letter-spacing:.6px;text-transform:uppercase;}
+.cw-code .h{font-size:10px;color:#888;margin-top:2px;}
+.cw-code .v{font-size:26px;font-weight:900;color:#FFD700;letter-spacing:6px;font-variant-numeric:tabular-nums;}
+.cw-line{font-size:12px;color:#bbb;margin-top:6px;display:flex;gap:7px;line-height:1.45;}
+.cw-line i{color:#60a5fa;width:13px;text-align:center;margin-top:2px;flex-shrink:0;}
+.cwp-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;background:#0a0a0a;border-bottom:1px solid #1d1d1d;padding:14px 16px;}
+.cwp-bar button{background:none;border:none;color:#FFD700;font-size:26px;line-height:1;cursor:pointer;padding:0 4px;}
+.cwp-bar div{font-size:15px;font-weight:900;color:#fff;}
+.cwp-sec{margin:18px 16px 0;}
+.cwp-card{background:#111;border:1px solid #222;border-radius:13px;padding:12px;margin-bottom:8px;}
+.cwp-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #1a1a1a;}
+.cwp-row:last-child{border-bottom:none;}
+.cwp-row .n{flex:1;font-size:12px;font-weight:800;color:#ddd;}
+.cwp-in{background:#1a1a1a;border:1px solid #2e2e2e;border-radius:8px;color:#fff;font-size:12px;padding:7px 8px;font-family:inherit;outline:none;box-sizing:border-box;}
+.cwp-in:focus{border-color:#FFD700;}
+.cwp-in[type=time]{width:92px;}
+.cwp-btn{background:#FFD700;color:#000;border:none;border-radius:9px;padding:8px 12px;font-size:11px;font-weight:900;cursor:pointer;font-family:inherit;}
+.cwp-btn.ghost{background:transparent;color:#f87171;border:1px solid rgba(248,113,113,.35);}
+.cwp-chip{font-size:9px;font-weight:900;border-radius:20px;padding:3px 8px;letter-spacing:.3px;white-space:nowrap;}
+.cwp-hint{font-size:10px;color:#777;line-height:1.5;margin-top:6px;}
+</style>
+<div id="cwb-overlay" onclick="if(event.target===this)_cwbClose()"><div id="cwb-sheet"></div></div>
+<div id="cwp-overlay"><div id="cwp-sheet"></div></div>
+<script>
+// ══════════════════════════════════════════════════════════════════════════════════════
+// COWORKING — réservation de créneaux (2026-11-16, décisions FA GENESIS). Serveur : section
+// « COWORKING » de server/server.js + server/coworking.js. Une réservation devient une
+// commande GENESIS SAFE™ ordinaire, payée via la feuille de paiement existante (_showPbPayUI).
+// Règles : annulation libre jusqu'à 24 h avant, code d'arrivée, fin automatique du créneau.
+// ══════════════════════════════════════════════════════════════════════════════════════
+var _CW_UNIT_TXT = {hour:'/ heure', half_day:'/ demi-journée', day:'/ journée'};
+var _cwb = null;            // état de la feuille de réservation client
+var _cwbPayingOrderId = null; // réservation en cours de paiement (écran de succès adapté)
+function _cwIsSlot(s){ return !!(s && s.cw_unit && s.pricing_type !== 'quote'); }
+function _cwPriceSuffixHtml(s){
+  if(!_cwIsSlot(s)) return '';
+  return ' <span class="cw-unit">'+_CW_UNIT_TXT[s.cw_unit]+'</span>'+(s.cw_mode==='private'?'':' <span class="cw-unit">par personne</span>');
+}
+function _cwMin(t){ var p=String(t||'').split(':'); return parseInt(p[0],10)*60+parseInt(p[1]||'0',10); }
+function _cwHm(m){ var h=Math.floor(m/60), mi=m%60; return (h<10?'0':'')+h+':'+(mi<10?'0':'')+mi; }
+function _cwLocale(){ try{ var l=(typeof AppI18n!=='undefined'&&AppI18n.getAppLanguage)?AppI18n.getAppLanguage():'fr'; return l||'fr'; }catch(e){ return 'fr'; } }
+function _cwDateLong(d){ try{ return new Date(d+'T12:00:00').toLocaleDateString(_cwLocale(),{weekday:'long',day:'numeric',month:'long'}); }catch(e){ return d; } }
+function _cwDateTime(iso){ try{ return new Date(iso).toLocaleString(_cwLocale(),{weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}); }catch(e){ return iso; } }
+function _cwEur(n){ return (Math.round((parseFloat(n)||0)*100)/100).toFixed(2).replace('.',',')+' €'; }
+function _cwApi(){ return (window.FA_GENESIS_API||API); }
+
+// ── CLIENT : feuille de réservation ───────────────────────────────────────────────────
+function openCoworkingBooking(partnerId, serviceId){
+  if(!USER||GUEST){ try{ closeDetail(); }catch(e){} showLoginSheet(); return; }
+  var p = _dirPartnerCache[partnerId]; if(!p) return;
+  var s = (p.services||[]).find(function(x){ return x.id===serviceId; }); if(!s) return;
+  _cwb = {partner:p, service:s, info:null, days:[], date:null, persons:1, hours:s.cw_min_hours||1, start:null, day:null, loadingDay:false, step:'pick', booking:null, busy:false, err:''};
+  var ov=document.getElementById('cwb-overlay'); if(ov) ov.classList.add('open');
+  _cwbRender();
+  fetch(_cwApi()+'/api/coworking/'+encodeURIComponent(partnerId)+'/calendar?service_id='+encodeURIComponent(serviceId))
+    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+    .then(function(res){
+      if(!_cwb) return;
+      if(!res.ok||!res.d.success){ _cwb.err=(res.d&&res.d.error)||'Réservation indisponible pour le moment.'; _cwbRender(); return; }
+      _cwb.info=res.d.service; _cwb.days=res.d.days||[];
+      _cwb.hours=_cwb.info.cw_min_hours||1;
+      var first=_cwb.days.find(function(x){ return x.open; });
+      if(first) _cwbPickDate(first.date); else _cwbRender();
+    }).catch(function(){ if(_cwb){ _cwb.err='Erreur de connexion. Réessayez.'; _cwbRender(); } });
+}
+function _cwbClose(){
+  var ov=document.getElementById('cwb-overlay'); if(ov) ov.classList.remove('open');
+  _cwb=null;
+}
+function _cwbPickDate(date){
+  if(!_cwb) return;
+  _cwb.date=date; _cwb.start=null; _cwb.day=null; _cwb.loadingDay=true; _cwb.err='';
+  _cwbRender();
+  fetch(_cwApi()+'/api/coworking/'+encodeURIComponent(_cwb.partner.id)+'/day?service_id='+encodeURIComponent(_cwb.service.id)+'&date='+date)
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(!_cwb||_cwb.date!==date) return; _cwb.loadingDay=false; _cwb.day=(d&&d.success)?d:null; _cwbAutoStart(); _cwbRender(); })
+    .catch(function(){ if(_cwb){ _cwb.loadingDay=false; _cwb.err='Erreur de connexion. Réessayez.'; _cwbRender(); } });
+}
+function _cwbDur(){
+  var info=_cwb.info, d=_cwb.day&&_cwb.day.day;
+  if(!info||!d) return 0;
+  if(info.cw_unit==='day') return _cwMin(d.close)-_cwMin(d.open);
+  if(info.cw_unit==='half_day') return 240;
+  return _cwb.hours*60;
+}
+function _cwbNeed(){ return _cwb.info.cw_mode==='private' ? (_cwb.info.cw_seats||1) : _cwb.persons; }
+function _cwbStarts(){
+  var d=_cwb.day&&_cwb.day.day; if(!d) return [];
+  var o=_cwMin(d.open), c=_cwMin(d.close), dur=_cwbDur(), need=_cwbNeed(), out=[];
+  var step=_cwb.info.cw_unit==='day' ? (c-o+1) : 60;
+  for(var t=o; t+dur<=c; t+=step){
+    var free=true;
+    for(var i=0;i<d.blocks.length;i++){ var bs=_cwMin(d.blocks[i].start); if(bs>=t && bs<t+dur && d.blocks[i].free<need){ free=false; break; } }
+    out.push({t:t, ok:free});
+  }
+  return out;
+}
+function _cwbAutoStart(){
+  if(!_cwb||!_cwb.info) return;
+  var st=_cwbStarts();
+  if(_cwb.start!==null && st.some(function(x){ return x.t===_cwb.start && x.ok; })) return;
+  _cwb.start = (_cwb.info.cw_unit==='day' && st[0] && st[0].ok) ? st[0].t : null;
+}
+function _cwbSetPersons(n){ if(!_cwb) return; var max=_cwb.info.cw_seats||1; _cwb.persons=Math.max(1,Math.min(max,n)); _cwbAutoStart(); _cwbRender(); }
+function _cwbSetHours(h){ if(!_cwb) return; _cwb.hours=h; _cwbAutoStart(); _cwbRender(); }
+function _cwbSetStart(t){ if(!_cwb) return; _cwb.start=t; _cwbRender(); }
+function _cwbTotal(){
+  var info=_cwb.info; var units=info.cw_unit==='hour'?_cwb.hours:1;
+  var mult=info.cw_mode==='private'?1:_cwb.persons;
+  return Math.round(info.unit_price*units*mult*100)/100;
+}
+function _cwbRender(){
+  var sh=document.getElementById('cwb-sheet'); if(!sh||!_cwb) return;
+  var keepScroll=0; var dz=document.getElementById('cwb-days'); if(dz) keepScroll=dz.scrollLeft;
+  var p=_cwb.partner, s=_cwb.service, info=_cwb.info;
+  var pname=((p.prenom||'')+' '+(p.nom||'')).trim();
+  var h='<div class="cw-h"><div><div class="cw-title">'+_escHtml(s.label)+'</div><div class="cw-sub"><span>chez</span> <span data-i18n-skip>'+_escHtml(pname)+'</span></div></div>'
+    +'<button class="cw-x" onclick="_cwbClose()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button></div>';
+  if(!info){
+    h+= _cwb.err ? '<div class="cw-err on">'+_escHtml(_cwb.err)+'</div>' : '<div class="cw-empty"><i class="fa-solid fa-spinner fa-spin"></i> <span>Chargement des disponibilités…</span></div>';
+    sh.innerHTML=h; return;
+  }
+  if(_cwb.step==='recap'){ sh.innerHTML=h+_cwbRecapHtml(); return; }
+  h+='<div style="font-size:13px;color:#ddd;font-weight:800;"><span data-i18n-skip>'+_cwEur(info.unit_price)+'</span>'+_cwPriceSuffixHtml(info)
+    +'</div><div class="cw-sub">'+(info.cw_mode==='private'?'<span>Espace privatisé</span> · <span>jusqu’à</span> <span data-i18n-skip>'+info.cw_seats+'</span> <span>personnes</span>':'<span data-i18n-skip>'+info.cw_seats+'</span> <span>places</span>')+'</div>';
+  // Dates
+  h+='<div class="cw-lbl">Date</div><div class="cw-days" id="cwb-days">';
+  if(!_cwb.days.some(function(x){ return x.open; })) h+='<div class="cw-empty">Aucun jour d’ouverture dans les 60 prochains jours.</div>';
+  _cwb.days.forEach(function(x){
+    var dt=new Date(x.date+'T12:00:00');
+    var d1=dt.toLocaleDateString(_cwLocale(),{weekday:'short'}).replace('.','');
+    var d3=x.open? dt.toLocaleDateString(_cwLocale(),{month:'short'}).replace('.','') : 'Fermé';
+    h+='<button class="cw-day'+(x.date===_cwb.date?' on':'')+'"'+(x.open?' onclick="_cwbPickDate(\''+x.date+'\')"':' disabled')+'><div class="d1" data-i18n-skip>'+d1+'</div><div class="d2" data-i18n-skip>'+dt.getDate()+'</div><div class="d3"'+(x.open?' data-i18n-skip':'')+'>'+d3+'</div></button>';
+  });
+  h+='</div>';
+  // Personnes
+  var max=info.cw_seats||1;
+  if(max>1){
+    h+='<div class="cw-lbl">Nombre de personnes</div><div class="cw-step"><button onclick="_cwbSetPersons('+(_cwb.persons-1)+')" aria-label="Moins">−</button><span data-i18n-skip>'+_cwb.persons+'</span><button onclick="_cwbSetPersons('+(_cwb.persons+1)+')" aria-label="Plus">+</button></div>';
+  }
+  var d=_cwb.day&&_cwb.day.day;
+  // Durée
+  if(info.cw_unit==='hour'){
+    h+='<div class="cw-lbl">Durée</div><div class="cw-chips">';
+    var maxH = d ? Math.floor((_cwMin(d.close)-_cwMin(d.open))/60) : 12;
+    for(var hh=(info.cw_min_hours||1); hh<=Math.min(12,Math.max(maxH,info.cw_min_hours||1)); hh++){
+      h+='<button class="cw-chip'+(hh===_cwb.hours?' on':'')+'" onclick="_cwbSetHours('+hh+')" data-i18n-skip>'+hh+' h</button>';
+    }
+    h+='</div>';
+  } else if(info.cw_unit==='half_day'){
+    h+='<div class="cw-lbl">Durée</div><div class="cw-sub" style="font-size:12px;color:#bbb;">Demi-journée (4 h)</div>';
+  }
+  // Horaires
+  h+='<div class="cw-lbl">'+(info.cw_unit==='day'?'Journée':'Heure d’arrivée')+'</div>';
+  if(_cwb.loadingDay) h+='<div class="cw-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+  else if(!d) h+='<div class="cw-empty">Fermé ce jour-là.</div>';
+  else {
+    var st=_cwbStarts();
+    if(!st.some(function(x){ return x.ok; })) h+='<div class="cw-empty">Plus de place disponible ce jour-là pour cette durée. Essayez un autre jour ou une durée plus courte.</div>';
+    else if(info.cw_unit==='day') h+='<div class="cw-chips"><button class="cw-chip on" data-i18n-skip>'+d.open+' – '+d.close+'</button></div>';
+    else {
+      h+='<div class="cw-chips">';
+      st.forEach(function(x){ h+='<button class="cw-chip'+(x.t===_cwb.start?' on':'')+'"'+(x.ok?' onclick="_cwbSetStart('+x.t+')"':' disabled')+' data-i18n-skip>'+_cwHm(x.t)+'</button>'; });
+      h+='</div>';
+    }
+  }
+  // Récapitulatif
+  var ready = d && _cwb.start!==null;
+  if(ready){
+    var end=_cwb.start+_cwbDur();
+    h+='<div class="cw-sum"><div><strong data-i18n-skip>'+_escHtml(_cwDateLong(_cwb.date))+'</strong></div>'
+      +'<div data-i18n-skip>'+_cwHm(_cwb.start)+' – '+_cwHm(end)+'</div>'
+      +'<div><span data-i18n-skip>'+_cwb.persons+'</span> <span>'+(_cwb.persons>1?'personnes':'personne')+'</span></div>'
+      +'<div class="cw-total"><span>Total</span><b data-i18n-skip>'+_cwEur(_cwbTotal())+'</b></div></div>';
+  }
+  h+='<div class="cw-err'+(_cwb.err?' on':'')+'">'+_escHtml(_cwb.err||'')+'</div>';
+  h+='<button class="cw-cta" onclick="_cwbContinue()"'+(ready&&!_cwb.busy?'':' disabled')+'>'+(_cwb.busy?'<i class="fa-solid fa-spinner fa-spin"></i>':'<span>Continuer</span>')+'</button>';
+  sh.innerHTML=h;
+  var dz2=document.getElementById('cwb-days');
+  if(dz2){ if(keepScroll) dz2.scrollLeft=keepScroll; else { var on=dz2.querySelector('.cw-day.on'); if(on) dz2.scrollLeft=Math.max(0,on.offsetLeft-dz2.offsetLeft-60); } }
+}
+// Crée la réservation (place bloquée 15 min) puis affiche le récapitulatif et la règle d'annulation.
+function _cwbContinue(){
+  if(!_cwb||_cwb.busy||_cwb.start===null) return;
+  _cwb.busy=true; _cwb.err=''; _cwbRender();
+  fetch(_cwApi()+'/api/coworking/'+encodeURIComponent(_cwb.partner.id)+'/bookings',{
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({service_id:_cwb.service.id, date:_cwb.date, start:_cwHm(_cwb.start), hours:_cwb.hours, persons:_cwb.persons})
+  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+  .then(function(res){
+    if(!_cwb) return;
+    _cwb.busy=false;
+    if(!res.ok||!res.d.success){
+      var _cwMsg=(res.d&&res.d.error)||'Réservation impossible. Réessayez.';
+      _cwbPickDate(_cwb.date); _cwb.err=_cwMsg; _cwbRender(); return;
+    }
+    _cwb.booking=res.d; _cwb.step='recap'; _cwbRender();
+  }).catch(function(){ if(_cwb){ _cwb.busy=false; _cwb.err='Erreur de connexion. Réessayez.'; _cwbRender(); } });
+}
+function _cwbRecapHtml(){
+  var b=_cwb.booking, end=_cwb.start+_cwbDur();
+  var h='<div class="cw-sum" style="margin-top:4px;"><div><strong data-i18n-skip>'+_escHtml(_cwDateLong(_cwb.date))+'</strong></div>'
+    +'<div data-i18n-skip>'+_cwHm(_cwb.start)+' – '+_cwHm(end)+'</div>'
+    +'<div><span data-i18n-skip>'+_cwb.persons+'</span> <span>'+(_cwb.persons>1?'personnes':'personne')+'</span></div>'
+    +'<div class="cw-total"><span>Total</span><b data-i18n-skip>'+_cwEur(b.total_amount)+'</b></div></div>';
+  h+='<div class="cw-note"><i class="fa-solid fa-rotate-left"></i><div>'+(b.free_cancel_until
+      ? '<span>Annulation gratuite jusqu’au</span> <strong data-i18n-skip>'+_escHtml(_cwDateTime(b.free_cancel_until))+'</strong><span>. Ensuite, la réservation n’est plus remboursable.</span>'
+      : '<span>Ce créneau commence dans moins de 24 h : la réservation ne pourra pas être annulée.</span>')+'</div></div>';
+  h+='<div class="cw-note"><i class="fa-solid fa-key"></i><div><span>Après le paiement, vous recevez l’adresse, les instructions d’accès et votre code d’arrivée, à donner à l’accueil.</span></div></div>';
+  h+='<div class="cw-note"><i class="fa-solid fa-lock"></i><div><span>Paiement sécurisé par GENESIS SAFE™ : l’espace est payé après votre créneau. Votre place est bloquée 15 minutes.</span></div></div>';
+  h+='<button class="cw-cta" onclick="_cwbPay()"><span>Payer</span> <span data-i18n-skip>'+_cwEur(b.total_amount)+'</span></button>';
+  h+='<button class="cw-cta ghost" onclick="_cwb.step=\'pick\';_cwbRender();">Modifier</button>';
+  return h;
+}
+function _cwbPay(){
+  if(!_cwb||!_cwb.booking) return;
+  var p=_cwb.partner, b=_cwb.booking;
+  var svc={id:_cwb.service.id, label:b.label, price:b.total_amount, payment_mode:'single', max_installments:1};
+  _cwbClose();
+  try{ closeDetail(); }catch(e){}
+  _showPbPayUI(p, svc, b.orderId, true);
+  _cwbPayingOrderId=b.orderId;
+}
+// Écran de succès du paiement d'une réservation (appelé par _pbShowSuccessScreen).
+function _cwbOnPaid(){
+  _cwbPayingOrderId=null;
+  var sm=document.getElementById('pb-success-msg');
+  if(sm) sm.textContent='Réservation confirmée ! Votre code d’arrivée, l’adresse et l’accès sont dans « Mes réservations ».';
+  try{ launchConfetti(); }catch(e){}
+  showToast('Réservation confirmée','Paiement sécurisé par GENESIS SAFE™','success');
+  try{ localStorage.setItem('_fa_recent_payment', String(Date.now())); }catch(e){}
+  setTimeout(function(){ try{ closePartnerBooking(); }catch(e){} nav('reservations'); }, 2200);
+}
+
+// ── CLIENT : « Mes réservations » ─────────────────────────────────────────────────────
+function _cwFetchMyBookings(){
+  if(!USER||GUEST) return Promise.resolve([]);
+  return fetch(_cwApi()+'/api/coworking/bookings/mine',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){ return (d&&d.success&&Array.isArray(d.bookings))?d.bookings:[]; })
+    .catch(function(){ return []; });
+}
+var _CW_STATUS = {
+  confirmed:['Confirmée','s-confirmed'], ongoing:['En cours','s-active'], ended:['Terminée','s-confirmed'],
+  problem:['Problème signalé','s-pending'], cancelled:['Annulée','s-refused']
+};
+function _cwBookingCard(b){
+  var stt=_CW_STATUS[b.status]||_CW_STATUS.confirmed;
+  var h='<div class="resa-card" id="cwbk-'+b.order_id+'">'
+    +'<div class="resa-top"><div class="resa-name"><i class="fa-solid fa-building" style="color:#60a5fa;margin-right:6px;"></i><span data-i18n-skip>'+_escHtml(b.service_label)+'</span></div>'
+    +'<span class="resa-status '+stt[1]+'">'+stt[0]+'</span></div>'
+    +'<div class="resa-date"><i class="fa-solid fa-user"></i> <span data-i18n-skip>'+_escHtml(b.partner_name)+'</span></div>'
+    +'<div class="resa-date"><i class="fa-solid fa-calendar-days"></i> <span data-i18n-skip>'+_escHtml(_cwDateLong(b.date))+' · '+b.start+' – '+b.end+'</span></div>'
+    +'<div class="resa-date"><i class="fa-solid fa-users"></i> <span data-i18n-skip>'+b.persons+'</span> <span>'+(b.persons>1?'personnes':'personne')+'</span></div>'
+    +'<div class="resa-price" data-i18n-skip>'+_cwEur(b.total)+'</div>';
+  if(b.status==='cancelled'){
+    h+='<div class="cw-line"><i class="fa-solid fa-rotate-left"></i><span>'+(b.cancelled_by==='partner'?'Annulée par l’espace.':'Annulée.')+' '+(b.refund_success===false?'Remboursement en cours de traitement par notre équipe.':'Vous avez été remboursé intégralement.')+'</span></div>';
+    return h+'</div>';
+  }
+  if(b.checkin_code && (b.status==='confirmed'||b.status==='ongoing')){
+    h+='<div class="cw-code"><div><div class="k">Code d’arrivée</div><div class="h">'+(b.checked_in?'Arrivée confirmée par l’espace':'À donner à l’accueil en arrivant')+'</div></div><div class="v" data-i18n-skip>'+_escHtml(b.checkin_code)+'</div></div>';
+  }
+  if(b.address) h+='<div class="cw-line"><i class="fa-solid fa-location-dot"></i><span data-i18n-skip>'+_escHtml(b.address)+'</span></div>';
+  if(b.access && b.status!=='ended') h+='<div class="cw-line"><i class="fa-solid fa-key"></i><span data-i18n-skip>'+_escHtml(b.access)+'</span></div>';
+  if(b.status==='confirmed'){
+    h+= b.can_cancel
+      ? '<div class="cw-line"><i class="fa-solid fa-rotate-left"></i><span><span>Annulation gratuite jusqu’au</span> <span data-i18n-skip>'+_escHtml(_cwDateTime(b.free_cancel_until))+'</span></span></div>'
+      : '<div class="cw-line"><i class="fa-solid fa-circle-info"></i><span>Annulation impossible moins de 24 h avant le créneau.</span></div>';
+  }
+  if(b.status==='ended') h+='<div class="cw-line"><i class="fa-solid fa-circle-info"></i><span>Un problème pendant votre créneau ? Vous avez 24 h pour le signaler.</span></div>';
+  var acts='';
+  if(b.can_cancel) acts+='<button class="resa-action-btn rab-ghost" style="color:#f87171;border-color:rgba(248,113,113,.35);" onclick="_cwCancelBooking(\''+b.order_id+'\')"><i class="fa-solid fa-ban"></i> <span>Annuler la réservation</span></button>';
+  if(b.can_report && b.dispatch_id) acts+='<button class="resa-action-btn rab-ghost" onclick="_cwReportProblem(\''+b.dispatch_id+'\')"><i class="fa-solid fa-triangle-exclamation"></i> <span>Signaler un problème</span></button>';
+  if(b.dispute_id) acts+='<button class="resa-action-btn rab-ghost" onclick="openMesLitiges(\''+b.dispute_id+'\')"><i class="fa-solid fa-scale-balanced"></i> <span>Voir le litige</span></button>';
+  if(acts) h+='<div class="resa-actions">'+acts+'</div>';
+  return h+'</div>';
+}
+function _cwCancelBooking(orderId){
+  showConfirmModal('Vous serez remboursé intégralement et la place sera libérée.', {title:'Annuler la réservation ?', confirmLabel:'Annuler la réservation', cancelLabel:'Retour'}).then(function(ok){
+    if(!ok) return;
+    fetch(_cwApi()+'/api/coworking/bookings/'+encodeURIComponent(orderId)+'/cancel',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token}})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+      .then(function(res){
+        if(res.ok&&res.d.success){ showToast('Réservation annulée', res.d.message||'', 'success'); renderResaTab(); }
+        else showToast('Annulation impossible', (res.d&&res.d.error)||'Réessayez.', 'error');
+      }).catch(function(){ showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
+  });
+}
+function _cwReportProblem(dispatchId){
+  if(typeof _openDisputeForm!=='function') return;
+  _openDisputeForm(dispatchId);
+  var cat=document.getElementById('disp-category');
+  if(cat){ var hasOther=[].some.call(cat.options||[],function(o){ return o.value==='autre'; }); if(hasOther) cat.value='autre'; }
+}
+
+// ── PRESTATAIRE : « Mes disponibilités » (planning, horaires, fermetures, blocages) ──────────
+var _cwp = null;
+var _CW_DAYS = [['1','Lundi'],['2','Mardi'],['3','Mercredi'],['4','Jeudi'],['5','Vendredi'],['6','Samedi'],['0','Dimanche']];
+function _cwpOpen(){
+  var ov=document.getElementById('cwp-overlay'); if(!ov) return;
+  ov.classList.add('open');
+  _cwp={loading:true, data:null, err:''};
+  _cwpRender();
+  _cwpLoad();
+}
+function _cwpClose(){ var ov=document.getElementById('cwp-overlay'); if(ov) ov.classList.remove('open'); _cwp=null; }
+function _cwpLoad(){
+  _ptnrFetch('/api/coworking/partner/settings','GET').then(function(d){
+    if(!_cwp) return;
+    _cwp.loading=false;
+    if(d&&d.success){ _cwp.data=d; _cwp.hours=JSON.parse(JSON.stringify(d.settings.hours||{})); _cwp.closures=(d.settings.closures||[]).slice(); }
+    else _cwp.err=(d&&d.error)||'Chargement impossible.';
+    _cwpRender();
+  }).catch(function(){ if(_cwp){ _cwp.loading=false; _cwp.err='Erreur de connexion au serveur'; _cwpRender(); } });
+}
+function _cwpRender(){
+  var sh=document.getElementById('cwp-sheet'); if(!sh||!_cwp) return;
+  var h='<div class="cwp-bar"><button onclick="_cwpClose()" aria-label="Retour">&#8249;</button><div>Mes disponibilités</div></div>';
+  if(_cwp.loading){ sh.innerHTML=h+'<div class="cwp-sec cw-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>'; return; }
+  if(!_cwp.data){ sh.innerHTML=h+'<div class="cwp-sec"><div class="cw-err on">'+_escHtml(_cwp.err)+'</div></div>'; return; }
+  var d=_cwp.data;
+  if(!d.services.length){
+    h+='<div class="cwp-sec"><div class="cwp-card" style="border-color:rgba(255,215,0,.35);"><div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:6px;">Ajoutez vos espaces réservables</div>'
+      +'<div class="cwp-hint" style="font-size:11px;color:#aaa;">Dans « Mes tarifs &amp; prestations », pour chaque espace (open space, bureau, salle), choisissez « Réservation par créneau » : à l’heure, à la demi-journée ou à la journée, avec le nombre de places.</div>'
+      +'<button class="cwp-btn" style="margin-top:10px;" onclick="_cwpClose();_ptnrNav(\'home\');">Ouvrir mes tarifs &amp; prestations</button></div></div>';
+  }
+  // Planning
+  h+='<div class="cwp-sec"><div class="cw-lbl" style="margin-top:0;">Réservations à venir</div>';
+  var upcoming=d.bookings;
+  if(!upcoming.length) h+='<div class="cw-empty">Aucune réservation pour le moment.</div>';
+  var lastDate='';
+  upcoming.forEach(function(b){
+    if(b.date!==lastDate){ lastDate=b.date; h+='<div style="font-size:11px;font-weight:900;color:#aaa;margin:12px 0 6px;" data-i18n-skip>'+_escHtml(_cwDateLong(b.date))+'</div>'; }
+    var chip={confirmed:['Confirmée','#4ade80'],checked_in:['Client arrivé','#60a5fa'],ended:['Terminée','#888'],problem:['Problème signalé','#f59e0b'],cancelled:['Annulée','#f87171']}[b.status]||['','#888'];
+    h+='<div class="cwp-card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">'
+      +'<div><div style="font-size:14px;font-weight:900;color:#fff;" data-i18n-skip>'+b.start+' – '+b.end+'</div>'
+      +'<div style="font-size:11px;color:#bbb;margin-top:2px;"><span data-i18n-skip>'+_escHtml(b.service_label)+' · '+_escHtml(b.client_first_name)+' · '+b.persons+'</span> <span>pers.</span></div></div>'
+      +'<span class="cwp-chip" style="background:'+chip[1]+'1f;color:'+chip[1]+';border:1px solid '+chip[1]+'55;">'+chip[0]+'</span></div>';
+    if(b.can_checkin){
+      h+='<div style="display:flex;gap:6px;margin-top:10px;"><input class="cwp-in" id="cwp-code-'+b.order_id+'" inputmode="numeric" maxlength="4" placeholder="Code d’arrivée" style="flex:1;letter-spacing:3px;font-weight:900;"><button class="cwp-btn" onclick="_cwpCheckin(\''+b.order_id+'\')">Valider l’arrivée</button></div>';
+    }
+    if(b.can_cancel) h+='<button class="cwp-btn ghost" style="margin-top:8px;" onclick="_cwpCancel(\''+b.order_id+'\')">Annuler cette réservation</button>';
+    h+='</div>';
+  });
+  h+='<div class="cwp-hint">À l’arrivée du client, demandez-lui son code d’arrivée (dans son application) et validez-le ici : c’est la preuve qu’il est venu.</div></div>';
+  // Horaires
+  h+='<div class="cwp-sec"><div class="cw-lbl">Horaires d’ouverture</div><div class="cwp-card">';
+  _CW_DAYS.forEach(function(x){
+    var w=_cwp.hours[x[0]];
+    h+='<div class="cwp-row"><label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;"><input type="checkbox" '+(w?'checked':'')+' onchange="_cwpToggleDay(\''+x[0]+'\',this.checked)"><span class="n">'+x[1]+'</span></label>'
+      +(w?'<input class="cwp-in" type="time" value="'+w.o+'" onchange="_cwpSetHour(\''+x[0]+'\',\'o\',this.value)"><span style="color:#666;">–</span><input class="cwp-in" type="time" value="'+w.c+'" onchange="_cwpSetHour(\''+x[0]+'\',\'c\',this.value)">':'<span style="font-size:11px;color:#666;">Fermé</span>')
+      +'</div>';
+  });
+  h+='</div>';
+  // Fermetures
+  h+='<div class="cw-lbl">Fermetures et horaires spéciaux</div><div class="cwp-card">';
+  if(!_cwp.closures.length) h+='<div class="cw-empty" style="padding:4px 0;">Aucune date exceptionnelle.</div>';
+  _cwp.closures.forEach(function(c,i){
+    h+='<div class="cwp-row"><span class="n" data-i18n-skip>'+_escHtml(_cwDateLong(c.date))+'</span><span style="font-size:11px;color:#aaa;"'+(c.o?' data-i18n-skip':'')+'>'+(c.o?c.o+' – '+c.c:'Fermé')+'</span><button class="cw-x" style="width:26px;height:26px;font-size:11px;" onclick="_cwpRemoveClosure('+i+')" aria-label="Retirer"><i class="fa-solid fa-xmark"></i></button></div>';
+  });
+  h+='<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;"><input class="cwp-in" type="date" id="cwp-cl-date" min="'+d.today+'"><input class="cwp-in" type="time" id="cwp-cl-o"><input class="cwp-in" type="time" id="cwp-cl-c"><button class="cwp-btn" onclick="_cwpAddClosure()">Ajouter</button></div>'
+    +'<div class="cwp-hint">Laissez les heures vides pour fermer toute la journée, ou indiquez des horaires spéciaux pour ce jour-là.</div></div>';
+  // Adresse et accès
+  h+='<div class="cw-lbl">Adresse et accès</div><div class="cwp-card">'
+    +'<input class="cwp-in" id="cwp-address" style="width:100%;" maxlength="200" placeholder="Adresse de l’espace" value="'+_escHtml(d.settings.address||'')+'">'
+    +'<textarea class="cwp-in" id="cwp-access" style="width:100%;margin-top:8px;min-height:64px;resize:vertical;" maxlength="600" placeholder="Instructions d’accès : étage, interphone, horaires d’accueil…">'+_escHtml(d.settings.access||'')+'</textarea>'
+    +'<div class="cwp-hint">Visibles par le client uniquement après son paiement. Pas de numéro de téléphone, d’e-mail ni de lien : les échanges passent par la messagerie GENESIS.</div></div>';
+  h+='<div class="cw-err" id="cwp-err"></div><button class="cw-cta" id="cwp-save" onclick="_cwpSave()">Enregistrer les horaires</button></div>';
+  // Blocages
+  if(d.services.length){
+    h+='<div class="cwp-sec"><div class="cw-lbl">Bloquer un créneau</div><div class="cwp-card">'
+      +'<div class="cwp-hint" style="margin:0 0 8px;">Un client venu sans passer par GENESIS, une privatisation, des travaux : bloquez le créneau pour qu’il ne soit plus réservable.</div>'
+      +'<select class="cwp-in" id="cwp-bl-svc" style="width:100%;"><option value="">Tous les espaces</option>'+d.services.map(function(s){ return '<option value="'+s.id+'" data-i18n-skip>'+_escHtml(s.label)+'</option>'; }).join('')+'</select>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px;"><input class="cwp-in" type="date" id="cwp-bl-date" min="'+d.today+'"><input class="cwp-in" type="time" id="cwp-bl-s"><input class="cwp-in" type="time" id="cwp-bl-e"><button class="cwp-btn" onclick="_cwpAddBlock()">Bloquer</button></div>';
+    var blocks=(d.settings.blocks||[]).slice().sort(function(a,b){ return (a.date+a.start)<(b.date+b.start)?-1:1; });
+    blocks.forEach(function(b){
+      var sv=d.services.find(function(s){ return s.id===b.service_id; });
+      h+='<div class="cwp-row"><span class="n"><span data-i18n-skip>'+_escHtml(_cwDateLong(b.date))+' · '+b.start+' – '+b.end+'</span><br><span style="font-size:10px;color:#777;font-weight:600;"'+(sv?' data-i18n-skip':'')+'>'+(sv?_escHtml(sv.label):'Tous les espaces')+'</span></span><button class="cw-x" style="width:26px;height:26px;font-size:11px;" onclick="_cwpRemoveBlock(\''+b.id+'\')" aria-label="Retirer"><i class="fa-solid fa-xmark"></i></button></div>';
+    });
+    h+='</div></div>';
+  }
+  sh.innerHTML=h;
+}
+function _cwpToggleDay(k,on){ if(!_cwp) return; _cwp.hours[k]=on?{o:'08:00',c:'19:00'}:null; _cwpRender(); }
+function _cwpSetHour(k,f,v){ if(!_cwp||!_cwp.hours[k]) return; _cwp.hours[k][f]=v; }
+function _cwpAddClosure(){
+  var dt=(document.getElementById('cwp-cl-date')||{}).value, o=(document.getElementById('cwp-cl-o')||{}).value, c=(document.getElementById('cwp-cl-c')||{}).value;
+  if(!dt){ showToast('Date manquante','Choisissez une date.','error'); return; }
+  if((o&&!c)||(!o&&c)){ showToast('Horaires incomplets','Indiquez l’ouverture et la fermeture, ou aucune heure pour fermer la journée.','error'); return; }
+  _cwp.closures=_cwp.closures.filter(function(x){ return x.date!==dt; });
+  _cwp.closures.push({date:dt,o:o||null,c:c||null});
+  _cwp.closures.sort(function(a,b){ return a.date<b.date?-1:1; });
+  _cwpRender();
+  showToast('Date ajoutée','Pensez à enregistrer.','info');
+}
+function _cwpRemoveClosure(i){ _cwp.closures.splice(i,1); _cwpRender(); }
+function _cwpSave(){
+  var btn=document.getElementById('cwp-save'), er=document.getElementById('cwp-err');
+  if(btn){ btn.disabled=true; btn.textContent='Enregistrement…'; }
+  if(er) er.classList.remove('on');
+  var body={hours:_cwp.hours, closures:_cwp.closures, address:(document.getElementById('cwp-address')||{}).value||'', access:(document.getElementById('cwp-access')||{}).value||''};
+  _ptnrFetch('/api/coworking/partner/settings','PUT',body).then(function(d){
+    if(d&&d.success){ showToast('Horaires enregistrés','Vos clients voient vos disponibilités à jour.','success'); _cwpLoad(); }
+    else { if(er){ er.textContent=(d&&d.error)||'Erreur lors de l’enregistrement'; er.classList.add('on'); } if(btn){ btn.disabled=false; btn.textContent='Enregistrer les horaires'; } }
+  }).catch(function(){ if(er){ er.textContent='Erreur de connexion au serveur'; er.classList.add('on'); } if(btn){ btn.disabled=false; btn.textContent='Enregistrer les horaires'; } });
+}
+function _cwpAddBlock(){
+  var body={service_id:(document.getElementById('cwp-bl-svc')||{}).value||null, date:(document.getElementById('cwp-bl-date')||{}).value, start:(document.getElementById('cwp-bl-s')||{}).value, end:(document.getElementById('cwp-bl-e')||{}).value};
+  if(!body.date||!body.start||!body.end){ showToast('Créneau incomplet','Indiquez la date, le début et la fin.','error'); return; }
+  _ptnrFetch('/api/coworking/partner/blocks','POST',body).then(function(d){
+    if(d&&d.success){ showToast('Créneau bloqué','Il n’est plus réservable par les clients.','success'); _cwpLoad(); }
+    else showToast('Blocage impossible',(d&&d.error)||'Réessayez.','error');
+  }).catch(function(){ showToast('Erreur de connexion','Réessayez.','error'); });
+}
+function _cwpRemoveBlock(id){
+  _ptnrFetch('/api/coworking/partner/blocks/'+encodeURIComponent(id),'DELETE').then(function(d){
+    if(d&&d.success){ showToast('Blocage retiré','','success'); _cwpLoad(); }
+  }).catch(function(){ showToast('Erreur de connexion','Réessayez.','error'); });
+}
+function _cwpCheckin(orderId){
+  var inp=document.getElementById('cwp-code-'+orderId); var code=inp?inp.value.trim():'';
+  if(!/^\d{4}$/.test(code)){ showToast('Code incomplet','Le code d’arrivée a 4 chiffres.','error'); return; }
+  _ptnrFetch('/api/coworking/partner/bookings/'+encodeURIComponent(orderId)+'/checkin','POST',{code:code}).then(function(d){
+    if(d&&d.success){ showToast('Arrivée confirmée','Bon travail à votre client !','success'); _cwpLoad(); }
+    else showToast('Code refusé',(d&&d.error)||'Vérifiez le code.','error');
+  }).catch(function(){ showToast('Erreur de connexion','Réessayez.','error'); });
+}
+function _cwpCancel(orderId){
+  showConfirmModal('Le client sera remboursé intégralement et prévenu. Évitez les annulations : vos clients comptent sur leur réservation.', {title:'Annuler cette réservation ?', confirmLabel:'Annuler la réservation', cancelLabel:'Retour'}).then(function(ok){
+    if(!ok) return;
+    _ptnrFetch('/api/coworking/partner/bookings/'+encodeURIComponent(orderId)+'/cancel','POST',{}).then(function(d){
+      if(d&&d.success){ showToast('Réservation annulée','Le client est remboursé.','success'); _cwpLoad(); }
+      else showToast('Annulation impossible',(d&&d.error)||'Réessayez.','error');
+    }).catch(function(){ showToast('Erreur de connexion','Réessayez.','error'); });
+  });
+}
+
+// ── PRESTATAIRE : champs « réservation par créneau » dans Mes tarifs & prestations ──────────
+function _cwSvcEditorHtml(service, isQuote){
+  if(!(_ptnrSession && _ptnrSession.partner_type==='coworking')) return '';
+  var u=service.cw_unit||'', seats=service.cw_seats||1, mode=service.cw_mode||'per_person', minH=service.cw_min_hours||1;
+  return '<div class="ptnr-svc-cw" style="display:'+(isQuote?'none':'block')+';margin-top:10px;background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.3);border-radius:9px;padding:8px 9px;">'
+    +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#60a5fa;letter-spacing:.4px;margin-bottom:6px;"><i class="fa-solid fa-calendar-check" style="margin-right:3px;"></i>Réservation par créneau</div>'
+    +'<select class="ptnr-svc-cw-unit cwp-in" style="width:100%;font-size:11px;" onchange="_cwSvcUnitChanged(this)">'
+      +'<option value=""'+(u===''?' selected':'')+'>Pas de réservation par créneau</option>'
+      +'<option value="hour"'+(u==='hour'?' selected':'')+'>À l’heure</option>'
+      +'<option value="half_day"'+(u==='half_day'?' selected':'')+'>À la demi-journée (4 h)</option>'
+      +'<option value="day"'+(u==='day'?' selected':'')+'>À la journée</option>'
+    +'</select>'
+    +'<div class="ptnr-svc-cw-more" style="display:'+(u?'block':'none')+';">'
+      +'<select class="ptnr-svc-cw-mode cwp-in" style="width:100%;font-size:11px;margin-top:6px;">'
+        +'<option value="per_person"'+(mode==='per_person'?' selected':'')+'>Prix par personne (open space, poste)</option>'
+        +'<option value="private"'+(mode==='private'?' selected':'')+'>Prix pour l’espace entier (bureau, salle)</option>'
+      +'</select>'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;"><span style="font-size:10px;color:#aaa;">Places</span><input type="number" class="ptnr-svc-cw-seats cwp-in" min="1" max="500" value="'+seats+'" style="width:64px;">'
+      +'<span class="ptnr-svc-cw-minh-wrap" style="display:'+(u==='hour'?'inline-flex':'none')+';gap:6px;align-items:center;"><span style="font-size:10px;color:#aaa;">Minimum</span><select class="ptnr-svc-cw-minh cwp-in">'+[1,2,3,4].map(function(n){ return '<option value="'+n+'"'+(n===minH?' selected':'')+'>'+n+' h</option>'; }).join('')+'</select></span></div>'
+      +'<div class="cwp-hint">Le prix indiqué est celui d’une unité (1 heure, 1 demi-journée ou 1 journée). Paiement en une fois, sécurisé par GENESIS SAFE™. Vos horaires se règlent dans Profil › Mes disponibilités.</div>'
+    +'</div></div>';
+}
+function _cwSvcUnitChanged(sel){
+  var card=sel.closest('.ptnr-svc-card'); if(!card) return;
+  var more=card.querySelector('.ptnr-svc-cw-more'); if(more) more.style.display=sel.value?'block':'none';
+  var mh=card.querySelector('.ptnr-svc-cw-minh-wrap'); if(mh) mh.style.display=sel.value==='hour'?'inline-flex':'none';
+  var pm=card.querySelector('.ptnr-svc-paymode-wrap'); if(pm) pm.style.display=sel.value?'none':'block';
+}
+function _cwSvcCollect(card){
+  var u=card.querySelector('.ptnr-svc-cw-unit'); if(!u||!u.value) return {cw_unit:null};
+  return {
+    cw_unit:u.value,
+    cw_mode:(card.querySelector('.ptnr-svc-cw-mode')||{}).value||'per_person',
+    cw_seats:parseInt((card.querySelector('.ptnr-svc-cw-seats')||{}).value,10)||1,
+    cw_min_hours:parseInt((card.querySelector('.ptnr-svc-cw-minh')||{}).value,10)||1
+  };
+}
 </script>
 
 <!-- ═══════════════════════════════════════════════════════════

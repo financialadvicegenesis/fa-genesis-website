@@ -1599,8 +1599,11 @@ function createPartnerServiceDispatch(order) {
             partner_deposit_amount: partnerDeposit,
             partner_total_amount: partnerTotal,
             client_availability: null,
-            status: 'pending_acceptance',
-            mission_status: null,
+            // Coworking : réservation instantanée (créneau libre dans le calendrier de l'espace).
+            status: order.coworking ? 'accepted' : 'pending_acceptance',
+            mission_status: order.coworking ? 'in_progress' : null,
+            accepted_at: order.coworking ? new Date().toISOString() : undefined,
+            client_email: order.coworking ? clientEmail : undefined,
             claimed_by_name: _dispPartnerName,
             claimed_by_profile: null,
             claimed_by_partner_id: order.partner_id, // alias maintenu pour compatibilité
@@ -1644,7 +1647,12 @@ function createPartnerServiceDispatch(order) {
                 _dispContract.ref || ''
             ).catch(function(e) { console.warn('[DISPATCH] Email contrat signé non envoyé:', e.message); });
         }
-        if (_dispPartnerEmail) {
+        if (_dispPartnerEmail && order.coworking) {
+            var _cwN = order.coworking;
+            notifyUser(_dispPartnerEmail, 'partner', 'coworking_booking', '🆕 Nouvelle réservation',
+                clientPrenom + ' a réservé « ' + _cwN.service_label + ' », ' + cwSlotLabel(_cwN) + ' (' + _cwN.persons + ' pers.). Le paiement est sécurisé par GENESIS SAFE™. À son arrivée, demandez son code d\'arrivée.',
+                '#partner:coworking');
+        } else if (_dispPartnerEmail) {
             notifyUser(_dispPartnerEmail, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
                 clientPrenom + ' a réservé « ' + (order.product_name || 'votre prestation') + ' ». Le paiement est sécurisé.'
                     + (_dispContract ? ' Le contrat est signé.' : '')
@@ -1656,10 +1664,13 @@ function createPartnerServiceDispatch(order) {
         if (partnerDeposit > 0) {
             var _pendingDesc = 'Mission : ' + (order.product_name || 'Prestation') + _paymentStageSuffix('deposit', order) + ' (en attente)';
             var _durationDays = parseInt(order.duration_days) || 7;
-            var _releaseDate = new Date(Date.now() + _durationDays * 24 * 60 * 60 * 1000).toISOString();
+            var _releaseDate = order.coworking
+                ? new Date(Date.parse(order.coworking.end_at) + CW.REPORT_WINDOW_HOURS * 3600000).toISOString()
+                : new Date(Date.now() + _durationDays * 24 * 60 * 60 * 1000).toISOString();
             addPendingWalletEntry(order.partner_id, partnerDeposit, _pendingDesc, order.id, dispatch.id, 'deposit', _releaseDate);
         }
 
+        if (order.coworking) cwOnPaid(order.id);
         return dispatch;
     } catch (e) {
         console.error('[DISPATCH] Erreur createPartnerServiceDispatch:', e);
@@ -4112,6 +4123,8 @@ async function checkAutoPaymentRelease() {
             if (!_o.auto_payment_release_at) continue;
             if (new Date(_o.auto_payment_release_at).getTime() > now) continue;
             if (_o.auto_released === true) continue;           // déjà traité
+            // Coworking : problème signalé → argent gelé, l'équipe tranche (code d'arrivée = preuve).
+            if (_o.coworking && cwHasOpenDispute(_o.id)) continue;
             if (_o.balance_paid === true) continue;            // déjà payé intégralement
             if (_o.status === 'cancelled' || _o.status === 'refunded') continue;
             // Ne doit pas encore avoir de payout envoyé
@@ -4820,6 +4833,18 @@ app.post('/api/orders/create', (req, res) => {
                     return res.status(403).json({ error: STUDENT_NOT_VERIFIED_MESSAGE, code: 'student_not_verified' });
                 }
             }
+        }
+
+        // Coworking : une prestation à créneaux se réserve uniquement via /api/coworking/:id/bookings
+        // (date, horaire, places vérifiées) — jamais par le panier ni par une commande sans créneau.
+        var _cwRefs = [];
+        if (partnerServiceOrder && partnerServiceOrder.partnerId && partnerServiceOrder.serviceId && !partnerServiceOrder.requestId) _cwRefs.push(partnerServiceOrder);
+        if (Array.isArray(partnerServiceItems)) partnerServiceItems.forEach(function(it) { if (it && it.partnerId && it.serviceId) _cwRefs.push(it); });
+        for (var _cwi = 0; _cwi < _cwRefs.length; _cwi++) {
+            var _cwp = getPartnerById(_cwRefs[_cwi].partnerId);
+            var _cwsId = _cwRefs[_cwi].serviceId;
+            var _cws = _cwp && cwIsPartner(_cwp) && (_cwp.services || []).find(function(sv) { return sv.id === _cwsId; });
+            if (_cws && CW.isSlotService(_cws)) return res.status(400).json({ error: 'Cet espace se réserve par créneau : choisissez une date et un horaire depuis sa fiche.', code: 'coworking_slot_required' });
         }
 
         let order;
@@ -6243,6 +6268,11 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
         if (order.client_validated === true || order.status === 'completed') {
             return res.status(400).json({ error: 'Cette prestation a déjà été validée et finalisée — l\'annulation en libre-service n\'est plus possible. Contactez le support GENESIS si vous rencontrez un problème.' });
         }
+        // Coworking : annulation libre seulement jusqu'à 24 h avant le créneau (décision FA GENESIS
+        // 2026-11-16) — sinon un client pourrait occuper l'espace puis se faire rembourser.
+        if (order.coworking && (!order.coworking.free_cancel_until || Date.now() >= Date.parse(order.coworking.free_cancel_until))) {
+            return res.status(400).json({ error: 'L\'annulation n\'est plus possible moins de 24 h avant le début du créneau. En cas de problème sur place, utilisez « Signaler un problème » dans « Mes réservations ».' });
+        }
         // Un livrable publié avant validation n'est jamais téléchargeable en clair — seul un
         // aperçu filigrané est visible (voir renderLivrableValidationCard / can_download côté
         // livrable, verrouillé jusqu'à client_validated). Le vol de contenu est donc déjà
@@ -6642,6 +6672,10 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
 
         var order = getOrderById(orderId);
         if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+        if (stage === 'deposit') {
+            var _cwErrSd = cwPrePaymentCheck(order, null);
+            if (_cwErrSd) return res.status(409).json({ error: _cwErrSd, code: 'coworking_slot_unavailable' });
+        }
 
         // Résoudre le montant selon le stage
         var amount, stageLabel;
@@ -7073,6 +7107,10 @@ app.post('/api/payments/paypal/create-order', async (req, res) => {
         // démarrage) — comportement inchangé si aucun orderId n'est fourni (usage générique).
         var _pcoOrder = orderId ? getOrderById(orderId) : null;
         if (_pcoOrder) {
+            if (stage !== 'balance') {
+                var _cwErrPp = cwPrePaymentCheck(_pcoOrder, amt);
+                if (_cwErrPp) return res.status(409).json({ error: _cwErrPp, code: 'coworking_slot_unavailable' });
+            }
             if (stage === 'balance' && (_pcoOrder.balance_paid || _pcoOrder.balance_authorized)) {
                 return res.status(400).json({ error: 'Le solde a déjà été payé.' });
             }
@@ -16373,6 +16411,13 @@ app.put('/api/partner/services', authenticatePartner, async (req, res) => {
                 deposit_pct: depositPct,
                 installment_count: installmentCount
             });
+            // Coworking : prix à l'heure / demi-journée / journée, places, mode (server/coworking.js).
+            // Une prestation à créneaux se paie toujours en une fois (réservation).
+            if (cwIsPartner(req.partner)) {
+                var _cwLast = cleaned[cleaned.length - 1];
+                Object.assign(_cwLast, CW.sanitizeServiceCw(isQuote ? {} : s));
+                if (_cwLast.cw_unit) Object.assign(_cwLast, { payment_mode: 'single', deposit_pct: null, installment_count: null });
+            }
             // Photo de la prestation : analysée si elle est nouvelle ou remplacée (voir moderateImageField).
             const svcImg = await moderateImageField(cleaned[cleaned.length - 1].image, prevSvc.image, prevSvc.image_moderation, req.partner);
             if (svcImg.error) return res.status(400).json(Object.assign({ field: 'service_image', serviceId: s.id || null }, svcImg.error));
@@ -16394,6 +16439,506 @@ app.put('/api/partner/services', authenticatePartner, async (req, res) => {
         res.status(500).json({ error: 'Erreur lors de la mise a jour des prestations' });
     }
 });
+
+// ============================================================================================
+// COWORKING — réservation de créneaux (2026-11-16). Logique pure et règles : server/coworking.js.
+// Une réservation = commande « partner_service » + objet `coworking` (GENESIS SAFE™, Wallet et
+// commission habituels). Interrupteur d'arrêt : COWORKING_BOOKING_ENABLED=false (Render) — plus
+// aucune nouvelle réservation ni paiement ; les réservations déjà payées continuent leur cycle.
+// ============================================================================================
+const CW = require('./coworking');
+const COWORKING_BOOKING_ENABLED = process.env.COWORKING_BOOKING_ENABLED !== 'false';
+const CW_OPEN_DISPUTE_STATUSES = ['open', 'jeremie_triage', 'escalated_admin'];
+
+function cwIsPartner(p) { return !!(p && p.partner_type === 'coworking'); }
+function cwSettingsOf(p) { return Object.assign(CW.emptySettings(), (p && p.cw_settings) || {}); }
+function cwPartnerName(p) {
+    if (!p) return 'Espace coworking';
+    return (((p.prenom || '') + ' ' + (p.nom || '')).trim()) || p.company || 'Espace coworking';
+}
+function cwFmtDate(date) {
+    try {
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+        return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12)).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+    } catch (e) { return date; }
+}
+function cwSlotLabel(c) { return cwFmtDate(c.date) + ', ' + c.start + ' – ' + c.end; }
+function cwFmtDateTime(ts, tz) {
+    try { return new Date(ts).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: tz }); }
+    catch (e) { return new Date(ts).toISOString(); }
+}
+function cwHasOpenDispute(orderId) {
+    return loadDisputes().some(function(d) { return d.order_id === orderId && CW_OPEN_DISPUTE_STATUSES.indexOf(d.status) !== -1; });
+}
+function cwFindService(partner, serviceId) {
+    return (partner && partner.services || []).find(function(s) { return s.id === serviceId && s.active !== false; }) || null;
+}
+
+// Occupation d'une prestation à une date : réservations actives + blocages manuels du prestataire.
+function cwOccupancy(partner, service, date, excludeOrderId) {
+    var now = Date.now();
+    var occ = [];
+    loadOrders().forEach(function(o) {
+        var c = o.coworking;
+        if (!c || o.id === excludeOrderId || c.partner_id !== partner.id || c.service_id !== service.id || c.date !== date) return;
+        if (!CW.bookingIsActive(o, now)) return;
+        occ.push({ start: CW.toMin(c.start), end: CW.toMin(c.end), seats: c.seats_used || 1 });
+    });
+    (cwSettingsOf(partner).blocks || []).forEach(function(b) {
+        if (b.date !== date || (b.service_id && b.service_id !== service.id)) return;
+        var cap = service.cw_seats || 1;
+        occ.push({ start: CW.toMin(b.start), end: CW.toMin(b.end), seats: b.seats ? Math.min(b.seats, cap) : cap });
+    });
+    return occ;
+}
+function cwCheckFree(partner, service, c, excludeOrderId) {
+    var occ = cwOccupancy(partner, service, c.date, excludeOrderId);
+    return CW.maxUsed(occ, CW.toMin(c.start), CW.toMin(c.end)) + (c.seats_used || 1) <= (service.cw_seats || 1);
+}
+
+// Avant CHAQUE initialisation de paiement d'une réservation (Stripe et PayPal) : la place n'est
+// bloquée que 15 min — si le client revient plus tard, on revérifie qu'elle est encore libre.
+// Renvoie un message d'erreur, ou null si le paiement peut continuer (place re-bloquée 15 min).
+function cwPrePaymentCheck(order, amount) {
+    if (!order || !order.coworking) return null;
+    if (!COWORKING_BOOKING_ENABLED) return 'La réservation en ligne des espaces coworking est momentanément indisponible.';
+    var c = order.coworking;
+    if (['cancelled', 'refunded', 'expired'].indexOf(order.status) !== -1) return 'Cette réservation a expiré. Choisissez à nouveau votre créneau.';
+    if (amount != null && Math.abs(parseFloat(amount) - parseFloat(order.deposit_amount || 0)) > 0.01) return 'Montant incorrect pour cette réservation.';
+    if (Date.parse(c.start_at) < Date.now() + CW.MIN_LEAD_MIN * 60000) return 'Ce créneau commence trop tôt ou est déjà passé. Choisissez un autre créneau.';
+    var partner = getPartnerById(c.partner_id);
+    var service = cwFindService(partner, c.service_id);
+    if (!partner || !service || !partnerIsListed(partner)) return 'Cet espace n\'est plus disponible à la réservation.';
+    var holdOk = c.hold_until && Date.parse(c.hold_until) > Date.now();
+    if (!holdOk && !cwCheckFree(partner, service, c, order.id)) return 'Ce créneau vient d\'être réservé par quelqu\'un d\'autre. Choisissez un autre créneau.';
+    updateOrder(order.id, { coworking: Object.assign({}, c, { hold_until: new Date(Date.now() + CW.HOLD_MIN * 60000).toISOString() }) });
+    return null;
+}
+
+// Paiement confirmé (appelé par createPartnerServiceDispatch, point de passage unique de tous les
+// moyens de paiement) : confirmation client avec le code d'arrivée, et capture immédiate si le
+// versement est prévu dans plus de 6 jours (une autorisation de carte expire au bout de 7 jours).
+function cwOnPaid(orderId) {
+    try {
+        var o = getOrderById(orderId);
+        if (!o || !o.coworking || o.coworking.paid_at) return;
+        var c = Object.assign({}, o.coworking, { paid_at: new Date().toISOString() });
+        updateOrder(o.id, { coworking: c });
+        var partner = getPartnerById(c.partner_id);
+        var email = o.client_info && o.client_info.email;
+        if (email) {
+            notifyUser(email, 'client', 'coworking_confirmed', '✅ Réservation confirmée',
+                '« ' + c.service_label + ' » chez ' + cwPartnerName(partner) + ', ' + cwSlotLabel(c) + '. Votre code d\'arrivée : ' + c.checkin_code + ' (à donner à l\'accueil). Adresse et accès dans « Mes réservations ».',
+                '/app.html#client:coworking');
+        }
+        var releaseAt = Date.parse(c.end_at) + CW.REPORT_WINDOW_HOURS * 3600000;
+        if (releaseAt > Date.now() + 6 * 24 * 3600000) setTimeout(function() { cwCaptureNow(o.id); }, 2000);
+    } catch (e) { console.error('[COWORKING] cwOnPaid:', e.message); }
+}
+async function cwCaptureNow(orderId) {
+    var o = getOrderById(orderId);
+    if (!o || o.deposit_paid || !o.deposit_authorized) return;
+    if (['cancelled', 'refunded'].indexOf(o.status) !== -1) return;
+    try {
+        if (o.stripe_deposit_pi_id) {
+            await scp.capturePaymentIntent(o.stripe_deposit_pi_id);
+            updateOrder(o.id, { deposit_paid: true, deposit_paid_at: new Date().toISOString(), paymentStatus: 'deposit_paid' });
+        } else if (o.paypal_authorization_id) {
+            var capId = await _paypalCaptureAuthorization(o.paypal_authorization_id);
+            updateOrder(o.id, { deposit_paid: true, deposit_paid_at: new Date().toISOString(), paymentStatus: 'deposit_paid', paypal_capture_id: capId });
+        }
+        console.log('[COWORKING] Paiement capturé (réservation lointaine) :', o.id);
+    } catch (e) {
+        console.error('[COWORKING] Capture impossible pour', o.id, e.message);
+        notifyUser(null, 'admin', 'refund_manual', '⚠️ Coworking — capture du paiement impossible',
+            'Réservation ' + o.id + ' (plus de 6 jours à l\'avance) : la capture anticipée a échoué (' + e.message + '). Vérifier le paiement avant la date du créneau.', '/admin.html#payouts');
+    }
+}
+
+// Vue d'une réservation pour le prestataire (planning).
+function cwPartnerBookingView(o, now) {
+    var c = o.coworking;
+    var start = Date.parse(c.start_at), end = Date.parse(c.end_at);
+    var cancelled = ['cancelled', 'refunded'].indexOf(o.status) !== -1;
+    var status = cancelled ? 'cancelled' : (cwHasOpenDispute(o.id) ? 'problem' : (c.checked_in_at ? 'checked_in' : (now >= end ? 'ended' : 'confirmed')));
+    return {
+        order_id: o.id, service_id: c.service_id, service_label: c.service_label, date: c.date, start: c.start, end: c.end,
+        persons: c.persons, client_first_name: (o.client_info && o.client_info.first_name) || 'Client',
+        total: o.total_amount, status: status, checked_in_at: c.checked_in_at || null, cancelled_by: c.cancelled_by || null,
+        can_checkin: !cancelled && !c.checked_in_at && now >= start - 3600000 && now <= end,
+        can_cancel: !cancelled && !c.checked_in_at && now < start
+    };
+}
+
+// ── PRESTATAIRE : paramètres + planning ────────────────────────────────────────────────────
+app.get('/api/coworking/partner/settings', authenticatePartner, function(req, res) {
+    try {
+        var p = getPartnerById(req.partner.id) || req.partner;
+        if (!cwIsPartner(p)) return res.status(403).json({ error: 'Réservé aux espaces coworking.' });
+        var tz = CW.tzFor(p), now = Date.now();
+        var bookings = loadOrders().filter(function(o) {
+            return o.coworking && o.coworking.partner_id === p.id && o.coworking.paid_at
+                && Date.parse(o.coworking.end_at) > now - 3 * 24 * 3600000;
+        }).map(function(o) { return cwPartnerBookingView(o, now); })
+          .sort(function(a, b) { return (a.date + a.start) < (b.date + b.start) ? -1 : 1; });
+        var s = cwSettingsOf(p);
+        res.json({
+            success: true, enabled: COWORKING_BOOKING_ENABLED, tz: tz, today: CW.localNow(now, tz).date,
+            settings: { hours: s.hours, closures: s.closures, blocks: s.blocks, address: s.address, access: s.access },
+            services: (p.services || []).filter(function(sv) { return sv.active !== false && CW.isSlotService(sv); })
+                .map(function(sv) { return { id: sv.id, label: sv.label, cw_unit: sv.cw_unit, cw_seats: sv.cw_seats, cw_mode: sv.cw_mode }; }),
+            bookings: bookings
+        });
+    } catch (e) { console.error('[COWORKING] settings GET:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.put('/api/coworking/partner/settings', authenticatePartner, function(req, res) {
+    try {
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(x) { return x.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Prestataire introuvable' });
+        if (!cwIsPartner(partners[idx])) return res.status(403).json({ error: 'Réservé aux espaces coworking.' });
+        var prev = cwSettingsOf(partners[idx]);
+        var tz = CW.tzFor(partners[idx]);
+        var r = CW.sanitizeSettings(req.body || {}, prev, CW.localNow(Date.now(), tz).date);
+        if (r.error) return res.status(400).json({ error: r.error });
+        // Les instructions d'accès sont montrées au client après paiement : pas de lien externe ni
+        // de coordonnées (anti-contournement, même règle que le reste de l'app).
+        if (rejectExternalLink(res, r.settings.access, prev.access, 'cw_access')) return;
+        if (rejectExternalLink(res, r.settings.address, prev.address, 'cw_address')) return;
+        partners[idx].cw_settings = Object.assign(r.settings, { updated_at: new Date().toISOString() });
+        savePartners(partners);
+        res.json({ success: true, settings: partners[idx].cw_settings });
+    } catch (e) { console.error('[COWORKING] settings PUT:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// Blocage manuel d'un créneau (client venu en direct, privatisation, travaux…).
+app.post('/api/coworking/partner/blocks', authenticatePartner, function(req, res) {
+    try {
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(x) { return x.id === req.partner.id; });
+        if (idx === -1 || !cwIsPartner(partners[idx])) return res.status(403).json({ error: 'Réservé aux espaces coworking.' });
+        var b = req.body || {};
+        var tz = CW.tzFor(partners[idx]);
+        var today = CW.localNow(Date.now(), tz).date;
+        if (!CW.validDate(b.date) || b.date < today || b.date > CW.addDays(today, 365)) return res.status(400).json({ error: 'Date invalide.' });
+        var a = CW.toMin(b.start), e = CW.toMin(b.end);
+        if (a === null || e === null || e <= a) return res.status(400).json({ error: 'Horaires invalides : la fin doit être après le début.' });
+        var serviceId = b.service_id || null;
+        if (serviceId && !cwFindService(partners[idx], serviceId)) return res.status(400).json({ error: 'Espace introuvable.' });
+        var seats = b.seats ? Math.max(1, Math.min(500, parseInt(b.seats, 10) || 1)) : null;
+        var s = cwSettingsOf(partners[idx]);
+        var blocks = (s.blocks || []).filter(function(x) { return x.date >= today; });
+        if (blocks.length >= 300) return res.status(400).json({ error: 'Trop de blocages enregistrés.' });
+        var blk = { id: 'BLK-' + crypto.randomBytes(4).toString('hex').toUpperCase(), service_id: serviceId, date: b.date,
+            start: CW.fromMin(a), end: CW.fromMin(e), seats: seats, note: String(b.note || '').trim().slice(0, 80), created_at: new Date().toISOString() };
+        blocks.push(blk);
+        s.blocks = blocks;
+        partners[idx].cw_settings = s;
+        savePartners(partners);
+        res.json({ success: true, block: blk });
+    } catch (e) { console.error('[COWORKING] block POST:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+app.delete('/api/coworking/partner/blocks/:id', authenticatePartner, function(req, res) {
+    try {
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(x) { return x.id === req.partner.id; });
+        if (idx === -1 || !cwIsPartner(partners[idx])) return res.status(403).json({ error: 'Réservé aux espaces coworking.' });
+        var s = cwSettingsOf(partners[idx]);
+        s.blocks = (s.blocks || []).filter(function(x) { return x.id !== req.params.id; });
+        partners[idx].cw_settings = s;
+        savePartners(partners);
+        res.json({ success: true });
+    } catch (e) { console.error('[COWORKING] block DELETE:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// Code d'arrivée saisi par l'accueil de l'espace = preuve de présence du client.
+app.post('/api/coworking/partner/bookings/:orderId/checkin', authenticatePartner, function(req, res) {
+    try {
+        var o = getOrderById(req.params.orderId);
+        if (!o || !o.coworking || o.coworking.partner_id !== req.partner.id) return res.status(404).json({ error: 'Réservation introuvable' });
+        var c = o.coworking, now = Date.now();
+        if (!c.paid_at || ['cancelled', 'refunded'].indexOf(o.status) !== -1) return res.status(400).json({ error: 'Cette réservation n\'est pas active.' });
+        if (c.checked_in_at) return res.json({ success: true, already: true });
+        if (now < Date.parse(c.start_at) - 3600000) return res.status(400).json({ error: 'Le code d\'arrivée se saisit au plus tôt 1 h avant le début du créneau.' });
+        if (now > Date.parse(c.end_at)) return res.status(400).json({ error: 'Ce créneau est terminé.' });
+        if ((c.checkin_attempts || 0) >= CW.CHECKIN_MAX_ATTEMPTS) return res.status(429).json({ error: 'Trop d\'essais. Contactez l\'assistance GENESIS.' });
+        var code = String((req.body && req.body.code) || '').replace(/\D/g, '');
+        if (code !== String(c.checkin_code)) {
+            updateOrder(o.id, { coworking: Object.assign({}, c, { checkin_attempts: (c.checkin_attempts || 0) + 1 }) });
+            return res.status(400).json({ error: 'Code incorrect. Demandez au client le code affiché dans « Mes réservations ».' });
+        }
+        updateOrder(o.id, { coworking: Object.assign({}, c, { checked_in_at: new Date().toISOString() }) });
+        res.json({ success: true });
+    } catch (e) { console.error('[COWORKING] checkin:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// Annulation par l'espace : remboursement intégral du client, jamais de pénalité pour lui.
+app.post('/api/coworking/partner/bookings/:orderId/cancel', authenticatePartner, async function(req, res) {
+    try {
+        var o = getOrderById(req.params.orderId);
+        if (!o || !o.coworking || o.coworking.partner_id !== req.partner.id) return res.status(404).json({ error: 'Réservation introuvable' });
+        var c = o.coworking;
+        if (!c.paid_at || ['cancelled', 'refunded'].indexOf(o.status) !== -1) return res.status(400).json({ error: 'Cette réservation n\'est pas active.' });
+        if (c.checked_in_at) return res.status(400).json({ error: 'Le client est déjà arrivé : contactez l\'assistance GENESIS.' });
+        if (Date.now() >= Date.parse(c.start_at)) return res.status(400).json({ error: 'Le créneau a déjà commencé : contactez l\'assistance GENESIS.' });
+        var r = await cwCancelAndRefund(o, 'partner');
+        var partners = loadPartners();
+        var pIdx = partners.findIndex(function(x) { return x.id === req.partner.id; });
+        if (pIdx !== -1) { partners[pIdx].cw_cancellations = (partners[pIdx].cw_cancellations || 0) + 1; savePartners(partners); }
+        var email = o.client_info && o.client_info.email;
+        if (email) notifyUser(email, 'client', 'coworking_cancelled', 'Réservation annulée par l\'espace',
+            'L\'espace a annulé votre réservation « ' + c.service_label + ' » du ' + cwSlotLabel(c) + '. ' + (r.refunded ? 'Vous êtes remboursé intégralement.' : 'Notre équipe procède à votre remboursement intégral sous 24 h.'),
+            '/app.html#client:coworking');
+        res.json({ success: true, refunded: r.refunded });
+    } catch (e) { console.error('[COWORKING] partner cancel:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// Annulation commune (client ou espace) : mission annulée, gain « en attente » retiré, remboursement.
+async function cwCancelAndRefund(order, by) {
+    var dispatches = loadDispatches();
+    var dIdx = dispatches.findIndex(function(d) { return d.order_id === order.id && d.status !== 'cancelled'; });
+    if (dIdx !== -1) {
+        var disp = dispatches[dIdx];
+        dispatches[dIdx] = Object.assign({}, disp, { status: 'cancelled', mission_status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_reason: 'coworking_cancelled_by_' + by });
+        saveDispatches(dispatches);
+        cancelPendingWalletEntry(disp.partner_id || disp.claimed_by_partner_id, disp.id, 'deposit');
+    }
+    var fresh = getOrderById(order.id) || order;
+    updateOrder(order.id, { coworking: Object.assign({}, fresh.coworking, { cancelled_by: by, cancelled_at: new Date().toISOString() }) });
+    var refunded = await refundClientOrder(getOrderById(order.id) || order);
+    updateOrder(order.id, { refund_reason: by === 'partner' ? 'Annulation par l\'espace coworking' : 'Annulation par le client (plus de 24 h avant)' });
+    return { refunded: refunded };
+}
+
+// ── CLIENT : calendrier, places, réservation, annulation ────────────────────────────────────
+function cwPublicContext(req, res) {
+    if (!COWORKING_BOOKING_ENABLED) { res.status(503).json({ error: 'La réservation en ligne des espaces coworking est momentanément indisponible.', disabled: true }); return null; }
+    var partner = getPartnerById(req.params.partnerId);
+    if (!partner || !cwIsPartner(partner) || !partnerIsListed(partner)) { res.status(404).json({ error: 'Espace introuvable.' }); return null; }
+    var service = cwFindService(partner, req.query.service_id || (req.body && req.body.service_id));
+    if (!service || !CW.isSlotService(service)) { res.status(404).json({ error: 'Cet espace ne se réserve pas en ligne.' }); return null; }
+    return { partner: partner, service: service, tz: CW.tzFor(partner) };
+}
+
+// Jours ouverts / fermés des 60 prochains jours (sans le détail des places).
+app.get('/api/coworking/:partnerId/calendar', function(req, res) {
+    try {
+        var ctx = cwPublicContext(req, res); if (!ctx) return;
+        var s = cwSettingsOf(ctx.partner);
+        var today = CW.localNow(Date.now(), ctx.tz).date;
+        var days = [];
+        for (var i = 0; i < 60; i++) {
+            var d = CW.addDays(today, i), w = CW.dayWindow(s, d);
+            days.push({ date: d, open: !!w, o: w ? CW.fromMin(w.o) : null, c: w ? CW.fromMin(w.c) : null });
+        }
+        var unitPrice = partnerServicePricing(ctx.partner, ctx.service).price;
+        res.json({ success: true, today: today, days: days, service: { id: ctx.service.id, label: ctx.service.label, cw_unit: ctx.service.cw_unit,
+            cw_seats: ctx.service.cw_seats, cw_mode: ctx.service.cw_mode, cw_min_hours: ctx.service.cw_min_hours, unit_price: unitPrice } });
+    } catch (e) { console.error('[COWORKING] calendar:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// Places libres d'une journée, par blocs de 30 min.
+app.get('/api/coworking/:partnerId/day', function(req, res) {
+    try {
+        var ctx = cwPublicContext(req, res); if (!ctx) return;
+        var date = req.query.date;
+        if (!CW.validDate(date)) return res.status(400).json({ error: 'Date invalide.' });
+        var day = CW.dayBlocks(ctx.service, cwSettingsOf(ctx.partner), date, cwOccupancy(ctx.partner, ctx.service, date, null), Date.now(), ctx.tz);
+        res.json({ success: true, date: date, open: !!day, day: day });
+    } catch (e) { console.error('[COWORKING] day:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// Création de la réservation (place bloquée 15 min) → le client paie ensuite via GENESIS SAFE™.
+app.post('/api/coworking/:partnerId/bookings', function(req, res) {
+    try {
+        var user = authenticateClient(req, res); if (!user) return;
+        var ctx = cwPublicContext(req, res); if (!ctx) return;
+        var partner = ctx.partner, service = ctx.service, tz = ctx.tz, b = req.body || {};
+        var aud = clientAudienceOfUser(user);
+        if (aud && !serviceVisibleFor(service, aud)) return res.status(403).json({ error: 'Cette prestation est réservée à une autre catégorie de clients. Votre compte donne accès aux offres pour les ' + CLIENT_AUDIENCE_LABELS[aud] + '.', code: 'audience_mismatch' });
+        if (studentPriceBlocked(service, user)) return res.status(403).json({ error: STUDENT_NOT_VERIFIED_MESSAGE, code: 'student_not_verified' });
+        var now = Date.now();
+        var today = CW.localNow(now, tz).date;
+        if (!CW.validDate(b.date) || b.date < today || b.date > CW.addDays(today, CW.MAX_DAYS_AHEAD)) return res.status(400).json({ error: 'Choisissez une date dans les ' + CW.MAX_DAYS_AHEAD + ' prochains jours.' });
+        var iv = CW.bookingInterval(service, cwSettingsOf(partner), b.date, b.start, b.hours);
+        if (iv.error) return res.status(400).json({ error: iv.error });
+        var startAt = CW.zonedToUtc(b.date, CW.fromMin(iv.start), tz);
+        var endAt = CW.zonedToUtc(b.date, CW.fromMin(iv.end), tz);
+        if (startAt < now + CW.MIN_LEAD_MIN * 60000) return res.status(400).json({ error: 'Ce créneau commence trop tôt ou est déjà passé.' });
+        var persons = parseInt(b.persons, 10);
+        if (!(persons >= 1) || persons > (service.cw_seats || 1)) return res.status(400).json({ error: 'Nombre de personnes invalide (maximum ' + (service.cw_seats || 1) + ').' });
+        var seatsUsed = CW.seatsNeeded(service, persons);
+        var slot = { date: b.date, start: CW.fromMin(iv.start), end: CW.fromMin(iv.end), seats_used: seatsUsed };
+        var email = String(user.email || '').toLowerCase();
+
+        // Une seule réservation en attente de paiement par compte : on libère les autres.
+        var orders = loadOrders(), changed = false, reuse = null;
+        orders.forEach(function(o) {
+            if (!o.coworking || o.deposit_paid || o.deposit_authorized || o.status !== 'pending_deposit') return;
+            if (!o.client_info || String(o.client_info.email || '').toLowerCase() !== email) return;
+            var c = o.coworking;
+            if (!reuse && c.partner_id === partner.id && c.service_id === service.id && c.date === slot.date && c.start === slot.start && c.end === slot.end && c.persons === persons) { reuse = o; return; }
+            o.status = 'cancelled'; o.cancelled_reason = 'coworking_hold_replaced'; o.updated_at = new Date().toISOString(); changed = true;
+        });
+        if (changed) saveOrders(orders);
+        if (reuse) {
+            var chk = cwPrePaymentCheck(reuse, null);
+            if (chk) return res.status(409).json({ error: chk });
+            return res.json({ success: true, orderId: reuse.id, total_amount: reuse.total_amount, deposit_amount: reuse.deposit_amount,
+                label: reuse.product_name, free_cancel_until: reuse.coworking.free_cancel_until || null });
+        }
+
+        if (!cwCheckFree(partner, service, slot, null)) return res.status(409).json({ error: 'Il ne reste plus assez de places sur ce créneau. Choisissez un autre horaire.' });
+
+        var pricing = partnerServicePricing(partner, service);
+        var total = CW.priceFor(service, pricing.price, iv.units, persons);
+        if (!(total >= 0.5)) return res.status(400).json({ error: 'Montant trop faible pour un paiement en ligne (0,50 € minimum).' });
+        var freeCancelUntil = startAt - CW.FREE_CANCEL_HOURS * 3600000;
+        var label = service.label + ' — ' + cwFmtDate(slot.date) + ', ' + slot.start + '–' + slot.end;
+        var order = {
+            id: 'ORD-' + uuidv4().split('-')[0].toUpperCase(),
+            product_id: null,
+            product_name: label,
+            product_type: 'partner_service',
+            payment_tier: 'small',
+            partner_id: partner.id,
+            partner_name: cwPartnerName(partner),
+            partner_email: partner.email || '',
+            partner_service_id: service.id,
+            request_id: null,
+            client_info: {
+                email: user.email, first_name: user.prenom || user.firstName || '', last_name: user.nom || user.lastName || '',
+                phone: user.telephone || user.phone || null, company: user.company || null, client_type: aud || 'particulier'
+            },
+            total_amount: total,
+            partner_discount_pct: pricing.service_discount_pct || 0,
+            price_before_partner_discount: null,
+            ...orderPromotionFields(pricing),
+            welcome_discount_pct: 0,
+            welcome_discount_amount: 0,
+            deposit_amount: total,
+            balance_amount: 0,
+            installments_count: 1,
+            installments: [{ number: 1, key: 'paiement', label: 'Paiement intégral — GENESIS SAFE™', amount: total, stage: 'deposit', paid: false, paid_at: null, due_date: null, milestone_required: null }],
+            amount_paid: 0, deposit_paid: false, balance_paid: false, delivery_confirmed: false,
+            duration_days: 0, start_date: null, status: 'pending_deposit', checkout_id: null, transaction_id: null,
+            created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+            coworking: {
+                partner_id: partner.id, service_id: service.id, service_label: service.label,
+                unit: service.cw_unit, units: iv.units, persons: persons, seats_used: seatsUsed, mode: service.cw_mode,
+                unit_price: pricing.price, date: slot.date, start: slot.start, end: slot.end, tz: tz,
+                start_at: new Date(startAt).toISOString(), end_at: new Date(endAt).toISOString(),
+                free_cancel_until: freeCancelUntil > now ? new Date(freeCancelUntil).toISOString() : null,
+                hold_until: new Date(now + CW.HOLD_MIN * 60000).toISOString(),
+                checkin_code: String(crypto.randomInt(1000, 10000)), checkin_attempts: 0, checked_in_at: null,
+                paid_at: null, reminder_sent: false, ended: false
+            }
+        };
+        var all = loadOrders();
+        all.push(order);
+        saveOrders(all);
+        console.log('[COWORKING] Réservation créée (en attente de paiement) :', order.id, label, total + ' €');
+        res.json({ success: true, orderId: order.id, total_amount: total, deposit_amount: total, label: label, free_cancel_until: order.coworking.free_cancel_until });
+    } catch (e) { console.error('[COWORKING] booking POST:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// Réservations du client (payées), avec adresse, accès et code d'arrivée.
+app.get('/api/coworking/bookings/mine', function(req, res) {
+    try {
+        var user = authenticateClient(req, res); if (!user) return;
+        var email = String(user.email || '').toLowerCase(), now = Date.now();
+        var disps = loadDispatches();
+        var list = loadOrders().filter(function(o) {
+            return o.coworking && o.coworking.paid_at && o.client_info && String(o.client_info.email || '').toLowerCase() === email;
+        }).map(function(o) {
+            var c = o.coworking, partner = getPartnerById(c.partner_id), s = cwSettingsOf(partner);
+            var start = Date.parse(c.start_at), end = Date.parse(c.end_at);
+            var cancelled = ['cancelled', 'refunded'].indexOf(o.status) !== -1;
+            var disp = disps.find(function(d) { return d.order_id === o.id; });
+            var dispute = !cancelled && loadDisputes().find(function(d) { return d.order_id === o.id; });
+            var status = cancelled ? 'cancelled' : (dispute ? 'problem' : (now >= end ? 'ended' : (now >= start ? 'ongoing' : 'confirmed')));
+            return {
+                order_id: o.id, dispatch_id: disp ? disp.id : null, partner_id: c.partner_id, partner_name: cwPartnerName(partner),
+                service_label: c.service_label, date: c.date, start: c.start, end: c.end, persons: c.persons, total: o.total_amount,
+                status: status, cancelled_by: c.cancelled_by || null, refund_success: cancelled ? o.refund_success !== false : null,
+                checkin_code: cancelled ? null : c.checkin_code, checked_in: !!c.checked_in_at,
+                address: cancelled ? null : (s.address || null), access: cancelled ? null : (s.access || null),
+                free_cancel_until: c.free_cancel_until || null,
+                can_cancel: !cancelled && !!c.free_cancel_until && now < Date.parse(c.free_cancel_until),
+                can_report: !cancelled && !dispute && !!disp && now >= start && now <= end + CW.REPORT_WINDOW_HOURS * 3600000,
+                dispute_id: dispute ? dispute.id : null
+            };
+        }).sort(function(a, b) { return (b.date + b.start) < (a.date + a.start) ? -1 : 1; });
+        res.json({ success: true, bookings: list });
+    } catch (e) { console.error('[COWORKING] mine:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.post('/api/coworking/bookings/:orderId/cancel', async function(req, res) {
+    try {
+        var user = authenticateClient(req, res); if (!user) return;
+        var o = getOrderById(req.params.orderId);
+        if (!o || !o.coworking || !o.client_info || String(o.client_info.email || '').toLowerCase() !== String(user.email || '').toLowerCase()) return res.status(404).json({ error: 'Réservation introuvable' });
+        if (['cancelled', 'refunded'].indexOf(o.status) !== -1) return res.status(400).json({ error: 'Réservation déjà annulée.' });
+        var c = o.coworking;
+        if (!(o.deposit_paid || o.deposit_authorized)) {
+            updateOrder(o.id, { status: 'cancelled', cancelled_reason: 'coworking_unpaid_cancel' });
+            return res.json({ success: true, refunded: false, message: 'Réservation annulée. Aucun paiement n\'avait été effectué.' });
+        }
+        if (!c.free_cancel_until || Date.now() >= Date.parse(c.free_cancel_until)) {
+            return res.status(400).json({ error: 'L\'annulation n\'est plus possible moins de 24 h avant le début du créneau. En cas de problème sur place, utilisez « Signaler un problème ».' });
+        }
+        if (cwHasOpenDispute(o.id)) return res.status(400).json({ error: 'Un litige est en cours sur cette réservation.' });
+        var r = await cwCancelAndRefund(o, 'client');
+        var partner = getPartnerById(c.partner_id);
+        if (partner && partner.email) notifyUser(partner.email, 'partner', 'coworking_cancelled', 'Réservation annulée',
+            ((o.client_info.first_name || 'Le client') + ' a annulé sa réservation « ' + c.service_label + ' » du ' + cwSlotLabel(c) + ' (plus de 24 h avant). Le créneau est de nouveau disponible.'),
+            '#partner:coworking');
+        res.json({ success: true, refunded: r.refunded, message: r.refunded ? 'Réservation annulée. Vous êtes remboursé intégralement.' : 'Réservation annulée. Notre équipe procède à votre remboursement sous 24 h.' });
+    } catch (e) { console.error('[COWORKING] client cancel:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// Job : rappel la veille, fin de créneau (prestation terminée, 24 h pour signaler un problème,
+// puis versement par checkAutoPaymentRelease), nettoyage des places bloquées jamais payées.
+function checkCoworkingBookings() {
+    try {
+        var now = Date.now();
+        loadOrders().forEach(function(o) {
+            var c = o.coworking;
+            if (!c || ['cancelled', 'refunded', 'expired', 'completed'].indexOf(o.status) !== -1) return;
+            if (!(o.deposit_paid || o.deposit_authorized)) {
+                if (o.status === 'pending_deposit' && c.hold_until && Date.parse(c.hold_until) < now - 3600000) {
+                    updateOrder(o.id, { status: 'cancelled', cancelled_reason: 'coworking_hold_expired' });
+                }
+                return;
+            }
+            if (!c.paid_at) { cwOnPaid(o.id); return; }
+            var start = Date.parse(c.start_at), end = Date.parse(c.end_at);
+            var email = o.client_info && o.client_info.email;
+            if (!c.reminder_sent && now >= start - 24 * 3600000 && now < start - 30 * 60000) {
+                updateOrder(o.id, { coworking: Object.assign({}, c, { reminder_sent: true }) });
+                if (email) notifyUser(email, 'client', 'coworking_reminder', '⏰ Rappel de réservation',
+                    '« ' + c.service_label + ' », ' + cwSlotLabel(c) + '. Votre code d\'arrivée : ' + c.checkin_code + '.', '/app.html#client:coworking');
+                return;
+            }
+            if (!c.ended && now >= end) {
+                updateOrder(o.id, {
+                    coworking: Object.assign({}, c, { ended: true, ended_at: new Date().toISOString() }),
+                    partner_completed: true, partner_completed_at: new Date().toISOString(),
+                    pending_client_validation: true,
+                    auto_payment_release_at: new Date(end + CW.REPORT_WINDOW_HOURS * 3600000).toISOString()
+                });
+                var disps = loadDispatches();
+                var dIdx = disps.findIndex(function(d) { return d.order_id === o.id && d.status !== 'cancelled'; });
+                if (dIdx !== -1) { disps[dIdx].mission_status = 'delivered'; disps[dIdx].delivered_at = new Date().toISOString(); saveDispatches(disps); }
+                if (email) notifyUser(email, 'client', 'coworking_ended', 'Créneau terminé',
+                    'Votre créneau « ' + c.service_label + ' » est terminé. Un problème ? Vous avez 24 h pour le signaler depuis « Mes réservations ».', '/app.html#client:coworking');
+            }
+        });
+    } catch (e) { console.error('[COWORKING] job:', e.message); }
+}
+setTimeout(checkCoworkingBookings, 90000);
+setInterval(checkCoworkingBookings, 5 * 60 * 1000);
 
 // ── Modération des images (voir server/image-moderation.js) ──
 const IMAGE_FORMAT_MESSAGE = 'Format d\'image non pris en charge. Choisissez une photo depuis votre téléphone.';
@@ -19941,7 +20486,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 var sPr = isValidPrice ? partnerServicePricing(partner, s, _fichePromos) : null;
                 var sPromo = sPr && sPr.promotion;
                 if (sPromo) sDisc = Math.max(1, Math.round((1 - sPr.price / sPrice) * 100));
-                return { id: s.id, category: serviceCategoryOf(s, partner), label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? (sPromo ? sPr.price : (sDisc ? serviceCurrentPrice(s) : sPrice)) : null, price_before_discount: sDisc ? sPrice : null, discount_pct: sDisc || null, discount_ends_at: sPromo ? sPromo.end_date : (sDisc ? (s.discount_ends_at || null) : null), discount_label: sPromo ? promoDiscountLabel(sPromo) : null, promotion_title: sPromo ? sPromo.title : null, promotion_perks: sPr && sPr.perks.length ? sPr.perks.map(function(p) { return { title: p.title, perk_label: p.perk_label }; }) : [], pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: imageIsPublic(s.image_moderation) ? (s.image || '') : '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
+                return { id: s.id, category: serviceCategoryOf(s, partner), label: publicText(s.label) || 'Prestation', description: publicText(s.description || ''), price: isValidPrice ? (sPromo ? sPr.price : (sDisc ? serviceCurrentPrice(s) : sPrice)) : null, price_before_discount: sDisc ? sPrice : null, discount_pct: sDisc || null, discount_ends_at: sPromo ? sPromo.end_date : (sDisc ? (s.discount_ends_at || null) : null), discount_label: sPromo ? promoDiscountLabel(sPromo) : null, promotion_title: sPromo ? sPromo.title : null, promotion_perks: sPr && sPr.perks.length ? sPr.perks.map(function(p) { return { title: p.title, perk_label: p.perk_label }; }) : [], pricing_type: pricingType, features: Array.isArray(s.features) ? s.features.map(publicText).filter(Boolean) : [], audience: s.audience || 'particulier', image: imageIsPublic(s.image_moderation) ? (s.image || '') : '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1, cw_unit: (COWORKING_BOOKING_ENABLED && cwIsPartner(partner) && CW.isSlotService(s)) ? s.cw_unit : null, cw_seats: s.cw_seats || null, cw_mode: s.cw_mode || null, cw_min_hours: s.cw_min_hours || null };
             });
         // Liens externes et images non validées retirés D'ABORD, puis 5 médias max : un
         // prestataire dont les 5 premiers éléments sont d'anciens liens doit quand même voir ses
@@ -25922,6 +26467,10 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
         if (b.orderId) {
             var _gOrder = getOrderById(b.orderId);
             if (_gOrder) {
+                if (b.stage !== 'balance') {
+                    var _cwErrCi = cwPrePaymentCheck(_gOrder, b.amountEuros);
+                    if (_cwErrCi) return res.status(409).json({ error: _cwErrCi, code: 'coworking_slot_unavailable' });
+                }
                 if (b.stage === 'balance' && (_gOrder.balance_paid || _gOrder.balance_authorized)) {
                     return res.status(400).json({ error: 'Le solde a déjà été payé.' });
                 }
