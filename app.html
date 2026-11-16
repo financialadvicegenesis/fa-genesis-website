@@ -9689,8 +9689,7 @@ function showGenesisMissions(){
           +'<div style="display:flex;flex-direction:column;gap:9px;">'
           +communauteMissions.map(function(m, i){ return _missionCard(m, true, i === firstActiveCommunIdx); }).join('')
           +'</div>'
-          +'<button onclick="showTopAmbassadeurs()" style="width:100%;margin-top:12px;background:#111;border:1px solid #2a2a2a;color:#888;border-radius:12px;padding:10px;font-size:11px;font-weight:700;cursor:pointer;">'
-          +'<i class="fa-solid fa-trophy" style="color:#FFD700;margin-right:6px;"></i>Voir le Top Ambassadeurs GENESIS</button>'
+          // Bouton « Voir le Top Ambassadeurs GENESIS » retiré (2026-11-16, FA GENESIS) : déjà dans le Hall of Fame.
           +'</div>';
       }
       var otherHtml = otherMissions.length
