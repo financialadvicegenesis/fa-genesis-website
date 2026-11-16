@@ -1686,15 +1686,6 @@ a{text-decoration:none;color:inherit}
 .p-event-title{font-size:13px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:4px}
 .p-event-loc{font-size:10px;color:var(--muted);font-weight:700}
 
-/* Hall of Fame — carte premium dorée */
-.p-hof-card{flex-shrink:0;width:256px;background:linear-gradient(160deg,var(--card),#241d05);
-  border:3px solid #FFD700;border-radius:14px;overflow:hidden;cursor:pointer;position:relative;
-  box-shadow:0 0 14px rgba(255,215,0,.45),4px 4px 0 #000}
-.p-hof-card .p-fav-heart{position:absolute;top:8px;right:8px;font-size:16px;z-index:2}
-.p-hof-ribbon{position:absolute;top:6px;left:6px;background:linear-gradient(135deg,#FFD700,#b8860b);
-  color:#000;font-size:8px;font-weight:900;padding:2px 7px;border:2px solid #000;
-  text-transform:uppercase;letter-spacing:.3px;z-index:1;border-radius:4px}
-
 /* Animation d'entrée discrète appliquée aux sections Explorer une fois peuplées */
 @keyframes fadeSlideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .p-fade-in{animation:fadeSlideIn .45s ease both}
@@ -3177,7 +3168,6 @@ function _genesisVersionFooter(){
         <div id="exp2-offres-liste" style="display:none;position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding-top:130px;padding-bottom:24px;">
           <div id="p-exp-dir-results"></div>
           <div id="p-dir-favorites-wrap"></div>
-          <div id="p-dir-hall-of-fame-wrap"></div>
         </div>
       </div>
 
@@ -5398,24 +5388,6 @@ function recoPartnerCard(p, idx, tagOverride){
     +partnerMetaLineHtml(p)
     +'</div></div>';
 }
-function hofPremiumCard(p, idx){
-  var label = partnerTypeLabel(p);
-  var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
-  var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+_fmtAvg(p.rating.average)+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
-  var badgeHtml = tierBadgeHtml(p.badge);
-  var constellationHtml = constellationBadgeHtml(p.constellation);
-  return '<div class="p-hof-card" onclick="openPartnerDetail(\''+p.id+'\')">'
-    +'<div class="p-hof-ribbon"><i class="fa-solid fa-trophy"></i> N°'+(idx+1)+'</div>'
-    +favHeartHtml(p.id)
-    +'<div class="p-reco-photo">'+avatarHtml+ratingBadge+'</div>'
-    +'<div class="p-reco-body">'
-    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+verifiedBadgeHtml(p)+(badgeHtml?' '+badgeHtml:'')+(constellationHtml?' '+constellationHtml:'')+'</div>'
-    +'<div class="p-reco-cat">'+label+'</div>'
-    +(p.city?'<div class="p-reco-city"><i class="fa-solid fa-location-dot"></i> '+p.city+'</div>':'')
-    +partnerMetaLineHtml(p)
-    +'</div></div>';
-}
 function bigCategoryCard(p, idx){
   var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
@@ -5812,7 +5784,6 @@ function renderExplorer(){
   _exp2OffresView = 'carte';
   loadExplorerMap(_expMode, _expCity);
   loadExplorerDirectory();
-  loadHallOfFame();
   loadFavoritesInExplorer();
 }
 
@@ -7023,68 +6994,6 @@ function hofMonthLabel(monthStr){
   var idx = parseInt(parts[1],10)-1;
   return (HOF_MONTH_LABELS[idx]||'')+' '+parts[0];
 }
-function loadHallOfFame(){
-  var wrap = document.getElementById('p-dir-hall-of-fame-wrap');
-  if(!wrap) return;
-  fetch(API+'/api/hall-of-fame').then(function(r){return r.json();}).then(function(data){
-    var hof = data && data.hallOfFame;
-    if(!hof || (!((hof.bestPartners||[]).length) && !hof.bestClient && !hof.bestReferrer && !hof.bestTopQG && !hof.bestMostProductive)){ wrap.innerHTML=''; return; }
-    var html = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-trophy" style="color:var(--yellow)"></i> HALL OF FAME — '+hofMonthLabel(hof.month).toUpperCase()+'</div>';
-    if((hof.bestPartners||[]).length){
-      html += '<div class="p-reco-row">'+hof.bestPartners.map(function(p,i){return hofPremiumCard(p,i);}).join('')+'</div>';
-    }
-    var highlights = '';
-    if(hof.bestClient){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-medal" style="color:#FFD700"></i> Meilleur client du mois</div><div class="p-ref-count">'+hof.bestClient.name+' · '+hof.bestClient.count+' '+_tr(hof.bestClient.count>1?'commandes':'commande')+'</div></div>';
-    }
-    if(hof.bestReferrer){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-handshake" style="color:var(--yellow)"></i> Meilleur parrain du mois</div><div class="p-ref-count">'+hof.bestReferrer.name+' ('+_tr(hof.bestReferrer.type==='partenaire'?'partenaire':'client')+') · '+hof.bestReferrer.count+' '+_tr(hof.bestReferrer.count>1?'parrainages':'parrainage')+' '+_tr(hof.bestReferrer.count>1?'validés':'validé')+'</div></div>';
-    }
-    if(hof.bestTopQG){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-crown" style="color:var(--yellow)"></i> Top QG du mois</div><div class="p-ref-count">'+hof.bestTopQG.name+(hof.bestTopQG.company?' · '+hof.bestTopQG.company:'')+(hof.bestTopQG.constellation?' '+constellationBadgeHtml(hof.bestTopQG.constellation):'')+'</div></div>';
-    }
-    if(hof.bestMostProductive){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-bolt" style="color:var(--yellow)"></i> Plus productif du mois</div><div class="p-ref-count">'+hof.bestMostProductive.name+' · '+hof.bestMostProductive.count+' '+_tr(hof.bestMostProductive.count>1?'prestations':'prestation')+'</div></div>';
-    }
-    if(highlights){
-      html += '<div style="display:flex;flex-direction:column;gap:8px;margin:0 16px 8px;">'+highlights+'</div>';
-    }
-    wrap.className = 'p-fade-in';
-    // Top Ambassadeurs (classement cumulatif)
-    fetch(API+'/api/hall-of-fame/ambassadeurs?limit=5').then(function(r2){return r2.json();}).then(function(d2){
-      var top5 = d2.ambassadeurs || [];
-      if(top5.length) {
-        var medals = ['🥇','🥈','🥉'];
-        var aHtml = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">'
-          +'<i class="fa-solid fa-trophy" style="color:var(--yellow)"></i> TOP AMBASSADEURS GENESIS</div>'
-          +'<div style="padding:0 16px 8px;display:flex;flex-direction:column;gap:8px;">'
-          +top5.map(function(u, i){
-            var rank = i+1;
-            var badgeMeta = tierBadgeMeta(u.badge)||{};
-            var av = u.photo?'<img src="'+u.photo+'" alt="" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;">'
-              :'<div style="width:38px;height:38px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#888;flex-shrink:0;">'+((u.prenom||'?').charAt(0).toUpperCase())+'</div>';
-            return '<div style="display:flex;align-items:center;gap:10px;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:10px 12px;">'
-              +'<div style="font-size:'+(rank<=3?'17px':'12px')+';font-weight:900;color:'+(rank<=3?'#FFD700':'#555')+';min-width:26px;text-align:center;">'+(rank<=3?medals[rank-1]:rank+'.')+'</div>'
-              +av+'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+u.name+'</div>'
-              +(badgeMeta.label?'<span class="tier-badge '+(badgeMeta.cls||'')+'" style="font-size:9px;padding:1px 6px;margin-top:2px;display:inline-block;">'+badgeMeta.label+'</span>':'')
-              +'</div>'
-              +'<div style="text-align:right;flex-shrink:0;">'
-              +'<div style="font-size:14px;font-weight:900;color:#FFD700;">'+u.referralCount+'</div>'
-              +'<div style="font-size:9px;color:#666;">parr.</div>'
-              +'</div></div>';
-          }).join('')
-          +'<button onclick="showTopAmbassadeurs()" style="width:100%;margin-top:6px;background:#111;border:1px solid #2a2a2a;color:#888;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;">'
-          +'<i class="fa-solid fa-ranking-star" style="color:#FFD700;margin-right:6px;"></i>Voir le classement complet</button>'
-          +'</div>';
-        wrap.innerHTML = html + aHtml;
-      } else {
-        wrap.innerHTML = html;
-      }
-    }).catch(function(){ wrap.innerHTML = html; });
-  }).catch(function(){ wrap.innerHTML=''; });
-}
-
 // ── OFFRES PROMO (Explorer) ────────────────────────────────────────
 function loadPromoServices(){
   var wrap = document.getElementById('p-dir-promo-wrap');
@@ -9395,34 +9304,6 @@ function _hofLoadAmbassadeurs(container){
         +'<div id="ta-list"></div>'
         +'<div id="ta-pagination" style="display:flex;gap:8px;justify-content:center;margin-top:8px;"></div>';
       _taRenderAll();
-    }).catch(function(){
-      container.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
-    });
-}
-function _hofLoadMensuel(container){
-  container.innerHTML = '<div class="espace-loading">Chargement...</div>';
-  fetch((window.FA_GENESIS_API||API)+'/api/hall-of-fame')
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      var hof = data && data.hallOfFame;
-      if(!hof || (!((hof.bestPartners||[]).length) && !hof.bestClient && !hof.bestReferrer && !hof.bestTopQG && !hof.bestMostProductive)){
-        container.innerHTML = '<div class="espace-empty">Aucun palmarès disponible pour le moment.</div>'; return;
-      }
-      var html = '<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;">'
-        +'<i class="fa-solid fa-calendar-days" style="color:#FFD700;margin-right:6px;"></i>'+hofMonthLabel(hof.month).toUpperCase()+'</div>';
-      if((hof.bestPartners||[]).length){
-        html += '<div style="font-size:11px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Meilleurs prestataires</div>';
-        html += '<div class="p-reco-row" style="margin:0 -16px;padding:0 16px 12px;">'+hof.bestPartners.map(function(p,i){return hofPremiumCard(p,i);}).join('')+'</div>';
-      }
-      var items = [];
-      if(hof.bestClient) items.push({icon:'fa-medal',color:'#FFD700',label:'Meilleur client du mois',value:hof.bestClient.name+' · '+hof.bestClient.count+' '+_tr(hof.bestClient.count>1?'commandes':'commande')});
-      if(hof.bestReferrer) items.push({icon:'fa-handshake',color:'#FFD700',label:'Meilleur parrain du mois',value:hof.bestReferrer.name+' · '+hof.bestReferrer.count+' '+_tr(hof.bestReferrer.count>1?'parrainages':'parrainage')+' '+_tr(hof.bestReferrer.count>1?'validés':'validé')});
-      if(hof.bestTopQG) items.push({icon:'fa-crown',color:'#FFD700',label:'Top QG du mois',value:hof.bestTopQG.name+(hof.bestTopQG.company?' · '+hof.bestTopQG.company:'')});
-      if(hof.bestMostProductive) items.push({icon:'fa-bolt',color:'#FFD700',label:'Plus productif du mois',value:hof.bestMostProductive.name+' · '+hof.bestMostProductive.count+' '+_tr(hof.bestMostProductive.count>1?'prestations':'prestation')});
-      if(items.length) html += '<div style="display:flex;flex-direction:column;gap:9px;">'+items.map(function(it){
-        return '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid '+it.icon+'" style="color:'+it.color+';margin-right:7px;"></i>'+it.label+'</div><div class="p-ref-count">'+it.value+'</div></div>';
-      }).join('')+'</div>';
-      container.innerHTML = html;
     }).catch(function(){
       container.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
     });

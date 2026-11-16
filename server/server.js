@@ -109,8 +109,10 @@ const DISPATCHES_FILE = path.join(DATA_DIR,'dispatches.json');
 const PARTNER_REQUESTS_FILE = path.join(DATA_DIR,'partner_requests.json');
 const PAYOUTS_FILE    = path.join(DATA_DIR,'payouts.json');
 const PARTNER_REVIEWS_FILE = path.join(DATA_DIR,'partner_reviews.json');
-const HALL_OF_FAME_FILE = path.join(DATA_DIR,'hall_of_fame.json');
 const EVENTS_FILE = path.join(DATA_DIR,'events.json');
+// Ancien Hall of Fame mensuel (prestataires/parrain/QG du mois), jamais affiché, supprimé le
+// 2026-11-16 (décision FA GENESIS) : on efface aussi son fichier (noms des gagnants).
+try { fs.unlinkSync(path.join(DATA_DIR, 'hall_of_fame.json')); } catch (e) {}
 const JEREMIE_MEMORY_FILE = path.join(DATA_DIR,'jeremie_memory.json');
 const PROMOTIONS_FILE     = path.join(DATA_DIR,'promotions.json');
 const ADMIN_SESSIONS_FILE = path.join(DATA_DIR,'admin_sessions.json');
@@ -399,25 +401,6 @@ function savePartners(partners) {
         persistentStore.persistToCloud('partners', partners).catch(function(e) {});
     } catch (error) {
         console.error('[PARTNER] Erreur sauvegarde partners:', error);
-    }
-}
-
-function loadHallOfFame() {
-    try {
-        if (fs.existsSync(HALL_OF_FAME_FILE)) {
-            return JSON.parse(fs.readFileSync(HALL_OF_FAME_FILE, 'utf8'));
-        }
-    } catch (error) {
-        console.error('[HALL_OF_FAME] Erreur lecture:', error);
-    }
-    return { lastComputedMonth: null, snapshots: [] };
-}
-
-function saveHallOfFame(data) {
-    try {
-        fs.writeFileSync(HALL_OF_FAME_FILE, JSON.stringify(data, null, 2), 'utf8');
-    } catch (error) {
-        console.error('[HALL_OF_FAME] Erreur sauvegarde:', error);
     }
 }
 
@@ -10924,18 +10907,6 @@ function _purgeAccountData(opts) {
         if (tchanged) saveSupportTickets(tickets);
     } catch(e) { errs.push('support_tickets:' + e.message); }
 
-    try {
-        // Hall of Fame
-        var hof = loadHallOfFame();
-        if (Array.isArray(hof)) {
-            var hc = hof.filter(function(h) {
-                return !(h.email && h.email.toLowerCase() === email) &&
-                       !(h.partner_id && h.partner_id === partnerId);
-            });
-            if (hc.length !== hof.length) saveHallOfFame(hc);
-        }
-    } catch(e) { errs.push('hall_of_fame:' + e.message); }
-
     // ── Client uniquement ──────────────────────────────────────────────────
     if (role === 'client') {
         try {
@@ -18189,29 +18160,10 @@ setTimeout(function() {
     catch (e) { console.error('[GEO] Erreur rattrapage:', e.message); }
 }, 15000);
 
-// ============================================================
-// HALL OF FAME — calcul automatique mensuel (Phase 4)
-// ============================================================
-
-// dateStr au format ISO ('YYYY-MM-DDTHH:...') ; monthStr au format 'YYYY-MM'
-function _hofDateInMonth(dateStr, monthStr) {
-    return !!dateStr && dateStr.slice(0, 7) === monthStr;
-}
-
-function getPreviousMonthStr(date) {
-    var d = new Date(date.getFullYear(), date.getMonth(), 1);
-    d.setMonth(d.getMonth() - 1);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-}
-
 // Les 5 niveaux d'evolution Genesis (couche d'affichage additive) : les
 // identifiants de badge internes (bronze/argent/or/elite/prestige/fondateur)
 // ne changent pas — trop de call-sites en dependent (score de classement,
-// priorite de dispatch, Hall of Fame). On traduit juste l'identifiant pour
-// l'affichage utilisateur. Definie ici (avant computeHallOfFameForMonth, pas
-// a cote de getClientGenesisPoints) car maybeComputeHallOfFame() s'execute
-// immediatement au chargement du module (cf appel plus bas) — une const
-// definie plus loin dans le fichier ne serait pas encore initialisee.
+// priorite de dispatch). On traduit juste l'identifiant pour l'affichage utilisateur.
 const GENESIS_LEVEL_META = {
     none:      { id: 'explorateur', label: 'Explorateur', icon: 'fa-seedling', order: 0 },
     bronze:    { id: 'createur',    label: 'Créateur',    icon: 'fa-fire',     order: 1 },
@@ -18225,164 +18177,6 @@ function getGenesisLevel(badgeId) {
     return GENESIS_LEVEL_META[badgeId || 'none'] || GENESIS_LEVEL_META.none;
 }
 
-function computeHallOfFameForMonth(monthStr) {
-    var partners = loadPartners();
-    var orders = loadOrders();
-    var users = loadUsers();
-    var payouts = loadPayouts();
-
-    // Meilleur partenaire par categorie : parmi ceux ayant complete au moins une mission
-    // dans le mois (payout stage=balance), le meilleur score global (reutilise le score
-    // Phase 1 plutot qu'un second calculateur "du mois" — simplification documentee)
-    var bestPartners = [];
-    PARTNER_TYPE_VALUES.forEach(function(category) {
-        var categoryPartners = partners.filter(function(p) { return p.partner_type === category && p.accountStatus === 'active'; });
-        var qualifying = categoryPartners.filter(function(p) {
-            return payouts.some(function(pay) {
-                return pay.partner_id === p.id && pay.stage === 'balance' && _hofDateInMonth(pay.created_at, monthStr);
-            });
-        });
-        if (!qualifying.length) return;
-        var winner = qualifying
-            .map(function(p) { return { partner: p, score: getPartnerCategoryScore(p) }; })
-            .sort(function(a, b) { return b.score - a.score; })[0];
-        bestPartners.push({
-            category: category,
-            partnerId: winner.partner.id,
-            partnerName: (winner.partner.prenom || '') + ' ' + (winner.partner.nom || ''),
-            company: winner.partner.company || '',
-            score: Math.round(winner.score * 10) / 10
-        });
-    });
-
-    // Meilleur client : le plus de commandes au solde paye dans le mois
-    var clientCounts = {};
-    orders.forEach(function(o) {
-        if (!clientOrderCompleted(o)) return;
-        var date = clientOrderCompletedAt(o);
-        if (!_hofDateInMonth(date, monthStr)) return;
-        var email = ((o.client_info && o.client_info.email) || o.email || '').toLowerCase();
-        if (!email) return;
-        clientCounts[email] = (clientCounts[email] || 0) + 1;
-    });
-    var bestClient = null;
-    Object.keys(clientCounts).forEach(function(email) {
-        if (!bestClient || clientCounts[email] > bestClient.count) {
-            var user = users.find(function(u) { return u.email.toLowerCase() === email; });
-            bestClient = {
-                email: email,
-                name: user ? ((user.prenom || '') + ' ' + (user.nom || '')).trim() : email,
-                count: clientCounts[email]
-            };
-        }
-    });
-
-    // Meilleur parrain (client ou partenaire) : le plus de filleuls valides dans le mois
-    var referrerCounts = {};
-    users.forEach(function(u) {
-        if (!u.referredBy) return;
-        var paidDates = orders.filter(function(o) {
-            var email = ((o.client_info && o.client_info.email) || o.email || '').toLowerCase();
-            return email === u.email.toLowerCase() && clientOrderCompleted(o);
-        }).map(function(o) { return clientOrderCompletedAt(o); }).sort();
-        if (paidDates.length && _hofDateInMonth(paidDates[0], monthStr)) {
-            referrerCounts[u.referredBy] = (referrerCounts[u.referredBy] || 0) + 1;
-        }
-    });
-    partners.forEach(function(p) {
-        // Filleul prestataire : compte le mois de SA PREMIÈRE PRESTATION TERMINÉE
-        // (first_mission_completed_at, posé par _handleFirstMissionCompleted) — même règle que la
-        // distinction Ambassadeur et que les filleuls clients. Avant (jusqu'au 2026-11-16) : dès
-        // l'activation du compte, avant toute prestation.
-        if (!p.referredBy || !p.first_mission_completed_at) return;
-        if (_hofDateInMonth(p.first_mission_completed_at, monthStr)) {
-            referrerCounts[p.referredBy] = (referrerCounts[p.referredBy] || 0) + 1;
-        }
-    });
-    var bestReferrer = null;
-    Object.keys(referrerCounts).forEach(function(id) {
-        if (!bestReferrer || referrerCounts[id] > bestReferrer.count) {
-            var u = users.find(function(usr) { return usr.id === id; });
-            var p = !u ? partners.find(function(ptn) { return ptn.id === id; }) : null;
-            var name = u ? ((u.prenom || '') + ' ' + (u.nom || '')).trim() : (p ? ((p.prenom || '') + ' ' + (p.nom || '')).trim() : id);
-            bestReferrer = { id: id, type: u ? 'client' : 'partenaire', name: name, count: referrerCounts[id] };
-        }
-    });
-
-    // Top QG du mois : parmi les partenaires qualifies ce mois-ci (cf bestPartners),
-    // le meilleur score parmi ceux ayant atteint le niveau Genesis "Visionnaire" (badge or+)
-    var bestTopQG = null;
-    (function() {
-        var qualifying = partners.filter(function(p) {
-            if (p.accountStatus !== 'active') return false;
-            var badge = getPartnerBadge(p);
-            if (!badge || GENESIS_LEVEL_META[badge].order < GENESIS_LEVEL_META.or.order) return false;
-            return payouts.some(function(pay) {
-                return pay.partner_id === p.id && pay.stage === 'balance' && _hofDateInMonth(pay.created_at, monthStr);
-            });
-        });
-        if (!qualifying.length) return;
-        var winner = qualifying
-            .map(function(p) { return { partner: p, score: getPartnerCategoryScore(p) }; })
-            .sort(function(a, b) { return b.score - a.score; })[0];
-        bestTopQG = {
-            partnerId: winner.partner.id,
-            name: ((winner.partner.prenom || '') + ' ' + (winner.partner.nom || '')).trim(),
-            company: winner.partner.company || '',
-            score: Math.round(winner.score * 10) / 10
-        };
-    })();
-
-    // Plus productif du mois : parmi les clients ayant paye une commande ce mois-ci (cf bestClient),
-    // le plus de commandes realisees au total parmi ceux ayant atteint le niveau Genesis "Batisseur" (badge argent+)
-    var bestMostProductive = null;
-    (function() {
-        var candidates = Object.keys(clientCounts).map(function(email) {
-            var completed = getClientCompletedOrders(email);
-            var user = users.find(function(u) { return u.email.toLowerCase() === email; });
-            var badge = user ? getClientQGBadge(getClientGenesisPoints(user, completed)) : null;
-            return { email: email, completed: completed, badge: badge };
-        }).filter(function(c) {
-            return c.badge && GENESIS_LEVEL_META[c.badge].order >= GENESIS_LEVEL_META.argent.order;
-        });
-        if (!candidates.length) return;
-        var winner = candidates.sort(function(a, b) { return b.completed - a.completed; })[0];
-        var user = users.find(function(u) { return u.email.toLowerCase() === winner.email; });
-        bestMostProductive = {
-            email: winner.email,
-            name: user ? ((user.prenom || '') + ' ' + (user.nom || '')).trim() : winner.email,
-            count: winner.completed
-        };
-    })();
-
-    return {
-        month: monthStr,
-        computedAt: new Date().toISOString(),
-        bestPartners: bestPartners,
-        bestClient: bestClient,
-        bestReferrer: bestReferrer,
-        bestTopQG: bestTopQG,
-        bestMostProductive: bestMostProductive
-    };
-}
-
-function maybeComputeHallOfFame() {
-    try {
-        var hof = loadHallOfFame();
-        var prevMonth = getPreviousMonthStr(new Date());
-        if (hof.lastComputedMonth === prevMonth) return;
-        var snapshot = computeHallOfFameForMonth(prevMonth);
-        hof.snapshots = hof.snapshots || [];
-        hof.snapshots.push(snapshot);
-        hof.lastComputedMonth = prevMonth;
-        saveHallOfFame(hof);
-        console.log('[HALL_OF_FAME] Snapshot calcule pour ' + prevMonth);
-    } catch (e) {
-        console.error('[HALL_OF_FAME] Erreur calcul:', e);
-    }
-}
-setInterval(maybeComputeHallOfFame, 3600000);
-maybeComputeHallOfFame();
 
 // Rappels automatiques "Jérémie" par règles (Phase 10) — détecte les missions dont le
 // délai annoncé par le partenaire (proposal.delay_days) est dépassé sans être encore en
@@ -19602,45 +19396,6 @@ app.get('/api/jeremie/chat', function(req, res) {
         res.json({ success: true, messages: entry.messages || [], available: aiService.isJeremieAvailable() });
     } catch (e) {
         console.error('[JEREMIE] Erreur route history:', e);
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
-
-// Hall of Fame public : dernier snapshot mensuel calcule
-app.get('/api/hall-of-fame', function(req, res) {
-    try {
-        var hof = loadHallOfFame();
-        var snapshots = hof.snapshots || [];
-        var snapshot = snapshots.length ? snapshots[snapshots.length - 1] : null;
-        if (snapshot) {
-            var partners = loadPartners();
-            snapshot = Object.assign({}, snapshot, {
-                bestPartners: (snapshot.bestPartners || []).map(function(bp) {
-                    var p = partners.find(function(pp) { return pp.id === bp.partnerId; });
-                    var coords = p ? getPartnerCoords(p) : null;
-                    return Object.assign({}, bp, {
-                        id: bp.partnerId,
-                        prenom: p ? p.prenom : bp.partnerName.split(' ')[0],
-                        nom: p ? p.nom : bp.partnerName.split(' ').slice(1).join(' '),
-                        partner_type: bp.category,
-                        photo: p ? (p.photo || null) : null,
-                        city: p ? (p.city || '') : '',
-                        lat: coords ? coords[0] : null,
-                        lng: coords ? coords[1] : null,
-                        rating: p ? getPartnerRatingSummary(p.id) : null,
-                        badge: p ? getPartnerBadge(p) : null,
-                        constellation: p ? getConstellationTier(p) : null
-                    });
-                }),
-                bestTopQG: snapshot.bestTopQG ? (function() {
-                    var p = partners.find(function(pp) { return pp.id === snapshot.bestTopQG.partnerId; });
-                    return Object.assign({}, snapshot.bestTopQG, { photo: p ? (p.photo || null) : null, constellation: p ? getConstellationTier(p) : null });
-                })() : null
-            });
-        }
-        res.json({ success: true, hallOfFame: snapshot });
-    } catch (e) {
-        console.error('[HALL_OF_FAME] Erreur lecture:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
