@@ -9223,13 +9223,11 @@ function showParrainageScreen(){
   _saveProfilScroll('showParrainageScreen');
   // Parrainage ouvert dès l'inscription (décision FA GENESIS, 2026-11-13) : le parrain n'est
   // récompensé que lorsque son filleul termine une vraie prestation, aucun risque de faux comptes.
-  var rankBtn = '<button onclick="showTopAmbassadeurs()" style="width:100%;margin-top:16px;background:#111;border:1px solid #2a2a2a;color:#888;border-radius:12px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;">'
-    +'<i class="fa-solid fa-trophy" style="color:#FFD700;margin-right:7px;"></i>Voir le classement Top Ambassadeurs</button>';
+  // Bouton « Voir le classement Top Ambassadeurs » retiré (2026-11-16, FA GENESIS) : déjà dans le Hall of Fame.
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Parrainage</div></div>'
     +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
     +referralBoxHtml()
-    +rankBtn
     +'</div></div>';
 }
 // ── HALL OF FAME CLIENTS (2026-11-13) ── classement par nombre de prestations terminées et
