@@ -25306,8 +25306,9 @@ function _updateGreeting(){
 /* ── COWORKING : réservation de créneaux (2026-11-16) ── */
 #cwb-overlay,#cwp-overlay{display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.78);align-items:flex-end;justify-content:center;}
 #cwb-overlay.open,#cwp-overlay.open{display:flex;}
-#cwb-sheet{width:100%;max-width:480px;max-height:92vh;overflow-y:auto;background:#0a0a0a;border:1.5px solid rgba(255,215,0,.35);border-bottom:none;border-radius:22px 22px 0 0;padding:18px 16px 30px;box-sizing:border-box;}
-#cwp-sheet{width:100%;max-width:480px;height:100%;overflow-y:auto;background:#0a0a0a;box-sizing:border-box;padding:0 0 40px;}
+/* Encoche / barre d'accueil iPhone : l'app est en viewport-fit=cover (marges safe-area obligatoires). */
+#cwb-sheet{width:100%;max-width:480px;max-height:calc(92vh - env(safe-area-inset-top,0px));overflow-y:auto;-webkit-overflow-scrolling:touch;background:#0a0a0a;border:1.5px solid rgba(255,215,0,.35);border-bottom:none;border-radius:22px 22px 0 0;padding:18px 16px calc(30px + env(safe-area-inset-bottom,0px));box-sizing:border-box;}
+#cwp-sheet{width:100%;max-width:480px;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#0a0a0a;box-sizing:border-box;padding:0 0 calc(40px + env(safe-area-inset-bottom,0px));}
 .cw-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
 .cw-title{font-size:17px;font-weight:900;color:#fff;line-height:1.25;}
 .cw-sub{font-size:11px;color:#888;margin-top:3px;}
@@ -25348,7 +25349,7 @@ function _updateGreeting(){
 .cw-code .v{font-size:26px;font-weight:900;color:#FFD700;letter-spacing:6px;font-variant-numeric:tabular-nums;}
 .cw-line{font-size:12px;color:#bbb;margin-top:6px;display:flex;gap:7px;line-height:1.45;}
 .cw-line i{color:#60a5fa;width:13px;text-align:center;margin-top:2px;flex-shrink:0;}
-.cwp-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;background:#0a0a0a;border-bottom:1px solid #1d1d1d;padding:14px 16px;}
+.cwp-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;background:#0a0a0a;border-bottom:1px solid #1d1d1d;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;}
 .cwp-bar button{background:none;border:none;color:#FFD700;font-size:26px;line-height:1;cursor:pointer;padding:0 4px;}
 .cwp-bar div{font-size:15px;font-weight:900;color:#fff;}
 .cwp-sec{margin:18px 16px 0;}
@@ -25405,6 +25406,8 @@ function openCoworkingBooking(partnerId, serviceId){
       _cwb.info=res.d.service; _cwb.days=res.d.days||[];
       _cwb.hours=_cwb.info.cw_min_hours||1;
       var first=_cwb.days.find(function(x){ return x.open; });
+      // Ouverture : premier jour qui a encore des places (le soir, aujourd'hui est souvent terminé).
+      _cwb.autoPick = 7;
       if(first) _cwbPickDate(first.date); else _cwbRender();
     }).catch(function(){ if(_cwb){ _cwb.err='Erreur de connexion. Réessayez.'; _cwbRender(); } });
 }
@@ -25418,7 +25421,18 @@ function _cwbPickDate(date){
   _cwbRender();
   fetch(_cwApi()+'/api/coworking/'+encodeURIComponent(_cwb.partner.id)+'/day?service_id='+encodeURIComponent(_cwb.service.id)+'&date='+date)
     .then(function(r){ return r.json(); })
-    .then(function(d){ if(!_cwb||_cwb.date!==date) return; _cwb.loadingDay=false; _cwb.day=(d&&d.success)?d:null; _cwbAutoStart(); _cwbRender(); })
+    .then(function(d){
+      if(!_cwb||_cwb.date!==date) return; _cwb.loadingDay=false; _cwb.day=(d&&d.success)?d:null;
+      if(_cwb.autoPick>0){
+        _cwb.autoPick--;
+        if(!_cwbStarts().some(function(x){ return x.ok; })){
+          var nx=_cwb.days.find(function(x){ return x.open && x.date>date; });
+          if(nx){ _cwbPickDate(nx.date); return; }
+        }
+        _cwb.autoPick=0;
+      }
+      _cwbAutoStart(); _cwbRender();
+    })
     .catch(function(){ if(_cwb){ _cwb.loadingDay=false; _cwb.err='Erreur de connexion. Réessayez.'; _cwbRender(); } });
 }
 function _cwbDur(){
@@ -25475,7 +25489,7 @@ function _cwbRender(){
     var dt=new Date(x.date+'T12:00:00');
     var d1=dt.toLocaleDateString(_cwLocale(),{weekday:'short'}).replace('.','');
     var d3=x.open? dt.toLocaleDateString(_cwLocale(),{month:'short'}).replace('.','') : 'Fermé';
-    h+='<button class="cw-day'+(x.date===_cwb.date?' on':'')+'"'+(x.open?' onclick="_cwbPickDate(\''+x.date+'\')"':' disabled')+'><div class="d1" data-i18n-skip>'+d1+'</div><div class="d2" data-i18n-skip>'+dt.getDate()+'</div><div class="d3"'+(x.open?' data-i18n-skip':'')+'>'+d3+'</div></button>';
+    h+='<button class="cw-day'+(x.date===_cwb.date?' on':'')+'"'+(x.open?' onclick="_cwb.autoPick=0;_cwbPickDate(\''+x.date+'\')"':' disabled')+'><div class="d1" data-i18n-skip>'+d1+'</div><div class="d2" data-i18n-skip>'+dt.getDate()+'</div><div class="d3"'+(x.open?' data-i18n-skip':'')+'>'+d3+'</div></button>';
   });
   h+='</div>';
   // Personnes

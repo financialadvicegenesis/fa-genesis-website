@@ -4128,6 +4128,9 @@ async function checkAutoPaymentRelease() {
             if (_o.auto_released === true) continue;           // déjà traité
             // Coworking : problème signalé → argent gelé, l'équipe tranche (code d'arrivée = preuve).
             if (_o.coworking && cwHasOpenDispute(_o.id)) continue;
+            // Coworking : jamais de versement avant la fin du créneau + 24 h, même si l'espace a
+            // déclaré la mission « livrée » en avance depuis Mes missions (délai de 7 j sinon).
+            if (_o.coworking && now < Date.parse(_o.coworking.end_at) + CW.REPORT_WINDOW_HOURS * 3600000) continue;
             if (_o.balance_paid === true) continue;            // déjà payé intégralement
             if (_o.status === 'cancelled' || _o.status === 'refunded') continue;
             // Ne doit pas encore avoir de payout envoyé
@@ -6334,6 +6337,10 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
                 dispatches[dIdx].mission_status = 'cancelled';
                 saveDispatches(dispatches);
             }
+            // BUG CORRIGÉ (2026-11-16) : le gain affiché « En attente » dans le Wallet du prestataire
+            // restait après une annulation client (seul le refus de mission le retirait) — il ne
+            // touchera jamais cette somme. Sans effet si elle était déjà disponible (clawback ci-dessus).
+            cancelPendingWalletEntry(dispatch.partner_id || dispatch.claimed_by_partner_id, dispatch.id, 'deposit');
         }
 
         // Désactiver l'assignation partenaire liée (missions "accompagnement" assignées
@@ -16834,7 +16841,7 @@ app.post('/api/coworking/:partnerId/bookings', function(req, res) {
                 start_at: new Date(startAt).toISOString(), end_at: new Date(endAt).toISOString(),
                 free_cancel_until: freeCancelUntil > now ? new Date(freeCancelUntil).toISOString() : null,
                 hold_until: new Date(now + CW.HOLD_MIN * 60000).toISOString(),
-                checkin_code: String(crypto.randomInt(1000, 10000)), checkin_attempts: 0, checked_in_at: null,
+                checkin_code: String(typeof crypto.randomInt === 'function' ? crypto.randomInt(1000, 10000) : 1000 + (crypto.randomBytes(2).readUInt16BE(0) % 9000)), checkin_attempts: 0, checked_in_at: null,
                 paid_at: null, reminder_sent: false, ended: false
             }
         };
