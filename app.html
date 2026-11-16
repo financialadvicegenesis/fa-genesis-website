@@ -23791,11 +23791,22 @@ function _ptnrLoadProfil(){
     +bioRowHtml
     +'</div></div>';
 
+  // Code de parrainage dans MON RÉSEAU (2026-11-16, FA GENESIS) — avant, sous « Déconnexion », presque invisible.
+  var _pr = _ptnrSession || {};
+  var _ptnrRefBlockHtml = _pr.id ? '<div class="p-ref-box" style="margin-top:10px;">'
+    + '<div class="p-ref-box-title"><i class="fa-solid fa-user-plus" style="color:#FFD700;margin-right:6px;font-size:10px;"></i>Mon code de parrainage</div>'
+    + '<div class="p-ref-code-row"><span class="p-ref-code">'+_pr.id+'</span>'
+    + '<button class="p-ref-copy-btn" onclick="_ptnrCopyRefCode(\''+_pr.id+'\', this)" style="cursor:pointer;">Copier</button></div>'
+    + '<div class="p-ref-count">Invitez vos collègues prestataires à rejoindre GENESIS</div>'
+    + '<button onclick="_ptnrShareRef(\''+_pr.id+'\')" style="margin-top:12px;width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:12px;padding:11px 0;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:.3px;"><i class="fa-solid fa-share-nodes" style="margin-right:7px;"></i>Inviter un ami</button>'
+    + '</div>' : '';
   var reseau = '<div class="plus-section">'
     +'<div class="plus-section-title">MON RÉSEAU</div>'
     +'<div class="plus-group">'
     +pli('<i class="fa-solid fa-champagne-glasses"></i>','#001a1a','Événements GENESIS',null,"_ptnrNav('evenements')")
-    +'</div></div>';
+    +'</div>'
+    +_ptnrRefBlockHtml
+    +'</div>';
 
   var deleteBtn = '<div style="margin:20px 16px 4px;">'
     +'<button style="width:100%;background:transparent;border:1.5px solid #4a3800;color:#ffd43b;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;" onclick="_ptnrShowDeactivate()">'
@@ -23818,15 +23829,7 @@ function _ptnrLoadProfil(){
     +'<button style="flex:1;background:#1a1a1a;color:#aaa;border:1px solid #333;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" onclick="document.getElementById(\'ptnr-del-confirm\').style.display=\'none\'">Annuler</button>'
     +'</div></div></div>';
   var logoutBtn = '<button class="plus-logout" onclick="_ptnrLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Déconnexion</button>';
-  var _pr = _ptnrSession || {};
-  var _ptnrRefBlockHtml = _pr.id ? '<div class="p-ref-box" style="margin:20px 0 0;">'
-    + '<div class="p-ref-box-title"><i class="fa-solid fa-user-plus" style="color:#FFD700;margin-right:6px;font-size:10px;"></i>Mon code de parrainage</div>'
-    + '<div class="p-ref-code-row"><span class="p-ref-code">'+_pr.id+'</span>'
-    + '<button class="p-ref-copy-btn" onclick="_ptnrCopyRefCode(\''+_pr.id+'\', this)" style="cursor:pointer;">Copier</button></div>'
-    + '<div class="p-ref-count">Invitez vos collègues prestataires à rejoindre GENESIS</div>'
-    + '<button onclick="_ptnrShareRef(\''+_pr.id+'\')" style="margin-top:12px;width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:12px;padding:11px 0;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:.3px;"><i class="fa-solid fa-share-nodes" style="margin-right:7px;"></i>Inviter un ami</button>'
-    + '</div>' : '';
-  c.innerHTML = headerHtml + activite + monProfil + reseau + deleteBtn + logoutBtn + _ptnrRefBlockHtml + _genesisVersionFooter();
+  c.innerHTML = headerHtml + activite + monProfil + reseau + deleteBtn + logoutBtn + _genesisVersionFooter();
 }
 
 // ── SOUS-FORMULAIRES PROFIL ──────────────────────────────────

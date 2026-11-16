@@ -17700,11 +17700,6 @@ function getPartnerReferralCount(partnerId) {
         return p.referredBy === partnerId && p.accountStatus === 'active';
     }).length;
 }
-function getPartnerReferralStatus(count) {
-    if (count >= 10) return 'architecte';
-    if (count >= 3) return 'batisseur';
-    return null;
-}
 
 // Niveaux client basés sur les QG (Quotient Genesis) — séparés des badges prestataires
 const CLIENT_QG_LEVEL_TIERS = [
@@ -18295,9 +18290,12 @@ function computeHallOfFameForMonth(monthStr) {
         }
     });
     partners.forEach(function(p) {
-        if (!p.referredBy || p.accountStatus !== 'active') return;
-        // Pas de date d'activation dediee : updatedAt est mis a jour lors du passage a 'active'
-        if (_hofDateInMonth(p.updatedAt || p.createdAt, monthStr)) {
+        // Filleul prestataire : compte le mois de SA PREMIÈRE PRESTATION TERMINÉE
+        // (first_mission_completed_at, posé par _handleFirstMissionCompleted) — même règle que la
+        // distinction Ambassadeur et que les filleuls clients. Avant (jusqu'au 2026-11-16) : dès
+        // l'activation du compte, avant toute prestation.
+        if (!p.referredBy || !p.first_mission_completed_at) return;
+        if (_hofDateInMonth(p.first_mission_completed_at, monthStr)) {
             referrerCounts[p.referredBy] = (referrerCounts[p.referredBy] || 0) + 1;
         }
     });
@@ -23144,7 +23142,6 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             avgResponseMinutes: typeof partner.avgResponseMinutes === 'number' ? Math.round(partner.avgResponseMinutes) : null,
             referralCode: partner.id,
             referralCount: referralCount,
-            referralStatus: getPartnerReferralStatus(referralCount),
             referredActiveCount: partner.referred_active_count || 0,
             distinctions: _serializeDistinctions(getPartnerActiveDistinctions(partner, badge)),
             profile_boost_active: !!(partner.profile_boost_until && new Date(partner.profile_boost_until) > new Date()),
@@ -23280,7 +23277,6 @@ app.get('/api/partner/palmares', authenticatePartner, function(req, res) {
             reviews: reviewsList,
             referralCode: partner.id,
             referralCount: referralCount,
-            referralStatus: getPartnerReferralStatus(referralCount),
             referredActiveCount: partner.referred_active_count || 0,
             referrals: referralsList
         });
