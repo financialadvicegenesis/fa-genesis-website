@@ -10074,8 +10074,10 @@ function renderProfil(){
       +'</div></div>';
   }
 
-  // ── ESPACE PARTENAIRE (visible aussi en invité) ─────────────
-  var espacePartenaire = '<div class="plus-section">'
+  // ── ESPACE PARTENAIRE : invité seulement (2026-11-16, décision FA GENESIS) ──
+  // Un client connecté ne voit plus ce raccourci : pour accéder à son espace prestataire,
+  // il se déconnecte puis se connecte en tant que prestataire.
+  var espacePartenaire = (USER && !GUEST) ? '' : '<div class="plus-section">'
     +'<div class="plus-section-title">VOUS ÊTES PRESTATAIRE ?</div>'
     +'<div class="plus-group">'
     +pli('<i class="fa-solid fa-handshake"></i>','#1a1400','Espace partenaire',null,'nav(\'partner\')')
