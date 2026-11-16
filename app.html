@@ -2708,15 +2708,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261116a"></script>
-<script src="app-i18n-es.js?v=20261116a"></script>
-<script src="app-i18n-hi.js?v=20261116a"></script>
-<script src="app-i18n-pt.js?v=20261116a"></script>
-<script src="app-i18n-ja.js?v=20261116a"></script>
-<script src="app-i18n-zh.js?v=20261116a"></script>
-<script src="app-i18n-ar.js?v=20261116a"></script>
-<script src="app-i18n-it.js?v=20261116a"></script>
-<script src="app-i18n-de.js?v=20261116a"></script>
+<script src="app-i18n-en.js?v=20261116b"></script>
+<script src="app-i18n-es.js?v=20261116b"></script>
+<script src="app-i18n-hi.js?v=20261116b"></script>
+<script src="app-i18n-pt.js?v=20261116b"></script>
+<script src="app-i18n-ja.js?v=20261116b"></script>
+<script src="app-i18n-zh.js?v=20261116b"></script>
+<script src="app-i18n-ar.js?v=20261116b"></script>
+<script src="app-i18n-it.js?v=20261116b"></script>
+<script src="app-i18n-de.js?v=20261116b"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -9720,8 +9720,8 @@ function showGenesisPatrimoine(){
   _saveProfilScroll('showGenesisPatrimoine');
   if(!USER || GUEST){
     c.innerHTML = '<div class="espace-view">'
-      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine GENESIS</div></div>'
-      +'<div class="espace-empty">Connectez-vous pour consulter votre Patrimoine GENESIS.</div>'
+      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mon palmarès</div></div>'
+      +'<div class="espace-empty">Connectez-vous pour consulter votre palmarès.</div>'
       +'</div>';
     return;
   }
@@ -9738,7 +9738,7 @@ function showGenesisPatrimoine(){
     {icon:'fa-user-plus', label:'Parrainages', value: p.parrainages||0}
   ];
   c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine GENESIS</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mon palmarès</div></div>'
     +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
     +'<div class="genesis-patrimoine-level"><i class="fa-solid '+level.icon+'"></i> '+level.label+'<div class="genesis-patrimoine-anciennete">'+_tr('Membre depuis')+' '+ancienneteLabel+'</div></div>'
     +'<div class="genesis-patrimoine-grid">'
@@ -10067,7 +10067,7 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-crown"></i>','#0a0014','Mes Niveaux GENESIS',null,'showClientLevels()')
       +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions GENESIS',null,'showGenesisMissions()')
       +pli('<i class="fa-solid fa-trophy"></i>','#1a1400','Hall of Fame GENESIS',null,'showHallOfFameProfil()')
-      +pli('<i class="fa-solid fa-gem"></i>','#0a1414','Patrimoine GENESIS',null,'showGenesisPatrimoine()')
+      +pli('<i class="fa-solid fa-medal"></i>','#0a1414','Mon palmarès',null,'showGenesisPatrimoine()')
       +pli('<i class="fa-solid fa-headset"></i>','#1a0a00','Assistance',null,'showSupport()')
       +pli('<i class="fa-solid fa-comment-dots"></i>','#0d1a1a','Messages',null,'nav(\'messages\')')
       +pli('<i class="fa-solid fa-scale-balanced"></i>','#1a0000','Mes litiges',null,'openMesLitiges()')
@@ -14221,7 +14221,7 @@ function showClientLevels(scrollToLevel, _afterNav) {
       var html = '<div style="background:#0a120a;border:1px solid #1a2e1a;border-radius:14px;padding:13px 15px;margin-bottom:18px;">'
         + '<div style="font-size:12px;color:#7ec87e;font-weight:700;line-height:1.5;margin-bottom:8px;">'
         + '<i class="fa-solid fa-circle-check" style="color:#22c55e;margin-right:7px;font-size:11px;"></i>'
-        + 'Dès votre inscription : 40 points QG (90 avec un code de parrainage), Jérémie qui répond à vos questions et vous propose des prestataires adaptés à votre demande, votre Patrimoine GENESIS, le parrainage et les missions GENESIS.'
+        + 'Dès votre inscription : 40 points QG (90 avec un code de parrainage), Jérémie qui répond à vos questions et vous propose des prestataires adaptés à votre demande, votre palmarès, le parrainage et les missions GENESIS.'
         + '</div>'
         + '<div style="height:1px;background:#1a2e1a;margin-bottom:8px;"></div>'
         + '<div style="font-size:11px;color:#888;line-height:1.5;">'
