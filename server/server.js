@@ -1528,6 +1528,9 @@ function requestPartnerReviews(clientEmail, acceptedDispatches) {
         acceptedDispatches.forEach(function(d) {
             var idx = allDispatches.findIndex(function(x) { return x.id === d.id; });
             if (idx === -1 || allDispatches[idx].review_requested) return;
+            // Coworking sans code d'arrivée validé : pas de demande d'avis (il serait refusé).
+            var _rrOrder = allDispatches[idx].order_id ? getOrderById(allDispatches[idx].order_id) : null;
+            if (_rrOrder && _rrOrder.coworking && !_rrOrder.coworking.checked_in_at) return;
             allDispatches[idx].review_requested = true;
             changed = true;
             var partner = getPartnerById(d.claimed_by_partner_id);
@@ -21207,6 +21210,12 @@ app.post('/api/partner-reviews', (req, res) => {
         // L'avis porte sur une prestation TERMINÉE (tous modes de paiement : clientOrderCompleted).
         if (!clientOrderCompleted(order)) {
             return res.status(403).json({ success: false, message: 'Vous pourrez donner votre avis une fois la prestation terminée.' });
+        }
+        // Coworking : avis réservé aux clients réellement venus, c'est-à-dire dont l'espace a validé
+        // le code d'arrivée (décision FA GENESIS 2026-11-16) — sinon un client absent pourrait noter
+        // un espace où il n'a jamais mis les pieds.
+        if (order.coworking && !order.coworking.checked_in_at) {
+            return res.status(403).json({ success: false, code: 'coworking_no_checkin', message: 'Pour un espace coworking, l\'avis est réservé aux clients dont l\'arrivée a été validée avec le code d\'arrivée.' });
         }
         // Un seul avis par mission.
         if (dispatch.review_submitted || loadPartnerReviews().some(function(r) { return r.dispatchId === dispatch.id; })) {
