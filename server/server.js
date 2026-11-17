@@ -19209,6 +19209,36 @@ var JEREMIE_LANGUAGE_NAMES = {
     fr: 'francais', en: 'anglais', es: 'espagnol', pt: 'portugais', ar: 'arabe',
     de: 'allemand', zh: 'mandarin', it: 'italien', ja: 'japonais', hi: 'hindi'
 };
+// ── GUIDE DE L'ESPACE PRESTATAIRE (2026-11-17, demande FA GENESIS) ───────────────────────────
+// Jérémie doit pouvoir expliquer CHAQUE section de l'espace prestataire, badge ou pas. Texte relevé
+// dans app.html (libellés exacts des écrans) et server.js (règles réelles) : à METTRE À JOUR en même
+// temps que toute évolution d'un écran prestataire — Jérémie n'a aucune autre source de vérité.
+function buildPartnerSpaceGuide() {
+    var g = [];
+    g.push('GUIDE COMPLET DE L\'ESPACE PRESTATAIRE (utilise-le pour expliquer comment faire ; cite les noms exacts des onglets, sections et boutons) :');
+    g.push('NAVIGATION : barre du bas a 5 onglets : Accueil, Missions, Messages, Wallet, Profil. Le Profil regroupe trois sections : MON ACTIVITE, MON PROFIL et MON RESEAU.');
+    g.push('ACCUEIL : alertes, "Revenus generes" et "Commissions versees", puis "Mes tarifs & prestations". Pour creer une prestation : onglet de la categorie de clients (Etudiant, Particulier, Entreprise, Promo), "Ajouter une prestation", nom, details (avantages), prix en EUR ou "Devis" (tarif sur devis), photo (toucher le carre photo), mode de paiement GENESIS SAFE (1 fois ; Acompte + reste, avec le % paye a la commande ; Plusieurs fois, de 2 a 8 mensualites), remise facultative, puis TOUJOURS "Enregistrer mes prestations" en bas, sinon rien n\'est sauvegarde. Les photos sont verifiees automatiquement : aucun numero, e-mail ni lien ecrit sur une image (refusee sinon). Le lien "Vous exercez plusieurs metiers ?" mene a Profil > Mes metiers (ajouter des metiers secondaires et choisir le metier de chaque prestation).');
+    g.push('MISSIONS - DEUX CAS. 1) Commande directe (le client a paye une prestation a prix fixe) : notification "Nouvelle commande", le prestataire a 24 h pour accepter ou refuser ; en cas de refus ou sans reponse, le client est rembourse automatiquement. Une fois acceptee, la mission est en cours ; en mode Acompte + reste, l\'acompte est verse des l\'acceptation ; en paiement en 1 fois, l\'argent reste dans GENESIS SAFE jusqu\'a la validation du client. ' +
+        '2) Demande de devis : carte "Nouvelle demande" (description, budget, date souhaitee) ; "Accepter" puis envoyer la proposition : lignes (intitule + montant), delai en jours, nombre de revisions incluses, mode de paiement, notes, puis "ENVOYER LA PROPOSITION". Le client signe le contrat GENESIS puis paie, et la mission demarre. Si le client refuse, une nouvelle proposition peut etre envoyee. ' +
+        'Il faut repondre dans son temps de reponse annonce (Profil > Temps de reponse, 24 h par defaut, entre 6 h et 48 h), sinon Jeremie transmet la demande a d\'autres prestataires du meme secteur. Les demandes transmises par Jeremie portent la mention "Transmise par Jeremie IA" avec un resume : on a ' + QUOTE_TRANSFER_ROUND_HOURS + ' h pour accepter, puis le client choisit parmi ceux qui ont accepte. Des filtres par statut sont en haut de l\'ecran Missions.');
+    g.push('LIVRER UNE MISSION : dans la carte de la mission (onglet Missions), "Deposer un livrable" (fichiers, photos, videos), puis "Confirmer la livraison". Le client voit un apercu protege par filigrane et ne peut telecharger qu\'apres avoir valide. S\'il demande une revision, modifier ou remplacer le livrable puis le republier (le client est prevenu). Apres validation, le paiement arrive dans le Wallet ; sans validation du client, il est libere automatiquement 7 jours apres la livraison. En cas de probleme, un litige peut etre ouvert : l\'equipe FA GENESIS l\'examine sous ' + GENESIS_DISPUTE_SLA_LABEL + ' et le versement est mis en attente pendant le litige.');
+    g.push('MESSAGES : messagerie texte avec les clients (pas de pieces jointes ; les fichiers passent par les livrables). Avant la signature du contrat, aucune coordonnee personnelle (telephone, e-mail, reseaux sociaux, liens) : au 3e avertissement, la messagerie est suspendue.');
+    g.push('WALLET : "Disponible" (retirable) et "En attente" (gains des missions en cours, avec leur date de liberation prevue). Retrait a partir de 20 EUR vers le moyen enregistre dans Profil > Coordonnees de versement (IBAN, PayPal ou Mobile Money selon le pays). Le solde disponible est aussi vire automatiquement chaque lundi s\'il atteint 20 EUR. L\'historique montre chaque gain et chaque retrait.');
+    g.push('PROFIL > MON ACTIVITE : Mes seances (rendez-vous demandes par les clients, appel ou seance : le prestataire propose ou confirme la date et l\'heure, ajoute un lien visio ou un lieu, puis marque la seance terminee) ; Messages clients ; Mes missions ; Mon Wallet GENESIS ; Mes badges ; Mon palmares (missions, clients, avis recus, prestataires parraines, classement dans sa categorie) ; Mes promotions ; Mon portfolio ; Mes livrables (contrat de partenariat FA GENESIS, contrats de prestation signes par les clients, factures).');
+    g.push('PROFIL > MON PROFIL : Verifier mon compte ; Parametres du profil (photo, presentation) ; Mes metiers ; Coordonnees de versement (moyen de retrait + Facturation : SIRET et adresse pour les factures automatiques) ; Temps de reponse ; Pays et zone d\'intervention (sur place ou "A distance" pour travailler avec des clients d\'autres pays) ; Langue ; Assistance (ecrire a l\'equipe FA GENESIS) ; deverrouillage par empreinte ou Face ID dans l\'application mobile.');
+    g.push('PROFIL > MON RESEAU : Evenements GENESIS (inscription aux evenements) et la case de parrainage avec son code et son lien a partager.');
+    g.push('VERIFIER MON COMPTE : pour proteger les clients, chaque prestataire envoie les justificatifs demandes a l\'ecran : statut (independant, entreprise ou professionnel a l\'etranger), SIRET en France ou immatriculation locale, piece d\'identite, selfie tenant la piece, courte video du visage (3 a 5 secondes), preuve d\'activite. L\'equipe valide le dossier ; il y a ' + PartnerVerif.DEADLINE_DAYS + ' jours pour le completer, sinon le profil est masque aux clients jusqu\'a l\'envoi. Un dossier valide affiche le badge "Identite verifiee" ou "Entreprise verifiee" sur la fiche.');
+    g.push('MES BADGES : badge actuel, progression (missions et note) vers le suivant, avantages. A partir du badge Argent, bouton "Booster mon profil (48h)" dans la carte du badge : le profil remonte dans l\'annuaire pendant ' + PARTNER_BOOST_DURATION_HOURS + ' h (jamais "en tete" garanti) ; 2 boosts par mois en Argent, 4 en Or, 8 en Elite. Badge Or : inscription prioritaire aux evenements GENESIS, une place garantie meme complet. Distinctions : Nouveau Talent a la premiere prestation terminee (+' + PROFILE_BOOST_DAYS_FILLEUL + ' jours de mise en avant) ; Ambassadeur GENESIS quand un prestataire parraine termine sa premiere prestation (+' + PROFILE_BOOST_DAYS_PARRAIN + ' jours). Jeremie IA Plus (Argent) analyse les avis clients, Pro (Or) la strategie de devis et de prix, Expert (Elite) le suivi des revenus et le plan de developpement.');
+    g.push('PARRAINAGE PRESTATAIRE : uniquement entre prestataires. Le code est l\'identifiant du prestataire (PTR-...), dans Profil > MON RESEAU, avec un lien a partager. Le parrainage compte quand le filleul termine sa premiere prestation : le parrain obtient alors la distinction Ambassadeur. Pas de points ni d\'argent.');
+    g.push('MES PROMOTIONS : "Nouvelle promotion" : titre, type (Reduction en %, Reduction montant fixe en EUR, Prestation offerte, Bonus offert, Consultation gratuite, Deplacement offert), valeur, dates de debut et de fin, montant minimum et nombre maximal d\'utilisations facultatifs, puis "PUBLIER LA PROMOTION". Les reductions en % et en EUR sont appliquees automatiquement au paiement et financees par le prestataire ; les autres offres sont affichees aux clients et c\'est a lui de les honorer. On peut modifier ou terminer une promotion. Pour une simple remise sur une prestation, il y a aussi la remise de Mes tarifs & prestations.');
+    g.push('MON PORTFOLIO : jusqu\'a 5 medias (photos ou videos MP4/MOV de 95 Mo maximum, environ 1 minute en 1080p, Wi-Fi conseille), verifies automatiquement avant publication ; aucun lien externe (YouTube, Instagram...). Toucher "Enregistrer le portfolio".');
+    g.push('FACTURES ET CONTRATS : voir DOCUMENTS ci-dessus ; tout est dans Profil > Mes livrables.');
+    if (COWORKING_BOOKING_ENABLED) {
+        g.push('ESPACES COWORKING (prestataires de categorie Espace Coworking uniquement) : dans Mes tarifs & prestations, chaque espace peut etre en "Reservation par creneau" : a l\'heure, a la demi-journee (4 h) ou a la journee, prix par personne (open space) ou pour l\'espace entier (bureau, salle), nombre de places, duree minimale. Profil > Mes disponibilites : horaires par jour, fermetures et horaires speciaux, adresse et instructions d\'acces (visibles par le client seulement apres paiement, sans telephone ni lien), "Bloquer un creneau", planning des reservations. A l\'arrivee, le client donne son code d\'arrivee a 4 chiffres : le saisir puis "Valider l\'arrivee" (preuve de presence ; sans code valide, le client ne peut pas laisser d\'avis). Le client peut annuler gratuitement jusqu\'a 24 h avant ; ensuite non. A la fin du creneau, la reservation se termine automatiquement et le paiement est verse 24 h apres, sauf probleme signale. Si l\'espace annule, le client est rembourse integralement.');
+    }
+    return g.join('\n');
+}
+
 function buildJeremieSystemPrompt(person, personType, language) {
     var langName = JEREMIE_LANGUAGE_NAMES[language] || 'francais';
     var lines = [];
@@ -19522,11 +19552,20 @@ function buildJeremieSystemPrompt(person, personType, language) {
             } catch (tierErr) {
                 console.error('[JEREMIE] Erreur paliers prestataire:', tierErr);
             }
-            lines.push('Ton role avec ce partenaire : coach de profil et de visibilite (comment decrocher son prochain ' +
-                'badge, bien remplir ses tarifs et son portfolio), detection d\'opportunites de collaboration avec d\'autres ' +
-                'partenaires, et explication pedagogique du fonctionnement (paiements GENESIS SAFE, Wallet, factures) s\'il ' +
-                'pose des questions dessus. Si son SIRET n\'est pas renseigne et qu\'il parle de factures ou d\'URSSAF, ' +
-                'indique-lui Coordonnees de versement > Facturation.');
+            lines.push('');
+            lines.push(buildPartnerSpaceGuide());
+            lines.push('');
+            lines.push('Ton role avec ce partenaire : d\'abord son guide de l\'espace prestataire, quel que soit son badge (avec ou ' +
+                'sans badge, il a droit a toutes les explications sur le fonctionnement) ; puis coach de profil et de visibilite ' +
+                '(comment decrocher son prochain badge, bien remplir ses tarifs et son portfolio) et detection d\'opportunites de ' +
+                'collaboration. Si son SIRET n\'est pas renseigne et qu\'il parle de factures ou d\'URSSAF, indique-lui ' +
+                'Coordonnees de versement > Facturation.');
+            lines.push('QUAND IL DEMANDE COMMENT FAIRE QUELQUE CHOSE OU A QUOI SERT UNE SECTION : explique en detail, a partir du ' +
+                'guide ci-dessus uniquement. Donne le chemin exact (par exemple : Profil > Mes promotions > Nouvelle promotion), ' +
+                'puis les etapes numerotees (1. 2. 3., une par ligne), les regles utiles (delais, montants, ce que voit le client) ' +
+                'et termine par ce qu\'il obtient une fois fait. Ici tu peux etre plus long que d\'habitude si c\'est necessaire ' +
+                'pour etre clair. N\'invente jamais un bouton, un ecran ou une regle absents du guide : si tu ne sais pas, dis-le ' +
+                'franchement et oriente-le vers Profil > Assistance, ou l\'equipe FA GENESIS lui repondra.');
         }
     } catch (ctxErr) {
         console.error('[JEREMIE] Erreur construction contexte:', ctxErr);

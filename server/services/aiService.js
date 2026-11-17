@@ -47,7 +47,8 @@ function askJeremie(systemPrompt, history, userMessage) {
         },
         body: JSON.stringify({
             model: ANTHROPIC_MODEL,
-            max_tokens: 1024,
+            // 1600 : explications pas à pas détaillées (guide de l'espace prestataire) sans réponse coupée.
+            max_tokens: 1600,
             system: systemPrompt,
             messages: messages
         })
