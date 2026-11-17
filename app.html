@@ -2238,6 +2238,10 @@ a{text-decoration:none;color:inherit}
 /* Jérémie sépare ses idées par des retours à la ligne (consigne de son prompt serveur) mais la
    bulle les écrasait en espaces : chaque réponse s'affichait en un seul gros bloc de texte. */
 #jeremie-msgs .chat-bubble{white-space:pre-wrap;}
+/* Supprimer un échange (corbeille discrète sous chaque réponse de Jérémie) */
+#jeremie-msgs .jx-actions{align-self:flex-start;display:flex;gap:4px;margin:-4px 0 4px 4px;}
+#jeremie-msgs .jx-actions button{background:none;border:none;color:#666;font-size:12px;padding:6px 8px;cursor:pointer;border-radius:8px;line-height:1;}
+#jeremie-msgs .jx-actions button:active,#jeremie-msgs .jx-actions button:focus-visible{color:#f87171;background:rgba(248,113,113,.08);outline:none;}
 .chat-bubble-mine{align-self:flex-end;background:#FFD700;color:#000;font-weight:600;}
 .chat-bubble-theirs{align-self:flex-start;background:#1a1a1a;color:#ccc;border:1px solid #222;}
 .chat-bubble-subj{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;opacity:.65;}
@@ -2699,15 +2703,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261116d"></script>
-<script src="app-i18n-es.js?v=20261116d"></script>
-<script src="app-i18n-hi.js?v=20261116d"></script>
-<script src="app-i18n-pt.js?v=20261116d"></script>
-<script src="app-i18n-ja.js?v=20261116d"></script>
-<script src="app-i18n-zh.js?v=20261116d"></script>
-<script src="app-i18n-ar.js?v=20261116d"></script>
-<script src="app-i18n-it.js?v=20261116d"></script>
-<script src="app-i18n-de.js?v=20261116d"></script>
+<script src="app-i18n-en.js?v=20261117a"></script>
+<script src="app-i18n-es.js?v=20261117a"></script>
+<script src="app-i18n-hi.js?v=20261117a"></script>
+<script src="app-i18n-pt.js?v=20261117a"></script>
+<script src="app-i18n-ja.js?v=20261117a"></script>
+<script src="app-i18n-zh.js?v=20261117a"></script>
+<script src="app-i18n-ar.js?v=20261117a"></script>
+<script src="app-i18n-it.js?v=20261117a"></script>
+<script src="app-i18n-de.js?v=20261117a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3900,6 +3904,7 @@ function _genesisVersionFooter(){
         </div>
         <button class="jeremie-hdr-btn" id="jeremie-voice-toggle" onclick="toggleJeremieVoiceOutput()" aria-label="Activer la voix"><i class="fa-solid fa-volume-xmark"></i></button>
         <button class="jeremie-hdr-btn" id="jeremie-immersive-toggle" onclick="toggleJeremieImmersive()" aria-label="Mode immersif"><i class="fa-solid fa-expand"></i></button>
+        <button class="jeremie-hdr-btn" id="jeremie-clear-btn" onclick="clearJeremieConversation()" aria-label="Effacer la conversation" title="Effacer la conversation" style="display:none"><i class="fa-solid fa-trash-can"></i></button>
         <button class="jeremie-close-btn" onclick="closeJeremieChat()" aria-label="Fermer">&#x2715;</button>
       </div>
       <div class="jeremie-immersive-avatar" id="jeremie-immersive-avatar">
@@ -12595,7 +12600,7 @@ document.addEventListener('visibilitychange', function(){ if(document.visibility
 setInterval(function(){ if(document.visibilityState !== 'hidden' && !(_genesisChatWs && _genesisChatWs.readyState === 1)) _jerFetchMessages(true); }, 120000);
 window.addEventListener('resize', function(){ var el=document.getElementById('jeremie-bubble'); var r=_jerFabUsable(); if(_jerShown && el && r) _jerPositionBubble(el, r); });
 
-function _jeremieBubble(role,text,scrollEl){
+function _jeremieBubble(role,text,scrollEl,pair){
   var isMine=(role==='user');
   var bubble=document.createElement('div');
   bubble.className='chat-bubble '+(isMine?'chat-bubble-mine':'chat-bubble-theirs');
@@ -12603,7 +12608,50 @@ function _jeremieBubble(role,text,scrollEl){
   inner.textContent=text;
   bubble.appendChild(inner);
   if(scrollEl) scrollEl.appendChild(bubble);
+  if(pair) _jeremieAttachPair(bubble, pair, !isMine);
   return inner;
+}
+// ── Effacement façon ChatGPT / Claude (2026-11-17) ──────────────────────────────────────────
+// Un échange = la question + la réponse de Jérémie (même identifiant « pair » côté serveur).
+// Corbeille sous chaque réponse (pas d'appui long : il sert déjà à sélectionner/copier le texte).
+function _jeremieAttachPair(bubble, pair, isAssistant){
+  if(!bubble||!pair) return;
+  bubble.setAttribute('data-jx-pair', pair);
+  if(!isAssistant) return;
+  var row=document.createElement('div');
+  row.className='jx-actions'; row.setAttribute('data-jx-pair', pair);
+  row.innerHTML='<button type="button" aria-label="Supprimer cet échange" title="Supprimer cet échange" onclick="_jeremieDeleteExchange(\''+pair+'\')"><i class="fa-regular fa-trash-can"></i></button>';
+  if(bubble.parentNode) bubble.parentNode.insertBefore(row, bubble.nextSibling);
+}
+function _jeremieDeleteExchange(pair){
+  var tok=_jerChatToken(); if(!tok||!pair) return;
+  showConfirmModal('Votre question et la réponse de Jérémie seront effacées. Jérémie ne s’en souviendra plus.', {title:'Supprimer cet échange ?', confirmLabel:'Supprimer', cancelLabel:'Annuler'}).then(function(ok){
+    if(!ok) return;
+    fetch((window.FA_GENESIS_API||API)+'/api/jeremie/chat/exchanges/'+encodeURIComponent(pair),{method:'DELETE',headers:{'Authorization':'Bearer '+tok}})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+      .then(function(res){
+        if(!res.ok||!res.d||!res.d.success){ showToast('Suppression impossible',(res.d&&res.d.error)||'Réessayez.','error'); return; }
+        var msgs=document.getElementById('jeremie-msgs');
+        if(msgs){
+          [].slice.call(msgs.querySelectorAll('[data-jx-pair="'+pair+'"]')).forEach(function(el){ el.parentNode.removeChild(el); });
+          if(!msgs.querySelector('.chat-bubble')) loadJeremieHistory();
+        }
+        showToast('Échange supprimé','','success');
+      }).catch(function(){ showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
+  });
+}
+function clearJeremieConversation(){
+  var tok=_jerChatToken(); if(!tok) return;
+  showConfirmModal('Tous vos échanges avec Jérémie seront définitivement supprimés. Jérémie ne s’en souviendra plus.', {title:'Effacer la conversation ?', confirmLabel:'Tout effacer', cancelLabel:'Annuler'}).then(function(ok){
+    if(!ok) return;
+    fetch((window.FA_GENESIS_API||API)+'/api/jeremie/chat',{method:'DELETE',headers:{'Authorization':'Bearer '+tok}})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+      .then(function(res){
+        if(!res.ok||!res.d||!res.d.success){ showToast('Effacement impossible',(res.d&&res.d.error)||'Réessayez.','error'); return; }
+        loadJeremieHistory();
+        showToast('Conversation effacée','Jérémie repart de zéro.','success');
+      }).catch(function(){ showToast('Erreur de connexion','Réessayez dans un instant.','error'); });
+  });
 }
 function _jeremieTypewriter(el,fullText,scrollEl){
   var chunks=fullText.split(/(\s+)/);
@@ -12622,6 +12670,7 @@ function _jeremieTypewriter(el,fullText,scrollEl){
 function loadJeremieHistory(){
   var msgs=document.getElementById('jeremie-msgs'); if(!msgs) return;
   var _jhTok=_jerChatToken();
+  var _jClr=document.getElementById('jeremie-clear-btn'); if(_jClr) _jClr.style.display='none';
   if(!_jhTok){
     msgs.innerHTML='';
     var gEmpty=document.createElement('div'); gEmpty.className='chat-empty-state';
@@ -12654,7 +12703,8 @@ function loadJeremieHistory(){
       return;
     }
     msgs.innerHTML='';
-    list.forEach(function(m){ _jeremieBubble(m.role,m.content,msgs); });
+    list.forEach(function(m){ _jeremieBubble(m.role,m.content,msgs,m.pair); });
+    if(_jClr) _jClr.style.display='';
     msgs.scrollTop=msgs.scrollHeight;
   }).catch(function(){
     msgs.innerHTML='<div class="chat-empty-state"><span>Impossible de charger la conversation.</span></div>';
@@ -12668,9 +12718,10 @@ function sendJeremieMessage(){
   inp.value='';
   inp.style.height='auto';
   var msgs=document.getElementById('jeremie-msgs');
+  var _jxUserInner=null;
   if(msgs){
     var em=msgs.querySelector('.chat-empty-state'); if(em) em.remove();
-    _jeremieBubble('user',text,msgs);
+    _jxUserInner=_jeremieBubble('user',text,msgs);
     msgs.insertAdjacentHTML('beforeend','<div class="jeremie-thinking" id="jeremie-thinking"><i class="fa-solid fa-brain"></i><span>Jérémie réfléchit...</span></div>');
     msgs.scrollTop=msgs.scrollHeight;
   }
@@ -12689,6 +12740,12 @@ function sendJeremieMessage(){
       var reply=(res&&res.success)?res.reply:((res&&res.error)||'Jérémie est momentanément indisponible.');
       _jeremieSetEmotion(res&&res.success?'💡':'🤔');
       var inner=_jeremieBubble('assistant','',msgs);
+      // Échange enregistré côté serveur : question + réponse supprimables ensemble.
+      if(res && res.success && res.pair){
+        if(_jxUserInner) _jeremieAttachPair(_jxUserInner.parentNode, res.pair, false);
+        _jeremieAttachPair(inner.parentNode, res.pair, true);
+        var _jClr2=document.getElementById('jeremie-clear-btn'); if(_jClr2) _jClr2.style.display='';
+      }
       _jeremieTypewriter(inner,reply,msgs);
       // Jérémie a trouvé de vrais professionnels du métier demandé : découverte en cartes.
       if(res && res.success && res.discovery && res.discovery.partner_ids && res.discovery.partner_ids.length){

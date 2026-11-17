@@ -19953,17 +19953,24 @@ app.post('/api/jeremie/chat', function(req, res) {
             if (!result.success) {
                 return res.status(503).json({ error: result.error || 'Jeremie est momentanement indisponible.' });
             }
-            entry.messages = entry.messages || [];
-            entry.messages.push({ role: 'user', content: message, date: new Date().toISOString() });
-            entry.messages.push({ role: 'assistant', content: result.reply, date: new Date().toISOString() });
-            if (entry.messages.length > 60) entry.messages = entry.messages.slice(-60);
-            entry.updatedAt = new Date().toISOString();
-            memory[person.id] = entry;
-            saveJeremieMemory(memory);
+            // Relecture APRÈS la réponse de l'IA (plusieurs secondes) : si l'utilisateur a effacé sa
+            // conversation entre-temps, on ne réécrit pas l'ancien historique par-dessus.
+            var _mem2 = loadJeremieMemory();
+            var _entry2 = _mem2[person.id] || { messages: [] };
+            _entry2.messages = _entry2.messages || [];
+            // Un échange = la question + la réponse, avec le même identifiant (suppression d'un échange).
+            var _pair = 'JX-' + crypto.randomBytes(6).toString('hex');
+            var _nowIso = new Date().toISOString();
+            _entry2.messages.push({ id: _pair + '-q', pair: _pair, role: 'user', content: message, date: _nowIso });
+            _entry2.messages.push({ id: _pair + '-a', pair: _pair, role: 'assistant', content: result.reply, date: _nowIso });
+            if (_entry2.messages.length > JEREMIE_HISTORY_MAX) _entry2.messages = _entry2.messages.slice(-JEREMIE_HISTORY_MAX);
+            _entry2.updatedAt = _nowIso;
+            _mem2[person.id] = _entry2;
+            saveJeremieMemory(_mem2);
             // Découverte interactive : uniquement de vrais prestataires du métier demandé.
             var _disc = (_jerCards && _jerDiscovery.matched && _jerDiscovery.ids && _jerDiscovery.ids.length)
                 ? { partner_ids: _jerDiscovery.ids, label: _jerDiscovery.label || '' } : null;
-            res.json({ success: true, reply: result.reply, discovery: _disc });
+            res.json({ success: true, reply: result.reply, discovery: _disc, pair: _pair });
         }).catch(function(err) {
             console.error('[JEREMIE] Erreur askJeremie:', err);
             res.status(500).json({ error: 'Erreur serveur' });
@@ -19987,9 +19994,68 @@ app.get('/api/jeremie/chat', function(req, res) {
 
         var memory = loadJeremieMemory();
         var entry = memory[person.id] || { messages: [] };
+        // Anciens messages (avant 2026-11-17) sans identifiant d'échange : on les rattache une fois
+        // (question + réponse qui suit) pour qu'ils puissent eux aussi être supprimés.
+        if (_jeremieEnsurePairs(entry)) { memory[person.id] = entry; saveJeremieMemory(memory); }
         res.json({ success: true, messages: entry.messages || [], available: aiService.isJeremieAvailable() });
     } catch (e) {
         console.error('[JEREMIE] Erreur route history:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ── Effacement façon ChatGPT / Claude (2026-11-17, décision FA GENESIS) ──────────────────────
+// Effacé = supprimé du serveur et de la sauvegarde Mongo (pas seulement masqué) : Jérémie
+// l'oublie réellement, il ne relit plus que ce qui reste. Droit à l'effacement (RGPD).
+var JEREMIE_HISTORY_MAX = 200;
+function _jeremieEnsurePairs(entry) {
+    var changed = false, list = (entry && entry.messages) || [];
+    for (var i = 0; i < list.length; i++) {
+        var m = list[i];
+        if (m.pair) continue;
+        var p = 'JX-' + crypto.randomBytes(6).toString('hex');
+        m.pair = p; m.id = p + (m.role === 'user' ? '-q' : '-a'); changed = true;
+        var n = list[i + 1];
+        if (m.role === 'user' && n && n.role === 'assistant' && !n.pair) { n.pair = p; n.id = p + '-a'; i++; }
+    }
+    return changed;
+}
+function _jeremieChatPerson(req, res) {
+    var authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) { res.status(401).json({ error: 'Token requis' }); return null; }
+    var token = authHeader.slice(7);
+    var person = findUserByToken(token) || findPartnerByToken(token);
+    if (!person) { res.status(401).json({ error: 'Session invalide ou expiree' }); return null; }
+    return person;
+}
+// Effacer toute la conversation.
+app.delete('/api/jeremie/chat', function(req, res) {
+    try {
+        var person = _jeremieChatPerson(req, res); if (!person) return;
+        var memory = loadJeremieMemory();
+        if (memory[person.id]) { delete memory[person.id]; saveJeremieMemory(memory); }
+        res.json({ success: true });
+    } catch (e) {
+        console.error('[JEREMIE] Erreur effacement conversation:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+// Supprimer un échange (la question et la réponse de Jérémie, ensemble).
+app.delete('/api/jeremie/chat/exchanges/:pair', function(req, res) {
+    try {
+        var person = _jeremieChatPerson(req, res); if (!person) return;
+        var memory = loadJeremieMemory();
+        var entry = memory[person.id];
+        if (!entry || !Array.isArray(entry.messages)) return res.status(404).json({ error: 'Échange introuvable' });
+        var before = entry.messages.length;
+        entry.messages = entry.messages.filter(function(m) { return m.pair !== req.params.pair; });
+        if (entry.messages.length === before) return res.status(404).json({ error: 'Échange introuvable' });
+        if (entry.messages.length) { entry.updatedAt = new Date().toISOString(); memory[person.id] = entry; }
+        else delete memory[person.id];
+        saveJeremieMemory(memory);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('[JEREMIE] Erreur suppression échange:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
