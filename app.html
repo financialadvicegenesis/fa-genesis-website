@@ -7938,7 +7938,7 @@ function openDevisContract(requestId, readOnly){
       var body = document.getElementById('devis-contract-body');
       if(!body) return;
       if(!d || !d.html){ body.innerHTML = '<p style="font-family:sans-serif;color:#dc2626;">'+_escHtml((d&&d.error)||'Impossible de charger le contrat.')+'</p>'; return; }
-      body.innerHTML = d.html;
+      body.innerHTML = _scopeContractHtml(d.html, '#devis-contract-body');
       var chk = document.getElementById('sign-accept-'+requestId); if(chk) chk.disabled = false;
     }).catch(function(){
       var body = document.getElementById('devis-contract-body');
@@ -16645,6 +16645,40 @@ var _ptnrContractCanvas = null;
 var _ptnrContractCtx = null;
 var _ptnrContractHasSignature = false;
 
+// BUG CORRIGÉ (2026-11-18) : les contrats renvoyés par le serveur (server/contracts.js) sont des
+// documents HTML complets, avec un <style> pensé pour l'impression (body{background:#f8f8f6;
+// color:#1a1a1a}…). Injectés tels quels, ce <style> s'appliquait à TOUTE l'application jusqu'au
+// redémarrage : juste après l'inscription d'un prestataire (signature du contrat de partenariat),
+// la cloche de notification et « Badge prestataire » (qui héritent de la couleur de la page)
+// passaient en noir ; idem côté client après avoir consulté un contrat. On garde la mise en forme
+// du contrat, mais limitée au conteneur (sélecteurs préfixés, body → conteneur, @media retirés).
+function _scopeContractHtml(html, scopeSel){
+  try{
+    html = String(html || '');
+    var css = '';
+    html = html.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, function(_, c){ css += c; return ''; });
+    html = html.replace(/<!DOCTYPE[^>]*>/gi, '').replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '')
+               .replace(/<(meta|link)\b[^>]*>/gi, '').replace(/<\/?(html|head|body)\b[^>]*>/gi, '');
+    // Blocs @media (impression) retirés : ils contiennent des règles sur body.
+    var out = '', depth = 0, i = 0, start = -1;
+    while(i < css.length){
+      if(depth === 0 && css.substr(i, 6).toLowerCase() === '@media'){ start = i; var j = css.indexOf('{', i); if(j === -1) break; depth = 1; i = j + 1; continue; }
+      if(depth > 0){ if(css[i] === '{') depth++; else if(css[i] === '}') { depth--; } i++; continue; }
+      out += css[i]; i++;
+    }
+    var scoped = out.replace(/([^{}]+)\{([^{}]*)\}/g, function(_, sel, decl){
+      sel = sel.split(',').map(function(s){
+        s = s.trim(); if(!s) return '';
+        if(/^(html|body)$/i.test(s)) return scopeSel;
+        if(/^(html|body)\s+/i.test(s)) return scopeSel + ' ' + s.replace(/^(html|body)\s+/i, '');
+        return scopeSel + ' ' + s;
+      }).filter(Boolean).join(',');
+      return sel ? (sel + '{' + decl + '}') : '';
+    });
+    return (scoped ? '<style>' + scoped + '</style>' : '') + html;
+  }catch(e){ return String(html || ''); }
+}
+
 function _ptnrShowPartnershipContract() {
   var overlay = document.getElementById('ptnr-contract-overlay');
   if (!overlay) { _ptnrShowDash(); if(!_ptnrApplyPendingNotifTarget()) _ptnrNav('home'); return; }
@@ -16663,7 +16697,7 @@ function _ptnrShowPartnershipContract() {
   // Fetch contract HTML
   var body = document.getElementById('ptnr-contract-body');
   _ptnrFetch('/api/partner/contract/partnership').then(function(data) {
-    if (body) body.innerHTML = data.html || '<p style="padding:20px;color:#e44;">Impossible de charger le contrat.</p>';
+    if (body) body.innerHTML = data.html ? _scopeContractHtml(data.html, '#ptnr-contract-body') : '<p style="padding:20px;color:#e44;">Impossible de charger le contrat.</p>';
   }).catch(function() {
     if (body) body.innerHTML = '<p style="padding:20px;color:#e44;">Erreur de chargement du contrat. Vérifiez votre connexion et rechargez.</p>';
   });
@@ -26404,7 +26438,7 @@ async function openClientContractSigner(contractId) {
             headers: { 'Authorization': 'Bearer ' + (USER._token || '') }
         });
         var data = await resp.json();
-        if (body) body.innerHTML = data.html || '<p style="font-family:sans-serif;color:#e44;">Impossible de charger le contrat.</p>';
+        if (body) body.innerHTML = data.html ? _scopeContractHtml(data.html, '#ccsContractBody') : '<p style="font-family:sans-serif;color:#e44;">Impossible de charger le contrat.</p>';
         // Pré-remplir le nom
         var nameEl = document.getElementById('ccsName');
         if (nameEl && USER) nameEl.value = ((USER.prenom || USER.firstName || '') + ' ' + (USER.nom || USER.lastName || '')).trim();
