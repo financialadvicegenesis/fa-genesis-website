@@ -25903,9 +25903,9 @@ function _cwpRender(){
       +'<button class="cwp-btn" style="margin-top:10px;" onclick="_cwpClose();_ptnrNav(\'home\');">Ouvrir mes tarifs &amp; prestations</button></div></div>';
   }
   // Planning
-  h+='<div class="cwp-sec"><div class="cw-lbl" style="margin-top:0;">Réservations à venir</div>';
+  h+='<div class="cwp-sec"><div class="cw-lbl" style="margin-top:0;text-align:center;">Réservations à venir</div>';
   var upcoming=d.bookings;
-  if(!upcoming.length) h+='<div class="cw-empty">Aucune réservation pour le moment.</div>';
+  if(!upcoming.length) h+='<div class="cw-empty" style="text-align:center;">Aucune réservation pour le moment.</div>';
   var lastDate='';
   upcoming.forEach(function(b){
     if(b.date!==lastDate){ lastDate=b.date; h+='<div style="font-size:11px;font-weight:900;color:#aaa;margin:12px 0 6px;" data-i18n-skip>'+_escHtml(_cwDateLong(b.date))+'</div>'; }
@@ -25920,7 +25920,7 @@ function _cwpRender(){
     if(b.can_cancel) h+='<button class="cwp-btn ghost" style="margin-top:8px;" onclick="_cwpCancel(\''+b.order_id+'\')">Annuler cette réservation</button>';
     h+='</div>';
   });
-  h+='<div class="cwp-hint">À l’arrivée du client, demandez-lui son code d’arrivée (dans son application) et validez-le ici : c’est la preuve qu’il est venu.</div></div>';
+  h+='<div class="cwp-hint" style="text-align:center;">À l’arrivée du client, demandez-lui son code d’arrivée (dans son application) et validez-le ici : c’est la preuve qu’il est venu.</div></div>';
   // Horaires
   h+='<div class="cwp-sec"><div class="cw-lbl">Horaires d’ouverture</div><div class="cwp-card">';
   _CW_DAYS.forEach(function(x){
