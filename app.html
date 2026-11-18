@@ -2703,15 +2703,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261118d"></script>
-<script src="app-i18n-es.js?v=20261118d"></script>
-<script src="app-i18n-hi.js?v=20261118d"></script>
-<script src="app-i18n-pt.js?v=20261118d"></script>
-<script src="app-i18n-ja.js?v=20261118d"></script>
-<script src="app-i18n-zh.js?v=20261118d"></script>
-<script src="app-i18n-ar.js?v=20261118d"></script>
-<script src="app-i18n-it.js?v=20261118d"></script>
-<script src="app-i18n-de.js?v=20261118d"></script>
+<script src="app-i18n-en.js?v=20261118e"></script>
+<script src="app-i18n-es.js?v=20261118e"></script>
+<script src="app-i18n-hi.js?v=20261118e"></script>
+<script src="app-i18n-pt.js?v=20261118e"></script>
+<script src="app-i18n-ja.js?v=20261118e"></script>
+<script src="app-i18n-zh.js?v=20261118e"></script>
+<script src="app-i18n-ar.js?v=20261118e"></script>
+<script src="app-i18n-it.js?v=20261118e"></script>
+<script src="app-i18n-de.js?v=20261118e"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3424,7 +3424,7 @@ function _genesisVersionFooter(){
             <input class="ptnr-input" id="ptnr-reg-nom" type="text" placeholder="Nom" autocomplete="family-name">
             <input class="ptnr-input" id="ptnr-reg-email" type="email" placeholder="Email" autocomplete="email">
             <input class="ptnr-input" id="ptnr-reg-tel" type="tel" placeholder="Téléphone" autocomplete="tel">
-            <input class="ptnr-input" id="ptnr-reg-ville" type="text" placeholder="Ville" autocomplete="address-level2">
+            <input class="ptnr-input" id="ptnr-reg-ville" type="text" placeholder="Ville (affichée sur votre fiche) *" autocomplete="address-level2" maxlength="80">
           <select class="ptnr-input" id="ptnr-reg-type" onchange="document.getElementById('ptnr-reg-type-other').style.display = (this.value==='other') ? 'block' : 'none';_ptnrRegRenderSecondary();">
             <option value="">Choisir une catégorie...</option>
             <option value="photographer">Photographe</option>
@@ -16454,6 +16454,12 @@ function _ptnrRegSubmit(){
   }
   // Ville affichée sur la fiche publique : jamais d'e-mail, de téléphone ni de lien (le remplissage
   // automatique du téléphone y a déjà mis une adresse e-mail, visible ensuite par tous les clients).
+  // Ville obligatoire (2026-11-18) : elle s'affiche sur la fiche publique de TOUS les prestataires.
+  if(ville.trim().length < 2){
+    if(errEl){errEl.textContent='Indiquez votre ville : elle s’affiche sur votre fiche publique.';errEl.className='ptnr-login-err on';}
+    var _vEl0=document.getElementById('ptnr-reg-ville'); if(_vEl0){ try{ _vEl0.focus(); }catch(e){} }
+    return;
+  }
   if(/@|https?:|www\./i.test(ville) || ville.replace(/\D/g,'').length >= 6){
     if(errEl){errEl.textContent='Indiquez seulement le nom de votre ville (sans e-mail, numéro de téléphone ni lien).';errEl.className='ptnr-login-err on';}
     var _vEl=document.getElementById('ptnr-reg-ville'); if(_vEl){ try{ _vEl.focus(); }catch(e){} }
@@ -18747,6 +18753,8 @@ function _handleNotifHash(hash, _retryCount){
   }
   // Réservation coworking (confirmation, rappel, fin, annulation) → Mes réservations / planning.
   if(hash === 'client:coworking'){ nav('reservations'); return; }
+  // Ville à compléter (fiche publique) → Profil > Paramètres du profil, directement.
+  if(hash === 'partner:profil-params'){ nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('profil'); setTimeout(function(){ if(typeof _ptnrProfilEditParams==='function') _ptnrProfilEditParams(); }, 300); }, 500); return; }
   if(hash === 'partner:coworking'){ nav('partner'); setTimeout(function(){ if(typeof _cwpOpen==='function') _cwpOpen(); }, 500); return; }
   var clientProposalMatch = hash.match(/^client:proposal:(.+)$/);
   if(clientProposalMatch){
@@ -24029,9 +24037,43 @@ function _ptnrProfilEditParams(){
     +'<input type="text" class="ptnr-input" id="ptnr-identity-nom" placeholder="Nom" value="'+(p.nom||'').replace(/"/g,'&quot;')+'">'
     +'<button class="ptnr-login-btn" id="ptnr-identity-btn" style="margin-top:4px;" onclick="_ptnrSaveIdentity()">Enregistrer</button>'
     +'<div class="ptnr-login-err" id="ptnr-identity-msg" style="margin-top:8px;"></div>'
+    +'</div></div>'
+    // ── Ville (affichée sur la fiche publique, 2026-11-18) ──
+    +'<div class="plus-section">'
+    +'<div class="plus-section-title">VILLE</div>'
+    +'<div class="ptnr-card"'+((p.city||'').trim()?'':' style="border-color:rgba(255,215,0,.55);"')+'>'
+    +((p.city||'').trim()?'':'<div style="font-size:12px;color:#FFD700;font-weight:800;margin-bottom:8px;"><i class="fa-solid fa-circle-exclamation" style="margin-right:5px;"></i><span>À compléter : les clients ne voient pas encore votre ville.</span></div>')
+    +'<input type="text" class="ptnr-input" id="ptnr-city-input" placeholder="Ex. : Montpellier" autocomplete="address-level2" maxlength="80" value="'+(p.city||'').replace(/"/g,'&quot;')+'">'
+    +'<div style="font-size:11px;color:#888;line-height:1.5;margin:-2px 0 8px;">Affichée sur votre fiche publique. Seulement le nom de la ville : pas d’e-mail, de numéro ni de lien.</div>'
+    +'<button class="ptnr-login-btn" id="ptnr-city-btn" style="margin-top:4px;" onclick="_ptnrSaveCity()">Enregistrer</button>'
+    +'<div class="ptnr-login-err" id="ptnr-city-msg" style="margin-top:8px;"></div>'
     +'</div></div></div>';
   var inp = document.getElementById('ptnr-photo-input');
   if(inp) inp.onchange = function(){ _ptnrHandlePhotoUpload(this); };
+}
+
+function _ptnrSaveCity(){
+  var inp = document.getElementById('ptnr-city-input');
+  var msgEl = document.getElementById('ptnr-city-msg');
+  var btnEl = document.getElementById('ptnr-city-btn');
+  var city = inp ? inp.value.trim() : '';
+  function err(t){ if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=t; msgEl.className='ptnr-login-err on'; } }
+  if(city.length < 2){ err('Indiquez le nom de votre ville.'); return; }
+  if(/@|https?:|www\./i.test(city) || city.replace(/\D/g,'').length >= 6){ err('Indiquez seulement le nom de votre ville (sans e-mail, numéro de téléphone ni lien).'); return; }
+  if(btnEl){ btnEl.disabled=true; btnEl.textContent='Enregistrement...'; }
+  if(msgEl){ msgEl.className='ptnr-login-err'; msgEl.textContent=''; }
+  _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {city: city}).then(function(data){
+    if(btnEl){ btnEl.disabled=false; btnEl.textContent='Enregistrer'; }
+    if(data && data.success){
+      _ptnrSession.city = (data.partner && data.partner.city) || city;
+      _ptnrSaveToCache(_ptnrSession);
+      showToast('Ville enregistrée', 'Elle s’affiche maintenant sur votre fiche.', 'success');
+      _ptnrProfilEditParams();
+    } else err((data&&data.error)||'Erreur lors de l’enregistrement');
+  }).catch(function(){
+    if(btnEl){ btnEl.disabled=false; btnEl.textContent='Enregistrer'; }
+    err('Erreur de connexion au serveur');
+  });
 }
 
 function _ptnrProfilEditIdentity(){
