@@ -2703,15 +2703,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261118b"></script>
-<script src="app-i18n-es.js?v=20261118b"></script>
-<script src="app-i18n-hi.js?v=20261118b"></script>
-<script src="app-i18n-pt.js?v=20261118b"></script>
-<script src="app-i18n-ja.js?v=20261118b"></script>
-<script src="app-i18n-zh.js?v=20261118b"></script>
-<script src="app-i18n-ar.js?v=20261118b"></script>
-<script src="app-i18n-it.js?v=20261118b"></script>
-<script src="app-i18n-de.js?v=20261118b"></script>
+<script src="app-i18n-en.js?v=20261118c"></script>
+<script src="app-i18n-es.js?v=20261118c"></script>
+<script src="app-i18n-hi.js?v=20261118c"></script>
+<script src="app-i18n-pt.js?v=20261118c"></script>
+<script src="app-i18n-ja.js?v=20261118c"></script>
+<script src="app-i18n-zh.js?v=20261118c"></script>
+<script src="app-i18n-ar.js?v=20261118c"></script>
+<script src="app-i18n-it.js?v=20261118c"></script>
+<script src="app-i18n-de.js?v=20261118c"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -25469,7 +25469,7 @@ function _updateGreeting(){
 .cwf-none.on{color:#FFD700;text-decoration:none;font-weight:800;}
 .cwf-preview-line{margin-top:8px;font-size:11px;color:#bbb;line-height:1.4;}
 .cwf-preview-line strong{color:#FFD700;font-weight:900;}
-.cwf-apercu{margin-top:8px;width:100%;background:transparent;border:1.5px solid #FFD700;color:#FFD700;border-radius:9px;padding:8px;font-size:11px;font-weight:900;cursor:pointer;font-family:inherit;}
+.cwf-apercu{display:inline-flex;align-items:center;gap:5px;margin-top:6px;background:none;border:none;color:#FFD700;padding:4px 0;font-size:10.5px;font-weight:800;cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:2px;}
 #cwo-preview-ov{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));}
 #cwo-preview-ov.open{display:flex;}
 .cwo-prev-box{width:100%;max-width:380px;max-height:100%;overflow-y:auto;}
@@ -25985,8 +25985,8 @@ function _cwSvcEditorHtml(service, isQuote){
       +'<div class="cwf-preview-line">'+(u ? '<span>Les clients verront :</span> <strong data-i18n-skip>'+(Number(service.price)>0 ? ((Number(service.price)%1?Number(service.price).toFixed(2).replace('.',','):Number(service.price))+' €') : '… €')+'</strong> <strong>'+_cwUnitLabel(service)+'</strong>' : '')+'</div>'
       +'<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;"><span class="ptnr-svc-cw-seats-lbl" style="font-size:10px;color:#aaa;">'+(mode==='private'?'Personnes max':'Postes disponibles')+'</span><input type="number" class="ptnr-svc-cw-seats cwp-in" min="1" max="500" value="'+seats+'" style="width:64px;">'
       +'<span class="ptnr-svc-cw-minh-wrap" style="display:'+(u==='hour'?'inline-flex':'none')+';gap:6px;align-items:center;"><span style="font-size:10px;color:#aaa;">Minimum</span><select class="ptnr-svc-cw-minh cwp-in">'+[1,2,3,4].map(function(n){ return '<option value="'+n+'"'+(n===minH?' selected':'')+'>'+n+' h</option>'; }).join('')+'</select></span></div>'
-      +'<button type="button" class="cwf-apercu" onclick="_cwSvcPreview(this)"><i class="fa-regular fa-eye"></i> <span>Aperçu client</span></button>'
-      +'<div class="cwp-hint">Le prix correspond au format choisi : un poste pour une journée, l’espace entier pour une journée, ou l’espace entier pour 4 h. Créez la même offre dans chaque onglet (Étudiant, Particulier, Entreprise) avec son prix. Vos horaires se règlent dans Profil › Mes disponibilités.</div>'
+      +'<div class="cwp-hint">Créez cette offre dans chaque onglet (Étudiant, Particulier, Entreprise) avec son prix.</div>'
+      +'<button type="button" class="cwf-apercu" onclick="_cwSvcPreview(this)"><i class="fa-regular fa-eye"></i> <span>Voir l’aperçu client</span></button>'
     +'</div></div>';
 }
 function _cwSvcPickFormat(btn){
