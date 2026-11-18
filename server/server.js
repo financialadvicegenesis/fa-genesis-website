@@ -3065,6 +3065,12 @@ app.post('/api/disputes', function(req, res) {
         var isOwner = (identity.role === 'client' && dispatch.client_email && dispatch.client_email.toLowerCase() === identity.email.toLowerCase())
             || (identity.role === 'partner' && dispatch.claimed_by_partner_id === identity.partner.id);
         if (!isOwner) return res.status(403).json({ error: 'Acces non autorise a cette mission' });
+        // Coworking : arrivée validée par l'espace = réservation réglée, plus de signalement client.
+        if (identity.role === 'client') {
+            var _dsCw = dispatch.order_id ? getOrderById(dispatch.order_id) : null;
+            if (_dsCw && _dsCw.coworking && _dsCw.coworking.checked_in_at)
+                return res.status(400).json({ error: 'Votre arrivée a été validée par l\'espace : la réservation est réglée. Pour toute question, contactez l\'assistance GENESIS.', code: 'coworking_checked_in' });
+        }
 
         var fromName = identity.role === 'partner'
             ? ((identity.partner.prenom || '') + ' ' + (identity.partner.nom || '')).trim()
@@ -4105,7 +4111,19 @@ setInterval(checkInstallmentReminders, 24 * 60 * 60 * 1000);
 // dans les 7 jours, les fonds sont automatiquement capturés puis
 // transférés au partenaire sans intervention manuelle.
 // ============================================================
-async function checkAutoPaymentRelease() {
+// Jamais deux passages en parallèle (job horaire + déclenchement à l'arrivée coworking) :
+// sinon une même commande pourrait être capturée deux fois. Un appel pendant un passage
+// en cours relance un passage juste après.
+var _arRunning = null, _arAgain = false;
+function checkAutoPaymentRelease() {
+    if (_arRunning) { _arAgain = true; return _arRunning; }
+    _arRunning = _checkAutoPaymentReleaseRun().catch(function(e) { console.error('[AUTO-RELEASE]', e.message); }).then(function() {
+        _arRunning = null;
+        if (_arAgain) { _arAgain = false; return checkAutoPaymentRelease(); }
+    });
+    return _arRunning;
+}
+async function _checkAutoPaymentReleaseRun() {
     try {
         var now = Date.now();
         // IMPORTANT — anti-écrasement concurrent : ce job tourne en tâche de fond et peut
@@ -4125,15 +4143,18 @@ async function checkAutoPaymentRelease() {
             // Conditions : commande en attente de validation client + délai dépassé + pas encore libéré.
             // pending_client_validation (pas partner_completed) car le délai de sécurité démarre
             // dès qu'un livrable est publié, même sans déclaration explicite "prestation terminée".
-            if (!_o.pending_client_validation) continue;
-            if (!_o.auto_payment_release_at) continue;
-            if (new Date(_o.auto_payment_release_at).getTime() > now) continue;
+            // Coworking : arrivée validée par l'espace = versement immédiat (décision 2026-11-18).
+            var _arCwIn = !!(_o.coworking && _o.coworking.checked_in_at);
+            if (!_o.pending_client_validation && !_arCwIn) continue;
+            if (!_arCwIn && !_o.auto_payment_release_at) continue;
+            if (!_arCwIn && new Date(_o.auto_payment_release_at).getTime() > now) continue;
             if (_o.auto_released === true) continue;           // déjà traité
             // Coworking : problème signalé → argent gelé, l'équipe tranche (code d'arrivée = preuve).
             if (_o.coworking && cwHasOpenDispute(_o.id)) continue;
             // Coworking : jamais de versement avant la fin du créneau + 24 h, même si l'espace a
             // déclaré la mission « livrée » en avance depuis Mes missions (délai de 7 j sinon).
-            if (_o.coworking && now < Date.parse(_o.coworking.end_at) + CW.REPORT_WINDOW_HOURS * 3600000) continue;
+            // Exception : arrivée validée (code saisi) → versement tout de suite.
+            if (_o.coworking && !_arCwIn && now < Date.parse(_o.coworking.end_at) + CW.REPORT_WINDOW_HOURS * 3600000) continue;
             if (_o.balance_paid === true && !_o.coworking) continue;            // déjà payé intégralement (coworking : acompte + solde versés ci-dessous, idempotent)
             if (_o.status === 'cancelled' || _o.status === 'refunded') continue;
             // Ne doit pas encore avoir de payout envoyé
@@ -16688,8 +16709,17 @@ app.post('/api/coworking/partner/bookings/:orderId/checkin', authenticatePartner
             updateOrder(o.id, { coworking: Object.assign({}, c, { checkin_attempts: (c.checkin_attempts || 0) + 1 }) });
             return res.status(400).json({ error: 'Code incorrect. Demandez au client le code affiché dans « Mes réservations ».' });
         }
-        updateOrder(o.id, { coworking: Object.assign({}, c, { checked_in_at: new Date().toISOString() }) });
-        res.json({ success: true });
+        // Décision FA GENESIS 2026-11-18 : arrivée validée par l'espace = prestation réglée.
+        // Paiement encaissé et Wallet de l'espace crédité tout de suite ; plus de fenêtre de
+        // 24 h pour signaler un problème (évite les demandes de remboursement abusives).
+        var _ciAt = new Date().toISOString();
+        updateOrder(o.id, { coworking: Object.assign({}, c, { checked_in_at: _ciAt }),
+            partner_completed: true, partner_completed_at: _ciAt, pending_client_validation: true, auto_payment_release_at: _ciAt });
+        var _ciDisps = loadDispatches();
+        var _ciIdx = _ciDisps.findIndex(function(d) { return d.order_id === o.id && d.status !== 'cancelled'; });
+        if (_ciIdx !== -1) { _ciDisps[_ciIdx].mission_status = 'delivered'; _ciDisps[_ciIdx].delivered_at = _ciAt; saveDispatches(_ciDisps); }
+        setTimeout(function() { checkAutoPaymentRelease().catch(function(e) { console.error('[COWORKING] versement après arrivée:', e.message); }); }, 500);
+        res.json({ success: true, released: true });
     } catch (e) { console.error('[COWORKING] checkin:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
@@ -16910,7 +16940,7 @@ app.get('/api/coworking/bookings/mine', function(req, res) {
                 payment_mode: o.payment_tier === 'custom' ? 'deposit_balance' : (o.payment_tier === 'partner_installments' ? 'installments' : 'single'),
                 balance_remaining: cancelled ? 0 : Math.round(((o.installments || []).slice(1).reduce(function(sm, it) { return sm + ((it.paid || o.balance_paid || o.balance_authorized) ? 0 : (parseFloat(it.amount) || 0)); }, 0)) * 100) / 100,
                 can_cancel: !cancelled && !!c.free_cancel_until && now < Date.parse(c.free_cancel_until),
-                can_report: !cancelled && !dispute && !!disp && now >= start && now <= end + CW.REPORT_WINDOW_HOURS * 3600000,
+                can_report: !cancelled && !dispute && !!disp && !c.checked_in_at && now >= start && now <= end + CW.REPORT_WINDOW_HOURS * 3600000,
                 dispute_id: dispute ? dispute.id : null
             };
         }).sort(function(a, b) { return (b.date + b.start) < (a.date + a.start) ? -1 : 1; });
@@ -16970,13 +17000,15 @@ function checkCoworkingBookings() {
                     coworking: Object.assign({}, c, { ended: true, ended_at: new Date().toISOString() }),
                     partner_completed: true, partner_completed_at: new Date().toISOString(),
                     pending_client_validation: true,
-                    auto_payment_release_at: new Date(end + CW.REPORT_WINDOW_HOURS * 3600000).toISOString()
+                    auto_payment_release_at: c.checked_in_at ? (o.auto_payment_release_at || c.checked_in_at) : new Date(end + CW.REPORT_WINDOW_HOURS * 3600000).toISOString()
                 });
                 var disps = loadDispatches();
                 var dIdx = disps.findIndex(function(d) { return d.order_id === o.id && d.status !== 'cancelled'; });
                 if (dIdx !== -1) { disps[dIdx].mission_status = 'delivered'; disps[dIdx].delivered_at = new Date().toISOString(); saveDispatches(disps); }
                 if (email) notifyUser(email, 'client', 'coworking_ended', 'Créneau terminé',
-                    'Votre créneau « ' + c.service_label + ' » est terminé. Un problème ? Vous avez 24 h pour le signaler depuis « Mes réservations ».', '/app.html#client:coworking');
+                    c.checked_in_at
+                        ? 'Votre créneau « ' + c.service_label + ' » est terminé. Merci d\'avoir réservé avec GENESIS !'
+                        : 'Votre créneau « ' + c.service_label + ' » est terminé. Un problème ? Vous avez 24 h pour le signaler depuis « Mes réservations ».', '/app.html#client:coworking');
             }
         });
     } catch (e) { console.error('[COWORKING] job:', e.message); }
@@ -19297,7 +19329,7 @@ function buildPartnerSpaceGuide() {
     g.push('MON PORTFOLIO : jusqu\'a 5 medias (photos ou videos MP4/MOV de 95 Mo maximum, environ 1 minute en 1080p, Wi-Fi conseille), verifies automatiquement avant publication ; aucun lien externe (YouTube, Instagram...). Toucher "Enregistrer le portfolio".');
     g.push('FACTURES ET CONTRATS : voir DOCUMENTS ci-dessus ; tout est dans Profil > Mes livrables.');
     if (COWORKING_BOOKING_ENABLED) {
-        g.push('ESPACES COWORKING (prestataires de categorie Espace Coworking uniquement) : dans Mes tarifs & prestations, chaque espace peut etre en "Reservation par creneau" avec un format : "Par poste / journee" (prix par personne, open space), "Par journee" (espace entier : bureau, salle) ou "Format 4h" (espace entier : salle, evenement), plus le nombre de postes ou de personnes max. On cree la meme offre dans chaque onglet (Etudiant, Particulier, Entreprise) avec son propre prix. Cote client, les offres s\'affichent en grandes cartes photo a faire defiler (titre, prix, format, avantages, bouton RESERVER) : soigner la photo et les "details" (ex. cafe offert, Wi-Fi inclus). A la reservation, le client choisit son heure d\'arrivee ET son heure de depart : en "Par poste / journee" et "Par journee", librement dans les horaires d\'ouverture, au prix d\'une journee (la place n\'est occupee que sur ces heures, le reste redevient reservable) ; en "Format 4h", depart 4 h, 8 h... apres l\'arrivee, prix multiplie par le nombre de tranches de 4 h (ex. 2 x format 4h). Seul le "Format 4h" (evenement / soiree) peut se payer comme les autres prestations : 1 fois, Acompte + reste (acompte a la reservation, reste depuis le Wallet du client) ou Plusieurs fois (mensualites) ; les autres formats se paient en 1 fois. Profil > Mes disponibilites : horaires par jour, fermetures et horaires speciaux, adresse et instructions d\'acces (visibles par le client seulement apres paiement, sans telephone ni lien), "Bloquer un creneau", planning des reservations. A l\'arrivee, le client donne son code d\'arrivee a 4 chiffres : le saisir puis "Valider l\'arrivee" (preuve de presence ; sans code valide, le client ne peut pas laisser d\'avis). Le client peut annuler gratuitement jusqu\'a 24 h avant ; ensuite non. A la fin du creneau, la reservation se termine automatiquement et le paiement est verse 24 h apres, sauf probleme signale. Si l\'espace annule, le client est rembourse integralement.');
+        g.push('ESPACES COWORKING (prestataires de categorie Espace Coworking uniquement) : dans Mes tarifs & prestations, chaque espace peut etre en "Reservation par creneau" avec un format : "Par poste / journee" (prix par personne, open space), "Par journee" (espace entier : bureau, salle) ou "Format 4h" (espace entier : salle, evenement), plus le nombre de postes ou de personnes max. On cree la meme offre dans chaque onglet (Etudiant, Particulier, Entreprise) avec son propre prix. Cote client, les offres s\'affichent en grandes cartes photo a faire defiler (titre, prix, format, avantages, bouton RESERVER) : soigner la photo et les "details" (ex. cafe offert, Wi-Fi inclus). A la reservation, le client choisit son heure d\'arrivee ET son heure de depart : en "Par poste / journee" et "Par journee", librement dans les horaires d\'ouverture, au prix d\'une journee (la place n\'est occupee que sur ces heures, le reste redevient reservable) ; en "Format 4h", depart 4 h, 8 h... apres l\'arrivee, prix multiplie par le nombre de tranches de 4 h (ex. 2 x format 4h). Seul le "Format 4h" (evenement / soiree) peut se payer comme les autres prestations : 1 fois, Acompte + reste (acompte a la reservation, reste depuis le Wallet du client) ou Plusieurs fois (mensualites) ; les autres formats se paient en 1 fois. Profil > Mes disponibilites : horaires par jour, fermetures et horaires speciaux, adresse et instructions d\'acces (visibles par le client seulement apres paiement, sans telephone ni lien), "Bloquer un creneau", planning des reservations. A l\'arrivee, le client donne son code d\'arrivee a 4 chiffres : le saisir puis "Valider l\'arrivee" (preuve de presence ; sans code valide, le client ne peut pas laisser d\'avis). Le client peut annuler gratuitement jusqu\'a 24 h avant ; ensuite non. Des que l\'espace valide le code d\'arrivee du client, le paiement est encaisse et verse sur son Wallet (moins 5 %), et le client ne peut plus signaler de probleme. Sans code valide, la reservation se termine a la fin du creneau et le paiement est verse 24 h apres, sauf probleme signale. Si l\'espace annule, le client est rembourse integralement.');
     }
     return g.join('\n');
 }

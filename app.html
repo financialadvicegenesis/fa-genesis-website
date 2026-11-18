@@ -2711,15 +2711,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261118h"></script>
-<script src="app-i18n-es.js?v=20261118h"></script>
-<script src="app-i18n-hi.js?v=20261118h"></script>
-<script src="app-i18n-pt.js?v=20261118h"></script>
-<script src="app-i18n-ja.js?v=20261118h"></script>
-<script src="app-i18n-zh.js?v=20261118h"></script>
-<script src="app-i18n-ar.js?v=20261118h"></script>
-<script src="app-i18n-it.js?v=20261118h"></script>
-<script src="app-i18n-de.js?v=20261118h"></script>
+<script src="app-i18n-en.js?v=20261118i"></script>
+<script src="app-i18n-es.js?v=20261118i"></script>
+<script src="app-i18n-hi.js?v=20261118i"></script>
+<script src="app-i18n-pt.js?v=20261118i"></script>
+<script src="app-i18n-ja.js?v=20261118i"></script>
+<script src="app-i18n-zh.js?v=20261118i"></script>
+<script src="app-i18n-ar.js?v=20261118i"></script>
+<script src="app-i18n-it.js?v=20261118i"></script>
+<script src="app-i18n-de.js?v=20261118i"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -25913,7 +25913,7 @@ function _cwBookingCard(b){
       ? '<div class="cw-line"><i class="fa-solid fa-rotate-left"></i><span><span>Annulation gratuite jusqu’au</span> <span data-i18n-skip>'+_escHtml(_cwDateTime(b.free_cancel_until))+'</span></span></div>'
       : '<div class="cw-line"><i class="fa-solid fa-circle-info"></i><span>Annulation impossible moins de 24 h avant le créneau.</span></div>';
   }
-  if(b.status==='ended') h+='<div class="cw-line"><i class="fa-solid fa-circle-info"></i><span>Un problème pendant votre créneau ? Vous avez 24 h pour le signaler.</span></div>';
+  if(b.status==='ended' && !b.checked_in) h+='<div class="cw-line"><i class="fa-solid fa-circle-info"></i><span>Un problème pendant votre créneau ? Vous avez 24 h pour le signaler.</span></div>';
   var acts='';
   if(b.can_cancel) acts+='<button class="resa-action-btn rab-ghost" style="color:#f87171;border-color:rgba(248,113,113,.35);" onclick="_cwCancelBooking(\''+b.order_id+'\')"><i class="fa-solid fa-ban"></i> <span>Annuler la réservation</span></button>';
   if(b.can_report && b.dispatch_id) acts+='<button class="resa-action-btn rab-ghost" onclick="_cwReportProblem(\''+b.dispatch_id+'\')"><i class="fa-solid fa-triangle-exclamation"></i> <span>Signaler un problème</span></button>';
@@ -25988,7 +25988,7 @@ function _cwpRender(){
     if(b.can_cancel) h+='<button class="cwp-btn ghost" style="margin-top:8px;" onclick="_cwpCancel(\''+b.order_id+'\')">Annuler cette réservation</button>';
     h+='</div>';
   });
-  h+='<div class="cwp-hint" style="text-align:center;">À l’arrivée du client, demandez-lui son code d’arrivée (dans son application) et validez-le ici : c’est la preuve qu’il est venu.</div></div>';
+  h+='<div class="cwp-hint" style="text-align:center;">À l’arrivée du client, demandez-lui son code d’arrivée (dans son application) et validez-le sur sa réservation : le paiement est alors versé sur votre Wallet.</div></div>';
   // Horaires
   h+='<div class="cwp-sec"><div class="cw-lbl">Horaires d’ouverture</div><div class="cwp-card">';
   _CW_DAYS.forEach(function(x){
@@ -26114,7 +26114,7 @@ function _cwpCheckin(orderId){
   var inp=document.getElementById('cwp-code-'+orderId); var code=inp?inp.value.trim():'';
   if(!/^\d{4}$/.test(code)){ showToast('Code incomplet','Le code d’arrivée a 4 chiffres.','error'); return; }
   _ptnrFetch('/api/coworking/partner/bookings/'+encodeURIComponent(orderId)+'/checkin','POST',{code:code}).then(function(d){
-    if(d&&d.success){ showToast('Arrivée confirmée','Bon travail à votre client !','success'); _cwpLoad(); }
+    if(d&&d.success){ showToast('Arrivée confirmée','Le paiement est versé sur votre Wallet.','success'); _cwpLoad(); }
     else showToast('Code refusé',(d&&d.error)||'Vérifiez le code.','error');
   }).catch(function(){ showToast('Erreur de connexion','Réessayez.','error'); });
 }
