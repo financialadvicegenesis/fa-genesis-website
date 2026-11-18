@@ -2703,15 +2703,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261117a"></script>
-<script src="app-i18n-es.js?v=20261117a"></script>
-<script src="app-i18n-hi.js?v=20261117a"></script>
-<script src="app-i18n-pt.js?v=20261117a"></script>
-<script src="app-i18n-ja.js?v=20261117a"></script>
-<script src="app-i18n-zh.js?v=20261117a"></script>
-<script src="app-i18n-ar.js?v=20261117a"></script>
-<script src="app-i18n-it.js?v=20261117a"></script>
-<script src="app-i18n-de.js?v=20261117a"></script>
+<script src="app-i18n-en.js?v=20261118a"></script>
+<script src="app-i18n-es.js?v=20261118a"></script>
+<script src="app-i18n-hi.js?v=20261118a"></script>
+<script src="app-i18n-pt.js?v=20261118a"></script>
+<script src="app-i18n-ja.js?v=20261118a"></script>
+<script src="app-i18n-zh.js?v=20261118a"></script>
+<script src="app-i18n-ar.js?v=20261118a"></script>
+<script src="app-i18n-it.js?v=20261118a"></script>
+<script src="app-i18n-de.js?v=20261118a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -7207,6 +7207,10 @@ function _ptnrRenderServiceCards(services, audience, p){
 function _ptnrRenderProfileSvcCards(services, audience, p){
   var filtered = services.filter(function(s){ return (s.audience||'particulier')===audience; });
   if(!filtered.length) return '<div class="p-dir-review-empty">Aucune prestation dans cette catégorie.</div>';
+  // Espace coworking : grandes cartes photo à faire défiler (style de l'ancienne page offres.html).
+  if(p && p.partner_type === 'coworking' && typeof _cwOfferCardHtml === 'function'){
+    return '<div class="cwo-row">' + filtered.map(function(s){ return _cwOfferCardHtml(s, p); }).join('') + '</div>';
+  }
   // Prestataire à plusieurs métiers : prestations du métier parcouru en premier (ex. arrivé
   // depuis « Marketeurs »), et métier indiqué sur chaque carte.
   var _multi = partnerTypesOf(p).length > 1;
@@ -24916,7 +24920,7 @@ function _ptnrSelectPricingMode(btn, mode){
   // Réservation par créneau : prix fixe uniquement.
   var cwWrap = card.querySelector('.ptnr-svc-cw');
   if(cwWrap) cwWrap.style.display = mode==='quote' ? 'none' : 'block';
-  var cwUnit = card.querySelector('.ptnr-svc-cw-unit');
+  var cwUnit = card.querySelector('.ptnr-svc-cw-format');
   var payWrap = card.querySelector('.ptnr-svc-paymode-wrap');
   if(payWrap) payWrap.style.display = (mode!=='quote' && cwUnit && cwUnit.value) ? 'none' : 'block';
   if(mode==='quote'){
@@ -25434,6 +25438,22 @@ function _updateGreeting(){
 .cw-err.on{display:block;}
 .cw-empty{font-size:12px;color:#777;padding:10px 0;}
 .cw-unit{font-size:.8em;font-weight:700;color:#999;}
+/* Cartes d'offres coworking (fiche de l'espace côté client), style de l'ancienne page offres.html */
+.cwo-row{grid-column:1/-1;display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:2px 0 8px;scrollbar-width:none;}
+.cwo-row::-webkit-scrollbar{display:none;}
+.cwo-card{flex:0 0 80%;max-width:320px;min-height:430px;scroll-snap-align:start;box-sizing:border-box;display:flex;flex-direction:column;padding:26px 22px 24px;color:#fff;background:#121212 center/cover no-repeat;border:1px solid #1f1f1f;cursor:pointer;position:relative;}
+.cwo-card.no-img{background-image:linear-gradient(160deg,#1c1607 0%,#0b0b0b 70%);}
+.cwo-row .cwo-card:only-child{flex-basis:100%;max-width:none;}
+.cwo-title{font-family:'Unbounded',sans-serif;font-weight:900;font-size:21px;line-height:1.15;text-transform:uppercase;letter-spacing:.3px;text-shadow:0 2px 10px rgba(0,0,0,.55);overflow-wrap:anywhere;}
+.cwo-price{font-family:'Unbounded',sans-serif;font-weight:900;font-style:italic;font-size:34px;line-height:1;margin-top:22px;text-shadow:0 2px 10px rgba(0,0,0,.55);font-variant-numeric:tabular-nums;}
+.cwo-old{font-size:12px;color:#ddd;text-decoration:line-through;margin-top:4px;}
+.cwo-unit{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:8px;text-shadow:0 1px 6px rgba(0,0,0,.6);}
+.cwo-sep{height:1px;background:rgba(255,255,255,.75);margin:18px 0 16px;}
+.cwo-feat{display:flex;gap:7px;align-items:flex-start;font-size:12.5px;font-weight:800;text-transform:uppercase;line-height:1.35;margin-bottom:9px;text-shadow:0 1px 6px rgba(0,0,0,.7);}
+.cwo-check{flex-shrink:0;}
+.cwo-btn{margin-top:auto;width:100%;background:#151515;color:#fff;border:3px solid #fff;padding:16px 10px;font-family:'Unbounded',sans-serif;font-weight:900;font-style:italic;font-size:13px;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;}
+.cwo-feat + .cwo-btn,.cwo-sep + .cwo-btn{margin-top:14px;}
+.cwo-btn:active{background:#FFD700;color:#000;border-color:#FFD700;}
 .cw-code{margin-top:10px;background:rgba(255,215,0,.07);border:1px dashed rgba(255,215,0,.45);border-radius:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .cw-code .k{font-size:9px;font-weight:900;color:#FFD700;letter-spacing:.6px;text-transform:uppercase;}
 .cw-code .h{font-size:10px;color:#888;margin-top:2px;}
@@ -25469,9 +25489,42 @@ var _CW_UNIT_TXT = {hour:'/ heure', half_day:'/ demi-journée', day:'/ journée'
 var _cwb = null;            // état de la feuille de réservation client
 var _cwbPayingOrderId = null; // réservation en cours de paiement (écran de succès adapté)
 function _cwIsSlot(s){ return !!(s && s.cw_unit && s.pricing_type !== 'quote'); }
+// Formats de prix coworking (demande FA GENESIS 2026-11-18, comme l'ancienne page offres.html) :
+// « / poste / journée » (prix par personne), « par journée » (espace entier), « format 4h ».
+function _cwUnitLabel(s){
+  if(!s||!s.cw_unit) return '';
+  var priv = s.cw_mode==='private';
+  if(s.cw_unit==='day') return priv ? 'par journée' : '/ poste / journée';
+  if(s.cw_unit==='half_day') return priv ? 'format 4h' : 'format 4h / poste';
+  return priv ? 'par heure' : '/ poste / heure';
+}
 function _cwPriceSuffixHtml(s){
   if(!_cwIsSlot(s)) return '';
-  return ' <span class="cw-unit">'+_CW_UNIT_TXT[s.cw_unit]+'</span>'+(s.cw_mode==='private'?'':' <span class="cw-unit">par personne</span>');
+  return ' <span class="cw-unit">'+_cwUnitLabel(s)+'</span>';
+}
+// Carte d'offre coworking côté client (photo en fond, titre, prix, format, avantages, RÉSERVER).
+function _cwOfferCardHtml(s, p){
+  var isQuote = s.pricing_type === 'quote';
+  var slot = _cwIsSlot(s);
+  var bg = s.image ? 'background-image:linear-gradient(180deg,rgba(0,0,0,.30) 0%,rgba(0,0,0,.55) 45%,rgba(0,0,0,.80) 100%),url(\''+String(s.image).replace(/'/g,'%27')+'\');' : '';
+  var price = isQuote
+    ? '<div class="cwo-price">'+'<span>Sur devis</span></div>'
+    : '<div class="cwo-price"><span data-i18n-skip>'+(Number(s.price)%1 ? Number(s.price).toFixed(2).replace('.',',') : Number(s.price))+' €</span></div>'
+      + (s.price_before_discount ? '<div class="cwo-old" data-i18n-skip>'+Number(s.price_before_discount).toFixed(2).replace('.',',').replace(',00','')+' €</div>' : '');
+  var unit = slot ? '<div class="cwo-unit">'+_cwUnitLabel(s)+'</div>' : '';
+  var feats = (s.features||[]).slice(0,5).map(function(f){ return '<div class="cwo-feat"><span class="cwo-check">✓</span><span data-i18n-skip>'+_escHtml(f)+'</span></div>'; }).join('');
+  var action = isQuote
+    ? '<button class="cwo-btn" onclick="event.stopPropagation();openPartnerRequest(\''+p.id+'\',\''+s.id+'\')">Demander un devis</button>'
+    : slot
+    ? '<button class="cwo-btn" onclick="event.stopPropagation();openCoworkingBooking(\''+p.id+'\',\''+s.id+'\')">Réserver</button>'
+    : '<button class="cwo-btn" onclick="event.stopPropagation();openServiceDetail(\''+p.id+'\',\''+s.id+'\')">Voir</button>';
+  return '<div class="cwo-card'+(s.image?'':' no-img')+'" style="'+bg+'" onclick="openServiceDetail(\''+p.id+'\',\''+s.id+'\')">'
+    + '<div class="cwo-title" data-i18n-skip>'+_escHtml(s.label)+'</div>'
+    + price + unit
+    + '<div class="cwo-sep"></div>'
+    + feats
+    + action
+    + '</div>';
 }
 function _cwMin(t){ var p=String(t||'').split(':'); return parseInt(p[0],10)*60+parseInt(p[1]||'0',10); }
 function _cwHm(m){ var h=Math.floor(m/60), mi=m%60; return (h<10?'0':'')+h+':'+(mi<10?'0':'')+mi; }
@@ -25888,36 +25941,40 @@ function _cwpCancel(orderId){
 // ── PRESTATAIRE : champs « réservation par créneau » dans Mes tarifs & prestations ──────────
 function _cwSvcEditorHtml(service, isQuote){
   if(!(_ptnrSession && _ptnrSession.partner_type==='coworking')) return '';
+  // Formats demandés par FA GENESIS (2026-11-18), comme l'ancienne page offres.html :
+  // « par poste / journée », « par journée » (espace entier), « format 4h ». Une valeur = unité:mode.
   var u=service.cw_unit||'', seats=service.cw_seats||1, mode=service.cw_mode||'per_person', minH=service.cw_min_hours||1;
+  var cur = u ? (u+':'+mode) : '';
+  var opts = [['', 'Pas de réservation par créneau'], ['day:per_person', 'Par poste / journée (prix par personne : open space)'], ['day:private', 'Par journée (espace entier : bureau, salle)'], ['half_day:private', 'Format 4h (espace entier : salle, événement)']];
+  // Anciens formats (avant le 2026-11-18) : conservés tels quels s'ils sont déjà utilisés.
+  if(cur && !opts.some(function(o){ return o[0]===cur; })){
+    opts.push([cur, cur==='half_day:per_person' ? 'Format 4h / poste (ancien format)' : (mode==='private' ? 'Par heure, espace entier (ancien format)' : 'Par poste / heure (ancien format)')]);
+  }
   return '<div class="ptnr-svc-cw" style="display:'+(isQuote?'none':'block')+';margin-top:10px;background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.3);border-radius:9px;padding:8px 9px;">'
     +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#60a5fa;letter-spacing:.4px;margin-bottom:6px;"><i class="fa-solid fa-calendar-check" style="margin-right:3px;"></i>Réservation par créneau</div>'
-    +'<select class="ptnr-svc-cw-unit cwp-in" style="width:100%;font-size:11px;" onchange="_cwSvcUnitChanged(this)">'
-      +'<option value=""'+(u===''?' selected':'')+'>Pas de réservation par créneau</option>'
-      +'<option value="hour"'+(u==='hour'?' selected':'')+'>À l’heure</option>'
-      +'<option value="half_day"'+(u==='half_day'?' selected':'')+'>À la demi-journée (4 h)</option>'
-      +'<option value="day"'+(u==='day'?' selected':'')+'>À la journée</option>'
+    +'<select class="ptnr-svc-cw-format cwp-in" style="width:100%;font-size:11px;" onchange="_cwSvcUnitChanged(this)">'
+      + opts.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===cur?' selected':'')+'>'+o[1]+'</option>'; }).join('')
     +'</select>'
     +'<div class="ptnr-svc-cw-more" style="display:'+(u?'block':'none')+';">'
-      +'<select class="ptnr-svc-cw-mode cwp-in" style="width:100%;font-size:11px;margin-top:6px;">'
-        +'<option value="per_person"'+(mode==='per_person'?' selected':'')+'>Prix par personne (open space, poste)</option>'
-        +'<option value="private"'+(mode==='private'?' selected':'')+'>Prix pour l’espace entier (bureau, salle)</option>'
-      +'</select>'
-      +'<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;"><span style="font-size:10px;color:#aaa;">Places</span><input type="number" class="ptnr-svc-cw-seats cwp-in" min="1" max="500" value="'+seats+'" style="width:64px;">'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;"><span class="ptnr-svc-cw-seats-lbl" style="font-size:10px;color:#aaa;">'+(mode==='private'?'Personnes max':'Postes disponibles')+'</span><input type="number" class="ptnr-svc-cw-seats cwp-in" min="1" max="500" value="'+seats+'" style="width:64px;">'
       +'<span class="ptnr-svc-cw-minh-wrap" style="display:'+(u==='hour'?'inline-flex':'none')+';gap:6px;align-items:center;"><span style="font-size:10px;color:#aaa;">Minimum</span><select class="ptnr-svc-cw-minh cwp-in">'+[1,2,3,4].map(function(n){ return '<option value="'+n+'"'+(n===minH?' selected':'')+'>'+n+' h</option>'; }).join('')+'</select></span></div>'
-      +'<div class="cwp-hint">Le prix indiqué est celui d’une unité (1 heure, 1 demi-journée ou 1 journée). Paiement en une fois, sécurisé par GENESIS SAFE™. Vos horaires se règlent dans Profil › Mes disponibilités.</div>'
+      +'<div class="cwp-hint">Le prix indiqué au-dessus correspond au format choisi : un poste pour une journée, l’espace entier pour une journée, ou l’espace entier pour 4 h. Créez la même offre dans chaque onglet (Étudiant, Particulier, Entreprise) avec son prix. Paiement en une fois, sécurisé par GENESIS SAFE™. Vos horaires se règlent dans Profil › Mes disponibilités.</div>'
     +'</div></div>';
 }
 function _cwSvcUnitChanged(sel){
   var card=sel.closest('.ptnr-svc-card'); if(!card) return;
-  var more=card.querySelector('.ptnr-svc-cw-more'); if(more) more.style.display=sel.value?'block':'none';
-  var mh=card.querySelector('.ptnr-svc-cw-minh-wrap'); if(mh) mh.style.display=sel.value==='hour'?'inline-flex':'none';
-  var pm=card.querySelector('.ptnr-svc-paymode-wrap'); if(pm) pm.style.display=sel.value?'none':'block';
+  var parts=(sel.value||'').split(':'), unit=parts[0]||'', mode=parts[1]||'per_person';
+  var more=card.querySelector('.ptnr-svc-cw-more'); if(more) more.style.display=unit?'block':'none';
+  var mh=card.querySelector('.ptnr-svc-cw-minh-wrap'); if(mh) mh.style.display=unit==='hour'?'inline-flex':'none';
+  var lbl=card.querySelector('.ptnr-svc-cw-seats-lbl'); if(lbl) lbl.textContent = mode==='private' ? 'Personnes max' : 'Postes disponibles';
+  var pm=card.querySelector('.ptnr-svc-paymode-wrap'); if(pm) pm.style.display=unit?'none':'block';
 }
 function _cwSvcCollect(card){
-  var u=card.querySelector('.ptnr-svc-cw-unit'); if(!u||!u.value) return {cw_unit:null};
+  var f=card.querySelector('.ptnr-svc-cw-format'); if(!f||!f.value) return {cw_unit:null};
+  var parts=f.value.split(':');
   return {
-    cw_unit:u.value,
-    cw_mode:(card.querySelector('.ptnr-svc-cw-mode')||{}).value||'per_person',
+    cw_unit:parts[0],
+    cw_mode:parts[1]||'per_person',
     cw_seats:parseInt((card.querySelector('.ptnr-svc-cw-seats')||{}).value,10)||1,
     cw_min_hours:parseInt((card.querySelector('.ptnr-svc-cw-minh')||{}).value,10)||1
   };
