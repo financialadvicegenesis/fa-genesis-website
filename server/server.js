@@ -12523,7 +12523,7 @@ app.get('/api/users/favorites', (req, res) => {
                 nom: p.nom,
                 partner_type: p.partner_type,
                 photo: p.photo || null,
-                city: p.city || '',
+                city: partnerPublicCity(p.city),
                 fromPrice: getPartnerFromPrice(p),
                 rating: getPartnerRatingSummary(p.id),
                 badge: getPartnerBadge(p),
@@ -15995,6 +15995,7 @@ app.post('/api/partner/auth/register', async (req, res) => {
         if (PARTNER_TYPE_VALUES.indexOf(partner_type) === -1) {
             return res.status(400).json({ error: 'partner_type invalide. Valeurs acceptees: ' + PARTNER_TYPE_VALUES.join(', ') });
         }
+        if (cityHasContact(city)) return res.status(400).json({ error: CITY_CONTACT_ERROR, code: 'city_contact', field: 'city' });
         const existing = getPartnerByEmail(email);
         if (existing) {
             return res.status(409).json({ error: 'Un compte existe deja avec cet email' });
@@ -16257,6 +16258,8 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         if (photo) partners[index].photo = photo;
         if (logo) partners[index].logo = logo;
         if (typeof bio === 'string') partners[index].bio = bio.trim();
+        if (typeof city === 'string' && cityHasContact(city)) return res.status(400).json({ error: CITY_CONTACT_ERROR, code: 'city_contact', field: 'city' });
+        if (typeof interventionZone === 'string' && cityHasContact(interventionZone)) return res.status(400).json({ error: CITY_CONTACT_ERROR, code: 'city_contact', field: 'interventionZone' });
         if (typeof city === 'string') partners[index].city = city.trim();
         if (typeof country === 'string' && country.length === 2) partners[index].country = country.toUpperCase();
         if (typeof interventionZone === 'string') partners[index].interventionZone = interventionZone.trim();
@@ -17052,6 +17055,35 @@ var VIDEO_DOC_INVALID_MSG = 'Format non accepté : envoyez une vidéo (MP4, MOV 
 // paiements et les remboursements gardent leurs contrôles sur accountStatus : ne PAS les
 // remplacer par cette fonction (un prestataire masqué n'est pas « inactif » : rembourser ses
 // clients en cours parce qu'il est masqué serait une erreur).
+// VILLE D'UN PRESTATAIRE (2026-11-18) : affichée sur sa fiche publique. Une prestataire avait
+// son adresse e-mail dans « Ville » (saisie ou remplissage automatique du téléphone) : elle
+// s'affichait aux clients, en contournement de la règle « aucune coordonnée avant contrat ».
+// Désormais : refusée à la saisie, jamais renvoyée aux clients, nettoyée au démarrage.
+var CITY_CONTACT_ERROR = 'Indiquez seulement le nom de votre ville (sans e-mail, numéro de téléphone ni lien).';
+function cityHasContact(c) {
+    var v = String(c || '');
+    if (!v.trim()) return false;
+    return /@|https?:|www\.|\.(com|fr|net|org|io)\b/i.test(v) || v.replace(/\D/g, '').length >= 6 || !!LinkGuard.check(v);
+}
+function partnerPublicCity(c) { return cityHasContact(c) ? '' : String(c || '').trim(); }
+function cleanupPartnerContactCities() {
+    var partners = loadPartners(), cleaned = [];
+    partners.forEach(function(p) {
+        ['city', 'interventionZone'].forEach(function(k) {
+            if (p && cityHasContact(p[k])) { p[k] = ''; p.city_cleared_at = new Date().toISOString(); if (cleaned.indexOf(p) === -1) cleaned.push(p); }
+        });
+    });
+    if (!cleaned.length) return 0;
+    savePartners(partners);
+    cleaned.forEach(function(p) {
+        if (p.email) notifyUser(p.email, 'partner', 'profile_city', 'Ville à compléter',
+            'La ville de votre profil contenait une adresse e-mail ou un numéro : elle a été retirée de votre fiche publique. Indiquez le nom de votre ville dans Profil › Paramètres du profil.',
+            '#partner:profil');
+    });
+    console.log('[PROFIL] Villes contenant des coordonnées retirées : ' + cleaned.length + ' prestataire(s)');
+    return cleaned.length;
+}
+
 function partnerIsListed(p) {
     return !!p && p.accountStatus === 'active' && !PartnerVerif.isHiddenForVerification(p);
 }
@@ -20644,7 +20676,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 partner_types: partnerTypesOf(partner),
                 photo: partner.photo || null,
                 bio: publicText(partner.bio || ''),
-                city: partner.city || '',
+                city: partnerPublicCity(partner.city),
                 country: partner.country || '',
                 serviceMode: partner.serviceMode || 'onsite',
                 // Liens réseaux sociaux / site perso : plus affichés aux clients (restent en base).
@@ -20738,7 +20770,7 @@ function partnerDirectoryShape(p, allPromos, matchedType) {
         // et le prix « à partir de » de ses prestations dans ce métier.
         matched_type: (matchedType && partnerListedInType(p, matchedType)) ? matchedType : null,
         photo: p.photo || null,
-        city: p.city || '',
+        city: partnerPublicCity(p.city),
         country: p.country || '',
         serviceMode: p.serviceMode || 'onsite',
         lat: coords ? coords[0] : null,
@@ -21971,7 +22003,7 @@ app.get('/api/my-requests', function(req, res) {
                 // Infos partenaire pour la carte de suivi et le widget accueil
                 out.partner_photo = partner ? (partner.photo || null) : null;
                 out.partner_type = partner ? (partner.partner_type || null) : null;
-                out.partner_city = partner ? (partner.city || null) : null;
+                out.partner_city = partner ? (partnerPublicCity(partner.city) || null) : null;
                 out.partner_bio = partner ? (publicText(partner.bio || '') || null) : null;
                 out.partner_rating = partner ? getPartnerRatingSummary(partner.id) : null;
                 out.partner_badge = partner ? getPartnerBadge(partner) : null;
@@ -22695,7 +22727,7 @@ function quoteTransferClientView(requests, origin) {
                 partner_id: c.partner_id,
                 partner_name: _partnerDisplayName(p),
                 partner_photo: p ? (p.photo || null) : null,
-                partner_city: p ? (p.city || '') : '',
+                partner_city: p ? partnerPublicCity(p.city) : '',
                 partner_types: p ? partnerTypesOf(p) : [],
                 partner_type: p ? (p.partner_type || null) : null,
                 partner_type_other: p ? (p.partner_type_other || '') : '',
@@ -27970,6 +28002,7 @@ var httpServer = app.listen(PORT, async () => {
     try { runStudentRenewalSweep(); } catch (e) { console.error('[STUDENTS] Passage année scolaire:', e.message); }
     try { anonymizeOrphanReviews(); } catch (e) { console.error('[PURGE] Avis orphelins:', e.message); }
     try { backfillReferralRewards(); } catch (e) { console.error('[REFERRAL] Rattrapage:', e.message); }
+    try { cleanupPartnerContactCities(); } catch (e) { console.error('[PROFIL] Nettoyage des villes:', e.message); }
 
     // Comptes de test internes : uniquement en dehors de la production
     if (process.env.NODE_ENV !== 'production') {

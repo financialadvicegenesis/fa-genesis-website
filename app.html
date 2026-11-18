@@ -2703,15 +2703,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261118c"></script>
-<script src="app-i18n-es.js?v=20261118c"></script>
-<script src="app-i18n-hi.js?v=20261118c"></script>
-<script src="app-i18n-pt.js?v=20261118c"></script>
-<script src="app-i18n-ja.js?v=20261118c"></script>
-<script src="app-i18n-zh.js?v=20261118c"></script>
-<script src="app-i18n-ar.js?v=20261118c"></script>
-<script src="app-i18n-it.js?v=20261118c"></script>
-<script src="app-i18n-de.js?v=20261118c"></script>
+<script src="app-i18n-en.js?v=20261118d"></script>
+<script src="app-i18n-es.js?v=20261118d"></script>
+<script src="app-i18n-hi.js?v=20261118d"></script>
+<script src="app-i18n-pt.js?v=20261118d"></script>
+<script src="app-i18n-ja.js?v=20261118d"></script>
+<script src="app-i18n-zh.js?v=20261118d"></script>
+<script src="app-i18n-ar.js?v=20261118d"></script>
+<script src="app-i18n-it.js?v=20261118d"></script>
+<script src="app-i18n-de.js?v=20261118d"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -16451,6 +16451,13 @@ function _ptnrRegSubmit(){
   var btnEl = document.getElementById('ptnr-reg-btn');
   if(!prenom.trim()||!nom.trim()||!email.trim()||!partnerType||!password){
     if(errEl){errEl.textContent='Merci de remplir tous les champs obligatoires.';errEl.className='ptnr-login-err on';} return;
+  }
+  // Ville affichée sur la fiche publique : jamais d'e-mail, de téléphone ni de lien (le remplissage
+  // automatique du téléphone y a déjà mis une adresse e-mail, visible ensuite par tous les clients).
+  if(/@|https?:|www\./i.test(ville) || ville.replace(/\D/g,'').length >= 6){
+    if(errEl){errEl.textContent='Indiquez seulement le nom de votre ville (sans e-mail, numéro de téléphone ni lien).';errEl.className='ptnr-login-err on';}
+    var _vEl=document.getElementById('ptnr-reg-ville'); if(_vEl){ try{ _vEl.focus(); }catch(e){} }
+    return;
   }
   if(!country){ _ptnrRegGo(2); return; }
   if(partnerType==='other' && partnerTypeOther.length<2){
