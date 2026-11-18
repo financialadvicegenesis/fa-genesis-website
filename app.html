@@ -2711,15 +2711,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261118i"></script>
-<script src="app-i18n-es.js?v=20261118i"></script>
-<script src="app-i18n-hi.js?v=20261118i"></script>
-<script src="app-i18n-pt.js?v=20261118i"></script>
-<script src="app-i18n-ja.js?v=20261118i"></script>
-<script src="app-i18n-zh.js?v=20261118i"></script>
-<script src="app-i18n-ar.js?v=20261118i"></script>
-<script src="app-i18n-it.js?v=20261118i"></script>
-<script src="app-i18n-de.js?v=20261118i"></script>
+<script src="app-i18n-en.js?v=20261118j"></script>
+<script src="app-i18n-es.js?v=20261118j"></script>
+<script src="app-i18n-hi.js?v=20261118j"></script>
+<script src="app-i18n-pt.js?v=20261118j"></script>
+<script src="app-i18n-ja.js?v=20261118j"></script>
+<script src="app-i18n-zh.js?v=20261118j"></script>
+<script src="app-i18n-ar.js?v=20261118j"></script>
+<script src="app-i18n-it.js?v=20261118j"></script>
+<script src="app-i18n-de.js?v=20261118j"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -18786,6 +18786,7 @@ function _handleNotifHash(hash, _retryCount){
   if(hash === 'client:coworking'){ nav('reservations'); return; }
   // Ville à compléter (fiche publique) → Profil > Paramètres du profil, directement.
   if(hash === 'partner:profil-params'){ nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('profil'); setTimeout(function(){ if(typeof _ptnrProfilEditParams==='function') _ptnrProfilEditParams(); }, 300); }, 500); return; }
+  if(hash === 'partner:reviews'){ nav('partner'); setTimeout(function(){ if(typeof _prvOpen==='function') _prvOpen(); }, 500); return; }
   if(hash === 'partner:coworking'){ nav('partner'); setTimeout(function(){ if(typeof _cwpOpen==='function') _cwpOpen(); }, 500); return; }
   var clientProposalMatch = hash.match(/^client:proposal:(.+)$/);
   if(clientProposalMatch){
@@ -23796,6 +23797,7 @@ function _ptnrLoadProfil(){
     +pli('<i class="fa-solid fa-bolt"></i>',              '#1a0a00','Mes missions',         null,"_ptnrNav('missions')")
     +pli('<i class="fa-solid fa-wallet"></i>',            '#001a0a','Mon Wallet GENESIS',null,"_ptnrNav('versements')")
     +pli('<i class="fa-solid fa-trophy"></i>',            '#1a1400','Mes badges',           null,"_ptnrNav('reputation')")
+    +pli('<i class="fa-solid fa-star"></i>',              '#1a1600','Mes avis',             null,'_prvOpen()')
     +pli('<i class="fa-solid fa-medal"></i>',             '#1a0a14','Mon palmarès',         null,"_ptnrNav('palmares')")
     +pli('<i class="fa-solid fa-tag"></i>',               '#1a0014','Mes promotions',       null,"_ptnrNav('promotions')")
     +pli('<i class="fa-solid fa-images"></i>',            '#001a14','Mon portfolio',        null,"_ptnrNav('portfolio')")
@@ -25481,8 +25483,29 @@ function _updateGreeting(){
 
 <style>
 /* ── COWORKING : réservation de créneaux (2026-11-16) ── */
-#cwb-overlay,#cwp-overlay{display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.78);align-items:flex-end;justify-content:center;}
-#cwb-overlay.open,#cwp-overlay.open{display:flex;}
+#cwb-overlay,#cwp-overlay,#prv-overlay{display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.78);align-items:flex-end;justify-content:center;}
+#cwb-overlay.open,#cwp-overlay.open,#prv-overlay.open{display:flex;}
+#prv-sheet{width:100%;max-width:480px;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#0a0a0a;box-sizing:border-box;padding:0 0 calc(40px + env(safe-area-inset-bottom,0px));}
+.prv-sum{display:flex;gap:18px;align-items:center;margin:16px;padding:16px;background:#111;border:1.5px solid rgba(255,215,0,.25);border-radius:16px;}
+.prv-avg{text-align:center;min-width:86px;}
+.prv-avg b{display:block;font-size:38px;font-weight:900;color:#FFD700;line-height:1;font-variant-numeric:tabular-nums;}
+.prv-avg small{display:block;font-size:11px;color:#999;margin-top:6px;}
+.prv-stars{color:#FFD700;font-size:12px;letter-spacing:2px;margin-top:6px;}
+.prv-stars .off{color:#3a3a3a;}
+.prv-dist{flex:1;display:flex;flex-direction:column;gap:5px;}
+.prv-row{display:flex;align-items:center;gap:8px;font-size:11px;color:#aaa;font-variant-numeric:tabular-nums;}
+.prv-row .bar{flex:1;height:6px;border-radius:3px;background:#222;overflow:hidden;}
+.prv-row .bar i{display:block;height:100%;background:#FFD700;border-radius:3px;}
+.prv-list{display:flex;flex-direction:column;gap:10px;padding:0 16px;}
+.prv-card{background:#111;border:1px solid #222;border-radius:14px;padding:14px;}
+.prv-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.prv-card .who{font-size:13px;font-weight:900;color:#fff;margin-top:8px;}
+.prv-card .svc{font-size:11px;color:#888;margin-top:2px;}
+.prv-card .date{font-size:11px;color:#777;}
+.prv-card .txt{font-size:13px;color:#ddd;line-height:1.5;margin-top:8px;white-space:pre-wrap;word-break:break-word;}
+.prv-card .txt.none{color:#666;font-style:italic;}
+.prv-empty{text-align:center;color:#888;font-size:13px;padding:40px 24px;line-height:1.5;}
+.prv-empty i{display:block;font-size:30px;color:#FFD700;margin-bottom:12px;}
 /* Encoche / barre d'accueil iPhone : l'app est en viewport-fit=cover (marges safe-area obligatoires). */
 #cwb-sheet{width:100%;max-width:480px;max-height:calc(92vh - env(safe-area-inset-top,0px));overflow-y:auto;-webkit-overflow-scrolling:touch;background:#0a0a0a;border:1.5px solid rgba(255,215,0,.35);border-bottom:none;border-radius:22px 22px 0 0;padding:18px 16px calc(30px + env(safe-area-inset-bottom,0px));box-sizing:border-box;}
 #cwp-sheet{width:100%;max-width:480px;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#0a0a0a;box-sizing:border-box;padding:0 0 calc(40px + env(safe-area-inset-bottom,0px));}
@@ -25585,6 +25608,7 @@ function _updateGreeting(){
 </style>
 <div id="cwb-overlay" onclick="if(event.target===this)_cwbClose()"><div id="cwb-sheet"></div></div>
 <div id="cwp-overlay"><div id="cwp-sheet"></div></div>
+<div id="prv-overlay"><div id="prv-sheet"></div></div>
 <script>
 // ══════════════════════════════════════════════════════════════════════════════════════
 // COWORKING — réservation de créneaux (2026-11-16, décisions FA GENESIS). Serveur : section
@@ -25946,6 +25970,57 @@ function _cwReportProblem(dispatchId){
   _openDisputeForm(dispatchId);
   var cat=document.getElementById('disp-category');
   if(cat){ var hasOther=[].some.call(cat.options||[],function(o){ return o.value==='autre'; }); if(hasOther) cat.value='autre'; }
+}
+
+// ── PRESTATAIRE : « Mes avis » (note moyenne, répartition, avis des clients) ─────────────────
+var _prv = null;
+function _prvOpen(){
+  var ov=document.getElementById('prv-overlay'); if(!ov) return;
+  ov.classList.add('open');
+  _prv={loading:true, data:null, err:''};
+  _prvRender();
+  _ptnrFetch('/api/partner/reviews').then(function(d){
+    if(!_prv) return;
+    _prv.loading=false;
+    if(d&&d.success) _prv.data=d; else _prv.err=(d&&d.error)||'Erreur serveur';
+    _prvRender();
+  }).catch(function(){ if(_prv){ _prv.loading=false; _prv.err='Erreur de connexion au serveur'; _prvRender(); } });
+}
+function _prvClose(){ var ov=document.getElementById('prv-overlay'); if(ov) ov.classList.remove('open'); _prv=null; }
+function _prvStars(n){
+  var h=''; for(var i=1;i<=5;i++) h+='<i class="fa-solid fa-star'+(i<=Math.round(n)?'':' off')+'"></i>';
+  return '<span class="prv-stars">'+h+'</span>';
+}
+function _prvDate(iso){
+  var lang='fr'; try{ lang=(window.AppI18n&&AppI18n.getAppLanguage&&AppI18n.getAppLanguage())||'fr'; }catch(e){}
+  try{ return new Date(iso).toLocaleDateString(lang,{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return String(iso||'').slice(0,10); }
+}
+function _prvRender(){
+  var sh=document.getElementById('prv-sheet'); if(!sh||!_prv) return;
+  var h='<div class="cwp-bar"><button onclick="_prvClose()" aria-label="Retour">&#8249;</button><div>Mes avis</div></div>';
+  if(_prv.loading){ sh.innerHTML=h+'<div class="prv-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>'; return; }
+  if(!_prv.data){ sh.innerHTML=h+'<div class="prv-empty"><div class="cw-err on">'+_escHtml(_prv.err)+'</div></div>'; return; }
+  var d=_prv.data, list=d.reviews||[], sum=d.summary||{average:0,count:0}, dist=d.distribution||{};
+  if(!list.length){
+    sh.innerHTML=h+'<div class="prv-empty"><i class="fa-solid fa-star"></i><div>Aucun avis pour le moment.</div><div style="margin-top:6px;font-size:12px;color:#666;">Vos clients peuvent laisser un avis une fois leur prestation terminée. Vous serez prévenu à chaque nouvel avis.</div></div>';
+    return;
+  }
+  var avg=(Math.round(sum.average*10)/10).toFixed(1).replace('.',',');
+  h+='<div class="prv-sum"><div class="prv-avg"><b data-i18n-skip>'+avg+'</b>'+_prvStars(sum.average)+'<small><span data-i18n-skip>'+sum.count+'</span> <span>avis</span></small></div><div class="prv-dist">';
+  [5,4,3,2,1].forEach(function(k){
+    var n=dist[k]||0, pct=sum.count?Math.round(n*100/sum.count):0;
+    h+='<div class="prv-row"><span data-i18n-skip>'+k+'</span><i class="fa-solid fa-star" style="color:#FFD700;font-size:9px;"></i><div class="bar"><i style="width:'+pct+'%"></i></div><span data-i18n-skip style="min-width:18px;text-align:right;">'+n+'</span></div>';
+  });
+  h+='</div></div><div class="prv-list">';
+  list.forEach(function(r){
+    h+='<div class="prv-card"><div class="prv-card-top">'+_prvStars(r.rating)+'<span class="date" data-i18n-skip>'+_escHtml(_prvDate(r.createdAt))+'</span></div>'
+      +'<div class="who" data-i18n-skip>'+_escHtml(r.client)+'</div>'
+      +(r.service?'<div class="svc" data-i18n-skip>'+_escHtml(r.service)+'</div>':'')
+      +(r.comment?'<div class="txt" data-i18n-skip>'+_escHtml(r.comment)+'</div>':'<div class="txt none">Sans commentaire</div>')
+      +'</div>';
+  });
+  h+='</div>';
+  sh.innerHTML=h;
 }
 
 // ── PRESTATAIRE : « Mes disponibilités » (planning, horaires, fermetures, blocages) ──────────

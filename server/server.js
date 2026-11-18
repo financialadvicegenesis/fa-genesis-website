@@ -19337,7 +19337,7 @@ function buildPartnerSpaceGuide() {
     g.push('LIVRER UNE MISSION : dans la carte de la mission (onglet Missions), "Deposer un livrable" (fichiers, photos, videos), puis "Confirmer la livraison". Le client voit un apercu protege par filigrane et ne peut telecharger qu\'apres avoir valide. S\'il demande une revision, modifier ou remplacer le livrable puis le republier (le client est prevenu). Apres validation, le paiement arrive dans le Wallet ; sans validation du client, il est libere automatiquement 7 jours apres la livraison. En cas de probleme, un litige peut etre ouvert : l\'equipe FA GENESIS l\'examine sous ' + GENESIS_DISPUTE_SLA_LABEL + ' et le versement est mis en attente pendant le litige.');
     g.push('MESSAGES : messagerie texte avec les clients (pas de pieces jointes ; les fichiers passent par les livrables). Avant la signature du contrat, aucune coordonnee personnelle (telephone, e-mail, reseaux sociaux, liens) : au 3e avertissement, la messagerie est suspendue.');
     g.push('WALLET : "Disponible" (retirable) et "En attente" (gains des missions en cours, avec leur date de liberation prevue). Retrait a partir de 20 EUR vers le moyen enregistre dans Profil > Coordonnees de versement (IBAN, PayPal ou Mobile Money selon le pays). Le solde disponible est aussi vire automatiquement chaque lundi s\'il atteint 20 EUR. L\'historique montre chaque gain et chaque retrait.');
-    g.push('PROFIL > MON ACTIVITE : Mes seances (rendez-vous demandes par les clients, appel ou seance : le prestataire propose ou confirme la date et l\'heure, ajoute un lien visio ou un lieu, puis marque la seance terminee) ; Messages clients ; Mes missions ; Mon Wallet GENESIS ; Mes badges ; Mon palmares (missions, clients, avis recus, prestataires parraines, classement dans sa categorie) ; Mes promotions ; Mon portfolio ; Mes livrables (contrat de partenariat FA GENESIS, contrats de prestation signes par les clients, factures).');
+    g.push('PROFIL > MON ACTIVITE : Mes seances (rendez-vous demandes par les clients, appel ou seance : le prestataire propose ou confirme la date et l\'heure, ajoute un lien visio ou un lieu, puis marque la seance terminee) ; Messages clients ; Mes missions ; Mon Wallet GENESIS ; Mes badges ; Mes avis (note moyenne, repartition par etoiles et tous les avis laisses par ses clients, avec prenom, prestation et date ; le prestataire recoit une notification a chaque nouvel avis) ; Mon palmares (missions, clients, avis recus, prestataires parraines, classement dans sa categorie) ; Mes promotions ; Mon portfolio ; Mes livrables (contrat de partenariat FA GENESIS, contrats de prestation signes par les clients, factures).');
     g.push('PROFIL > MON PROFIL : Verifier mon compte ; Parametres du profil (photo de profil, prenom et nom, VILLE affichee sur la fiche publique : seulement le nom de la ville, sans e-mail ni numero ; un champ a renseigner et le bouton Enregistrer) ; Mes metiers ; Coordonnees de versement (moyen de retrait + Facturation : SIRET et adresse pour les factures automatiques) ; Temps de reponse ; Pays et zone d\'intervention (sur place ou "A distance" pour travailler avec des clients d\'autres pays) ; Langue ; Assistance (ecrire a l\'equipe FA GENESIS) ; deverrouillage par empreinte ou Face ID dans l\'application mobile.');
     g.push('PROFIL > MON RESEAU : Evenements GENESIS (inscription aux evenements) et la case de parrainage avec son code et son lien a partager.');
     g.push('VERIFIER MON COMPTE : pour proteger les clients, chaque prestataire envoie les justificatifs demandes a l\'ecran : statut (independant, entreprise ou professionnel a l\'etranger), SIRET en France ou immatriculation locale, piece d\'identite, selfie tenant la piece, courte video du visage (3 a 5 secondes), preuve d\'activite. L\'equipe valide le dossier ; il y a ' + PartnerVerif.DEADLINE_DAYS + ' jours pour le completer, sinon le profil est masque aux clients jusqu\'a l\'envoi. Un dossier valide affiche le badge "Identite verifiee" ou "Entreprise verifiee" sur la fiche.');
@@ -21402,6 +21402,24 @@ app.get('/api/admin/users-by-level', function(req, res) {
     }
 });
 
+// « Mes avis » du prestataire : ses avis publiés (prénom du client seulement), note moyenne,
+// répartition par étoiles.
+app.get('/api/partner/reviews', authenticatePartner, function(req, res) {
+    try {
+        var orders = loadOrders();
+        var list = publishedPartnerReviews(req.partner.id)
+            .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); })
+            .map(function(r) {
+                var o = r.orderId ? orders.find(function(x) { return x.id === r.orderId; }) : null;
+                return { id: r.id, rating: r.rating, comment: r.comment || '', client: _clientFirstName(r.userName, 'Client GENESIS'),
+                    service: o ? ((o.coworking && o.coworking.service_label) || o.product_name || '') : '', createdAt: r.createdAt };
+            });
+        var dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        list.forEach(function(r) { if (dist[r.rating] != null) dist[r.rating]++; });
+        res.json({ success: true, summary: getPartnerRatingSummary(req.partner.id), distribution: dist, reviews: list });
+    } catch (e) { console.error('[PARTNER-REVIEWS] mine:', e.message); res.status(500).json({ success: false, error: 'Erreur serveur' }); }
+});
+
 // Soumission d'un avis client sur un partenaire (suite a une demande post-paiement solde)
 app.post('/api/partner-reviews', (req, res) => {
     try {
@@ -21466,6 +21484,16 @@ app.post('/api/partner-reviews', (req, res) => {
 
         dispatches[dIdx].review_submitted = true;
         saveDispatches(dispatches);
+
+        // Le prestataire est prévenu de chaque nouvel avis → « Mes avis » (2026-11-18).
+        try {
+            var _rvPartner = review.partnerId ? getPartnerById(review.partnerId) : null;
+            if (_rvPartner && _rvPartner.email) {
+                var _rvLabel = (order.coworking && order.coworking.service_label) || order.product_name || 'votre prestation';
+                notifyUser(_rvPartner.email, 'partner', 'new_review', 'Nouvel avis ' + '★'.repeat(rating) + '☆'.repeat(5 - rating),
+                    _clientFirstName(review.userName, 'Un client') + ' a laissé un avis sur « ' + _rvLabel + ' ».', '#partner:reviews');
+            }
+        } catch (_rvE) { console.error('[PARTNER-REVIEWS] notification:', _rvE.message); }
 
         // Avis 5 étoiles : message affiché au prestataire à sa prochaine visite de « Mes badges »
         // (sans points QG : les prestataires n'en ont plus depuis le 2026-11-11).
