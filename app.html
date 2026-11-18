@@ -1380,6 +1380,12 @@ a{text-decoration:none;color:inherit}
 .pf-sec::after{content:'';flex:1;height:1px;background:linear-gradient(to right,rgba(255,215,0,.18),transparent)}
 /* Cartes prestation neon */
 .pf-svcs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:4px}
+/* Titre de métier dans la fiche publique (prestations classées par métier) */
+.pf-svc-group{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin:16px 0 2px;font-size:10.5px;font-weight:900;letter-spacing:1.3px;text-transform:uppercase;color:#FFD700}
+.pf-svc-group:first-child{margin-top:2px}
+.pf-svc-group::after{content:'';flex:1;height:1px;background:rgba(255,215,0,.2)}
+.pf-svc-group-n{color:#777;font-size:10px;letter-spacing:0;order:2}
+.pf-svc-group::after{order:3}
 .pf-svc-card{background:linear-gradient(145deg,#0d0d0d,#100b00);border:1.5px solid rgba(255,215,0,.1);border-radius:16px;overflow:hidden;cursor:pointer;position:relative;transition:border-color .2s,box-shadow .18s,transform .1s}
 .pf-svc-card:active{transform:scale(.97)}
 .pf-svc-card:hover{border-color:rgba(255,215,0,.48);box-shadow:0 0 22px rgba(255,215,0,.1),inset 0 0 28px rgba(255,215,0,.035)}
@@ -7206,43 +7212,54 @@ function _ptnrRenderServiceCards(services, audience, p){
       +'</div></div>';
   }).join('');
 }
+// Fiche publique : prestations CLASSÉES PAR MÉTIER (2026-11-18, demande FA GENESIS). Un titre par
+// métier (icône + nombre), le métier parcouru par le client en premier ; grandes cartes photo pour
+// le métier Espace Coworking, cartes habituelles pour les autres. Un seul métier : pas de titre.
+function _pfSvcCardHtml(s, p){
+  var imgSrc = s.image || '';
+  var imgHtml = imgSrc
+    ? '<div class="pf-svc-photo"><img src="'+imgSrc+'" alt="" loading="lazy"></div>'
+    : '<div class="pf-svc-photo"><div class="pf-svc-photo-ph"><i class="fa-solid fa-bolt"></i></div></div>';
+  var isQuote = s.pricing_type === 'quote';
+  var priceHtml = isQuote
+    ? '<div class="pf-svc-quote"><i class="fa-solid fa-file-lines"></i> Sur devis</div>'
+    : '<div class="pf-svc-price">'+_svcOldPriceHtml(s)+s.price+' €'+_cwPriceSuffixHtml(s)+'</div>'+_svcDiscountTagHtml(s);
+  var featHtml = (s.features && s.features.length)
+    ? '<div class="pf-svc-feats">'+s.features.slice(0,3).map(function(f){ return '<div class="pf-svc-feat"><i class="fa-solid fa-check"></i>'+f+'</div>'; }).join('')+'</div>'
+    : '';
+  return '<div class="pf-svc-card" onclick="openServiceDetail(\''+p.id+'\',\''+s.id+'\')">'
+    + imgHtml
+    + '<div class="pf-svc-body">'
+      + '<div class="pf-svc-label">'+s.label+'</div>'
+      + featHtml
+      + priceHtml
+    + '</div>'
+  + '</div>';
+}
 function _ptnrRenderProfileSvcCards(services, audience, p){
   var filtered = services.filter(function(s){ return (s.audience||'particulier')===audience; });
   if(!filtered.length) return '<div class="p-dir-review-empty">Aucune prestation dans cette catégorie.</div>';
-  // Espace coworking : grandes cartes photo à faire défiler (style de l'ancienne page offres.html).
-  if(p && p.partner_type === 'coworking' && typeof _cwOfferCardHtml === 'function'){
-    return '<div class="cwo-row">' + filtered.map(function(s){ return _cwOfferCardHtml(s, p); }).join('') + '</div>';
+  var types = partnerTypesOf(p);
+  var primary = (p && p.partner_type) || types[0] || '';
+  // Métier d'une prestation : celui choisi par le prestataire, sinon son métier principal.
+  function catOf(s){ return (s.category && types.indexOf(s.category) !== -1) ? s.category : primary; }
+  function block(t, list){
+    if(t === 'coworking' && typeof _cwOfferCardHtml === 'function'){
+      return '<div class="cwo-row">' + list.map(function(s){ return _cwOfferCardHtml(s, p); }).join('') + '</div>';
+    }
+    return list.map(function(s){ return _pfSvcCardHtml(s, p); }).join('');
   }
-  // Prestataire à plusieurs métiers : prestations du métier parcouru en premier (ex. arrivé
-  // depuis « Marketeurs »), et métier indiqué sur chaque carte.
-  var _multi = partnerTypesOf(p).length > 1;
-  if(_multi && typeof _rankCategory !== 'undefined' && _rankCategory){
-    filtered = filtered.map(function(s, i){ return {s:s, i:i}; }).sort(function(a, b){
-      var wa = a.s.category===_rankCategory ? 0 : 1, wb = b.s.category===_rankCategory ? 0 : 1;
-      return wa - wb || a.i - b.i;
-    }).map(function(x){ return x.s; });
+  if(types.length < 2) return block(primary, filtered);
+  var order = types.slice();
+  if(typeof _rankCategory !== 'undefined' && _rankCategory && order.indexOf(_rankCategory) > 0){
+    order.splice(order.indexOf(_rankCategory), 1); order.unshift(_rankCategory);
   }
-  return filtered.map(function(s){
-    var imgSrc = s.image || '';
-    var imgHtml = imgSrc
-      ? '<div class="pf-svc-photo"><img src="'+imgSrc+'" alt="" loading="lazy"></div>'
-      : '<div class="pf-svc-photo"><div class="pf-svc-photo-ph"><i class="fa-solid fa-bolt"></i></div></div>';
-    var isQuote = s.pricing_type === 'quote';
-    var priceHtml = isQuote
-      ? '<div class="pf-svc-quote"><i class="fa-solid fa-file-lines"></i> Sur devis</div>'
-      : '<div class="pf-svc-price">'+_svcOldPriceHtml(s)+s.price+' €'+_cwPriceSuffixHtml(s)+'</div>'+_svcDiscountTagHtml(s);
-    var featHtml = (s.features && s.features.length)
-      ? '<div class="pf-svc-feats">'+s.features.slice(0,3).map(function(f){ return '<div class="pf-svc-feat"><i class="fa-solid fa-check"></i>'+f+'</div>'; }).join('')+'</div>'
-      : '';
-    return '<div class="pf-svc-card" onclick="openServiceDetail(\''+p.id+'\',\''+s.id+'\')">'
-      + imgHtml
-      + '<div class="pf-svc-body">'
-        + (_multi && s.category && PARTNER_TYPE_LABELS_DIR[s.category] ? '<div style="font-size:9px;font-weight:800;color:#FFD700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;">'+PARTNER_TYPE_LABELS_DIR[s.category]+'</div>' : '')
-        + '<div class="pf-svc-label">'+s.label+'</div>'
-        + featHtml
-        + priceHtml
-      + '</div>'
-    + '</div>';
+  var icons = (typeof _PARTNER_ICONS !== 'undefined') ? _PARTNER_ICONS : {};
+  return order.map(function(t){
+    var list = filtered.filter(function(s){ return catOf(s) === t; });
+    if(!list.length) return '';
+    return '<div class="pf-svc-group"><i class="fa-solid '+(icons[t]||'fa-briefcase')+'"></i><span>'+_escHtml(partnerTypeLabelOf(p, t))+'</span><span class="pf-svc-group-n" data-i18n-skip>'+list.length+'</span></div>'
+      + block(t, list);
   }).join('');
 }
 function toggleServiceCartSelection(serviceId){
