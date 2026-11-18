@@ -1531,6 +1531,8 @@ function requestPartnerReviews(clientEmail, acceptedDispatches) {
             // Coworking sans code d'arrivée validé : pas de demande d'avis (il serait refusé).
             var _rrOrder = allDispatches[idx].order_id ? getOrderById(allDispatches[idx].order_id) : null;
             if (_rrOrder && _rrOrder.coworking && !_rrOrder.coworking.checked_in_at) return;
+            // Coworking : l'avis se demande à la fin du créneau (checkCoworkingBookings), pas à l'arrivée.
+            if (_rrOrder && _rrOrder.coworking && Date.now() < Date.parse(_rrOrder.coworking.end_at)) return;
             allDispatches[idx].review_requested = true;
             changed = true;
             var partner = getPartnerById(d.claimed_by_partner_id);
@@ -1865,7 +1867,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                             // Notification prestataire désormais centralisée dans
                             // createPartnerServiceDispatch() elle-même (voir son commentaire) -
                             // ne pas la dupliquer ici.
-                            if (_psClientEmailAuth) {
+                            if (_psClientEmailAuth && !_psOrderAuth.coworking) { // coworking : « Réservation confirmée » (cwOnPaid)
                                 notifyUser(_psClientEmailAuth, 'client', 'payment_success', '✅ Paiement GENESIS SAFE™ sécurisé !',
                                     'Votre paiement est sécurisé. ' + _psPartnerNameAuth + ' va prendre en charge votre demande sous 24h.',
                                     '/app.html#client:order:' + _psOrderAuth.id);
@@ -1937,7 +1939,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                                 // Notification prestataire désormais centralisée dans
                                 // createPartnerServiceDispatch() elle-même (voir son commentaire) -
                                 // ne pas la dupliquer ici.
-                                if (_psClientEmailWh) {
+                                if (_psClientEmailWh && !_psOrderWh.coworking) { // coworking : « Réservation confirmée » (cwOnPaid)
                                     notifyUser(_psClientEmailWh, 'client', 'payment_success', '✅ Paiement réussi !',
                                         'Votre paiement a bien été reçu. ' + _psPartnerNameWh + ' va prendre en charge votre demande sous 24h.',
                                         '/app.html#client:order:' + _psOrderWh.id);
@@ -4313,13 +4315,20 @@ async function _checkAutoPaymentReleaseRun() {
                 var _arClientEmail  = _o.client_info && _o.client_info.email;
                 var _arPartnerObj   = getPartnerById(_o.partner_id);
                 var _arPartnerEmail = _arPartnerObj ? (_arPartnerObj.email || _arPartnerObj.contact_email) : null;
-                if (_arClientEmail) {
+                // Coworking : rien à annoncer au client (sa réservation est confirmée/arrivée validée).
+                if (_arClientEmail && !_o.coworking) {
                     notifyUser(_arClientEmail, 'client', 'auto_release',
                         'Paiement libéré automatiquement',
                         'Faute de réponse sous 7 jours, le paiement de « ' + (_o.product_name || 'votre prestation') + ' » a été automatiquement versé au prestataire.',
                         '/app.html#client:order:' + _o.id);
                 }
-                if (_arPartnerEmail) {
+                if (_arPartnerEmail && _o.coworking) {
+                    notifyUser(_arPartnerEmail, 'partner', 'auto_release',
+                        'Paiement reçu',
+                        (_o.coworking.checked_in_at ? 'Arrivée confirmée : votre paiement pour « ' : 'Réservation terminée : votre paiement pour « ')
+                            + (_o.coworking.service_label || _o.product_name || 'la réservation') + ' » ' + (_arPayoutOk ? 'a été ajouté à votre Wallet GENESIS.' : 'a été libéré.'),
+                        '#partner:wallet:' + _o.id);
+                } else if (_arPartnerEmail) {
                     notifyUser(_arPartnerEmail, 'partner', 'auto_release',
                         'Virement automatique déclenché',
                         'Le délai de 7 jours s\'est écoulé — votre paiement pour « ' + (_o.product_name || 'la prestation')
@@ -7288,7 +7297,7 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                     psPartnerName
                 ).catch(function(e){ console.error('[PAY_CONFIRM] Email commande partenaire:', e.message); });
                 const disp = createPartnerServiceDispatch(updatedOrder);
-                if (disp) {
+                if (disp && !updatedOrder.coworking) { // coworking : « Réservation confirmée » (cwOnPaid)
                     // Notification prestataire désormais centralisée dans
                     // createPartnerServiceDispatch() elle-même (voir son commentaire) - ne pas
                     // la dupliquer ici.
@@ -9036,11 +9045,11 @@ app.post('/api/payments/verify', async (req, res) => {
                     if (psDispatch) {
                         if (updatedOrder.payment_tier === 'small') {
                             console.log('[VERIFY] Mission partenaire — fonds GENESIS SAFE™ (small)');
-                            notifyUser(clientEmail, 'client', 'payment_success', '✅ Paiement réussi !', 'Votre paiement a bien été reçu. ' + psVPName + ' va prendre en charge votre demande sous 24h.', '/app.html#client:order:' + updatedOrder.id);
+                            if (!updatedOrder.coworking) notifyUser(clientEmail, 'client', 'payment_success', '✅ Paiement réussi !', 'Votre paiement a bien été reçu. ' + psVPName + ' va prendre en charge votre demande sous 24h.', '/app.html#client:order:' + updatedOrder.id);
                         } else {
                             await processDispatchPayout(psDispatch, 'deposit');
                             console.log('[VERIFY] Mission partenaire — acompte 30% versé (large)');
-                            notifyUser(clientEmail, 'client', 'payment_success', '✅ Paiement réussi !', 'Votre paiement a bien été reçu. ' + psVPName + ' va prendre en charge votre demande sous 24h.', '/app.html#client:order:' + updatedOrder.id);
+                            if (!updatedOrder.coworking) notifyUser(clientEmail, 'client', 'payment_success', '✅ Paiement réussi !', 'Votre paiement a bien été reçu. ' + psVPName + ' va prendre en charge votre demande sous 24h.', '/app.html#client:order:' + updatedOrder.id);
                         }
                     }
                 } else {
@@ -16979,7 +16988,16 @@ function checkCoworkingBookings() {
         var now = Date.now();
         loadOrders().forEach(function(o) {
             var c = o.coworking;
-            if (!c || ['cancelled', 'refunded', 'expired', 'completed'].indexOf(o.status) !== -1) return;
+            if (!c) return;
+            // Arrivée validée → réservation réglée dès l'arrivée : demande d'avis à la fin du créneau.
+            if (o.status === 'completed' && c.checked_in_at && !c.review_asked && now >= Date.parse(c.end_at)) {
+                updateOrder(o.id, { coworking: Object.assign({}, c, { review_asked: true }) });
+                var _rvEmail = o.client_info && o.client_info.email;
+                var _rvDisp = loadDispatches().find(function(d) { return d.order_id === o.id && d.status !== 'cancelled'; });
+                if (_rvEmail && _rvDisp) requestPartnerReviews(_rvEmail, [_rvDisp]);
+                return;
+            }
+            if (['cancelled', 'refunded', 'expired', 'completed'].indexOf(o.status) !== -1) return;
             if (!(o.deposit_paid || o.deposit_authorized)) {
                 if (o.status === 'pending_deposit' && c.hold_until && Date.parse(c.hold_until) < now - 3600000) {
                     updateOrder(o.id, { status: 'cancelled', cancelled_reason: 'coworking_hold_expired' });

@@ -18718,9 +18718,18 @@ function _handleNotifHash(hash, _retryCount){
   // notifications de livrable réutilisent ce même mécanisme.
   var clientOrderMatch = hash.match(/^client:order(?::(.+))?$/);
   if(clientOrderMatch){
-    if(clientOrderMatch[1]) _pendingScrollOrderId = decodeURIComponent(clientOrderMatch[1]);
-    nav('profil');
-    setTimeout(function(){ if(typeof showMesCommandes==='function') showMesCommandes(); }, 400);
+    // Réservation coworking (absente de « Mes commandes ») → « Mes réservations ».
+    var _coId = clientOrderMatch[1] ? decodeURIComponent(clientOrderMatch[1]) : null;
+    var _openOrders = function(){
+      if(_coId) _pendingScrollOrderId = _coId;
+      nav('profil');
+      setTimeout(function(){ if(typeof showMesCommandes==='function') showMesCommandes(); }, 400);
+    };
+    if(_coId && typeof _cwFetchMyBookings==='function'){
+      _cwFetchMyBookings().then(function(list){
+        if(list.some(function(b){ return b.order_id===_coId; })) nav('reservations'); else _openOrders();
+      }).catch(_openOrders);
+    } else _openOrders();
     return;
   }
   // Lien email "Voir mes livrables" (ex-livrables.html, converti en redirection) → ouvre
