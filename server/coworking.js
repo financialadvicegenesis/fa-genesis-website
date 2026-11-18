@@ -172,16 +172,32 @@ function dayWindow(settings, date) {
 }
 
 // Intervalle demandé → {start, end} en minutes locales, ou {error}.
-function bookingInterval(service, settings, date, startTime, hours) {
+// endTime (2026-11-18) : le client choisit son heure d'arrivée ET de départ.
+//  - journée : arrivée/départ libres dans les horaires d'ouverture, prix d'une journée ; la place
+//    n'est occupée que sur ces heures (sans heures envoyées : toute la plage, comme avant) ;
+//  - format 4h : départ 4 h, 8 h… après l'arrivée, prix × nombre de tranches de 4 h.
+function bookingInterval(service, settings, date, startTime, hours, endTime) {
     var win = dayWindow(settings, date);
     if (!win) return { error: 'L’espace est fermé ce jour-là.' };
     var unit = service.cw_unit;
-    if (unit === 'day') return { start: win.o, end: win.c, units: 1 };
+    if (unit === 'day') {
+        var ds = startTime ? toMin(startTime) : win.o, de = endTime ? toMin(endTime) : win.c;
+        if (ds === null || de === null) return { error: 'Heure d’arrivée ou de départ invalide.' };
+        if (ds < win.o || de > win.c || de <= ds) return { error: 'Choisissez une arrivée et un départ pendant les horaires d’ouverture (' + fromMin(win.o) + ' – ' + fromMin(win.c) + ').' };
+        if ((ds - win.o) % SLOT_STEP_MIN !== 0 || (de !== win.c && (de - win.o) % SLOT_STEP_MIN !== 0)) return { error: 'Horaires non disponibles.' };
+        return { start: ds, end: de, units: 1 };
+    }
     var s = toMin(startTime);
     if (s === null) return { error: 'Heure de début invalide.' };
     if (s < win.o || (s - win.o) % SLOT_STEP_MIN !== 0) return { error: 'Heure de début non disponible.' };
     var dur;
-    if (unit === 'half_day') { dur = UNITS.half_day.hours * 60; }
+    if (unit === 'half_day') {
+        var he = endTime ? toMin(endTime) : null;
+        dur = (he !== null) ? he - s : UNITS.half_day.hours * 60;
+        if (!(dur >= 240) || dur % 240 !== 0) return { error: 'Format 4h : l’heure de départ doit être 4 h, 8 h… après l’arrivée.' };
+        if (s + dur > win.c) return { error: 'Le créneau dépasse l’heure de fermeture (' + fromMin(win.c) + ').' };
+        return { start: s, end: s + dur, units: dur / 240 };
+    }
     else {
         var h = parseInt(hours, 10);
         var minH = service.cw_min_hours || 1;

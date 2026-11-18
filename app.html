@@ -2711,15 +2711,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261118f"></script>
-<script src="app-i18n-es.js?v=20261118f"></script>
-<script src="app-i18n-hi.js?v=20261118f"></script>
-<script src="app-i18n-pt.js?v=20261118f"></script>
-<script src="app-i18n-ja.js?v=20261118f"></script>
-<script src="app-i18n-zh.js?v=20261118f"></script>
-<script src="app-i18n-ar.js?v=20261118f"></script>
-<script src="app-i18n-it.js?v=20261118f"></script>
-<script src="app-i18n-de.js?v=20261118f"></script>
+<script src="app-i18n-en.js?v=20261118g"></script>
+<script src="app-i18n-es.js?v=20261118g"></script>
+<script src="app-i18n-hi.js?v=20261118g"></script>
+<script src="app-i18n-pt.js?v=20261118g"></script>
+<script src="app-i18n-ja.js?v=20261118g"></script>
+<script src="app-i18n-zh.js?v=20261118g"></script>
+<script src="app-i18n-ar.js?v=20261118g"></script>
+<script src="app-i18n-it.js?v=20261118g"></script>
+<script src="app-i18n-de.js?v=20261118g"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -25637,7 +25637,7 @@ function openCoworkingBooking(partnerId, serviceId){
   if(!USER||GUEST){ try{ closeDetail(); }catch(e){} showLoginSheet(); return; }
   var p = _dirPartnerCache[partnerId]; if(!p) return;
   var s = (p.services||[]).find(function(x){ return x.id===serviceId; }); if(!s) return;
-  _cwb = {partner:p, service:s, info:null, days:[], date:null, persons:1, hours:s.cw_min_hours||1, start:null, day:null, loadingDay:false, step:'pick', booking:null, busy:false, err:''};
+  _cwb = {partner:p, service:s, info:null, days:[], date:null, persons:1, hours:s.cw_min_hours||1, start:null, end:null, day:null, loadingDay:false, step:'pick', booking:null, busy:false, err:''};
   var ov=document.getElementById('cwb-overlay'); if(ov) ov.classList.add('open');
   _cwbRender();
   fetch(_cwApi()+'/api/coworking/'+encodeURIComponent(partnerId)+'/calendar?service_id='+encodeURIComponent(serviceId))
@@ -25659,7 +25659,7 @@ function _cwbClose(){
 }
 function _cwbPickDate(date){
   if(!_cwb) return;
-  _cwb.date=date; _cwb.start=null; _cwb.day=null; _cwb.loadingDay=true; _cwb.err='';
+  _cwb.date=date; _cwb.start=null; _cwb.end=null; _cwb.day=null; _cwb.loadingDay=true; _cwb.err='';
   _cwbRender();
   fetch(_cwApi()+'/api/coworking/'+encodeURIComponent(_cwb.partner.id)+'/day?service_id='+encodeURIComponent(_cwb.service.id)+'&date='+date)
     .then(function(r){ return r.json(); })
@@ -25677,36 +25677,62 @@ function _cwbPickDate(date){
     })
     .catch(function(){ if(_cwb){ _cwb.loadingDay=false; _cwb.err='Erreur de connexion. Réessayez.'; _cwbRender(); } });
 }
+// Horaires (2026-11-18) : journée et format 4h = heure d'arrivée ET heure de départ choisies
+// par le client. Journée : départ libre (prix d'une journée) ; format 4h : départ +4 h, +8 h…
+function _cwbUsesEnd(){ return !!(_cwb && _cwb.info && (_cwb.info.cw_unit==='day' || _cwb.info.cw_unit==='half_day')); }
+function _cwbMinDur(){ return _cwb.info.cw_unit==='half_day' ? 240 : (_cwb.info.cw_unit==='day' ? 60 : _cwb.hours*60); }
 function _cwbDur(){
   var info=_cwb.info, d=_cwb.day&&_cwb.day.day;
   if(!info||!d) return 0;
-  if(info.cw_unit==='day') return _cwMin(d.close)-_cwMin(d.open);
-  if(info.cw_unit==='half_day') return 240;
+  if(_cwbUsesEnd()) return (_cwb.start!==null && _cwb.end!==null) ? (_cwb.end-_cwb.start) : _cwbMinDur();
   return _cwb.hours*60;
 }
 function _cwbNeed(){ return _cwb.info.cw_mode==='private' ? (_cwb.info.cw_seats||1) : _cwb.persons; }
+function _cwbFreeBetween(a, b){
+  var d=_cwb.day&&_cwb.day.day; if(!d) return false; var need=_cwbNeed();
+  for(var i=0;i<d.blocks.length;i++){ var bs=_cwMin(d.blocks[i].start); if(bs>=a && bs<b && d.blocks[i].free<need) return false; }
+  return true;
+}
+// Heures d'arrivée possibles (toutes les heures depuis l'ouverture).
 function _cwbStarts(){
   var d=_cwb.day&&_cwb.day.day; if(!d) return [];
-  var o=_cwMin(d.open), c=_cwMin(d.close), dur=_cwbDur(), need=_cwbNeed(), out=[];
-  var step=_cwb.info.cw_unit==='day' ? (c-o+1) : 60;
-  for(var t=o; t+dur<=c; t+=step){
-    var free=true;
-    for(var i=0;i<d.blocks.length;i++){ var bs=_cwMin(d.blocks[i].start); if(bs>=t && bs<t+dur && d.blocks[i].free<need){ free=false; break; } }
-    out.push({t:t, ok:free});
-  }
+  var o=_cwMin(d.open), c=_cwMin(d.close), dur=_cwbMinDur(), out=[];
+  for(var t=o; t+dur<=c; t+=60) out.push({t:t, ok:_cwbFreeBetween(t, t+dur)});
   return out;
+}
+// Heures de départ possibles pour l'arrivée choisie.
+function _cwbEnds(){
+  var d=_cwb.day&&_cwb.day.day; if(!d||_cwb.start===null) return [];
+  var c=_cwMin(d.close), s0=_cwb.start, out=[];
+  if(_cwb.info.cw_unit==='half_day'){ for(var t=s0+240; t<=c; t+=240) out.push({t:t, ok:_cwbFreeBetween(s0, t)}); return out; }
+  for(var u=s0+60; u<c; u+=60) out.push({t:u, ok:_cwbFreeBetween(s0, u)});
+  if(c>s0) out.push({t:c, ok:_cwbFreeBetween(s0, c)});
+  return out;
+}
+function _cwbDefaultEnd(){
+  var ends=_cwbEnds(); if(!ends.length) return null;
+  if(_cwb.info.cw_unit==='half_day') return ends[0].ok ? ends[0].t : null;
+  var best=null; for(var i=0;i<ends.length;i++){ if(ends[i].ok) best=ends[i].t; else break; }
+  return best;
 }
 function _cwbAutoStart(){
   if(!_cwb||!_cwb.info) return;
   var st=_cwbStarts();
-  if(_cwb.start!==null && st.some(function(x){ return x.t===_cwb.start && x.ok; })) return;
-  _cwb.start = (_cwb.info.cw_unit==='day' && st[0] && st[0].ok) ? st[0].t : null;
+  if(!(_cwb.start!==null && st.some(function(x){ return x.t===_cwb.start && x.ok; }))){
+    var first=st.filter(function(x){ return x.ok; })[0];
+    _cwb.start = (_cwb.info.cw_unit==='day' && first) ? first.t : null;
+  }
+  if(_cwbUsesEnd()){
+    var ends=_cwbEnds();
+    if(!(_cwb.end!==null && ends.some(function(x){ return x.t===_cwb.end && x.ok; }))) _cwb.end = _cwb.start!==null ? _cwbDefaultEnd() : null;
+  }
 }
 function _cwbSetPersons(n){ if(!_cwb) return; var max=_cwb.info.cw_seats||1; _cwb.persons=Math.max(1,Math.min(max,n)); _cwbAutoStart(); _cwbRender(); }
 function _cwbSetHours(h){ if(!_cwb) return; _cwb.hours=h; _cwbAutoStart(); _cwbRender(); }
-function _cwbSetStart(t){ if(!_cwb) return; _cwb.start=t; _cwbRender(); }
+function _cwbSetStart(t){ if(!_cwb) return; _cwb.start=t; _cwb.end=null; _cwbAutoStart(); _cwbRender(); }
+function _cwbSetEnd(t){ if(!_cwb) return; _cwb.end=t; _cwbRender(); }
 function _cwbTotal(){
-  var info=_cwb.info; var units=info.cw_unit==='hour'?_cwb.hours:1;
+  var info=_cwb.info; var units=info.cw_unit==='hour'?_cwb.hours:(info.cw_unit==='half_day'?Math.max(1,Math.round(_cwbDur()/240)):1);
   var mult=info.cw_mode==='private'?1:_cwb.persons;
   return Math.round(info.unit_price*units*mult*100)/100;
 }
@@ -25748,30 +25774,36 @@ function _cwbRender(){
       h+='<button class="cw-chip'+(hh===_cwb.hours?' on':'')+'" onclick="_cwbSetHours('+hh+')" data-i18n-skip>'+hh+' h</button>';
     }
     h+='</div>';
-  } else if(info.cw_unit==='half_day'){
-    h+='<div class="cw-lbl">Durée</div><div class="cw-sub" style="font-size:12px;color:#bbb;">Demi-journée (4 h)</div>';
   }
   // Horaires
-  h+='<div class="cw-lbl">'+(info.cw_unit==='day'?'Journée':'Heure d’arrivée')+'</div>';
+  h+='<div class="cw-lbl">Heure d’arrivée</div>';
   if(_cwb.loadingDay) h+='<div class="cw-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>';
   else if(!d) h+='<div class="cw-empty">Fermé ce jour-là.</div>';
   else {
     var st=_cwbStarts();
     if(!st.some(function(x){ return x.ok; })) h+='<div class="cw-empty">Plus de place disponible ce jour-là pour cette durée. Essayez un autre jour ou une durée plus courte.</div>';
-    else if(info.cw_unit==='day') h+='<div class="cw-chips"><button class="cw-chip on" data-i18n-skip>'+d.open+' – '+d.close+'</button></div>';
     else {
       h+='<div class="cw-chips">';
       st.forEach(function(x){ h+='<button class="cw-chip'+(x.t===_cwb.start?' on':'')+'"'+(x.ok?' onclick="_cwbSetStart('+x.t+')"':' disabled')+' data-i18n-skip>'+_cwHm(x.t)+'</button>'; });
       h+='</div>';
+      if(_cwbUsesEnd() && _cwb.start!==null){
+        h+='<div class="cw-lbl">Heure de départ</div><div class="cw-chips">';
+        _cwbEnds().forEach(function(x){
+          var lab=_cwHm(x.t)+(info.cw_unit==='half_day' && x.t-_cwb.start>240 ? ' ('+Math.round((x.t-_cwb.start)/240)+' × 4h)' : '');
+          h+='<button class="cw-chip'+(x.t===_cwb.end?' on':'')+'"'+(x.ok?' onclick="_cwbSetEnd('+x.t+')"':' disabled')+' data-i18n-skip>'+lab+'</button>';
+        });
+        h+='</div>';
+      }
     }
   }
   // Récapitulatif
-  var ready = d && _cwb.start!==null;
+  var ready = d && _cwb.start!==null && (!_cwbUsesEnd() || _cwb.end!==null);
   if(ready){
     var end=_cwb.start+_cwbDur();
     h+='<div class="cw-sum"><div><strong data-i18n-skip>'+_escHtml(_cwDateLong(_cwb.date))+'</strong></div>'
       +'<div data-i18n-skip>'+_cwHm(_cwb.start)+' – '+_cwHm(end)+'</div>'
       +'<div><span data-i18n-skip>'+_cwb.persons+'</span> <span>'+(_cwb.persons>1?'personnes':'personne')+'</span></div>'
+      +(info.cw_unit==='half_day' && _cwbDur()>240 ? '<div data-i18n-skip>'+Math.round(_cwbDur()/240)+' × <span>format 4h</span></div>' : '')
       +'<div class="cw-total"><span>Total</span><b data-i18n-skip>'+_cwEur(_cwbTotal())+'</b></div></div>';
   }
   h+='<div class="cw-err'+(_cwb.err?' on':'')+'">'+_escHtml(_cwb.err||'')+'</div>';
@@ -25786,7 +25818,7 @@ function _cwbContinue(){
   _cwb.busy=true; _cwb.err=''; _cwbRender();
   fetch(_cwApi()+'/api/coworking/'+encodeURIComponent(_cwb.partner.id)+'/bookings',{
     method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({service_id:_cwb.service.id, date:_cwb.date, start:_cwHm(_cwb.start), hours:_cwb.hours, persons:_cwb.persons})
+    body:JSON.stringify({service_id:_cwb.service.id, date:_cwb.date, start:_cwHm(_cwb.start), end:(_cwbUsesEnd()&&_cwb.end!==null)?_cwHm(_cwb.end):undefined, hours:_cwb.hours, persons:_cwb.persons})
   }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
   .then(function(res){
     if(!_cwb) return;
