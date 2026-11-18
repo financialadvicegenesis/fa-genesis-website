@@ -1345,7 +1345,9 @@ a{text-decoration:none;color:inherit}
    FICHE PRESTATAIRE — DESIGN HUD FUTURISTE GENESIS
    ═══════════════════════════════════════════════════ */
 /* Hero plein-écran */
-.pf-hero{margin:0 -24px;height:300px;position:relative;overflow:hidden;background:#0d0d0d;background-size:cover;background-position:center top}
+.pf-hero{margin:0 -24px;height:340px;position:relative;overflow:hidden;background:#0d0d0d;background-size:cover;background-position:center top}
+/* Photo / logo : partie haute seulement, fondue vers le bas, jamais sous le nom (bloc d'identité ≈ 112 px). */
+.pf-hero-img{position:absolute;left:0;right:0;top:0;bottom:112px;background-size:cover;background-repeat:no-repeat;background-position:center 25%;-webkit-mask-image:linear-gradient(to bottom,#000 88%,transparent 100%);mask-image:linear-gradient(to bottom,#000 88%,transparent 100%)}
 .pf-hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.22) 0%,rgba(0,0,0,.0) 30%,rgba(13,13,13,.96) 100%)}
 /* Brackets HUD dans les coins du héro */
 .pf-corner{position:absolute;width:18px;height:18px;border-color:#FFD700;border-style:solid;opacity:.55;z-index:2}
@@ -7289,8 +7291,11 @@ function openPartnerDetail(partnerId){
       var responseLabel = partnerResponseLabel(p);
 
       // ── HERO cinématographique ──
-      var heroBg = p.photo ? 'background-image:url('+p.photo+')' : 'background:#111';
+      // Photo / logo dans un calque qui s'arrête AU-DESSUS du nom (2026-11-18) : en plein fond, un
+      // logo centré dans son image se retrouvait derrière le nom et le métier.
+      var heroBg = p.photo ? '' : 'background:#111';
       var heroHtml = '<div class="pf-hero" id="pf-hero-'+p.id+'" style="'+heroBg+'">'
+        + (p.photo ? '<div class="pf-hero-img" style="background-image:url(\''+String(p.photo).replace(/'/g,'%27')+'\')"></div>' : '')
         + '<div class="pf-hero-overlay"></div>'
         + '<div class="pf-hero-actions">'
           + '<button class="pf-hero-btn" onclick="closeDetail()"><i class="fa-solid fa-xmark"></i></button>'
