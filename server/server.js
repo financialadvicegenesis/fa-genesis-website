@@ -2179,11 +2179,14 @@ app.use((req, res, next) => {
 // ADMIN_PARTNER_EMAIL / ADMIN_PARTNER_PASSWORD (les identifiants admin "principaux", déjà utilisés
 // par la connexion admin dans l'app) sont aussi acceptés ici : un seul identifiant admin pour les
 // deux écrans. Espaces/retours à la ligne en trop retirés (copier-coller dans Render).
+// Adresses personnelles : jamais écrites ici (dépôt public, 2026-11-18). Variable Render
+// ADMIN_EXTRA_EMAILS = une ou plusieurs adresses séparées par des virgules, avec ADMIN_PASSWORD.
 var ADMIN_ACCOUNTS = [
     { email: 'admin@fagenesis.com', password: process.env.ADMIN_PASSWORD },
-    { email: 'tiffenndjambou3@gmail.com', password: process.env.ADMIN_PASSWORD },
     { email: process.env.ADMIN_PARTNER_EMAIL, password: process.env.ADMIN_PARTNER_PASSWORD }
-].map(function(a) {
+].concat(String(process.env.ADMIN_EXTRA_EMAILS || '').split(',').map(function(e) {
+    return { email: e, password: process.env.ADMIN_PASSWORD };
+})).map(function(a) {
     return { email: (a.email || '').toString().toLowerCase().trim(), password: typeof a.password === 'string' ? a.password.trim() : '' };
 }).filter(function(a) { return a.email && a.password.length > 0; });
 
