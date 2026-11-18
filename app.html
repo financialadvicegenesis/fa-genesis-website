@@ -2703,15 +2703,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261118a"></script>
-<script src="app-i18n-es.js?v=20261118a"></script>
-<script src="app-i18n-hi.js?v=20261118a"></script>
-<script src="app-i18n-pt.js?v=20261118a"></script>
-<script src="app-i18n-ja.js?v=20261118a"></script>
-<script src="app-i18n-zh.js?v=20261118a"></script>
-<script src="app-i18n-ar.js?v=20261118a"></script>
-<script src="app-i18n-it.js?v=20261118a"></script>
-<script src="app-i18n-de.js?v=20261118a"></script>
+<script src="app-i18n-en.js?v=20261118b"></script>
+<script src="app-i18n-es.js?v=20261118b"></script>
+<script src="app-i18n-hi.js?v=20261118b"></script>
+<script src="app-i18n-pt.js?v=20261118b"></script>
+<script src="app-i18n-ja.js?v=20261118b"></script>
+<script src="app-i18n-zh.js?v=20261118b"></script>
+<script src="app-i18n-ar.js?v=20261118b"></script>
+<script src="app-i18n-it.js?v=20261118b"></script>
+<script src="app-i18n-de.js?v=20261118b"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -25002,7 +25002,9 @@ function _ptnrAddServiceItem(audience){
   var container = document.getElementById('ptnr-services-list-'+audience);
   if(!container) return;
   var wrapper = document.createElement('div');
-  wrapper.innerHTML = _ptnrRenderServiceItemRow({label:'', description:'', price:'', pricing_type:'fixed', audience:audience});
+  // Espace coworking : une nouvelle offre démarre au format « Par poste / journée » (réservable tout de suite).
+  var _cwNew = (_ptnrSession && _ptnrSession.partner_type==='coworking') ? {cw_unit:'day', cw_mode:'per_person', cw_seats:1} : {};
+  wrapper.innerHTML = _ptnrRenderServiceItemRow(Object.assign({label:'', description:'', price:'', pricing_type:'fixed', audience:audience}, _cwNew));
   container.appendChild(wrapper.firstChild);
 }
 
@@ -25454,6 +25456,25 @@ function _updateGreeting(){
 .cwo-btn{margin-top:auto;width:100%;background:#151515;color:#fff;border:3px solid #fff;padding:16px 10px;font-family:'Unbounded',sans-serif;font-weight:900;font-style:italic;font-size:13px;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;}
 .cwo-feat + .cwo-btn,.cwo-sep + .cwo-btn{margin-top:14px;}
 .cwo-btn:active{background:#FFD700;color:#000;border-color:#FFD700;}
+/* Éditeur coworking : formats en gros boutons + aperçu client */
+.ptnr-svc-cw{margin-top:10px;background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.3);border-radius:10px;padding:9px;}
+.cwf-head{display:flex;align-items:center;gap:5px;font-size:8.5px;font-weight:900;text-transform:uppercase;color:#60a5fa;letter-spacing:.4px;margin-bottom:7px;}
+.cwf-chips{display:flex;flex-direction:column;gap:5px;}
+.cwf-chip{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;background:#151515;border:1.5px solid #2c2c2c;border-radius:9px;padding:8px 10px;cursor:pointer;font-family:inherit;color:#ddd;}
+.cwf-chip .cwf-t{font-size:12px;font-weight:900;line-height:1.2;}
+.cwf-chip .cwf-s{font-size:9.5px;color:#888;margin-top:1px;}
+.cwf-chip.on{background:#FFD700;border-color:#FFD700;color:#000;}
+.cwf-chip.on .cwf-s{color:#3a3000;}
+.cwf-none{display:block;margin-top:6px;background:none;border:none;color:#777;font-size:10px;cursor:pointer;padding:2px 0;font-family:inherit;text-decoration:underline;}
+.cwf-none.on{color:#FFD700;text-decoration:none;font-weight:800;}
+.cwf-preview-line{margin-top:8px;font-size:11px;color:#bbb;line-height:1.4;}
+.cwf-preview-line strong{color:#FFD700;font-weight:900;}
+.cwf-apercu{margin-top:8px;width:100%;background:transparent;border:1.5px solid #FFD700;color:#FFD700;border-radius:9px;padding:8px;font-size:11px;font-weight:900;cursor:pointer;font-family:inherit;}
+#cwo-preview-ov{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));}
+#cwo-preview-ov.open{display:flex;}
+.cwo-prev-box{width:100%;max-width:380px;max-height:100%;overflow-y:auto;}
+.cwo-prev-head{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#FFD700;font-size:12px;font-weight:900;margin-bottom:10px;}
+.cwo-prev-head button{background:#1a1a1a;border:1px solid #333;color:#aaa;width:30px;height:30px;border-radius:50%;cursor:pointer;}
 .cw-code{margin-top:10px;background:rgba(255,215,0,.07);border:1px dashed rgba(255,215,0,.45);border-radius:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .cw-code .k{font-size:9px;font-weight:900;color:#FFD700;letter-spacing:.6px;text-transform:uppercase;}
 .cw-code .h{font-size:10px;color:#888;margin-top:2px;}
@@ -25941,34 +25962,88 @@ function _cwpCancel(orderId){
 // ── PRESTATAIRE : champs « réservation par créneau » dans Mes tarifs & prestations ──────────
 function _cwSvcEditorHtml(service, isQuote){
   if(!(_ptnrSession && _ptnrSession.partner_type==='coworking')) return '';
-  // Formats demandés par FA GENESIS (2026-11-18), comme l'ancienne page offres.html :
-  // « par poste / journée », « par journée » (espace entier), « format 4h ». Une valeur = unité:mode.
+  // Formats demandés par FA GENESIS (2026-11-18), comme l'ancienne page offres.html : gros boutons
+  // « Par poste / journée », « Par journée » (espace entier), « Format 4h ». Valeur = unité:mode,
+  // dans un champ caché lu par _cwSvcCollect. Une nouvelle prestation démarre en « Par poste / journée ».
   var u=service.cw_unit||'', seats=service.cw_seats||1, mode=service.cw_mode||'per_person', minH=service.cw_min_hours||1;
   var cur = u ? (u+':'+mode) : '';
-  var opts = [['', 'Pas de réservation par créneau'], ['day:per_person', 'Par poste / journée (prix par personne : open space)'], ['day:private', 'Par journée (espace entier : bureau, salle)'], ['half_day:private', 'Format 4h (espace entier : salle, événement)']];
-  // Anciens formats (avant le 2026-11-18) : conservés tels quels s'ils sont déjà utilisés.
-  if(cur && !opts.some(function(o){ return o[0]===cur; })){
-    opts.push([cur, cur==='half_day:per_person' ? 'Format 4h / poste (ancien format)' : (mode==='private' ? 'Par heure, espace entier (ancien format)' : 'Par poste / heure (ancien format)')]);
+  var fmts = [['day:per_person','Par poste / journée','open space'], ['day:private','Par journée','espace entier'], ['half_day:private','Format 4h','salle, événement']];
+  var legacy = cur && !fmts.some(function(o){ return o[0]===cur; });
+  function chip(v, t, sub){
+    var on = v===cur;
+    return '<button type="button" class="cwf-chip'+(on?' on':'')+'" data-v="'+v+'" onclick="_cwSvcPickFormat(this)"><span class="cwf-t">'+t+'</span>'+(sub?'<span class="cwf-s">'+sub+'</span>':'')+'</button>';
   }
-  return '<div class="ptnr-svc-cw" style="display:'+(isQuote?'none':'block')+';margin-top:10px;background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.3);border-radius:9px;padding:8px 9px;">'
-    +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#60a5fa;letter-spacing:.4px;margin-bottom:6px;"><i class="fa-solid fa-calendar-check" style="margin-right:3px;"></i>Réservation par créneau</div>'
-    +'<select class="ptnr-svc-cw-format cwp-in" style="width:100%;font-size:11px;" onchange="_cwSvcUnitChanged(this)">'
-      + opts.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===cur?' selected':'')+'>'+o[1]+'</option>'; }).join('')
-    +'</select>'
+  return '<div class="ptnr-svc-cw" style="display:'+(isQuote?'none':'block')+';">'
+    +'<div class="cwf-head"><i class="fa-solid fa-calendar-check"></i><span>Format de réservation</span></div>'
+    +'<input type="hidden" class="ptnr-svc-cw-format" value="'+cur+'">'
+    +'<div class="cwf-chips">'
+      + fmts.map(function(o){ return chip(o[0], o[1], o[2]); }).join('')
+      + (legacy ? chip(cur, cur==='half_day:per_person' ? 'Format 4h / poste' : (mode==='private' ? 'Par heure' : 'Par poste / heure'), 'ancien format') : '')
+    +'</div>'
+    +'<button type="button" class="cwf-none'+(cur?'':' on')+'" data-v="" onclick="_cwSvcPickFormat(this)">'+(cur?'':'✓ ')+'Pas de réservation par créneau</button>'
     +'<div class="ptnr-svc-cw-more" style="display:'+(u?'block':'none')+';">'
-      +'<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;"><span class="ptnr-svc-cw-seats-lbl" style="font-size:10px;color:#aaa;">'+(mode==='private'?'Personnes max':'Postes disponibles')+'</span><input type="number" class="ptnr-svc-cw-seats cwp-in" min="1" max="500" value="'+seats+'" style="width:64px;">'
+      +'<div class="cwf-preview-line">'+(u ? '<span>Les clients verront :</span> <strong data-i18n-skip>'+(Number(service.price)>0 ? ((Number(service.price)%1?Number(service.price).toFixed(2).replace('.',','):Number(service.price))+' €') : '… €')+'</strong> <strong>'+_cwUnitLabel(service)+'</strong>' : '')+'</div>'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;"><span class="ptnr-svc-cw-seats-lbl" style="font-size:10px;color:#aaa;">'+(mode==='private'?'Personnes max':'Postes disponibles')+'</span><input type="number" class="ptnr-svc-cw-seats cwp-in" min="1" max="500" value="'+seats+'" style="width:64px;">'
       +'<span class="ptnr-svc-cw-minh-wrap" style="display:'+(u==='hour'?'inline-flex':'none')+';gap:6px;align-items:center;"><span style="font-size:10px;color:#aaa;">Minimum</span><select class="ptnr-svc-cw-minh cwp-in">'+[1,2,3,4].map(function(n){ return '<option value="'+n+'"'+(n===minH?' selected':'')+'>'+n+' h</option>'; }).join('')+'</select></span></div>'
-      +'<div class="cwp-hint">Le prix indiqué au-dessus correspond au format choisi : un poste pour une journée, l’espace entier pour une journée, ou l’espace entier pour 4 h. Créez la même offre dans chaque onglet (Étudiant, Particulier, Entreprise) avec son prix. Paiement en une fois, sécurisé par GENESIS SAFE™. Vos horaires se règlent dans Profil › Mes disponibilités.</div>'
+      +'<button type="button" class="cwf-apercu" onclick="_cwSvcPreview(this)"><i class="fa-regular fa-eye"></i> <span>Aperçu client</span></button>'
+      +'<div class="cwp-hint">Le prix correspond au format choisi : un poste pour une journée, l’espace entier pour une journée, ou l’espace entier pour 4 h. Créez la même offre dans chaque onglet (Étudiant, Particulier, Entreprise) avec son prix. Vos horaires se règlent dans Profil › Mes disponibilités.</div>'
     +'</div></div>';
 }
+function _cwSvcPickFormat(btn){
+  var box=btn.closest('.ptnr-svc-cw'); if(!box) return;
+  var v=btn.getAttribute('data-v')||'';
+  var inp=box.querySelector('.ptnr-svc-cw-format'); if(inp) inp.value=v;
+  [].forEach.call(box.querySelectorAll('.cwf-chip'),function(c){ c.classList.toggle('on', c.getAttribute('data-v')===v); });
+  var none=box.querySelector('.cwf-none'); if(none){ none.classList.toggle('on', !v); none.textContent=(v?'':'✓ ')+'Pas de réservation par créneau'; }
+  _cwSvcUnitChanged(inp);
+}
 function _cwSvcUnitChanged(sel){
-  var card=sel.closest('.ptnr-svc-card'); if(!card) return;
+  var card=sel && sel.closest('.ptnr-svc-card'); if(!card) return;
   var parts=(sel.value||'').split(':'), unit=parts[0]||'', mode=parts[1]||'per_person';
   var more=card.querySelector('.ptnr-svc-cw-more'); if(more) more.style.display=unit?'block':'none';
   var mh=card.querySelector('.ptnr-svc-cw-minh-wrap'); if(mh) mh.style.display=unit==='hour'?'inline-flex':'none';
   var lbl=card.querySelector('.ptnr-svc-cw-seats-lbl'); if(lbl) lbl.textContent = mode==='private' ? 'Personnes max' : 'Postes disponibles';
   var pm=card.querySelector('.ptnr-svc-paymode-wrap'); if(pm) pm.style.display=unit?'none':'block';
+  _cwSvcRefreshLine(card);
 }
+// Ligne « Les clients verront : 10 € / poste / journée », mise à jour à chaque frappe du prix.
+function _cwSvcRefreshLine(card){
+  var line=card && card.querySelector('.cwf-preview-line'); if(!line) return;
+  var f=(card.querySelector('.ptnr-svc-cw-format')||{}).value||''; if(!f){ line.innerHTML=''; return; }
+  var p=f.split(':'); var lab=_cwUnitLabel({cw_unit:p[0], cw_mode:p[1]});
+  var pr=parseFloat((card.querySelector('.ptnr-svc-price')||{}).value);
+  line.innerHTML='<span>Les clients verront :</span> <strong data-i18n-skip>'+(pr>0?((pr%1?pr.toFixed(2).replace('.',','):pr)+' €'):'… €')+'</strong> <strong>'+lab+'</strong>';
+}
+function _cwSvcCardData(card){
+  var f=((card.querySelector('.ptnr-svc-cw-format')||{}).value||'').split(':');
+  var img=card.getAttribute('data-service-image')||'';
+  return {
+    id:'apercu', label:((card.querySelector('.ptnr-svc-label')||{}).value||'').trim()||'Nom de l’offre',
+    price:parseFloat((card.querySelector('.ptnr-svc-price')||{}).value)||0, pricing_type:'fixed',
+    cw_unit:f[0]||null, cw_mode:f[1]||'per_person',
+    features:[].map.call(card.querySelectorAll('.ptnr-svc-feature-input'),function(i){ return i.value.trim(); }).filter(Boolean),
+    image: img ? decodeURIComponent(img) : ''
+  };
+}
+// Aperçu : la carte exactement comme les clients la voient (bouton inactif).
+function _cwSvcPreview(btn){
+  var card=btn.closest('.ptnr-svc-card'); if(!card) return;
+  var d=_cwSvcCardData(card);
+  var ov=document.getElementById('cwo-preview-ov');
+  if(!ov){ ov=document.createElement('div'); ov.id='cwo-preview-ov'; ov.onclick=function(e){ if(e.target===ov) ov.classList.remove('open'); }; document.body.appendChild(ov); }
+  var html=_cwOfferCardHtml(d, {id:'apercu'}).replace(/onclick="[^"]*"/g,'');
+  ov.innerHTML='<div class="cwo-prev-box"><div class="cwo-prev-head"><span>Aperçu : ce que voient les clients</span><button type="button" onclick="document.getElementById(\'cwo-preview-ov\').classList.remove(\'open\')" aria-label="Fermer">✕</button></div>'
+    +'<div class="cwo-row">'+html+'</div>'
+    +(d.image?'':'<div class="cwp-hint" style="margin-top:8px;">Ajoutez une photo (carré photo en haut de la prestation) : elle s’affiche en fond de la carte.</div>')
+    +(d.features.length?'':'<div class="cwp-hint">Ajoutez vos avantages avec « Ajouter un avantage » (ex. Café offert, Wi-Fi inclus) : ils s’affichent avec une coche.</div>')
+    +'</div>';
+  ov.classList.add('open');
+}
+// Ligne d'aperçu à jour pendant la saisie du prix.
+document.addEventListener('input', function(e){
+  var t=e.target; if(!t || !t.classList || !t.closest) return;
+  if(t.classList.contains('ptnr-svc-price')){ var c=t.closest('.ptnr-svc-card'); if(c && c.querySelector('.ptnr-svc-cw')) _cwSvcRefreshLine(c); }
+}, true);
 function _cwSvcCollect(card){
   var f=card.querySelector('.ptnr-svc-cw-format'); if(!f||!f.value) return {cw_unit:null};
   var parts=f.value.split(':');
