@@ -2711,15 +2711,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261118g"></script>
-<script src="app-i18n-es.js?v=20261118g"></script>
-<script src="app-i18n-hi.js?v=20261118g"></script>
-<script src="app-i18n-pt.js?v=20261118g"></script>
-<script src="app-i18n-ja.js?v=20261118g"></script>
-<script src="app-i18n-zh.js?v=20261118g"></script>
-<script src="app-i18n-ar.js?v=20261118g"></script>
-<script src="app-i18n-it.js?v=20261118g"></script>
-<script src="app-i18n-de.js?v=20261118g"></script>
+<script src="app-i18n-en.js?v=20261118h"></script>
+<script src="app-i18n-es.js?v=20261118h"></script>
+<script src="app-i18n-hi.js?v=20261118h"></script>
+<script src="app-i18n-pt.js?v=20261118h"></script>
+<script src="app-i18n-ja.js?v=20261118h"></script>
+<script src="app-i18n-zh.js?v=20261118h"></script>
+<script src="app-i18n-ar.js?v=20261118h"></script>
+<script src="app-i18n-it.js?v=20261118h"></script>
+<script src="app-i18n-de.js?v=20261118h"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -24843,7 +24843,7 @@ function _ptnrRenderServiceItemRow(service){
       + _cwSvcEditorHtml(service, isQuote)
       // Modalité de paiement : aussi pour une prestation « sur devis » (affichée au client sur la
       // fiche, et pré-remplie dans chaque proposition de devis, où elle reste modifiable).
-      + ('<div class="ptnr-svc-paymode-wrap" style="margin-top:10px;display:'+(service.cw_unit&&!isQuote?'none':'block')+';">'
+      + ('<div class="ptnr-svc-paymode-wrap" style="margin-top:10px;display:'+(service.cw_unit&&service.cw_unit!=='half_day'&&!isQuote?'none':'block')+';">'
         +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#FFD700;letter-spacing:.4px;margin-bottom:6px;"><i class="fa-solid fa-lock" style="margin-right:3px;"></i>GENESIS SAFE™ — Mode de paiement</div>'
         +'<div class="ptnr-svc-quote-pay-hint" style="display:'+(isQuote?'block':'none')+';font-size:9px;color:#888;line-height:1.4;margin:-2px 0 6px;">Modalité prévue pour vos devis : affichée au client et reprise dans chaque proposition (modifiable).</div>'
         +'<div style="display:flex;gap:4px;margin-bottom:8px;">'
@@ -24993,7 +24993,7 @@ function _ptnrSelectPricingMode(btn, mode){
   if(cwWrap) cwWrap.style.display = mode==='quote' ? 'none' : 'block';
   var cwUnit = card.querySelector('.ptnr-svc-cw-format');
   var payWrap = card.querySelector('.ptnr-svc-paymode-wrap');
-  if(payWrap) payWrap.style.display = (mode!=='quote' && cwUnit && cwUnit.value) ? 'none' : 'block';
+  if(payWrap) payWrap.style.display = (mode!=='quote' && cwUnit && cwUnit.value && cwUnit.value.indexOf('half_day')!==0) ? 'none' : 'block';
   if(mode==='quote'){
     if(priceEl){ priceEl.value=''; priceEl.remove(); }
     if(!quoteEl && pricingRow){
@@ -25836,19 +25836,28 @@ function _cwbRecapHtml(){
     +'<div data-i18n-skip>'+_cwHm(_cwb.start)+' – '+_cwHm(end)+'</div>'
     +'<div><span data-i18n-skip>'+_cwb.persons+'</span> <span>'+(_cwb.persons>1?'personnes':'personne')+'</span></div>'
     +'<div class="cw-total"><span>Total</span><b data-i18n-skip>'+_cwEur(b.total_amount)+'</b></div></div>';
+  if(b.payment_mode==='deposit_balance' && b.balance_amount>0){
+    h+='<div class="cw-note"><i class="fa-solid fa-coins"></i><div><span>Acompte à payer aujourd’hui :</span> <strong data-i18n-skip>'+_cwEur(b.deposit_amount)+'</strong><span>. Reste :</span> <strong data-i18n-skip>'+_cwEur(b.balance_amount)+'</strong><span>, à régler depuis votre Wallet GENESIS.</span></div></div>';
+  } else if(b.payment_mode==='installments' && b.installments && b.installments.length>1){
+    h+='<div class="cw-note"><i class="fa-solid fa-coins"></i><div><span>Paiement en</span> <strong data-i18n-skip>'+b.installments.length+'</strong> <span>fois : aujourd’hui</span> <strong data-i18n-skip>'+_cwEur(b.installments[0])+'</strong><span>, puis les mensualités suivantes depuis votre Wallet GENESIS.</span></div></div>';
+  }
   h+='<div class="cw-note"><i class="fa-solid fa-rotate-left"></i><div>'+(b.free_cancel_until
       ? '<span>Annulation gratuite jusqu’au</span> <strong data-i18n-skip>'+_escHtml(_cwDateTime(b.free_cancel_until))+'</strong><span>. Ensuite, la réservation n’est plus remboursable.</span>'
       : '<span>Ce créneau commence dans moins de 24 h : la réservation ne pourra pas être annulée.</span>')+'</div></div>';
   h+='<div class="cw-note"><i class="fa-solid fa-key"></i><div><span>Après le paiement, vous recevez l’adresse, les instructions d’accès et votre code d’arrivée, à donner à l’accueil.</span></div></div>';
   h+='<div class="cw-note"><i class="fa-solid fa-lock"></i><div><span>Paiement sécurisé par GENESIS SAFE™ : l’espace est payé après votre créneau. Votre place est bloquée 15 minutes.</span></div></div>';
-  h+='<button class="cw-cta" onclick="_cwbPay()"><span>Payer</span> <span data-i18n-skip>'+_cwEur(b.total_amount)+'</span></button>';
+  h+='<button class="cw-cta" onclick="_cwbPay()"><span>Payer</span> <span data-i18n-skip>'+_cwEur(b.deposit_amount!=null?b.deposit_amount:b.total_amount)+'</span></button>';
   h+='<button class="cw-cta ghost" onclick="_cwb.step=\'pick\';_cwbRender();">Modifier</button>';
   return h;
 }
 function _cwbPay(){
   if(!_cwb||!_cwb.booking) return;
   var p=_cwb.partner, b=_cwb.booking;
-  var svc={id:_cwb.service.id, label:b.label, price:b.total_amount, payment_mode:'single', max_installments:1};
+  var _cs=_cwb.service||{}, _pm=b.payment_mode||'single';
+  // % d'acompte tiré des montants calculés par le serveur : le montant demandé à Stripe est
+  // ainsi exactement celui de la commande (sinon create-intent répond 409).
+  var _dp=(_pm==='deposit_balance' && b.total_amount>0 && b.deposit_amount!=null) ? (b.deposit_amount*100/b.total_amount) : _cs.deposit_pct;
+  var svc={id:_cs.id, label:b.label, price:b.total_amount, payment_mode:_pm, deposit_pct:_dp, installment_count:(b.installments&&b.installments.length>1)?b.installments.length:_cs.installment_count, max_installments:1};
   _cwbClose();
   try{ closeDetail(); }catch(e){}
   _showPbPayUI(p, svc, b.orderId, true);
@@ -25892,6 +25901,10 @@ function _cwBookingCard(b){
   }
   if(b.checkin_code && (b.status==='confirmed'||b.status==='ongoing')){
     h+='<div class="cw-code"><div><div class="k">Code d’arrivée</div><div class="h">'+(b.checked_in?'Arrivée confirmée par l’espace':'À donner à l’accueil en arrivant')+'</div></div><div class="v" data-i18n-skip>'+_escHtml(b.checkin_code)+'</div></div>';
+  }
+  if(b.balance_remaining>0){
+    h+='<div class="cw-line"><i class="fa-solid fa-coins" style="color:#FFD700;"></i><span><span>Reste à payer :</span> <strong data-i18n-skip>'+_cwEur(b.balance_remaining)+'</strong></span></div>'
+      +'<button class="resa-action-btn rab-ghost" style="width:100%;margin-top:8px;color:#FFD700;border-color:rgba(255,215,0,.4);" onclick="nav(\'profil\');setTimeout(function(){ if(typeof showClientWallet===\'function\') showClientWallet(); },400);"><i class="fa-solid fa-wallet"></i> <span>Régler depuis mon Wallet</span></button>';
   }
   if(b.address) h+='<div class="cw-line"><i class="fa-solid fa-location-dot"></i><span data-i18n-skip>'+_escHtml(b.address)+'</span></div>';
   if(b.access && b.status!=='ended') h+='<div class="cw-line"><i class="fa-solid fa-key"></i><span data-i18n-skip>'+_escHtml(b.access)+'</span></div>';
@@ -26159,7 +26172,8 @@ function _cwSvcUnitChanged(sel){
   var more=card.querySelector('.ptnr-svc-cw-more'); if(more) more.style.display=unit?'block':'none';
   var mh=card.querySelector('.ptnr-svc-cw-minh-wrap'); if(mh) mh.style.display=unit==='hour'?'inline-flex':'none';
   var lbl=card.querySelector('.ptnr-svc-cw-seats-lbl'); if(lbl) lbl.textContent = mode==='private' ? 'Personnes max' : 'Postes disponibles';
-  var pm=card.querySelector('.ptnr-svc-paymode-wrap'); if(pm) pm.style.display=unit?'none':'block';
+  // Format 4h (Événement / soirée) : 1 fois, acompte + reste ou plusieurs fois, comme les autres prestations.
+  var pm=card.querySelector('.ptnr-svc-paymode-wrap'); if(pm) pm.style.display=(unit && unit!=='half_day')?'none':'block';
   _cwSvcRefreshLine(card);
 }
 // Ligne « Les clients verront : 10 € / poste / journée », mise à jour à chaque frappe du prix.

@@ -4134,7 +4134,7 @@ async function checkAutoPaymentRelease() {
             // Coworking : jamais de versement avant la fin du créneau + 24 h, même si l'espace a
             // déclaré la mission « livrée » en avance depuis Mes missions (délai de 7 j sinon).
             if (_o.coworking && now < Date.parse(_o.coworking.end_at) + CW.REPORT_WINDOW_HOURS * 3600000) continue;
-            if (_o.balance_paid === true) continue;            // déjà payé intégralement
+            if (_o.balance_paid === true && !_o.coworking) continue;            // déjà payé intégralement (coworking : acompte + solde versés ci-dessous, idempotent)
             if (_o.status === 'cancelled' || _o.status === 'refunded') continue;
             // Ne doit pas encore avoir de payout envoyé
             var _arPayouts = loadPayouts();
@@ -16434,7 +16434,9 @@ app.put('/api/partner/services', authenticatePartner, async (req, res) => {
             if (cwIsPartner(req.partner)) {
                 var _cwLast = cleaned[cleaned.length - 1];
                 Object.assign(_cwLast, CW.sanitizeServiceCw(isQuote ? {} : s));
-                if (_cwLast.cw_unit) Object.assign(_cwLast, { payment_mode: 'single', deposit_pct: null, installment_count: null });
+                // Format 4h (Événement / soirée) : modes de paiement habituels (1 fois, acompte + reste,
+                // plusieurs fois), décision FA GENESIS 2026-11-18. Poste / journée et Par journée : 1 fois.
+                if (_cwLast.cw_unit && _cwLast.cw_unit !== 'half_day') Object.assign(_cwLast, { payment_mode: 'single', deposit_pct: null, installment_count: null });
             }
             // Photo de la prestation : analysée si elle est nouvelle ou remplacée (voir moderateImageField).
             const svcImg = await moderateImageField(cleaned[cleaned.length - 1].image, prevSvc.image, prevSvc.image_moderation, req.partner);
@@ -16718,6 +16720,16 @@ async function cwCancelAndRefund(order, by) {
     var dIdx = dispatches.findIndex(function(d) { return d.order_id === order.id && d.status !== 'cancelled'; });
     if (dIdx !== -1) {
         var disp = dispatches[dIdx];
+        // Acompte / mensualité déjà versés à l'espace (modes acompte + reste et plusieurs fois) :
+        // repris sur son Wallet, exactement comme dans /api/orders/:id/cancel-refund.
+        var _cwPaidOut = getOrderById(order.id);
+        if (_cwPaidOut && _cwPaidOut.partner_paid_out) {
+            var _cwClawId = disp.claimed_by_partner_id || disp.partner_id;
+            var _cwClaw = debitPartnerWallet(_cwClawId, _partnerDepositShare(_cwPaidOut, disp), 'Clawback — annulation réservation coworking (' + order.id + ')', order.id);
+            if (!_cwClaw.ok) notifyUser(null, 'admin', 'clawback_needed', 'Clawback manuel requis',
+                'Réservation coworking ' + order.id + ' annulée, mais l’espace (' + _cwClawId + ') a déjà retiré l’acompte. Récupération à effectuer manuellement.', '/admin.html#payouts');
+            else updateOrder(order.id, { partner_paid_out: false });
+        }
         dispatches[dIdx] = Object.assign({}, disp, { status: 'cancelled', mission_status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_reason: 'coworking_cancelled_by_' + by });
         saveDispatches(dispatches);
         cancelPendingWalletEntry(disp.partner_id || disp.claimed_by_partner_id, disp.id, 'deposit');
@@ -16803,7 +16815,9 @@ app.post('/api/coworking/:partnerId/bookings', function(req, res) {
         if (reuse) {
             var chk = cwPrePaymentCheck(reuse, null);
             if (chk) return res.status(409).json({ error: chk });
-            return res.json({ success: true, orderId: reuse.id, total_amount: reuse.total_amount, deposit_amount: reuse.deposit_amount,
+            return res.json({ success: true, orderId: reuse.id, total_amount: reuse.total_amount, deposit_amount: reuse.deposit_amount, balance_amount: reuse.balance_amount || 0,
+                payment_mode: reuse.payment_tier === 'custom' ? 'deposit_balance' : (reuse.payment_tier === 'partner_installments' ? 'installments' : 'single'),
+                installments: (reuse.installments || []).map(function(it) { return it.amount; }),
                 label: reuse.product_name, free_cancel_until: reuse.coworking.free_cancel_until || null });
         }
 
@@ -16812,6 +16826,16 @@ app.post('/api/coworking/:partnerId/bookings', function(req, res) {
         var pricing = partnerServicePricing(partner, service);
         var total = CW.priceFor(service, pricing.price, iv.units, persons);
         if (!(total >= 0.5)) return res.status(400).json({ error: 'Montant trop faible pour un paiement en ligne (0,50 € minimum).' });
+        // Plan de paiement : identique aux autres prestations (voir FORMAT partnerServiceOrder de
+        // /api/orders/create). Seul le format 4h peut être en acompte + reste ou en plusieurs fois.
+        var cwPayMode = service.cw_unit === 'half_day' ? (service.payment_mode || 'single') : 'single';
+        var cwTier = 'small', cwPlan;
+        if (cwPayMode === 'deposit_balance') { cwTier = 'custom'; cwPlan = generatePartnerSplit(total, service.deposit_pct != null ? service.deposit_pct : 30); }
+        else if (cwPayMode === 'installments') { cwTier = 'partner_installments'; cwPlan = generateUserInstallmentPlan(total, Math.max(2, Math.min(8, parseInt(service.installment_count, 10) || 2))); }
+        else cwPlan = [{ number: 1, key: 'paiement', label: 'Paiement intégral — GENESIS SAFE™', amount: total, stage: 'deposit', paid: false, paid_at: null, due_date: null, milestone_required: null }];
+        var cwDeposit = cwPlan[0].amount;
+        var cwBalance = Math.round(cwPlan.slice(1).reduce(function(sm, it) { return sm + (parseFloat(it.amount) || 0); }, 0) * 100) / 100;
+        if (!(cwDeposit >= 0.5)) return res.status(400).json({ error: 'Le premier paiement est trop faible pour un paiement en ligne (0,50 € minimum).' });
         var freeCancelUntil = startAt - CW.FREE_CANCEL_HOURS * 3600000;
         var label = service.label + ' — ' + cwFmtDate(slot.date) + ', ' + slot.start + '–' + slot.end;
         var order = {
@@ -16819,7 +16843,7 @@ app.post('/api/coworking/:partnerId/bookings', function(req, res) {
             product_id: null,
             product_name: label,
             product_type: 'partner_service',
-            payment_tier: 'small',
+            payment_tier: cwTier,
             partner_id: partner.id,
             partner_name: cwPartnerName(partner),
             partner_email: partner.email || '',
@@ -16835,10 +16859,10 @@ app.post('/api/coworking/:partnerId/bookings', function(req, res) {
             ...orderPromotionFields(pricing),
             welcome_discount_pct: 0,
             welcome_discount_amount: 0,
-            deposit_amount: total,
-            balance_amount: 0,
-            installments_count: 1,
-            installments: [{ number: 1, key: 'paiement', label: 'Paiement intégral — GENESIS SAFE™', amount: total, stage: 'deposit', paid: false, paid_at: null, due_date: null, milestone_required: null }],
+            deposit_amount: cwDeposit,
+            balance_amount: cwBalance,
+            installments_count: cwPlan.length,
+            installments: cwPlan,
             amount_paid: 0, deposit_paid: false, balance_paid: false, delivery_confirmed: false,
             duration_days: 0, start_date: null, status: 'pending_deposit', checkout_id: null, transaction_id: null,
             created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
@@ -16857,7 +16881,7 @@ app.post('/api/coworking/:partnerId/bookings', function(req, res) {
         all.push(order);
         saveOrders(all);
         console.log('[COWORKING] Réservation créée (en attente de paiement) :', order.id, label, total + ' €');
-        res.json({ success: true, orderId: order.id, total_amount: total, deposit_amount: total, label: label, free_cancel_until: order.coworking.free_cancel_until });
+        res.json({ success: true, orderId: order.id, total_amount: total, deposit_amount: cwDeposit, balance_amount: cwBalance, payment_mode: cwPayMode, installments: cwPlan.map(function(it) { return it.amount; }), label: label, free_cancel_until: order.coworking.free_cancel_until });
     } catch (e) { console.error('[COWORKING] booking POST:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
@@ -16883,6 +16907,8 @@ app.get('/api/coworking/bookings/mine', function(req, res) {
                 checkin_code: cancelled ? null : c.checkin_code, checked_in: !!c.checked_in_at,
                 address: cancelled ? null : (s.address || null), access: cancelled ? null : (s.access || null),
                 free_cancel_until: c.free_cancel_until || null,
+                payment_mode: o.payment_tier === 'custom' ? 'deposit_balance' : (o.payment_tier === 'partner_installments' ? 'installments' : 'single'),
+                balance_remaining: cancelled ? 0 : Math.round(((o.installments || []).slice(1).reduce(function(sm, it) { return sm + ((it.paid || o.balance_paid || o.balance_authorized) ? 0 : (parseFloat(it.amount) || 0)); }, 0)) * 100) / 100,
                 can_cancel: !cancelled && !!c.free_cancel_until && now < Date.parse(c.free_cancel_until),
                 can_report: !cancelled && !dispute && !!disp && now >= start && now <= end + CW.REPORT_WINDOW_HOURS * 3600000,
                 dispute_id: dispute ? dispute.id : null
@@ -19271,7 +19297,7 @@ function buildPartnerSpaceGuide() {
     g.push('MON PORTFOLIO : jusqu\'a 5 medias (photos ou videos MP4/MOV de 95 Mo maximum, environ 1 minute en 1080p, Wi-Fi conseille), verifies automatiquement avant publication ; aucun lien externe (YouTube, Instagram...). Toucher "Enregistrer le portfolio".');
     g.push('FACTURES ET CONTRATS : voir DOCUMENTS ci-dessus ; tout est dans Profil > Mes livrables.');
     if (COWORKING_BOOKING_ENABLED) {
-        g.push('ESPACES COWORKING (prestataires de categorie Espace Coworking uniquement) : dans Mes tarifs & prestations, chaque espace peut etre en "Reservation par creneau" avec un format : "Par poste / journee" (prix par personne, open space), "Par journee" (espace entier : bureau, salle) ou "Format 4h" (espace entier : salle, evenement), plus le nombre de postes ou de personnes max. On cree la meme offre dans chaque onglet (Etudiant, Particulier, Entreprise) avec son propre prix. Cote client, les offres s\'affichent en grandes cartes photo a faire defiler (titre, prix, format, avantages, bouton RESERVER) : soigner la photo et les "details" (ex. cafe offert, Wi-Fi inclus). A la reservation, le client choisit son heure d\'arrivee ET son heure de depart : en "Par poste / journee" et "Par journee", librement dans les horaires d\'ouverture, au prix d\'une journee (la place n\'est occupee que sur ces heures, le reste redevient reservable) ; en "Format 4h", depart 4 h, 8 h... apres l\'arrivee, prix multiplie par le nombre de tranches de 4 h (ex. 2 x format 4h). Profil > Mes disponibilites : horaires par jour, fermetures et horaires speciaux, adresse et instructions d\'acces (visibles par le client seulement apres paiement, sans telephone ni lien), "Bloquer un creneau", planning des reservations. A l\'arrivee, le client donne son code d\'arrivee a 4 chiffres : le saisir puis "Valider l\'arrivee" (preuve de presence ; sans code valide, le client ne peut pas laisser d\'avis). Le client peut annuler gratuitement jusqu\'a 24 h avant ; ensuite non. A la fin du creneau, la reservation se termine automatiquement et le paiement est verse 24 h apres, sauf probleme signale. Si l\'espace annule, le client est rembourse integralement.');
+        g.push('ESPACES COWORKING (prestataires de categorie Espace Coworking uniquement) : dans Mes tarifs & prestations, chaque espace peut etre en "Reservation par creneau" avec un format : "Par poste / journee" (prix par personne, open space), "Par journee" (espace entier : bureau, salle) ou "Format 4h" (espace entier : salle, evenement), plus le nombre de postes ou de personnes max. On cree la meme offre dans chaque onglet (Etudiant, Particulier, Entreprise) avec son propre prix. Cote client, les offres s\'affichent en grandes cartes photo a faire defiler (titre, prix, format, avantages, bouton RESERVER) : soigner la photo et les "details" (ex. cafe offert, Wi-Fi inclus). A la reservation, le client choisit son heure d\'arrivee ET son heure de depart : en "Par poste / journee" et "Par journee", librement dans les horaires d\'ouverture, au prix d\'une journee (la place n\'est occupee que sur ces heures, le reste redevient reservable) ; en "Format 4h", depart 4 h, 8 h... apres l\'arrivee, prix multiplie par le nombre de tranches de 4 h (ex. 2 x format 4h). Seul le "Format 4h" (evenement / soiree) peut se payer comme les autres prestations : 1 fois, Acompte + reste (acompte a la reservation, reste depuis le Wallet du client) ou Plusieurs fois (mensualites) ; les autres formats se paient en 1 fois. Profil > Mes disponibilites : horaires par jour, fermetures et horaires speciaux, adresse et instructions d\'acces (visibles par le client seulement apres paiement, sans telephone ni lien), "Bloquer un creneau", planning des reservations. A l\'arrivee, le client donne son code d\'arrivee a 4 chiffres : le saisir puis "Valider l\'arrivee" (preuve de presence ; sans code valide, le client ne peut pas laisser d\'avis). Le client peut annuler gratuitement jusqu\'a 24 h avant ; ensuite non. A la fin du creneau, la reservation se termine automatiquement et le paiement est verse 24 h apres, sauf probleme signale. Si l\'espace annule, le client est rembourse integralement.');
     }
     return g.join('\n');
 }
