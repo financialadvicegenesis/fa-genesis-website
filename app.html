@@ -2705,15 +2705,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261118e"></script>
-<script src="app-i18n-es.js?v=20261118e"></script>
-<script src="app-i18n-hi.js?v=20261118e"></script>
-<script src="app-i18n-pt.js?v=20261118e"></script>
-<script src="app-i18n-ja.js?v=20261118e"></script>
-<script src="app-i18n-zh.js?v=20261118e"></script>
-<script src="app-i18n-ar.js?v=20261118e"></script>
-<script src="app-i18n-it.js?v=20261118e"></script>
-<script src="app-i18n-de.js?v=20261118e"></script>
+<script src="app-i18n-en.js?v=20261118f"></script>
+<script src="app-i18n-es.js?v=20261118f"></script>
+<script src="app-i18n-hi.js?v=20261118f"></script>
+<script src="app-i18n-pt.js?v=20261118f"></script>
+<script src="app-i18n-ja.js?v=20261118f"></script>
+<script src="app-i18n-zh.js?v=20261118f"></script>
+<script src="app-i18n-ar.js?v=20261118f"></script>
+<script src="app-i18n-it.js?v=20261118f"></script>
+<script src="app-i18n-de.js?v=20261118f"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -25550,6 +25550,12 @@ function _updateGreeting(){
 .cwp-btn.ghost{background:transparent;color:#f87171;border:1px solid rgba(248,113,113,.35);}
 .cwp-chip{font-size:9px;font-weight:900;border-radius:20px;padding:3px 8px;letter-spacing:.3px;white-space:nowrap;}
 .cwp-hint{font-size:10px;color:#777;line-height:1.5;margin-top:6px;}
+/* Suggestions d'adresses (Mes disponibilités) */
+.cwp-sugg{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:5;background:#151515;border:1px solid #333;border-radius:10px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.6);}
+.cwp-sugg-it{display:flex;align-items:flex-start;gap:8px;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid #222;color:#ddd;font-size:12px;line-height:1.35;padding:10px 12px;cursor:pointer;font-family:inherit;}
+.cwp-sugg-it i{color:#FFD700;margin-top:2px;flex-shrink:0;}
+.cwp-sugg-it:active,.cwp-sugg-it:hover{background:#1f1f1f;}
+.cwp-sugg-src{font-size:9px;color:#666;text-align:right;padding:5px 10px;}
 </style>
 <div id="cwb-overlay" onclick="if(event.target===this)_cwbClose()"><div id="cwb-sheet"></div></div>
 <div id="cwp-overlay"><div id="cwp-sheet"></div></div>
@@ -25899,7 +25905,7 @@ function _cwpRender(){
   var d=_cwp.data;
   if(!d.services.length){
     h+='<div class="cwp-sec"><div class="cwp-card" style="border-color:rgba(255,215,0,.35);"><div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:6px;">Ajoutez vos espaces réservables</div>'
-      +'<div class="cwp-hint" style="font-size:11px;color:#aaa;">Dans « Mes tarifs &amp; prestations », pour chaque espace (open space, bureau, salle), choisissez « Réservation par créneau » : à l’heure, à la demi-journée ou à la journée, avec le nombre de places.</div>'
+      +'<div class="cwp-hint" style="font-size:11px;color:#aaa;">Dans « Mes tarifs &amp; prestations », pour chaque espace (open space, bureau, salle), choisissez le format de réservation : « Par poste / journée », « Par journée » ou « Format 4h », avec le nombre de places.</div>'
       +'<button class="cwp-btn" style="margin-top:10px;" onclick="_cwpClose();_ptnrNav(\'home\');">Ouvrir mes tarifs &amp; prestations</button></div></div>';
   }
   // Planning
@@ -25940,7 +25946,10 @@ function _cwpRender(){
     +'<div class="cwp-hint">Laissez les heures vides pour fermer toute la journée, ou indiquez des horaires spéciaux pour ce jour-là.</div></div>';
   // Adresse et accès
   h+='<div class="cw-lbl">Adresse et accès</div><div class="cwp-card">'
-    +'<input class="cwp-in" id="cwp-address" style="width:100%;" maxlength="200" placeholder="Adresse de l’espace" value="'+_escHtml(d.settings.address||'')+'">'
+    +'<div style="position:relative;">'
+    +'<input class="cwp-in" id="cwp-address" style="width:100%;" maxlength="200" placeholder="Adresse de l’espace" autocomplete="off" value="'+_escHtml(d.settings.address||'')+'" oninput="_cwpAddrInput(this)" onblur="setTimeout(_cwpAddrHide,200)">'
+    +'<div id="cwp-addr-sugg" class="cwp-sugg"></div>'
+    +'</div>'
     +'<textarea class="cwp-in" id="cwp-access" style="width:100%;margin-top:8px;min-height:64px;resize:vertical;" maxlength="600" placeholder="Instructions d’accès : étage, interphone, horaires d’accueil…">'+_escHtml(d.settings.access||'')+'</textarea>'
     +'<div class="cwp-hint">Visibles par le client uniquement après son paiement. Pas de numéro de téléphone, d’e-mail ni de lien : les échanges passent par la messagerie GENESIS.</div></div>';
   h+='<div class="cw-err" id="cwp-err"></div><button class="cw-cta" id="cwp-save" onclick="_cwpSave()">Enregistrer les horaires</button></div>';
@@ -25958,6 +25967,50 @@ function _cwpRender(){
     h+='</div></div>';
   }
   sh.innerHTML=h;
+}
+// ── Suggestions d'adresses pendant la saisie (2026-11-18, « comme Google Maps ») ──────────────
+// Services gratuits, sans clé : Base Adresse Nationale / Géoplateforme IGN (référence officielle)
+// pour la France et l'outre-mer, Photon (OpenStreetMap) pour les autres pays, filtré sur le pays
+// du prestataire. Seule l'adresse tapée est envoyée, rien d'autre.
+var _cwpAddrTimer = null, _cwpAddrSeq = 0, _cwpAddrList = [];
+var _CW_FR_ZONES = ['FR','GP','MQ','GF','RE','YT','PM','BL','MF','NC','PF','WF'];
+function _cwpAddrHide(){ var b=document.getElementById('cwp-addr-sugg'); if(b){ b.innerHTML=''; b.style.display='none'; } }
+function _cwpAddrInput(inp){
+  clearTimeout(_cwpAddrTimer);
+  var q=(inp.value||'').trim();
+  if(q.length<4){ _cwpAddrHide(); return; }
+  _cwpAddrTimer=setTimeout(function(){ _cwpAddrSearch(q); }, 300);
+}
+function _cwpAddrSearch(q){
+  var seq=++_cwpAddrSeq;
+  var c=String((_ptnrSession&&_ptnrSession.country)||'FR').toUpperCase();
+  var fr=_CW_FR_ZONES.indexOf(c)!==-1;
+  var url = fr ? 'https://data.geopf.fr/geocodage/search?q='+encodeURIComponent(q)+'&limit=5&autocomplete=1'
+               : 'https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=10&lang=fr';
+  fetch(url).then(function(r){ return r.json(); }).then(function(d){
+    if(seq!==_cwpAddrSeq) return;
+    var seen={}, list=[];
+    ((d&&d.features)||[]).forEach(function(f){
+      var p=f.properties||{}, label='';
+      if(fr) label=p.label||'';
+      else {
+        if(p.countrycode && String(p.countrycode).toUpperCase()!==c) return;
+        var street=[p.housenumber, p.street||p.name].filter(Boolean).join(' ');
+        label=[street, [p.postcode, p.city||p.county||p.state].filter(Boolean).join(' '), p.country].filter(Boolean).join(', ');
+      }
+      if(label && !seen[label]){ seen[label]=1; list.push(label); }
+    });
+    _cwpAddrList=list.slice(0,5);
+    var b=document.getElementById('cwp-addr-sugg'); if(!b) return;
+    if(!_cwpAddrList.length){ _cwpAddrHide(); return; }
+    b.innerHTML=_cwpAddrList.map(function(a,i){ return '<button type="button" class="cwp-sugg-it" onmousedown="event.preventDefault()" onclick="_cwpAddrPick('+i+')"><i class="fa-solid fa-location-dot"></i><span data-i18n-skip>'+_escHtml(a)+'</span></button>'; }).join('')
+      +'<div class="cwp-sugg-src" data-i18n-skip>'+(fr?'Source : Base Adresse Nationale (IGN)':'© OpenStreetMap')+'</div>';
+    b.style.display='block';
+  }).catch(function(){ if(seq===_cwpAddrSeq) _cwpAddrHide(); });
+}
+function _cwpAddrPick(i){
+  var inp=document.getElementById('cwp-address'); if(inp && _cwpAddrList[i]) inp.value=_cwpAddrList[i];
+  _cwpAddrHide();
 }
 function _cwpToggleDay(k,on){ if(!_cwp) return; _cwp.hours[k]=on?{o:'08:00',c:'19:00'}:null; _cwpRender(); }
 function _cwpSetHour(k,f,v){ if(!_cwp||!_cwp.hours[k]) return; _cwp.hours[k][f]=v; }
