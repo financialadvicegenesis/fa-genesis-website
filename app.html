@@ -2468,21 +2468,30 @@ a{text-decoration:none;color:inherit}
   z-index:1;
 }
 
-/* ── Shimmer doré sur le logo texte ── */
-@keyframes goldShimmer{
-  0%  {background-position:-200% center}
-  100%{background-position: 200% center}
+/* ── Reflet métallique sur le logo texte ──
+   Décision FA GENESIS 2026-11-23 : plus de reflet en continu (toutes les 4 s). Le logo reste
+   immobile en or métallique, et un reflet de lumière le traverse « en passant » : une fois
+   2,5 s après l'ouverture, puis une fois toutes les 20 s (passage de 2 s). Deux couches : le
+   reflet (bande claire qui glisse) au-dessus de l'or fixe — au repos, le reflet est hors du
+   texte, donc aucun saut visible entre deux passages. */
+@keyframes goldShine{
+  0%  {background-position:100% center,0 0}
+  10% {background-position:0% center,0 0}
+  100%{background-position:0% center,0 0}
 }
 .hdr-name{
-  background:linear-gradient(90deg,
-    #b8860b 0%, #FFD700 25%, #FFFACD 50%, #FFD700 75%, #b8860b 100%
-  );
-  background-size:250% auto;
+  background:
+    linear-gradient(100deg,transparent 42%,rgba(255,250,205,.95) 50%,transparent 58%),
+    linear-gradient(90deg,#c9971c 0%,#FFD700 50%,#c9971c 100%);
+  background-size:250% auto,100% auto;
+  background-repeat:no-repeat;
+  background-position:100% center,0 0;
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
   background-clip:text;
-  animation:goldShimmer 4s linear infinite;
+  animation:goldShine 20s ease-in-out 2.5s infinite;
 }
+@media (prefers-reduced-motion: reduce){.hdr-name{animation:none;}}
 
 /* ── Header ── */
 #hdr{
