@@ -1,5 +1,5 @@
-// FA GENESIS — Service Worker v23
-var CACHE_NAME = 'fa-genesis-v23';
+// FA GENESIS — Service Worker v24
+var CACHE_NAME = 'fa-genesis-v24';
 
 // Pages critiques : toujours réseau, MAIS avec repli sur le cache si hors-ligne (voir plus bas).
 // BUG CORRIGÉ : /app.html était ici avant, avec un fetch en cache:'no-store' et AUCUN repli vers
@@ -100,9 +100,14 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // Tout le reste : network-first
+  // Tout le reste : network-first.
+  // Pages (navigation, ex. app.html) : cache:'no-cache' = toujours revalidées auprès du serveur.
+  // Sans ça, le navigateur ressert la page depuis son cache HTTP pendant 10 min (GitHub Pages :
+  // max-age=600) : une correction mise en ligne n'apparaissait pas même après rechargement.
+  // Hors-ligne : même repli sur la dernière version mise en cache qu'avant.
+  var _isPage = event.request.mode === 'navigate' || /\.html$/.test(url.pathname);
   event.respondWith(
-    fetch(event.request).then(function(resp) {
+    (_isPage ? fetch(event.request, { cache: 'no-cache' }) : fetch(event.request)).then(function(resp) {
       if (resp.ok) {
         var clone = resp.clone();
         caches.open(CACHE_NAME).then(function(c) { c.put(event.request, clone); });
