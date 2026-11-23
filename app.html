@@ -2470,13 +2470,12 @@ a{text-decoration:none;color:inherit}
 
 /* ── Reflet métallique sur le logo texte ──
    Décision FA GENESIS 2026-11-23 : plus de reflet en continu (toutes les 4 s). Le logo reste
-   immobile en or métallique, et un reflet de lumière le traverse « en passant » : une fois
-   2,5 s après l'ouverture, puis une fois toutes les 20 s (passage de 2 s). Deux couches : le
-   reflet (bande claire qui glisse) au-dessus de l'or fixe — au repos, le reflet est hors du
-   texte, donc aucun saut visible entre deux passages. */
+   immobile en or métallique, et un reflet de lumière le traverse UNE SEULE FOIS, à l'ouverture
+   de l'application (1 s après l'affichage de #app, passage de 2 s), puis plus jamais. Deux
+   couches : le reflet (bande claire qui glisse) au-dessus de l'or fixe — avant et après le
+   passage, le reflet est hors du texte. */
 @keyframes goldShine{
   0%  {background-position:100% center,0 0}
-  10% {background-position:0% center,0 0}
   100%{background-position:0% center,0 0}
 }
 .hdr-name{
@@ -2489,7 +2488,7 @@ a{text-decoration:none;color:inherit}
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
   background-clip:text;
-  animation:goldShine 20s ease-in-out 2.5s infinite;
+  animation:goldShine 2s ease-in-out 1s 1 both;
 }
 @media (prefers-reduced-motion: reduce){.hdr-name{animation:none;}}
 
