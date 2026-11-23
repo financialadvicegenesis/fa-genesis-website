@@ -2250,13 +2250,6 @@ a{text-decoration:none;color:inherit}
 #jeremie-msgs .jx-actions{align-self:flex-start;display:flex;gap:4px;margin:-4px 0 4px 4px;}
 #jeremie-msgs .jx-actions button{background:none;border:none;color:#666;font-size:12px;padding:6px 8px;cursor:pointer;border-radius:8px;line-height:1;}
 #jeremie-msgs .jx-actions button:active,#jeremie-msgs .jx-actions button:focus-visible{color:#f87171;background:rgba(248,113,113,.08);outline:none;}
-/* Corbeille discrète (décision FA GENESIS 2026-11-23) : invisible par défaut, jamais affichée en
-   permanence sous chaque réponse. Ordinateur : au survol de la réponse. Téléphone : un appui sur la
-   réponse l'affiche 4 s (_jxRevealOnTap). Clavier : visible quand le bouton a le focus. */
-#jeremie-msgs .jx-actions{opacity:0;pointer-events:none;transition:opacity .2s ease;}
-#jeremie-msgs .jx-actions.show,#jeremie-msgs .jx-actions:focus-within{opacity:1;pointer-events:auto;}
-@media (hover:hover){#jeremie-msgs .jx-actions{pointer-events:auto;}#jeremie-msgs .chat-bubble:hover+.jx-actions,#jeremie-msgs .jx-actions:hover{opacity:1;}}
-@media (prefers-reduced-motion: reduce){#jeremie-msgs .jx-actions{transition:none;}}
 .chat-bubble-mine{align-self:flex-end;background:#FFD700;color:#000;font-weight:600;}
 .chat-bubble-theirs{align-self:flex-start;background:#1a1a1a;color:#ccc;border:1px solid #222;}
 /* Bulles arrondies façon Messenger / iMessage (décision FA GENESIS 2026-11-23) : coins à 18 px,
@@ -12671,18 +12664,6 @@ function _jeremieAttachPair(bubble, pair, isAssistant){
   row.innerHTML='<button type="button" aria-label="Supprimer cet échange" title="Supprimer cet échange" onclick="_jeremieDeleteExchange(\''+pair+'\')"><i class="fa-regular fa-trash-can"></i></button>';
   if(bubble.parentNode) bubble.parentNode.insertBefore(row, bubble.nextSibling);
 }
-// Téléphone : un appui sur une réponse de Jérémie fait apparaître sa corbeille 4 s (pas d'appui
-// long : il sert à sélectionner / copier le texte).
-var _jxRevealT=null;
-document.addEventListener('click', function(e){
-  var t=e.target; if(!t||!t.closest) return;
-  var b=t.closest('#jeremie-msgs .chat-bubble-theirs[data-jx-pair]'); if(!b || t.closest('a,button')) return;
-  try{ if(String(window.getSelection&&window.getSelection()||'').length) return; }catch(_e){}
-  var row=b.nextElementSibling; if(!row||!row.classList.contains('jx-actions')) return;
-  [].forEach.call(document.querySelectorAll('#jeremie-msgs .jx-actions.show'), function(r){ if(r!==row) r.classList.remove('show'); });
-  row.classList.add('show');
-  clearTimeout(_jxRevealT); _jxRevealT=setTimeout(function(){ row.classList.remove('show'); }, 4000);
-});
 function _jeremieDeleteExchange(pair){
   var tok=_jerChatToken(); if(!tok||!pair) return;
   showConfirmModal('Votre question et la réponse de Jérémie seront effacées. Jérémie ne s’en souviendra plus.', {title:'Supprimer cet échange ?', confirmLabel:'Supprimer', cancelLabel:'Annuler'}).then(function(ok){
