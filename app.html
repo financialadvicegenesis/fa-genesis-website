@@ -2252,6 +2252,12 @@ a{text-decoration:none;color:inherit}
 #jeremie-msgs .jx-actions button:active,#jeremie-msgs .jx-actions button:focus-visible{color:#f87171;background:rgba(248,113,113,.08);outline:none;}
 .chat-bubble-mine{align-self:flex-end;background:#FFD700;color:#000;font-weight:600;}
 .chat-bubble-theirs{align-self:flex-start;background:#1a1a1a;color:#ccc;border:1px solid #222;}
+/* Bulles arrondies façon Messenger / iMessage (décision FA GENESIS 2026-11-23) : coins à 18 px,
+   le coin côté expéditeur reste plus serré (« queue » de la bulle). Jérémie + messagerie
+   client ↔ prestataire (même classe .chat-bubble). */
+.chat-bubble{border-radius:18px;}
+.chat-bubble-mine{border-bottom-right-radius:5px;}
+.chat-bubble-theirs{border-bottom-left-radius:5px;}
 .chat-bubble-subj{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;opacity:.65;}
 .chat-bubble-time{font-size:10px;opacity:.45;margin-top:4px;}
 .chat-empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#333;font-size:13px;text-align:center;gap:8px;padding:24px;}
@@ -2383,7 +2389,7 @@ a{text-decoration:none;color:inherit}
 #jeremie-sheet .chat-send-btn{width:38px;height:38px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .jeremie-thinking{position:relative;z-index:1;align-self:flex-start;display:flex;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #222;padding:10px 14px;color:#FFD700;font-size:12px;}
 .jeremie-thinking i{animation:jeremieBrainPulse 1.3s ease-in-out infinite;}
-.jeremie-thinking{gap:5px;padding:14px 16px;}
+.jeremie-thinking{gap:5px;padding:14px 16px;border-radius:18px 18px 18px 5px;}
 .jeremie-thinking .jt-dot{width:7px;height:7px;border-radius:50%;background:#FFD700;opacity:.35;animation:jtDot 1.2s ease-in-out infinite;}
 .jeremie-thinking .jt-dot:nth-child(2){animation-delay:.18s;}
 .jeremie-thinking .jt-dot:nth-child(3){animation-delay:.36s;}
