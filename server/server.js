@@ -17216,6 +17216,82 @@ function _sendVerificationRequest(p) {
         .catch(function(e) { console.warn('[VERIF] e-mail demande:', e && e.message); });
 }
 
+// ── Rappels automatiques de vérification (décision FA GENESIS 2026-11-23) ─────────────────────
+// Prestataires NON historiques dont le dossier n'est pas envoyé (status 'none') ou a été refusé
+// ('rejected') : push + notification vers « Vérifier mon compte ». 4 rappels maximum par cycle
+// (J+1, puis +2 j, +4 j, +7 j), jamais la nuit (10 h – 20 h, heure locale du prestataire).
+// Un refus démarre un nouveau cycle. Rien pour les dossiers envoyés/validés ni les historiques.
+var VERIF_REMINDER_GAPS_MS = [24, 48, 96, 168].map(function(h) { return h * 3600000; });
+function _verifReminderTarget(p) {
+    if (!p || !p.email || p.verification_grandfathered || p.deleted || p.deletedAt) return null;
+    if (p.accountStatus !== 'pending' && p.accountStatus !== 'active') return null;
+    var v = p.verification || {};
+    var st = v.status || 'none';
+    if (st !== 'none' && st !== 'rejected') return null;
+    var base, cycle;
+    if (st === 'rejected') {
+        var rj = (v.history || []).filter(function(h) { return h && h.action === 'rejected'; }).pop();
+        base = Date.parse((rj && rj.at) || p.updatedAt || '');
+        cycle = 'rejected:' + ((rj && rj.at) || '');
+    } else {
+        base = Date.parse(p.created_at || p.createdAt || '');
+        cycle = 'none';
+    }
+    if (isNaN(base)) return null;
+    return { status: st, base: base, cycle: cycle };
+}
+function verificationReminderPush(p, t) {
+    var active = p.accountStatus === 'active';
+    var v = p.verification || {};
+    if (t.status === 'rejected') {
+        return { title: 'Justificatifs à compléter',
+            body: 'Votre dossier de vérification doit être complété ' + (active ? 'pour que votre profil reste visible des clients' : 'avant l’activation de votre profil') + '. Consultez le motif et renvoyez les pièces demandées : Profil › Vérifier mon compte.' };
+    }
+    if (active) {
+        return { title: 'Vérification de votre compte prestataire',
+            body: 'Rappel : envoyez vos justificatifs' + (p.verification_deadline ? ' avant le ' + _fmtDateFr(p.verification_deadline) : '') + ' pour rester visible des clients : Profil › Vérifier mon compte (3 min).' };
+    }
+    var started = Object.keys(v.docs || {}).some(function(k) { return v.docs[k] && v.docs[k].id; });
+    if (started) {
+        return { title: 'Votre vérification est presque terminée',
+            body: 'Il ne reste que quelques justificatifs à envoyer pour que votre profil soit visible des clients : Profil › Vérifier mon compte.' };
+    }
+    return { title: 'Activez votre compte prestataire',
+        body: 'Votre profil n’est pas encore visible des clients : il ne manque que vos justificatifs. Envoyez-les en 3 min depuis Profil › Vérifier mon compte.' };
+}
+function checkPartnerVerificationReminders(nowMs) {
+    var now = nowMs || Date.now();
+    try {
+        var partners = loadPartners(), sent = [];
+        partners.forEach(function(p) {
+            var t = _verifReminderTarget(p);
+            if (!t) return;
+            var r = p.verif_reminders && p.verif_reminders.cycle === t.cycle ? p.verif_reminders : { cycle: t.cycle, count: 0, last_at: null };
+            if (r.count >= VERIF_REMINDER_GAPS_MS.length) return;
+            var from = r.count === 0 ? t.base : Date.parse(r.last_at || '');
+            if (isNaN(from) || now < from + VERIF_REMINDER_GAPS_MS[r.count]) return;
+            var hour = Math.floor(CW.localNow(now, CW.tzFor(p)).min / 60);
+            if (hour < 10 || hour >= 20) return;
+            sent.push({ p: p, r: { cycle: t.cycle, count: r.count + 1, last_at: new Date(now).toISOString() }, push: verificationReminderPush(p, t) });
+        });
+        if (!sent.length) return 0;
+        // Écriture ciblée (relecture) pour ne pas écraser une modification faite entre-temps.
+        var fresh = loadPartners();
+        sent.forEach(function(x) {
+            var i = fresh.findIndex(function(q) { return q.id === x.p.id; });
+            if (i !== -1) fresh[i].verif_reminders = x.r;
+        });
+        savePartners(fresh);
+        sent.forEach(function(x) {
+            notifyUser(x.p.email, 'partner', 'verification-rappel', x.push.title, x.push.body, '/app.html#partner:verification', { jeremie: false });
+        });
+        console.log('[VERIF] Rappels de vérification envoyés :', sent.length);
+        return sent.length;
+    } catch (e) { console.error('[VERIF] rappels:', e.message); return 0; }
+}
+setTimeout(function() { checkPartnerVerificationReminders(); }, 180000);
+setInterval(function() { checkPartnerVerificationReminders(); }, 60 * 60 * 1000);
+
 // Contrôle du SIRET pendant la saisie (inscription comprise, donc sans compte) : nom et état
 // d'activité, tirés de l'annuaire public des entreprises (recherche-entreprises.api.gouv.fr).
 app.get('/api/partner/siret-check', async function(req, res) {
@@ -17402,7 +17478,8 @@ app.get('/api/admin/partners/:partnerId/verification', function(req, res) {
             country: p.country || '',
             history: v.history || [],
             reviewed_by: v.reviewed_by || null,
-            requested_at: p.verification_requested_at || null
+            requested_at: p.verification_requested_at || null,
+            reminders: p.verif_reminders ? { count: p.verif_reminders.count || 0, last_at: p.verif_reminders.last_at || null, max: VERIF_REMINDER_GAPS_MS.length } : null
         });
     } catch (e) {
         res.status(500).json({ error: 'Erreur serveur' });

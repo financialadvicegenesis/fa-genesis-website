@@ -5051,6 +5051,7 @@
                 (v.submitted_at && v.status === 'submitted' ? '<div style="color:#ccc;font-size:12px;">Envoyé le ' + new Date(v.submitted_at).toLocaleString('fr-FR') + '</div>' : '') +
                 (v.verified_at ? '<div style="color:#ccc;font-size:12px;">Validé le ' + new Date(v.verified_at).toLocaleString('fr-FR') + (d.reviewed_by ? ' par ' + _escHtml(d.reviewed_by) : '') + '</div>' : '') +
                 (v.reject_reason ? '<div style="color:#fca5a5;font-size:12px;">Motif : ' + _escHtml(v.reject_reason) + '</div>' : '') +
+                (d.reminders && d.reminders.count ? '<div style="color:#cbd5e1;font-size:12px;">Rappels automatiques envoyés : ' + d.reminders.count + '/' + d.reminders.max + (d.reminders.last_at ? ' (dernier le ' + new Date(d.reminders.last_at).toLocaleString('fr-FR') + ')' : '') + '</div>' : '') +
                 (v.grandfathered ? '<div style="color:#cbd5e1;font-size:12px;">Prestataire historique (approuvé avant la vérification) : vérification facultative, jamais masqué.</div>' : '') +
                 (v.deadline ? '<div style="color:' + (v.hidden ? '#ff6b6b' : '#fbbf24') + ';font-size:12px;">Date limite : ' + new Date(v.deadline).toLocaleDateString('fr-FR') + (v.hidden ? ' — dépassée, profil masqué des clients' : '') + '</div>' : '') +
                 '<div style="color:' + (d.contract_signed ? '#51cf66' : '#ff6b6b') + ';font-size:12px;font-weight:700;margin-top:4px;">' + (d.contract_signed ? 'Contrat de partenariat signé' : 'Contrat de partenariat NON signé') + '</div>' +
