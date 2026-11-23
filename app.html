@@ -2294,6 +2294,13 @@ a{text-decoration:none;color:inherit}
 .jeremie-close-btn{position:relative;z-index:1;background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:4px 6px;line-height:1;}
 .jeremie-immersive-avatar{display:none;align-items:center;justify-content:center;padding:18px 0 4px;position:relative;flex-shrink:0;z-index:1;}
 #jeremie-sheet.immersive .jeremie-immersive-avatar{display:flex;}
+/* Mode immersif : un seul Jérémie à l'écran (le grand, avec ses émotions) — le petit avatar de
+   l'en-tête faisait doublon. Sur grand écran (ordinateur, tablette), la conversation reste une
+   colonne lisible centrée au lieu de lignes de 1 300 px ; sur écran bas, grand avatar réduit. */
+#jeremie-sheet.immersive .jeremie-hdr-ico{display:none;}
+#jeremie-sheet.immersive .chat-messages{padding-left:max(16px,calc((100% - 760px) / 2));padding-right:max(16px,calc((100% - 760px) / 2));}
+#jeremie-sheet.immersive .chat-compose{padding-left:max(12px,calc((100% - 760px) / 2));padding-right:max(12px,calc((100% - 760px) / 2));}
+@media (max-height:720px){#jeremie-sheet.immersive .jeremie-avatar-clip-lg{width:96px;height:96px;}#jeremie-sheet.immersive .jeremie-immersive-avatar{padding-top:10px;}}
 .jeremie-avatar-clip-lg{width:140px;height:140px;box-shadow:0 0 30px rgba(255,215,0,.4);}
 .jeremie-emotion-badge-lg{width:30px;height:30px;font-size:20px;}
 .jeremie-greet-avatar{position:relative;width:64px;height:64px;border-radius:50%;margin:0 auto 12px;overflow:hidden;background:radial-gradient(circle at 30% 24%,#1c2c52,#0d1730 60%,#05070f 100%);box-shadow:0 0 18px rgba(255,215,0,.5),0 0 0 1px rgba(255,215,0,.35);}
