@@ -1505,8 +1505,12 @@ a{text-decoration:none;color:inherit}
 .p-reco-cat{font-size:9px;color:var(--yellow);font-weight:900;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p-reco-stars{font-size:10px;color:var(--muted);font-weight:700}
-.p-reco-tag{position:absolute;top:6px;left:6px;background:var(--yellow);color:#000;font-size:8px;font-weight:900;
-  padding:2px 6px;border:2px solid #000;text-transform:uppercase;z-index:1}
+/* Badge de carte (« Top », « Nouveau ») : pastille arrondie lisible, même famille que le badge
+   de note (.p-reco-rating-badge) — était un petit carré à bordure noire épaisse en 8 px (2026-11-24). */
+.p-reco-tag{position:absolute;top:8px;left:8px;z-index:1;display:inline-flex;align-items:center;gap:4px;
+  background:var(--yellow);color:#000;font-size:10px;font-weight:800;letter-spacing:.2px;line-height:1;
+  padding:5px 9px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap}
+.p-reco-tag i{font-size:9px}
 .p-reco-city{font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px}
 .p-reco-meta{font-size:9px;color:var(--muted);font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p-reco-meta i{color:var(--yellow);font-size:8px;margin-right:1px}
@@ -5438,12 +5442,15 @@ function partnerMetaLineHtml(p){
   }
   return '<div class="p-reco-meta"><i class="fa-solid fa-tag"></i> '+partnerPriceLabel(p)+(resp?' <span class="p-reco-meta-sep">·</span> <i class="fa-solid fa-clock"></i> '+resp:'')+promoBadge+'</div>';
 }
-function recoPartnerCard(p, idx, tagOverride){
+// « Top » n'est plus posé automatiquement sur la 1re carte de chaque carrousel (y compris
+// « À la une », où elle peut être un prestataire boosté — décision 2026-11-24) : seulement quand
+// l'appelant le demande (topFirst), c.-à-d. le n°1 de « Les mieux notés » (classement par avis).
+function recoPartnerCard(p, idx, tagOverride, topFirst){
   var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
   var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+_fmtAvg(p.rating.average)+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
-  var tag = tagOverride ? '<div class="p-reco-tag">'+tagOverride+'</div>' : (idx===0 ? '<div class="p-reco-tag">Top</div>' : '');
+  var tag = tagOverride ? '<div class="p-reco-tag">'+tagOverride+'</div>' : ((topFirst && idx===0) ? '<div class="p-reco-tag"><i class="fa-solid fa-crown"></i>Top</div>' : '');
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +tag
@@ -6574,7 +6581,7 @@ function _prstSetMode(mode){
   }
 }
 
-function _loadPrstSection(url, wrapId, title, tagOverride, filterFn){
+function _loadPrstSection(url, wrapId, title, tagOverride, filterFn, topFirst){
   var wrap = document.getElementById(wrapId);
   if(!wrap) return;
   fetch(url).then(function(r){ return r.json(); }).then(function(data){
@@ -6583,7 +6590,7 @@ function _loadPrstSection(url, wrapId, title, tagOverride, filterFn){
     if(!partners.length){ wrap.innerHTML = ''; return; }
     wrap.innerHTML = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'+title+'</div>'
       +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
-      +partners.slice(0,8).map(function(p,i){ return recoPartnerCard(p, i, tagOverride||null); }).join('')
+      +partners.slice(0,8).map(function(p,i){ return recoPartnerCard(p, i, tagOverride||null, !!topFirst); }).join('')
       +'<div style="min-width:16px;"></div></div>';
   }).catch(function(){ wrap.innerHTML = ''; });
 }
@@ -6716,7 +6723,7 @@ function renderPrestataires(){
     _loadPrstSectionStudent(base+'/api/partners/directory?sort=price_asc&limit=10', 'prst-student-budget-wrap');
   }
   _loadPrstSection(base+'/api/partners/featured?limit=8',              'prst-featured-wrap',   'Prestataires à la une');
-  _loadPrstSection(base+'/api/partners/directory?sort=rating&limit=8', 'prst-best-rated-wrap', 'Les mieux notés', null, function(p){ return p.rating && p.rating.count > 0; });
+  _loadPrstSection(base+'/api/partners/directory?sort=rating&limit=8', 'prst-best-rated-wrap', 'Les mieux notés', null, function(p){ return p.rating && p.rating.count > 0; }, true);
   _loadPrstSection(base+'/api/partners/new?limit=8',                   'prst-new-wrap',        'Nouveaux prestataires', 'Nouveau');
   // Client connecté : uniquement la section de SA catégorie ; visiteur : les trois.
   var _myAud = _clientAudience();
