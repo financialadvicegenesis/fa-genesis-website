@@ -971,7 +971,19 @@ a{text-decoration:none;color:inherit}
 .prst-sort-row #p-rank-signal-chips{flex:1 1 auto;min-width:0;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;}
 .prst-sort-row #p-rank-signal-chips::-webkit-scrollbar{display:none;}
 .prst-sort-row #p-rank-signal-chips .p-dir-chip{flex-shrink:0;white-space:nowrap;}
-.prst-sort-select{flex-shrink:0;margin-left:auto;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23FFD700' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center;border:1.5px solid var(--border);border-radius:20px;padding:7px 28px 7px 12px;font-size:11px;font-weight:700;color:#ddd;cursor:pointer;font-family:inherit;outline:none;-webkit-appearance:none;appearance:none;max-width:150px;}
+/* Tri = pastille identique aux filtres (.p-dir-chip : 12 px, 7×14 px, bordure 1,5 px). Le vrai
+   <select> est posé par-dessus, invisible : sur téléphone la règle anti-zoom force tout <select>
+   à 16 px (input,select,textarea{font-size:max(16px,1em)}) — le menu dessiné directement
+   ressortait bien plus gros que les filtres sur iPhone/Android (2026-11-24). Le <select> garde
+   ses 16 px (pas de zoom), seule la pastille est visible ; son texte suit l'option choisie. */
+.prst-sort-chip{position:relative;flex-shrink:0;margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+  max-width:170px;padding:7px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--card);
+  color:var(--text);font-size:12px;font-weight:700;line-height:normal;white-space:nowrap;cursor:pointer}
+.prst-sort-chip>span{overflow:hidden;text-overflow:ellipsis}
+.prst-sort-chip>i{color:var(--yellow);font-size:10px;flex-shrink:0}
+.prst-sort-chip:focus-within{border-color:var(--yellow)}
+.prst-sort-select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;margin:0;
+  -webkit-appearance:none;appearance:none;font-family:inherit}
 .prst-geoloc-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;width:100%;transition:border-color .15s,color .15s;}
 .prst-geoloc-btn:active,.prst-geoloc-btn:hover{border-color:var(--yellow);color:var(--yellow);}
 #prst-search-results .p-hero-stat{padding:4px 16px 8px;}
@@ -6665,12 +6677,13 @@ function renderPrestataires(){
   // Ligne tri + chips
   html += '<div class="prst-sort-row">'
     +'<div id="p-rank-signal-chips" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;"></div>'
-    +'<select id="p-rank-sort" class="prst-sort-select" onchange="onRankSortChange()">'
+    +'<label class="prst-sort-chip"><span id="p-rank-sort-label">'+(_isStudent ? 'Prix croissant' : 'Meilleurs du moment')+'</span><i class="fa-solid fa-chevron-down"></i>'
+    +'<select id="p-rank-sort" class="prst-sort-select" aria-label="Trier" onchange="onRankSortChange()">'
     +(_isStudent ? '<option value="price_asc" selected>Prix croissant</option><option value="score">Meilleurs du moment</option>' : '<option value="score">Meilleurs du moment</option><option value="price_asc">Prix croissant</option>')
     +'<option value="rating">Mieux notés</option>'
     +'<option value="recent">Plus récents</option>'
     +'<option value="alpha">A-Z</option>'
-    +'</select>'
+    +'</select></label>'
     +'</div>';
   // Mode découverte (par défaut)
   html += '<div id="prst-discovery">'
@@ -6753,7 +6766,10 @@ function _rankCityDebounced(){
 }
 
 function onRankSortChange(){
-  _rankSort = (document.getElementById('p-rank-sort')||{}).value || 'score';
+  var _sel = document.getElementById('p-rank-sort');
+  _rankSort = (_sel||{}).value || 'score';
+  var _lbl = document.getElementById('p-rank-sort-label');
+  if(_lbl && _sel && _sel.selectedIndex >= 0) _lbl.textContent = _sel.options[_sel.selectedIndex].text;
   _prstSetMode('search');
 }
 function loadRankedDirectory(){
