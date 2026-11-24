@@ -19399,6 +19399,35 @@ var JEREMIE_LANGUAGE_NAMES = {
     fr: 'francais', en: 'anglais', es: 'espagnol', pt: 'portugais', ar: 'arabe',
     de: 'allemand', zh: 'mandarin', it: 'italien', ja: 'japonais', hi: 'hindi'
 };
+// ── GUIDE DE L'ESPACE CLIENT (2026-11-24, demande FA GENESIS) ─────────────────────────────────
+// Pendant client de buildPartnerSpaceGuide : Jérémie doit pouvoir expliquer CHAQUE fonctionnalité
+// de l'espace client, quel que soit le niveau. Libellés relevés dans app.html (tutoriel client
+// validé, onglets, Profil, boutons) et règles réelles de server.js : à METTRE À JOUR en même temps
+// que toute évolution d'un écran client — Jérémie n'a aucune autre source de vérité.
+function buildClientSpaceGuide() {
+    var g = [];
+    g.push('GUIDE COMPLET DE L\'ESPACE CLIENT (utilise-le pour expliquer comment faire ; cite les noms exacts des onglets, sections et boutons) :');
+    g.push('NAVIGATION : barre du bas a 5 onglets : Accueil, Explorer, Prestataires, Panier, Profil. Jeremie s\'ouvre en touchant son avatar ; la cloche en haut affiche les notifications (un appui ouvre directement l\'ecran concerne).');
+    g.push('ACCUEIL : carte "Niveau GENESIS" (points QG et prochain niveau) ; quatre raccourcis : Commandes (ouvre Mes commandes), Messages, Livrables (Mes livrables), Reservations (Mes reservations) ; barre "Que recherchez-vous ?" ; "Les plus recherches" (Video, Photo, Marketing, Medias, Design, Dev Web, CM, Drone, Evenementiel : un appui ouvre l\'onglet Prestataires deja filtre sur ce metier) ; puis "Prestataires a la une", les nouveaux prestataires et "Recommandes pour vous". Si une commande est en cours, une carte de suivi s\'affiche avec "Voir" et "Messages".');
+    g.push('PRESTATAIRES : l\'annuaire. Barre de recherche, metiers a faire defiler (Tous, Videastes, Photographes, Marketeurs, Graphistes, Community Managers, Medias, Developpeurs Web, Pilotes Drone, Espaces Coworking, Animateurs / Evenementiel, Consultants, Influenceurs, Autres profils), filtres "En promotion" et "Deja travaille avec vous", tri (Meilleurs du moment, Prix croissant, Mieux notes, Plus recents, A-Z). Sans recherche : carrousels "Prestataires a la une", "Les mieux notes" (le n.1 porte le badge Top), "Nouveaux prestataires", "Selectionnes pour vous". Le client connecte ne voit que les offres de sa categorie (etudiant, particulier ou entreprise) plus les offres Promo : ses prix sont deja les siens. Le coeur sur une carte ajoute le prestataire a Mes favoris.');
+    g.push('FICHE PRESTATAIRE (toucher une carte) : photo, ville, badge "Identite verifiee" ou "Entreprise verifiee" si son dossier est valide par FA GENESIS, note et avis clients, temps de reponse, prestations rangees par metier, portfolio, promotions en cours. Toucher une prestation : prix fixe -> "Ajouter au panier" ; prestation sur devis -> "Demander un devis". "Contacter" ouvre la messagerie avec lui.');
+    g.push('PANIER ET PAIEMENT : dans l\'onglet Panier, verifier les prestations puis payer. Le client signe d\'abord le contrat de prestation GENESIS, puis paie par carte ou PayPal. Le mode de paiement est choisi par le prestataire pour chaque prestation : 1 fois, Acompte + reste (l\'acompte a la commande, le reste plus tard) ou Plusieurs fois (mensualites). GENESIS SAFE(TM) retient l\'argent : le prestataire n\'est paye qu\'apres acceptation de la mission puis validation de la livraison par le client. Le prestataire a 24 h pour accepter ; s\'il refuse ou ne repond pas, le client est rembourse automatiquement. Les reductions en % ou en EUR des promotions des prestataires s\'appliquent automatiquement au paiement.');
+    g.push('DEMANDE DE DEVIS : sur une prestation "Devis", "Demander un devis" (description du besoin, budget, date souhaitee). Le prestataire repond par une proposition (lignes et montants, delai, revisions incluses, mode de paiement). Elle arrive dans Mes reservations > Demandes en attente : "Accepter la proposition" (le client signe le contrat puis paie, et la mission demarre) ou "Refuser la proposition" (avec un motif : le prestataire peut en envoyer une nouvelle). Si le prestataire refuse ou ne repond pas a temps, Jeremie transmet la demande a d\'autres prestataires du meme secteur et le client choisit dans Demandes en attente ("Choisir ce prestataire").');
+    g.push('SUIVI, LIVRAISON ET VALIDATION : Profil > Mes commandes (etat de chaque commande) et Profil > Suivi des prestations. Quand le prestataire livre, le client recoit une notification et voit les livrables en apercu protege par un filigrane ; il touche "Valider" si tout est conforme ou "Demander une revision" (en precisant ce qu\'il faut modifier). Apres validation, les fichiers originaux se telechargent dans Profil > Mes livrables et il peut laisser un avis (+30 QG). Sans reponse du client, la livraison est validee automatiquement 7 jours apres. En cas de souci, le bouton "Probleme" ouvre un litige, suivi dans Profil > Mes litiges ; l\'equipe FA GENESIS l\'examine et l\'argent reste bloque pendant ce temps.');
+    g.push('ANNULER ET ETRE REMBOURSE : dans Profil > Mes commandes, "Annuler et etre rembourse" tant que le client n\'a pas valide la livraison (paiement seulement autorise : rien n\'est debite ; deja debite : remboursement sur la carte). Impossible apres validation, si un litige est en cours, ou pour une reservation coworking a moins de 24 h du creneau : il faut alors passer par Profil > Assistance.');
+    g.push('PORTEFEUILLE GENESIS SAFE(TM) (Profil) : les sommes payees et a payer. Quand un reste ou une mensualite est du, le bouton "Payer le solde" permet de le regler. Profil > Mes paiements : l\'historique des paiements. Profil > Mes contrats : les contrats signes et Mes factures (facture automatique emise au nom du prestataire quand il est immatricule en France).');
+    g.push('MESSAGES : messagerie texte avec les prestataires (pas de pieces jointes : les fichiers passent par les livrables). Avant la signature du contrat, aucun echange de coordonnees (telephone, e-mail, reseaux sociaux, liens) : c\'est bloque.');
+    g.push('EXPLORER : carte interactive des prestataires et evenements, recherche par ville, bascule OFFRES / EVENEMENTS. Les evenements GENESIS s\'y affichent avec le bouton d\'inscription (certains sont reserves a partir d\'un niveau ; participer rapporte +50 a +75 QG).');
+    g.push('PROFIL (toutes les sections) : Mes commandes ; Mes paiements ; Portefeuille GENESIS SAFE ; Mes reservations ; Mes contrats ; Suivi des prestations ; Mes livrables ; Mes favoris ; Offres promotionnelles (les promotions en cours des prestataires) ; Mes Niveaux GENESIS (QG et avantages de chaque niveau) ; Missions GENESIS (defis qui rapportent des QG) ; Hall of Fame GENESIS (classement des clients de sa categorie, du mois ou de tous les temps ; on peut y masquer sa photo et son prenom) ; Mon palmares (niveau, anciennete, chiffres) ; Assistance (ecrire a l\'equipe FA GENESIS) ; Messages ; Mes litiges ; Espace partenaire (pour proposer ses services comme prestataire) ; Langue (10 langues) ; Gestion des donnees personnelles ; Gestion des cookies ; Notifications ; Parametres du compte (modifier son profil, changer son mot de passe) ; Aide, Mentions legales, CGU, CGV, Protection des donnees personnelles, Cookies (pages informatives) ; code de parrainage a copier ou partager en bas du Profil ; "Desactiver temporairement mon compte", "Supprimer mon compte" et "Deconnexion". Sur l\'app, deverrouillage par empreinte ou Face ID possible.');
+    g.push('STATUT ETUDIANT ET ENTREPRISE : un etudiant envoie son certificat de scolarite pour etre "Etudiant verifie" (valable jusqu\'au 31 octobre suivant, a renouveler chaque annee) et voir les tarifs etudiants ; une entreprise fait verifier son SIRET. Un particulier n\'a rien a fournir.');
+    g.push('FAVORIS ET AVIS : coeur sur une carte ou une fiche -> Profil > Mes favoris (filtre "Deja travaille avec vous"). Apres une prestation terminee, le client recoit une demande d\'avis (note de 1 a 5 et commentaire) ; chaque avis rapporte +30 QG et le prestataire le voit dans son espace.');
+    g.push('JEREMIE IA : poser une question ou decrire un besoin ; Jeremie propose de vrais prestataires de GENESIS (cartes a faire defiler a partir du niveau Createur). Dans la conversation : la corbeille sous une reponse efface cet echange, la corbeille en haut efface toute la conversation ; le bouton haut-parleur lit les reponses a voix haute ; le bouton d\'agrandissement passe en plein ecran.');
+    if (COWORKING_BOOKING_ENABLED) {
+        g.push('RESERVER UN ESPACE COWORKING : onglet Prestataires > Espaces Coworking, ouvrir la fiche de l\'espace : ses offres en grandes cartes photo ("Par poste / journee", "Par journee", "Format 4h"), bouton "Reserver". Choisir le jour, l\'heure d\'arrivee et de depart (dans les horaires d\'ouverture), le nombre de personnes, puis payer (Evenement / soiree en Format 4h : 1 fois, Acompte + reste ou Plusieurs fois selon l\'espace). Dans Mes reservations : code d\'arrivee a 4 chiffres, adresse et instructions d\'acces (visibles seulement apres le paiement), reste a payer avec "Regler depuis mon Wallet". Annulation gratuite et remboursement complet jusqu\'a 24 h avant le creneau ("Annuler la reservation"), plus apres. A l\'arrivee, donner le code a l\'accueil : une fois le code valide par l\'espace, la reservation est reglee. Sans code valide, le client peut "Signaler un probleme" pendant le creneau et jusqu\'a 24 h apres. L\'avis n\'est possible que si le code d\'arrivee a ete valide. Si l\'espace annule, le client est rembourse integralement.');
+    }
+    g.push('PARRAINAGE CLIENT : le code est en bas du Profil ("Copier" ou partager). Le filleul s\'inscrit avec ce code et recoit 90 QG au lieu de 40. Le parrain gagne ses QG via les missions de parrainage quand ses filleuls terminent leur premiere prestation. Aucune reduction, jamais.');
+    return g.join('\n');
+}
 // ── GUIDE DE L'ESPACE PRESTATAIRE (2026-11-17, demande FA GENESIS) ───────────────────────────
 // Jérémie doit pouvoir expliquer CHAQUE section de l'espace prestataire, badge ou pas. Texte relevé
 // dans app.html (libellés exacts des écrans) et server.js (règles réelles) : à METTRE À JOUR en même
@@ -19510,6 +19539,10 @@ function buildJeremieSystemPrompt(person, personType, language) {
             'progression prestataire selon ce qu\'il cherche a devenir), et l\'inciter naturellement a creer un compte ' +
             'ou a parcourir l\'annuaire des prestataires pour aller plus loin. Ne jamais inventer de chiffres personnels ' +
             'puisqu\'il n\'est pas connecte.');
+        lines.push('');
+        lines.push(buildClientSpaceGuide());
+        lines.push('S\'il demande comment fonctionne une section, explique-la a partir du guide ci-dessus, en precisant que ' +
+            'commander, payer, ecrire aux prestataires ou suivre ses reservations demande un compte (Connexion / Inscription).');
         return lines.join('\n');
     }
 
@@ -19537,6 +19570,18 @@ function buildJeremieSystemPrompt(person, personType, language) {
             lines.push('Missions Genesis en cours : ' + (missions.length ? missions.map(function(m) {
                 return m.label + ' (' + m.current + '/' + m.target + (m.completed ? ', terminee' : '') + ')';
             }).join(' | ') : 'aucune'));
+            lines.push('');
+            lines.push(buildClientSpaceGuide());
+            lines.push('');
+            lines.push('ESPACE ADAPTE : tu parles a un CLIENT, dans l\'espace client. Explique uniquement les ecrans et boutons ' +
+                'de l\'espace client (guide ci-dessus). Ne lui decris jamais les ecrans prestataire (Missions, Wallet prestataire, ' +
+                'Mes tarifs & prestations, Mes badges...) ; s\'il veut proposer ses services, oriente-le vers Profil > Espace partenaire.');
+            lines.push('QUAND IL DEMANDE COMMENT FAIRE QUELQUE CHOSE OU A QUOI SERT UNE FONCTIONNALITE : explique en detail, a partir ' +
+                'du guide ci-dessus uniquement, quel que soit son niveau. Donne le chemin exact (par exemple : Profil > Mes commandes > ' +
+                'Annuler et etre rembourse), puis les etapes numerotees (1. 2. 3., une par ligne), les regles utiles (delais, montants, ' +
+                'remboursement) et termine par ce qu\'il obtient une fois fait. Ici tu peux etre plus long que d\'habitude si c\'est ' +
+                'necessaire pour etre clair. N\'invente jamais un bouton, un ecran ou une regle absents du guide : si tu ne sais pas, ' +
+                'dis-le franchement et oriente-le vers Profil > Assistance, ou l\'equipe FA GENESIS lui repondra.');
             lines.push('Ton role avec ce client : conseiller de projet (l\'aider a clarifier son besoin et choisir le bon ' +
                 'type de prestataire), recommandation intelligente (s\'appuyer sur ses categories preferees et son historique), ' +
                 'detection d\'opportunites (lui suggerer la prochaine mission ou le prochain niveau a portee ' +
@@ -19744,6 +19789,9 @@ function buildJeremieSystemPrompt(person, personType, language) {
             }
             lines.push('');
             lines.push(buildPartnerSpaceGuide());
+            lines.push('ESPACE ADAPTE : tu parles a un PRESTATAIRE, dans l\'espace prestataire. Explique les ecrans et boutons de ' +
+                'l\'espace prestataire (guide ci-dessus), jamais ceux de l\'espace client (Panier, Mes niveaux GENESIS, points QG...), ' +
+                'sauf s\'il demande explicitement ce que voit ou fait son client (paiement, validation, avis).');
             lines.push('');
             lines.push('Ton role avec ce partenaire : d\'abord son guide de l\'espace prestataire, quel que soit son badge (avec ou ' +
                 'sans badge, il a droit a toutes les explications sur le fonctionnement) ; puis coach de profil et de visibilite ' +
