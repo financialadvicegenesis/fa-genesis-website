@@ -5082,22 +5082,28 @@ function _loadHomePopulaires(){
     +'Les plus recherchés</div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:7px;padding:0 16px 16px;">'
     +cats.map(function(c){
-      return '<button class="home-cat-chip" onclick="_navToExplorerCat(\''+c.id+'\')">'
+      return '<button class="home-cat-chip" onclick="_navToPrestCat(\''+c.id+'\')">'
         +'<i class="fa-solid '+c.icon+'" style="color:var(--yellow);font-size:12px;"></i>'+c.label+'</button>';
     }).join('')
     +'</div>';
 }
 
-function _navToExplorerCat(catId){
-  nav('explorer');
-  setTimeout(function(){
-    _expCategory=catId;
-    document.querySelectorAll('#p-exp-cat-icons .p-cat-icon-pill').forEach(function(p){
-      p.classList.remove('on');
-      if(p.getAttribute('onclick')&&p.getAttribute('onclick').indexOf("'"+catId+"'")>=0) p.classList.add('on');
-    });
-    loadExplorerDirectory();
-  },200);
+// « Les plus recherchés » (accueil) → annuaire Prestataires filtré sur la catégorie (décision
+// FA GENESIS 2026-11-24). Menait à Explorer (liste sous la carte), reste de l'ancienne mise en
+// page où Explorer contenait l'annuaire. Recherche texte remise à zéro : seul le métier filtre.
+function _navToPrestCat(catId){
+  nav('prestataires');
+  var tries=0;
+  (function apply(){
+    var pill=[].filter.call(document.querySelectorAll('#p-rank-cat-icons .p-cat-icon-pill'), function(p){
+      return (p.getAttribute('onclick')||'').indexOf("'"+catId+"'")>=0;
+    })[0];
+    if(!pill){ if(++tries<20) setTimeout(apply,100); return; }
+    var q=document.getElementById('p-rank-search'); if(q) q.value='';
+    _rankQuery='';
+    setRankCategory(catId, pill);
+    try{ pill.scrollIntoView({block:'nearest',inline:'center'}); }catch(e){}
+  })();
 }
 
 function _loadHomeNouveauxTalents(){
