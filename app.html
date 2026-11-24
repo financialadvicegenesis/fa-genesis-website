@@ -5449,7 +5449,9 @@ function recoPartnerCard(p, idx, tagOverride, topFirst){
   var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+_fmtAvg(p.rating.average)+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
+  // Sans avis : « Nouveau » en bas, SAUF si la carte porte déjà le badge « Nouveau » en haut
+  // (carrousels « Nouveaux prestataires ») — rien en bas, pas de doublon (décision 2026-11-24).
+  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+_fmtAvg(p.rating.average)+'</div>' : (tagOverride === 'Nouveau' ? '' : '<div class="p-reco-rating-badge">Nouveau</div>');
   var tag = tagOverride ? '<div class="p-reco-tag">'+tagOverride+'</div>' : ((topFirst && idx===0) ? '<div class="p-reco-tag"><i class="fa-solid fa-crown"></i>Top</div>' : '');
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')">'
