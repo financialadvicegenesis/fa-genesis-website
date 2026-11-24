@@ -964,9 +964,14 @@ a{text-decoration:none;color:inherit}
 .prst-search-wrap i{color:var(--yellow);font-size:15px;flex-shrink:0;}
 .prst-search-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:14px;font-weight:500;padding:15px 0;font-family:'Space Grotesk',sans-serif;}
 .prst-search-input::placeholder{color:var(--muted);}
-.prst-sort-row{display:flex;align-items:center;gap:8px;padding:4px 16px 10px;overflow-x:auto;scrollbar-width:none;}
-.prst-sort-row::-webkit-scrollbar{display:none;}
-.prst-sort-select{flex-shrink:0;margin-left:auto;background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;outline:none;-webkit-appearance:none;appearance:none;}
+/* Filtres + tri sur UNE ligne (2026-11-24) : les filtres défilent horizontalement, le tri reste
+   fixe à droite avec une flèche (on voit que c'est un menu). Avant : filtres sur 2 lignes et tri
+   isolé à droite, sans indice visuel. */
+.prst-sort-row{display:flex;align-items:center;gap:8px;padding:4px 16px 10px;}
+.prst-sort-row #p-rank-signal-chips{flex:1 1 auto;min-width:0;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;}
+.prst-sort-row #p-rank-signal-chips::-webkit-scrollbar{display:none;}
+.prst-sort-row #p-rank-signal-chips .p-dir-chip{flex-shrink:0;white-space:nowrap;}
+.prst-sort-select{flex-shrink:0;margin-left:auto;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23FFD700' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center;border:1.5px solid var(--border);border-radius:20px;padding:7px 28px 7px 12px;font-size:11px;font-weight:700;color:#ddd;cursor:pointer;font-family:inherit;outline:none;-webkit-appearance:none;appearance:none;max-width:150px;}
 .prst-geoloc-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;width:100%;transition:border-color .15s,color .15s;}
 .prst-geoloc-btn:active,.prst-geoloc-btn:hover{border-color:var(--yellow);color:var(--yellow);}
 #prst-search-results .p-hero-stat{padding:4px 16px 8px;}
@@ -6597,27 +6602,6 @@ function _loadPrstSection(url, wrapId, title, tagOverride, filterFn, topFirst){
   }).catch(function(){ wrap.innerHTML = ''; });
 }
 
-function _loadPrstSectionStudent(url, wrapId){
-  var wrap = document.getElementById(wrapId);
-  if(!wrap) return;
-  fetch(url).then(function(r){ return r.json(); }).then(function(data){
-    var partners = ((data && (data.partners || data)) || []).filter(function(p){ return p.fromPrice !== null && p.fromPrice !== undefined; });
-    if(!partners.length){ wrap.innerHTML = ''; return; }
-    wrap.innerHTML =
-      '<div style="margin:16px 16px 12px;padding:14px 16px;background:linear-gradient(135deg,#0d1a0d,#1a1200);border:1.5px solid rgba(234,179,8,.35);border-radius:14px;">'
-      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">'
-      +'<div style="width:32px;height:32px;border-radius:8px;background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
-      +'<i class="fa-solid fa-graduation-cap" style="color:#eab308;font-size:14px;"></i></div>'
-      +'<div>'
-      +'<div style="font-size:13px;font-weight:900;color:#eab308;line-height:1.2;">Spécial Étudiants</div>'
-      +'<div style="font-size:11px;color:#888;margin-top:1px;">Prix les plus bas du moment</div>'
-      +'</div></div></div>'
-      +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
-      +partners.slice(0,10).map(function(p,i){ return recoPartnerCard(p, i, null); }).join('')
-      +'<div style="min-width:16px;"></div></div>';
-  }).catch(function(){ wrap.innerHTML = ''; });
-}
-
 function _loadPrstAudience(audience, wrapId, title){
   var wrap = document.getElementById(wrapId);
   if(!wrap) return;
@@ -6682,7 +6666,7 @@ function renderPrestataires(){
   html += '<div class="prst-sort-row">'
     +'<div id="p-rank-signal-chips" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;"></div>'
     +'<select id="p-rank-sort" class="prst-sort-select" onchange="onRankSortChange()">'
-    +(_isStudent ? '<option value="price_asc" selected>Budget étudiant</option><option value="score">Meilleurs du moment</option>' : '<option value="score">Meilleurs du moment</option><option value="price_asc">Prix croissant</option>')
+    +(_isStudent ? '<option value="price_asc" selected>Prix croissant</option><option value="score">Meilleurs du moment</option>' : '<option value="score">Meilleurs du moment</option><option value="price_asc">Prix croissant</option>')
     +'<option value="rating">Mieux notés</option>'
     +'<option value="recent">Plus récents</option>'
     +'<option value="alpha">A-Z</option>'
@@ -6690,7 +6674,6 @@ function renderPrestataires(){
     +'</div>';
   // Mode découverte (par défaut)
   html += '<div id="prst-discovery">'
-    +(_isStudent ? '<div id="prst-student-budget-wrap"></div>' : '')
     +'<div id="prst-featured-wrap"></div>'
     +'<div id="prst-best-rated-wrap"></div>'
     +'<div id="prst-new-wrap"></div>'
@@ -6721,9 +6704,9 @@ function renderPrestataires(){
 
   // Chargement des sections découverte
   var base = window.FA_GENESIS_API || API;
-  if(_isStudent) {
-    _loadPrstSectionStudent(base+'/api/partners/directory?sort=price_asc&limit=10', 'prst-student-budget-wrap');
-  }
+  // Bandeau « Spécial Étudiants · Prix les plus bas du moment » retiré (décision FA GENESIS
+  // 2026-11-24) : redondant (un étudiant connecté ne voit que les offres étudiantes) et il
+  // suggérait une réduction. Le tri « Prix croissant » reste le tri par défaut d'un étudiant.
   _loadPrstSection(base+'/api/partners/featured?limit=8',              'prst-featured-wrap',   'Prestataires à la une');
   _loadPrstSection(base+'/api/partners/directory?sort=rating&limit=8', 'prst-best-rated-wrap', 'Les mieux notés', null, function(p){ return p.rating && p.rating.count > 0; }, true);
   _loadPrstSection(base+'/api/partners/new?limit=8',                   'prst-new-wrap',        'Nouveaux prestataires', 'Nouveau');
