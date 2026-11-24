@@ -2734,15 +2734,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261118j"></script>
-<script src="app-i18n-es.js?v=20261118j"></script>
-<script src="app-i18n-hi.js?v=20261118j"></script>
-<script src="app-i18n-pt.js?v=20261118j"></script>
-<script src="app-i18n-ja.js?v=20261118j"></script>
-<script src="app-i18n-zh.js?v=20261118j"></script>
-<script src="app-i18n-ar.js?v=20261118j"></script>
-<script src="app-i18n-it.js?v=20261118j"></script>
-<script src="app-i18n-de.js?v=20261118j"></script>
+<script src="app-i18n-en.js?v=20261124a"></script>
+<script src="app-i18n-es.js?v=20261124a"></script>
+<script src="app-i18n-hi.js?v=20261124a"></script>
+<script src="app-i18n-pt.js?v=20261124a"></script>
+<script src="app-i18n-ja.js?v=20261124a"></script>
+<script src="app-i18n-zh.js?v=20261124a"></script>
+<script src="app-i18n-ar.js?v=20261124a"></script>
+<script src="app-i18n-it.js?v=20261124a"></script>
+<script src="app-i18n-de.js?v=20261124a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3115,8 +3115,10 @@ function _genesisVersionFooter(){
 
       <!-- Quick actions -->
       <div class="qa-row">
-        <div class="qa" onclick="nav('explorer')">
-          <div class="qa-icon"><i class="fa-solid fa-building"></i></div>
+        <!-- « Réserver » → annuaire Prestataires (là où se font toutes les réservations) ;
+             menait à Explorer depuis la toute première version de l'app (2026-11-24). -->
+        <div class="qa" onclick="nav('prestataires')">
+          <div class="qa-icon"><i class="fa-solid fa-calendar-plus"></i></div>
           <div class="qa-label">Réserver</div>
         </div>
         <div class="qa" onclick="nav('messages')">
@@ -3127,9 +3129,11 @@ function _genesisVersionFooter(){
           <div class="qa-icon"><i class="fa-solid fa-folder-open"></i></div>
           <div class="qa-label">Livrables</div>
         </div>
-        <div class="qa" onclick="_navToSeances()">
-          <div class="qa-icon"><i class="fa-solid fa-calendar-days"></i></div>
-          <div class="qa-label">Séances</div>
+        <!-- « Séances » (reste de l'ancienne offre Accompagnement) remplacé par « Réservations »
+             (code d'arrivée, adresse, reste à payer), décision FA GENESIS 2026-11-24. -->
+        <div class="qa" onclick="nav('reservations')">
+          <div class="qa-icon"><i class="fa-solid fa-calendar-check"></i></div>
+          <div class="qa-label">Réservations</div>
         </div>
       </div>
 
@@ -4958,12 +4962,6 @@ function _navToLivrables(){
   nav('profil');
   if(!document.getElementById('profilContent'))renderProfil();
   showLivrables();
-}
-function _navToSeances(){
-  if(!USER){showLoginSheet();return;}
-  nav('profil');
-  if(!document.getElementById('profilContent'))renderProfil();
-  showSeances();
 }
 
 var _expSearchQuery = '', _expSearchTimer = null;
