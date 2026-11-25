@@ -3678,11 +3678,6 @@ function _genesisVersionFooter(){
                 <i class="pni fa-solid fa-house"></i><span>Accueil</span>
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
               </button>
-              <button class="ptnr-snbtn" id="ptnr-sn-seances" onclick="_ptnrNav('seances')">
-                <i class="pni fa-solid fa-calendar-days"></i><span>Séances</span>
-                <span class="ptnr-badge" id="ptnr-badge-seances"></span>
-                <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
-              </button>
               <button class="ptnr-snbtn" id="ptnr-sn-messages" onclick="_ptnrNav('messages')">
                 <i class="pni fa-solid fa-comment-dots"></i><span>Messages</span>
                 <span class="ptnr-badge" id="ptnr-badge-messages"></span>
@@ -3790,11 +3785,8 @@ function _genesisVersionFooter(){
 
         <!-- Sub-screen: Projets -->
 
-        <!-- Sub-screen: Séances -->
-        <div class="ptnr-screen" id="ptnr-screen-seances">
-          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes séances</span></div>
-          <div id="ptnr-seances-list"></div>
-        </div>
+        <!-- « Mes séances » retiré (2026-11-25, décision FA GENESIS) : les clients ne peuvent plus
+             demander de séance (ancienne offre Accompagnement supprimée). -->
 
         <!-- Sub-screen: Messages -->
         <div class="ptnr-screen" id="ptnr-screen-messages">
@@ -17605,7 +17597,7 @@ function _ptnrNav(screen){
   _ptnrCloseDrawer();
   // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
   var _cEl = document.getElementById('content');
-  var _ptnrSubScreens = ['evenements','reputation','palmares','seances','promotions','portfolio','livrables','verification'];
+  var _ptnrSubScreens = ['evenements','reputation','palmares','promotions','portfolio','livrables','verification'];
   if(_ptnrSubScreens.indexOf(screen) !== -1 && _cEl){
     _ptnrProfilScrollPos = _cEl.scrollTop;
     _cEl.scrollTop = 0;
@@ -17623,7 +17615,6 @@ function _ptnrNav(screen){
   if(btn) btn.className = 'ptnr-snbtn on';
   if(scr) scr.className = 'ptnr-screen on';
   if(screen==='home') _ptnrLoadHome();
-  if(screen==='seances') _ptnrLoadSeances();
   if(screen==='messages'){
     console.log('[GENESIS_NOTIFICATION] navigate_messages');
     _ptnrLoadMessages(false, false); // toujours revenir aux messages actifs en arrivant sur l'onglet, comme WhatsApp
@@ -17846,53 +17837,6 @@ function _ptnrRenderProjetsList(items){
     html += '</div>';
   });
   el.innerHTML = html;
-}
-
-// ── SÉANCES ──
-function _ptnrLoadSeances(){
-  var el = document.getElementById('ptnr-seances-list');
-  if(el) el.innerHTML = _skeletonRows(3);
-  _ptnrFetch('/api/partner/sessions').then(function(data){
-    var items = Array.isArray(data) ? data : (data.sessions||[]);
-    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-inbox"></i></div><div class="ptnr-empty-txt">Aucune séance à confirmer</div></div>'; return; }
-    var html = '';
-    items.forEach(function(s){
-      var isPending = s.status==='pending'||s.status==='proposed';
-      var statusClass = s.status==='confirmed'?'confirmed':(s.status==='cancelled'?'cancelled':'pending');
-      html += '<div class="ptnr-card" id="ptnr-seance-'+s.id+'">';
-      html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
-      html += '<div><div class="ptnr-card-title">'+(s.client_name||s.title||'Séance')+'</div>';
-      html += '<div class="ptnr-card-sub">'+(s.date?_ptnrFmt(s.date):'')+(s.time?' à '+s.time:'')+(s.duration?' · '+s.duration+' min':'')+'</div></div>';
-      html += '<span class="ptnr-status '+statusClass+'">'+(s.status||'En attente')+'</span></div>';
-      if(s.notes) html += '<div style="font-size:12px;color:#aaa;margin-top:8px;">'+s.notes+'</div>';
-      if(isPending){
-        html += '<div class="ptnr-row-btns">';
-        html += '<button class="ptnr-btn-yes" onclick="_ptnrConfirmSeance(\''+s.id+'\')">✓ Confirmer</button>';
-        html += '<button class="ptnr-btn-no" onclick="_ptnrCancelSeance(\''+s.id+'\')">✕ Annuler</button>';
-        html += '</div>';
-      }
-      html += '</div>';
-    });
-    if(el) el.innerHTML = html;
-  }).catch(function(){ if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
-}
-
-function _ptnrConfirmSeance(id){
-  var card = document.getElementById('ptnr-seance-'+id);
-  var btns = card ? card.querySelectorAll('button') : [];
-  btns.forEach(function(b){b.disabled=true;});
-  _ptnrFetch('/api/partner/sessions/'+id,'PATCH',{status:'confirmed'}).then(function(){
-    _ptnrLoadSeances(); _ptnrRefreshBadges();
-  }).catch(function(){ btns.forEach(function(b){b.disabled=false;}); });
-}
-
-function _ptnrCancelSeance(id){
-  var card = document.getElementById('ptnr-seance-'+id);
-  var btns = card ? card.querySelectorAll('button') : [];
-  btns.forEach(function(b){b.disabled=true;});
-  _ptnrFetch('/api/partner/sessions/'+id+'/cancel','POST',{}).then(function(){
-    _ptnrLoadSeances(); _ptnrRefreshBadges();
-  }).catch(function(){ btns.forEach(function(b){b.disabled=false;}); });
 }
 
 // ── MESSAGES ──
@@ -18557,13 +18501,10 @@ function _ptnrRefreshBadges(){
   if(!_ptnrToken) return;
   Promise.all([
     _ptnrFetch('/api/partner/inbox').catch(function(){return [];}),
-    _ptnrFetch('/api/partner/sessions').catch(function(){return [];}),
     _ptnrFetch('/api/partner/requests').catch(function(){return {requests:[]};})
   ]).then(function(results){
     var inbox = Array.isArray(results[0]) ? results[0] : (results[0].messages||results[0].inbox||[]);
-    var sessions = Array.isArray(results[1]) ? results[1] : (results[1].sessions||[]);
-    var missionCount = (results[2] && results[2].requests && results[2].requests.length) || 0;
-    var pendingSeances = sessions.filter(function(s){return s.status==='pending'||s.status==='proposed';}).length;
+    var missionCount = (results[1] && results[1].requests && results[1].requests.length) || 0;
     // Nombre BRUT de messages client non lus — demandé explicitement (2 messages reçus →
     // badge "2", 3 messages → "3"), pas le nombre d'interlocuteurs distincts. `inbox` ne
     // contient déjà que les messages de CE prestataire (filtré côté serveur), donc
@@ -18579,11 +18520,10 @@ function _ptnrRefreshBadges(){
       if(count>0){ el.textContent=count; el.className='nav-msg-badge on'; }
       else { el.className='nav-msg-badge'; }
     }
-    _setBadge('ptnr-badge-seances', pendingSeances);
     _setBadge('ptnr-badge-messages', unreadMsg);
     _setNavMsgBadge('pnb-msg-badge', unreadMsg);
     _setBadgeMissions(missionCount);
-    var hasAny = pendingSeances > 0 || unreadMsg > 0 || missionCount > 0;
+    var hasAny = unreadMsg > 0 || missionCount > 0;
     var dot = document.getElementById('dot-partner'); if(dot) dot.style.display = hasAny ? '' : 'none';
     if(dot && hasAny) dot.className = 'nav-dot on'; else if(dot) dot.className = 'nav-dot';
     // Rafraîchit aussi le badge NATIF de l'icône Android (comme WhatsApp/Messenger) — sans ça,
@@ -23857,7 +23797,6 @@ function _ptnrLoadProfil(){
     +'<div class="plus-section-title">MON ACTIVITÉ</div>'
     +'<div class="plus-group">'
     +(p.partner_type==='coworking' ? pli('<i class="fa-solid fa-calendar-check"></i>', '#0a1220','Mes disponibilités', null, '_cwpOpen()') : '')
-    +pli('<i class="fa-solid fa-calendar-days"></i>',     '#0a1a0a','Mes séances',          null,"_ptnrNav('seances')")
     +pli('<i class="fa-solid fa-comment-dots"></i>',      '#0d1a1a','Messages clients',     null,"_ptnrNav('messages')")
     +pli('<i class="fa-solid fa-bolt"></i>',              '#1a0a00','Mes missions',         null,"_ptnrNav('missions')")
     +pli('<i class="fa-solid fa-wallet"></i>',            '#001a0a','Mon Wallet GENESIS',null,"_ptnrNav('versements')")
