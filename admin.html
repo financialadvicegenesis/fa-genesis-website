@@ -5057,6 +5057,7 @@
                 '<div style="color:' + (d.contract_signed ? '#51cf66' : '#ff6b6b') + ';font-size:12px;font-weight:700;margin-top:4px;">' + (d.contract_signed ? 'Contrat de partenariat signé' : 'Contrat de partenariat NON signé') + '</div>' +
                 '</div>';
 
+            if (v.siret_pending) return h + '<p style="color:#fbbf24;font-size:12px;">Inscrit sans SIRET (en cours d’obtention' + (v.siret_pending_at ? ', depuis le ' + new Date(v.siret_pending_at).toLocaleDateString('fr-FR') : '') + ') : son profil reste invisible des clients jusqu’à l’ajout du SIRET et la validation du dossier. Rappels automatiques à J+3, J+7, J+14 et J+21.</p>';
             if (!v.legal_profile) return h + '<p style="color:#999;font-size:12px;">Le prestataire n’a pas encore indiqué son statut.</p>';
 
             h += '<div class="grid md:grid-cols-2 gap-4">';
@@ -8313,7 +8314,7 @@
         // ── INVITÉS (visites sans compte) ───────────────────────────────
         var _gvDays = 30;
         var GV_SCREENS = { home: 'Accueil', explorer: 'Explorer', prestataires: 'Prestataires', reservations: 'Réservations', messages: 'Messages', profil: 'Profil', partner: 'Espace prestataire' };
-        var GV_ACTIONS = { provider_profile: 'Fiche prestataire ouverte', jeremie: 'Conversation avec Jérémie', quote_attempt: 'Demande de devis tentée', contact_attempt: 'Contact d’un prestataire tenté', signup_opened: 'Inscription ouverte', login_opened: 'Connexion ouverte' };
+        var GV_ACTIONS = { provider_profile: 'Fiche prestataire ouverte', jeremie: 'Conversation avec Jérémie', quote_attempt: 'Demande de devis tentée', contact_attempt: 'Contact d’un prestataire tenté', signup_opened: 'Inscription ouverte', login_opened: 'Connexion ouverte', siret_help: 'Aide « pas encore de SIRET » ouverte', siret_later: 'Inscription prestataire sans SIRET choisie' };
         var GV_OUTCOMES = { signup_client: ['ok', 'Compte client créé'], signup_partner: ['ok', 'Compte prestataire créé'], login: ['in', 'S’est connecté (compte existant)'] };
         var GV_PLATFORMS = { android: 'Android', ios: 'iPhone', web: 'Navigateur' };
         var GV_ENTRIES = { guest: 'Invité', partner: 'Découverte prestataire' };

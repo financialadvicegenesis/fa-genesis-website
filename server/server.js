@@ -13898,7 +13898,7 @@ app.get('/api/admin/client-errors', function(req, res) {
 var GUEST_VISITS_FILE = path.join(DATA_DIR, 'guest_visits.json');
 var GUEST_VISITS_KEEP_MS = 396 * 86400000;
 var GUEST_SCREENS = ['home', 'explorer', 'prestataires', 'reservations', 'messages', 'profil', 'partner'];
-var GUEST_ACTIONS = ['provider_profile', 'jeremie', 'quote_attempt', 'contact_attempt', 'signup_opened', 'login_opened'];
+var GUEST_ACTIONS = ['provider_profile', 'jeremie', 'quote_attempt', 'contact_attempt', 'signup_opened', 'login_opened', 'siret_help', 'siret_later'];
 var GUEST_OUTCOMES = ['signup_client', 'signup_partner', 'login'];
 var _guestVisits = null, _guestVisitsDirty = false, _guestVisitsTimer = null;
 function loadGuestVisits() {
@@ -16035,7 +16035,12 @@ app.post('/api/partner/auth/register', async (req, res) => {
         // Statut légal + SIRET (2026-11-10). Absent = ancienne version de l'app ou du site : le
         // prestataire le choisira dans « Vérifier mon compte ».
         var ptnrLegal = null, ptnrSiretCheck = null;
-        if (req.body.legal_profile) {
+        // « Je n'ai pas encore de numéro SIRET » (2026-11-26, décision FA GENESIS) : un indépendant en
+        // France peut créer son compte tout de suite et ajouter son SIRET plus tard dans « Vérifier mon
+        // compte ». Le compte reste `pending` (invisible des clients) jusqu'à la validation du dossier.
+        var ptnrSiretPending = (req.body.siret_pending === true || req.body.siret_pending === 'true')
+            && req.body.legal_profile === 'micro' && PartnerVerif.usesSiret(country);
+        if (req.body.legal_profile && !ptnrSiretPending) {
             var _lg = PartnerVerif.normalizeLegalInfo(req.body, country);
             if (!_lg.ok) return res.status(400).json({ error: _lg.error, code: _lg.code });
             ptnrLegal = _lg.data;
@@ -16076,7 +16081,8 @@ app.post('/api/partner/auth/register', async (req, res) => {
             services: [],
             sessionToken: sessionToken,
             accountStatus: 'pending',
-            verification: Object.assign({ status: 'none', docs: {} }, ptnrLegal || {}, ptnrSiretCheck ? { siret_check: ptnrSiretCheck } : {}),
+            verification: Object.assign({ status: 'none', docs: {} }, ptnrLegal || {}, ptnrSiretCheck ? { siret_check: ptnrSiretCheck } : {},
+                ptnrSiretPending ? { siret_pending: true, siret_pending_at: now, business_kind: 'independent' } : {}),
             contract_signed: false,
             contract_signed_at: null,
             referredBy: referredBy,
@@ -17222,27 +17228,38 @@ function _sendVerificationRequest(p) {
 // (J+1, puis +2 j, +4 j, +7 j), jamais la nuit (10 h – 20 h, heure locale du prestataire).
 // Un refus démarre un nouveau cycle. Rien pour les dossiers envoyés/validés ni les historiques.
 var VERIF_REMINDER_GAPS_MS = [24, 48, 96, 168].map(function(h) { return h * 3600000; });
+// Inscrit sans SIRET (2026-11-26) : rappels espacés (J+3, J+7, J+14, J+21), le temps de recevoir le SIRET.
+var VERIF_REMINDER_SIRET_GAPS_MS = [3, 7, 14, 21].map(function(d) { return d * 86400000; });
 function _verifReminderTarget(p) {
     if (!p || !p.email || p.verification_grandfathered || p.deleted || p.deletedAt) return null;
     if (p.accountStatus !== 'pending' && p.accountStatus !== 'active') return null;
     var v = p.verification || {};
     var st = v.status || 'none';
     if (st !== 'none' && st !== 'rejected') return null;
-    var base, cycle;
+    var base, cycle, gaps = VERIF_REMINDER_GAPS_MS;
     if (st === 'rejected') {
         var rj = (v.history || []).filter(function(h) { return h && h.action === 'rejected'; }).pop();
         base = Date.parse((rj && rj.at) || p.updatedAt || '');
         cycle = 'rejected:' + ((rj && rj.at) || '');
+    } else if (v.siret_pending && !v.legal_profile) {
+        base = Date.parse(v.siret_pending_at || p.created_at || p.createdAt || '');
+        cycle = 'siret_pending';
+        gaps = VERIF_REMINDER_SIRET_GAPS_MS;
     } else {
-        base = Date.parse(p.created_at || p.createdAt || '');
+        // SIRET ajouté après une inscription sans SIRET : le cycle repart de cet ajout.
+        base = Math.max(Date.parse(p.created_at || p.createdAt || '') || 0, Date.parse(v.siret_received_at || '') || 0) || NaN;
         cycle = 'none';
     }
     if (isNaN(base)) return null;
-    return { status: st, base: base, cycle: cycle };
+    return { status: st, base: base, cycle: cycle, gaps: gaps, siretPending: cycle === 'siret_pending' };
 }
 function verificationReminderPush(p, t) {
     var active = p.accountStatus === 'active';
     var v = p.verification || {};
+    if (t.siretPending) {
+        return { title: 'Avez-vous reçu votre SIRET ?',
+            body: 'Ajoutez-le dans Profil › Vérifier mon compte, avec vos justificatifs, pour que votre profil soit visible des clients.' };
+    }
     if (t.status === 'rejected') {
         return { title: 'Justificatifs à compléter',
             body: 'Votre dossier de vérification doit être complété ' + (active ? 'pour que votre profil reste visible des clients' : 'avant l’activation de votre profil') + '. Consultez le motif et renvoyez les pièces demandées : Profil › Vérifier mon compte.' };
@@ -17267,9 +17284,10 @@ function checkPartnerVerificationReminders(nowMs) {
             var t = _verifReminderTarget(p);
             if (!t) return;
             var r = p.verif_reminders && p.verif_reminders.cycle === t.cycle ? p.verif_reminders : { cycle: t.cycle, count: 0, last_at: null };
-            if (r.count >= VERIF_REMINDER_GAPS_MS.length) return;
+            var gaps = t.gaps || VERIF_REMINDER_GAPS_MS;
+            if (r.count >= gaps.length) return;
             var from = r.count === 0 ? t.base : Date.parse(r.last_at || '');
-            if (isNaN(from) || now < from + VERIF_REMINDER_GAPS_MS[r.count]) return;
+            if (isNaN(from) || now < from + gaps[r.count]) return;
             var hour = Math.floor(CW.localNow(now, CW.tzFor(p)).min / 60);
             if (hour < 10 || hour >= 20) return;
             sent.push({ p: p, r: { cycle: t.cycle, count: r.count + 1, last_at: new Date(now).toISOString() }, push: verificationReminderPush(p, t) });
@@ -17325,6 +17343,9 @@ app.post('/api/partner/verification/profile', authenticatePartner, async functio
         var removed = [];
         var p = _updatePartnerVerification(req.partner.id, function(pp, v) {
             ['legal_profile', 'business_kind', 'siret', 'company_name', 'representative', 'registered', 'registration_number', 'siret_check'].forEach(function(k) { delete v[k]; });
+            // Inscrit sans SIRET : le statut est maintenant déclaré → nouveau cycle de rappels à partir d'ici.
+            if (v.siret_pending) v.siret_received_at = new Date().toISOString();
+            delete v.siret_pending;
             Object.assign(v, lg.data);
             if (check) v.siret_check = check;
             if (v.status !== 'rejected') v.status = 'none';
@@ -19404,6 +19425,31 @@ var JEREMIE_LANGUAGE_NAMES = {
 // de l'espace client, quel que soit le niveau. Libellés relevés dans app.html (tutoriel client
 // validé, onglets, Profil, boutons) et règles réelles de server.js : à METTRE À JOUR en même temps
 // que toute évolution d'un écran client — Jérémie n'a aucune autre source de vérité.
+// ── DEVENIR PRESTATAIRE (invités, 2026-11-26) ────────────────────────────────────────────────
+// Près d'un invité sur deux entre par « Je propose mes services » : Jérémie doit savoir expliquer
+// l'inscription prestataire et l'obtention d'un SIRET. Libellés exacts de app.html. Faits SIRET
+// volontairement limités (pas de conseil juridique, fiscal ni social).
+var SIRET_HOWTO_FACTS = 'c\'est gratuit et ca se fait en ligne : creer sa micro-entreprise sur le guichet unique officiel ' +
+    'formalites.entreprises.gouv.fr (service de l\'INPI) ; le numero SIRET est envoye par l\'INSEE, en general sous quelques jours ' +
+    'a quelques semaines ; un etudiant peut aussi etre micro-entrepreneur. Ne donne aucun conseil juridique, fiscal ou social ' +
+    'au-dela (regime, cotisations, TVA...) : renvoie vers le site officiel ou l\'URSSAF, et ne promets jamais de delai precis.';
+function buildBecomePartnerGuide() {
+    var g = [];
+    g.push('DEVENIR PRESTATAIRE SUR GENESIS (si le visiteur veut proposer ses services) : depuis l\'ecran d\'accueil de l\'app, ' +
+        '"Je propose mes services", puis "Pas encore prestataire ? Creer un compte". Inscription en 4 etapes : 1) profil ' +
+        '(Independant / freelance ou Entreprise / societe), 2) pays, 3) informations (prenom, nom, e-mail, telephone, ville, ' +
+        'metier, mot de passe ; en France le numero SIRET), 4) justificatifs (piece d\'identite, courte video du visage, preuve ' +
+        'd\'immatriculation), puis signature du contrat de partenariat. Inscription gratuite, sans abonnement : GENESIS preleve ' +
+        GENESIS_TIER_BENEFITS[null].commissionPct + ' % sur chaque paiement. Le profil devient visible des clients une fois le dossier ' +
+        'valide par l\'equipe FA GENESIS.');
+    g.push('PAS ENCORE DE SIRET (France) : sous le champ SIRET de l\'etape 3, "Je n\'ai pas encore de numero SIRET" explique ' +
+        'comment l\'obtenir et permet a un independant de "Continuer sans SIRET pour l\'instant" : il cree son compte tout de ' +
+        'suite et ajoute son SIRET plus tard dans Profil > Verifier mon compte (son profil reste invisible des clients d\'ici la). ' +
+        'Obtenir un SIRET : ' + SIRET_HOWTO_FACTS);
+    g.push('HORS DE FRANCE : pas de SIRET. Une entreprise indique son numero d\'immatriculation local ; un independant non ' +
+        'immatricule dans son pays peut s\'inscrire avec une preuve d\'activite (il obtient alors le badge "Identite verifiee").');
+    return g.join('\n');
+}
 function buildClientSpaceGuide() {
     var g = [];
     g.push('GUIDE COMPLET DE L\'ESPACE CLIENT (utilise-le pour expliquer comment faire ; cite les noms exacts des onglets, sections et boutons) :');
@@ -19446,7 +19492,7 @@ function buildPartnerSpaceGuide() {
     g.push('PROFIL > MON ACTIVITE : Messages clients ; Mes missions ; Mon Wallet GENESIS ; Mes badges ; Mes avis (note moyenne, repartition par etoiles et tous les avis laisses par ses clients, avec prenom, prestation et date ; le prestataire recoit une notification a chaque nouvel avis) ; Mon palmares (missions, clients, avis recus, prestataires parraines, classement dans sa categorie) ; Mes promotions ; Mon portfolio ; Mes livrables (contrat de partenariat FA GENESIS, contrats de prestation signes par les clients, factures).');
     g.push('PROFIL > MON PROFIL : Verifier mon compte ; Parametres du profil (photo de profil, prenom et nom, VILLE affichee sur la fiche publique : seulement le nom de la ville, sans e-mail ni numero ; un champ a renseigner et le bouton Enregistrer) ; Mes metiers ; Coordonnees de versement (moyen de retrait + Facturation : SIRET et adresse pour les factures automatiques) ; Temps de reponse ; Pays et zone d\'intervention (sur place ou "A distance" pour travailler avec des clients d\'autres pays) ; Langue ; Assistance (ecrire a l\'equipe FA GENESIS) ; deverrouillage par empreinte ou Face ID dans l\'application mobile.');
     g.push('PROFIL > MON RESEAU : Evenements GENESIS (inscription aux evenements) et la case de parrainage avec son code et son lien a partager.');
-    g.push('VERIFIER MON COMPTE : pour proteger les clients, chaque prestataire envoie les justificatifs demandes a l\'ecran : statut (independant, entreprise ou professionnel a l\'etranger), SIRET en France ou immatriculation locale, piece d\'identite, selfie tenant la piece, courte video du visage (3 a 5 secondes), preuve d\'activite. L\'equipe valide le dossier ; il y a ' + PartnerVerif.DEADLINE_DAYS + ' jours pour le completer, sinon le profil est masque aux clients jusqu\'a l\'envoi. Un dossier valide affiche le badge "Identite verifiee" ou "Entreprise verifiee" sur la fiche.');
+    g.push('VERIFIER MON COMPTE : pour proteger les clients, chaque prestataire envoie les justificatifs demandes a l\'ecran : statut (independant, entreprise ou professionnel a l\'etranger), SIRET en France ou immatriculation locale, piece d\'identite, courte video du visage (3 a 5 secondes), preuve d\'immatriculation ou d\'activite. Pas encore de SIRET (France) : le lien "Je n\'ai pas encore de numero SIRET" sous le champ SIRET explique comment l\'obtenir ; un independant peut creer son compte sans SIRET et l\'ajouter plus tard ici (son profil reste invisible des clients d\'ici la). L\'equipe valide le dossier ; il y a ' + PartnerVerif.DEADLINE_DAYS + ' jours pour le completer, sinon le profil est masque aux clients jusqu\'a l\'envoi. Un dossier valide affiche le badge "Identite verifiee" ou "Entreprise verifiee" sur la fiche.');
     g.push('MES BADGES : badge actuel, progression (missions et note) vers le suivant, avantages. A partir du badge Argent, bouton "Booster mon profil (48h)" dans la carte du badge : le profil remonte dans l\'annuaire pendant ' + PARTNER_BOOST_DURATION_HOURS + ' h (jamais "en tete" garanti) ; 2 boosts par mois en Argent, 4 en Or, 8 en Elite. Badge Or : inscription prioritaire aux evenements GENESIS, une place garantie meme complet. Distinctions : Nouveau Talent a la premiere prestation terminee (+' + PROFILE_BOOST_DAYS_FILLEUL + ' jours de mise en avant) ; Ambassadeur GENESIS quand un prestataire parraine termine sa premiere prestation (+' + PROFILE_BOOST_DAYS_PARRAIN + ' jours). Jeremie IA Plus (Argent) analyse les avis clients, Pro (Or) la strategie de devis et de prix, Expert (Elite) le suivi des revenus et le plan de developpement.');
     g.push('PARRAINAGE PRESTATAIRE : uniquement entre prestataires. Le code est l\'identifiant du prestataire (PTR-...), dans Profil > MON RESEAU, avec un lien a partager. Le parrainage compte quand le filleul termine sa premiere prestation : le parrain obtient alors la distinction Ambassadeur. Pas de points ni d\'argent.');
     g.push('MES PROMOTIONS : "Nouvelle promotion" : titre, type (Reduction en %, Reduction montant fixe en EUR, Prestation offerte, Bonus offert, Consultation gratuite, Deplacement offert), valeur, dates de debut et de fin, montant minimum et nombre maximal d\'utilisations facultatifs, puis "PUBLIER LA PROMOTION". Les reductions en % et en EUR sont appliquees automatiquement au paiement et financees par le prestataire ; les autres offres sont affichees aux clients et c\'est a lui de les honorer. On peut modifier ou terminer une promotion. Pour une simple remise sur une prestation, il y a aussi la remise de Mes tarifs & prestations.');
@@ -19543,6 +19589,8 @@ function buildJeremieSystemPrompt(person, personType, language) {
         lines.push(buildClientSpaceGuide());
         lines.push('S\'il demande comment fonctionne une section, explique-la a partir du guide ci-dessus, en precisant que ' +
             'commander, payer, ecrire aux prestataires ou suivre ses reservations demande un compte (Connexion / Inscription).');
+        lines.push('');
+        lines.push(buildBecomePartnerGuide());
         return lines.join('\n');
     }
 
@@ -19789,6 +19837,11 @@ function buildJeremieSystemPrompt(person, personType, language) {
             }
             lines.push('');
             lines.push(buildPartnerSpaceGuide());
+            if (person && person.verification && person.verification.siret_pending && !person.verification.legal_profile) {
+                lines.push('SITUATION DE CE PRESTATAIRE : il s\'est inscrit sans SIRET (en cours d\'obtention). Son profil reste ' +
+                    'invisible des clients tant qu\'il n\'a pas ajoute son SIRET et envoye ses justificatifs dans Profil > Verifier mon compte. ' +
+                    'S\'il demande comment obtenir un SIRET : ' + SIRET_HOWTO_FACTS);
+            }
             lines.push('ESPACE ADAPTE : tu parles a un PRESTATAIRE, dans l\'espace prestataire. Explique les ecrans et boutons de ' +
                 'l\'espace prestataire (guide ci-dessus), jamais ceux de l\'espace client (Panier, Mes niveaux GENESIS, points QG...), ' +
                 'sauf s\'il demande explicitement ce que voit ou fait son client (paiement, validation, avis).');
@@ -25045,6 +25098,7 @@ function partnerAdminCategory(p) {
     if (!p) return { category: null, source: null };
     if (p.admin_category === 'particulier' || p.admin_category === 'entreprise') return { category: p.admin_category, source: 'admin' };
     var v = p.verification || {};
+    if (v.siret_pending && !v.legal_profile) return { category: 'particulier', source: 'declared' };
     if (v.legal_profile === 'company') return { category: 'entreprise', source: 'declared' };
     if (v.legal_profile === 'micro') return { category: 'particulier', source: 'declared' };
     if (v.legal_profile === 'foreign') return { category: v.business_kind === 'company' ? 'entreprise' : 'particulier', source: 'declared' };

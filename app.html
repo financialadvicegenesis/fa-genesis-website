@@ -971,6 +971,26 @@ a{text-decoration:none;color:inherit}
 .prst-sort-row #p-rank-signal-chips{flex:1 1 auto;min-width:0;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;}
 .prst-sort-row #p-rank-signal-chips::-webkit-scrollbar{display:none;}
 .prst-sort-row #p-rank-signal-chips .p-dir-chip{flex-shrink:0;white-space:nowrap;}
+/* « Je n'ai pas encore de numéro SIRET » (2026-11-26) : lien sous le champ SIRET (inscription et
+   « Vérifier mon compte ») + fiche explicative. Variante A : un indépendant peut créer son compte sans
+   SIRET et l'ajouter plus tard. */
+.sh-link{display:block;width:auto!important;text-align:left!important;padding:0 0 12px!important;margin:0!important;font-size:12px!important;color:#FFD700!important}
+.sh-link i{margin-right:5px}
+.sh-later-note{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin:0 0 12px;padding:10px 12px;border:1.5px dashed rgba(255,215,0,.45);border-radius:12px;font-size:12px;line-height:1.5;color:#ddd}
+.sh-later-note>i{color:#FFD700}
+.sh-later-note button{background:none;border:0;padding:0;color:#FFD700;font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
+#siret-help-ov{position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center}
+#siret-help-ov.open{display:flex}
+.sh-sheet{position:relative;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;background:#111;border:1.5px solid #FFD70044;border-bottom:0;border-radius:20px 20px 0 0;padding:24px 20px calc(22px + var(--safe-bottom,0px))}
+.sh-x{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:1px solid #333;background:#1a1a1a;color:#aaa;cursor:pointer;font-size:14px}
+.sh-ico{width:44px;height:44px;border-radius:14px;background:rgba(255,215,0,.12);color:#FFD700;display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:12px}
+.sh-title{font-size:16px;font-weight:900;color:#fff;line-height:1.4;margin:0 40px 16px 0;text-wrap:balance}
+.sh-steps{margin:0 0 14px;padding:0;list-style:none;counter-reset:sh}
+.sh-steps li{counter-increment:sh;display:flex;gap:10px;font-size:13px;color:#ccc;line-height:1.55;margin-bottom:12px}
+.sh-steps li::before{content:counter(sh);flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#FFD700;color:#000;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.sh-note{display:flex;gap:8px;align-items:center;font-size:12px;color:#aaa;margin:0 0 18px;padding:10px 12px;background:#1a1a1a;border-radius:12px}
+.sh-note i{color:#FFD700}
+.sh-sec{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:12px;border:1.5px solid #FFD70066;background:transparent;color:#FFD700;font-weight:800;font-size:13px;cursor:pointer;margin-top:8px;font-family:inherit}
 /* Tri = pastille identique aux filtres (.p-dir-chip : 12 px, 7×14 px, bordure 1,5 px). Le vrai
    <select> est posé par-dessus, invisible : sur téléphone la règle anti-zoom force tout <select>
    à 16 px (input,select,textarea{font-size:max(16px,1em)}) — le menu dessiné directement
@@ -2755,15 +2775,15 @@ a{text-decoration:none;color:inherit}
      même piège de timing inter-<script> déjà rencontré par le passé sur ce fichier
      (voir mobile-bridge.js et son historique de ReferenceError cross-script-tag). -->
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261124b"></script>
-<script src="app-i18n-es.js?v=20261124b"></script>
-<script src="app-i18n-hi.js?v=20261124b"></script>
-<script src="app-i18n-pt.js?v=20261124b"></script>
-<script src="app-i18n-ja.js?v=20261124b"></script>
-<script src="app-i18n-zh.js?v=20261124b"></script>
-<script src="app-i18n-ar.js?v=20261124b"></script>
-<script src="app-i18n-it.js?v=20261124b"></script>
-<script src="app-i18n-de.js?v=20261124b"></script>
+<script src="app-i18n-en.js?v=20261126a"></script>
+<script src="app-i18n-es.js?v=20261126a"></script>
+<script src="app-i18n-hi.js?v=20261126a"></script>
+<script src="app-i18n-pt.js?v=20261126a"></script>
+<script src="app-i18n-ja.js?v=20261126a"></script>
+<script src="app-i18n-zh.js?v=20261126a"></script>
+<script src="app-i18n-ar.js?v=20261126a"></script>
+<script src="app-i18n-it.js?v=20261126a"></script>
+<script src="app-i18n-de.js?v=20261126a"></script>
 <!-- Détecteur de liens externes / coordonnées : MÊME fichier que le serveur (server/link-guard.js),
      pour que l'app refuse exactement ce que le serveur refuse. Facultatif côté app : s'il ne
      charge pas, le serveur bloque quand même (voir les gardes `window.LinkGuard`). -->
@@ -3511,8 +3531,12 @@ function _genesisVersionFooter(){
             <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Nom commercial (optionnel)">
             <!-- France : SIRET, contrôlé pendant la saisie -->
             <div id="ptnr-reg-siret-wrap" style="display:none;">
-              <input class="ptnr-input" id="ptnr-reg-siret" type="text" inputmode="numeric" maxlength="17" placeholder="SIRET (14 chiffres) *" oninput="_pvSiretLiveCheck(this.value,'ptnr-reg-siret-status')" style="margin-bottom:4px;">
-              <div class="pv-siret-status" id="ptnr-reg-siret-status" style="margin-bottom:10px;"></div>
+              <div id="ptnr-reg-siret-fields">
+                <input class="ptnr-input" id="ptnr-reg-siret" type="text" inputmode="numeric" maxlength="17" placeholder="SIRET (14 chiffres) *" oninput="_pvSiretLiveCheck(this.value,'ptnr-reg-siret-status')" style="margin-bottom:4px;">
+                <div class="pv-siret-status" id="ptnr-reg-siret-status" style="margin-bottom:10px;"></div>
+              </div>
+              <button type="button" class="ptnr-link-btn sh-link" id="ptnr-reg-nosiret-link" onclick="_siretHelpOpen('signup')"><i class="fa-regular fa-circle-question"></i><span>Je n’ai pas encore de numéro SIRET</span></button>
+              <div class="sh-later-note" id="ptnr-reg-siret-later" style="display:none;"><i class="fa-solid fa-clock"></i><span>SIRET à ajouter plus tard, dans Profil › Vérifier mon compte.</span><button type="button" onclick="_ptnrRegSetSiretPending(false)">J’ai mon SIRET</button></div>
             </div>
             <!-- Étranger : immatriculation locale (obligatoire pour une entreprise) -->
             <div id="ptnr-reg-legal-abroad" style="display:none;margin:0 0 12px;">
@@ -4385,6 +4409,7 @@ function _showRoleChoiceAfterDelete(){
   }catch(e){}
 
   // ── Nettoyer session partenaire ──────────────────────────────
+  try{ if(typeof _siretHelpClose==='function') _siretHelpClose(); }catch(e){}
   try{
     if(typeof _ptnrClearSession==='function') _ptnrClearSession();
     if(typeof _ptnrRefreshTimer!=='undefined' && _ptnrRefreshTimer){ clearInterval(_ptnrRefreshTimer); _ptnrRefreshTimer=null; }
@@ -16484,6 +16509,7 @@ function _ptnrRegStart(){
   ['ptnr-reg-country','ptnr-reg-siret','ptnr-reg-company-name','ptnr-reg-representative','ptnr-reg-regnum'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   var _sst=document.getElementById('ptnr-reg-siret-status'); if(_sst) _sst.innerHTML='';
   _ptnrRegKind = ''; _ptnrRegPickKind(''); _ptnrRegRegistered = null; _ptnrRegSetRegistered(null);
+  _ptnrRegSiretPending = false;
   _pvSignupMode = false; _ptnrRegGo(1);
   var errEl=document.getElementById('ptnr-reg-err'); if(errEl) errEl.className='ptnr-login-err';
   _ptnrRegOpenedAt = Date.now();
@@ -16564,7 +16590,7 @@ function _ptnrRegSubmit(){
   fetch(_ptnrApiUrl()+'/api/partner/auth/register',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), country:country, password:password, partner_type:partnerType, partner_type_other:partnerTypeOther, secondary_types:_ptnrRegSecondary.filter(function(t){ return t!==partnerType; }), company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt, legal_profile:_legal.data.legal_profile, siret:_legal.data.siret, company_name:_legal.data.company_name, representative:_legal.data.representative, registered:_legal.data.registered, registration_number:_legal.data.registration_number}),
+    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), country:country, password:password, partner_type:partnerType, partner_type_other:partnerTypeOther, secondary_types:_ptnrRegSecondary.filter(function(t){ return t!==partnerType; }), company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt, legal_profile:_legal.data.legal_profile, siret:_legal.data.siret, company_name:_legal.data.company_name, representative:_legal.data.representative, registered:_legal.data.registered, registration_number:_legal.data.registration_number, siret_pending:_legal.data.siret_pending===true}),
     signal: _ptnrRegCtrl ? _ptnrRegCtrl.signal : undefined
   }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Réponse serveur invalide');}});})
   .then(function(res){
@@ -16979,11 +17005,60 @@ function _ptnrRegApplyLegal(){
   var c = (document.getElementById('ptnr-reg-country')||{}).value || '';
   var fr = _pvUsesSiret(c), co = _ptnrRegKind === 'company';
   function show(id, on){ var el = document.getElementById(id); if(el) el.style.display = on ? 'block' : 'none'; }
+  var pend = fr && !co && _ptnrRegSiretPending;
   show('ptnr-reg-siret-wrap', fr);
+  show('ptnr-reg-siret-fields', fr && !pend);
+  show('ptnr-reg-nosiret-link', fr && !co && !pend);   // une société a forcément son SIRET
+  show('ptnr-reg-siret-later', pend);
   show('ptnr-reg-company-wrap', co);
   show('ptnr-reg-entreprise', !co);
   show('ptnr-reg-legal-abroad', !fr && !co);
   show('ptnr-reg-regnum', !fr && (co || _ptnrRegRegistered === true));
+}
+// ── « Je n'ai pas encore de numéro SIRET » (2026-11-26, décision FA GENESIS, variante A) ──
+// mode 'signup' (étape 3 de l'inscription) : la fiche propose aussi de continuer sans SIRET.
+// mode 'verif' (« Vérifier mon compte ») : seulement comment l'obtenir.
+var _ptnrRegSiretPending = false;
+function _siretHelpOpen(mode){
+  var ov = document.getElementById('siret-help-ov');
+  if(!ov){
+    ov = document.createElement('div'); ov.id = 'siret-help-ov';
+    ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+    ov.onclick = function(e){ if(e.target === ov) _siretHelpClose(); };
+    document.body.appendChild(ov);
+  }
+  var signup = mode === 'signup';
+  var site = '<button type="button" class="'+(signup ? 'sh-sec' : 'ptnr-login-btn')+'" onclick="openInBrowser(\'https://formalites.entreprises.gouv.fr/\')"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Ouvrir le guichet unique</span></button>';
+  ov.innerHTML = '<div class="sh-sheet">'
+    + '<button type="button" class="sh-x" onclick="_siretHelpClose()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>'
+    + '<div class="sh-ico"><i class="fa-solid fa-id-badge"></i></div>'
+    + '<div class="sh-title">Obtenir un SIRET, c’est gratuit et ça se fait en ligne.</div>'
+    + '<ol class="sh-steps">'
+    + '<li><span>Créez votre micro-entreprise sur le guichet unique officiel : formalites.entreprises.gouv.fr (service de l’INPI).</span></li>'
+    + '<li><span>Votre numéro SIRET vous est envoyé par l’INSEE, en général sous quelques jours à quelques semaines.</span></li>'
+    + '<li><span>Revenez sur GENESIS avec votre SIRET pour finaliser votre inscription.</span></li>'
+    + '</ol>'
+    + '<div class="sh-note"><i class="fa-solid fa-graduation-cap"></i><span>Étudiant ? Vous pouvez aussi être micro-entrepreneur.</span></div>'
+    + (signup ? '<button type="button" class="ptnr-login-btn" id="sh-later-btn" onclick="_ptnrRegSetSiretPending(true)">Continuer sans SIRET pour l’instant</button>' + site : site)
+    + '</div>';
+  ov.style.display = '';
+  ov.className = 'open';
+  if(signup && typeof _gvAction === 'function') _gvAction('siret_help');
+}
+function _siretHelpClose(){
+  var ov = document.getElementById('siret-help-ov');
+  if(ov) ov.className = '';
+}
+function _ptnrRegSetSiretPending(on){
+  _ptnrRegSiretPending = !!on;
+  if(on){
+    var s = document.getElementById('ptnr-reg-siret'); if(s) s.value = '';
+    var st = document.getElementById('ptnr-reg-siret-status'); if(st) st.innerHTML = '';
+    if(typeof _gvAction === 'function') _gvAction('siret_later');
+  }
+  _siretHelpClose();
+  _ptnrRegApplyLegal();
+  if(!on){ var s2 = document.getElementById('ptnr-reg-siret'); if(s2) try{ s2.focus(); }catch(e){} }
 }
 function _ptnrRegSetRegistered(val){
   _ptnrRegRegistered = val;
@@ -16999,7 +17074,9 @@ function _ptnrRegLegalPayload(){
   if(!c) return { error: 'Choisissez votre pays.' };
   var co = _ptnrRegKind === 'company';
   var out = { legal_profile: _ptnrRegKind };
-  if(_pvUsesSiret(c)){
+  if(_pvUsesSiret(c) && !co && _ptnrRegSiretPending){
+    out.siret_pending = true;            // SIRET ajouté plus tard dans « Vérifier mon compte »
+  } else if(_pvUsesSiret(c)){
     out.siret = val('ptnr-reg-siret').replace(/[\s.\-]/g,'');
     if(!/^\d{14}$/.test(out.siret)) return { error: 'Le SIRET doit contenir 14 chiffres.' };
   } else {
@@ -17059,6 +17136,7 @@ function _ptnrUpdateVerifBar(){
     if(v.status === 'rejected') msg = '<i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;margin-right:6px;"></i><span>Vos justificatifs sont à compléter.</span>';
     else if(v.hidden) msg = '<i class="fa-solid fa-eye-slash" style="color:#ef4444;margin-right:6px;"></i><span>Votre profil est masqué des clients : envoyez vos justificatifs pour redevenir visible.</span>';
     else if(v.deadline) msg = '<i class="fa-solid fa-shield-halved" style="color:#FFD700;margin-right:6px;"></i><span>Envoyez vos justificatifs avant le</span> <span data-i18n-skip>'+_ptnrFmtLong(v.deadline)+'</span> <span>pour rester visible des clients.</span>';
+    else if(v.siret_pending) msg = '<i class="fa-solid fa-id-badge" style="color:#FFD700;margin-right:6px;"></i><span>Ajoutez votre SIRET dès que vous l’avez reçu pour faire valider votre compte.</span>';
     else if(p.accountStatus === 'pending') msg = '<i class="fa-solid fa-shield-halved" style="color:#FFD700;margin-right:6px;"></i><span>Envoyez vos justificatifs pour que notre équipe valide votre compte.</span>';
   }
   bar.style.display = msg ? 'flex' : 'none';
@@ -17111,6 +17189,7 @@ function _pvStatusCard(v){
   else if(v.grandfathered){ title = 'Vérification facultative'; txt = 'Votre compte a été créé avant la mise en place de la vérification : elle n’est pas obligatoire et votre profil reste visible. En envoyant vos justificatifs, vous obtenez le badge « Identité vérifiée » ou « Entreprise vérifiée » sur votre fiche.'; }
   else if(v.hidden){ col = '#ef4444'; ico = 'fa-eye-slash'; title = 'Votre profil est masqué des clients'; txt = 'Le délai pour envoyer vos justificatifs est dépassé. Envoyez-les pour redevenir visible.'; }
   else if(v.deadline){ title = 'Date limite :'; extra = '<div class="pv-status-title" style="color:#FFD700;" data-i18n-skip>'+_ptnrFmtLong(v.deadline)+'</div>'; txt = 'Pour la sécurité de tous, GENESIS vérifie désormais chaque prestataire. Passé cette date, votre profil sera masqué des clients jusqu’à la validation de vos documents.'; }
+  else if(v.siret_pending){ title = 'Ajoutez votre SIRET dès que vous l’avez reçu'; txt = 'Votre compte est créé. Votre profil sera visible des clients une fois votre SIRET et vos justificatifs validés par notre équipe.'; }
   else if(pending){ title = 'Dernière étape avant la validation de votre compte'; txt = 'Votre profil sera visible des clients une fois vos justificatifs validés par notre équipe.'; }
   else { title = 'Vérifiez votre compte'; txt = 'Envoyez vos justificatifs pour obtenir le badge vérifié sur votre fiche.'; }
   if(v.deadline && !v.hidden && v.status !== 'verified' && v.status !== 'submitted' && v.status !== 'rejected'){
@@ -17126,7 +17205,7 @@ function _pvChoice(label, on, onclick){
 function _pvFormInit(v){
   if(_pvForm) return _pvForm;
   v = v || {};
-  _pvForm = { legal_profile: v.legal_profile || (v.uses_siret ? '' : 'foreign'), siret: v.siret || '', company_name: v.company_name || '', representative: v.representative || '',
+  _pvForm = { legal_profile: v.legal_profile || (v.siret_pending ? 'micro' : (v.uses_siret ? '' : 'foreign')), siret: v.siret || '', company_name: v.company_name || '', representative: v.representative || '',
     registered: v.legal_profile === 'foreign' ? !!v.registered : null, registration_number: v.registration_number || '',
     business_kind: v.business_kind || (v.legal_profile === 'company' ? 'company' : (v.legal_profile ? 'independent' : '')) };
   return _pvForm;
@@ -17146,6 +17225,7 @@ function _pvProfileForm(v){
     if(f.legal_profile){
       h += '<input class="ptnr-input" id="pv-siret" type="text" inputmode="numeric" maxlength="17" placeholder="SIRET (14 chiffres)" value="'+_escHtml(f.siret)+'" oninput="_pvForm.siret=this.value;_pvSiretLiveCheck(this.value,\'pv-siret-status\')" style="margin:10px 0 4px;">'
         + '<div class="pv-siret-status" id="pv-siret-status"></div>';
+      if(f.legal_profile === 'micro' && !(v.siret && f.siret === v.siret)) h += '<button type="button" class="ptnr-link-btn sh-link" style="padding-top:8px!important;" onclick="_siretHelpOpen(\'verif\')"><i class="fa-regular fa-circle-question"></i><span>Je n’ai pas encore de numéro SIRET</span></button>';
       if(f.legal_profile === 'company'){
         h += '<input class="ptnr-input" id="pv-company" type="text" placeholder="Raison sociale" value="'+_escHtml(f.company_name)+'" oninput="_pvForm.company_name=this.value" style="margin:10px 0 0;">'
           + '<input class="ptnr-input" id="pv-rep" type="text" placeholder="Représentant légal (prénom et nom)" value="'+_escHtml(f.representative)+'" oninput="_pvForm.representative=this.value" style="margin:10px 0 0;">';

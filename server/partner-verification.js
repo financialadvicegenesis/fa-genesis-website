@@ -243,7 +243,10 @@ function partnerView(p) {
         deadline: (p && !p.verification_grandfathered && p.verification_deadline) || null,
         grandfathered: !!(p && p.verification_grandfathered),
         hidden: isHiddenForVerification(p),
-        uses_siret: usesSiret(p && p.country)
+        uses_siret: usesSiret(p && p.country),
+        // Inscrit sans SIRET (2026-11-26) : à ajouter dans « Vérifier mon compte ».
+        siret_pending: !!(v.siret_pending && !v.legal_profile),
+        siret_pending_at: v.siret_pending_at || null
     };
 }
 
