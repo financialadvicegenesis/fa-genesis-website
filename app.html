@@ -983,14 +983,16 @@ a{text-decoration:none;color:inherit}
 #siret-help-ov.open{display:flex}
 .sh-sheet{position:relative;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;background:#111;border:1.5px solid #FFD70044;border-bottom:0;border-radius:20px 20px 0 0;padding:24px 20px calc(22px + var(--safe-bottom,0px))}
 .sh-x{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:1px solid #333;background:#1a1a1a;color:#aaa;cursor:pointer;font-size:14px}
-.sh-ico{width:44px;height:44px;border-radius:14px;background:rgba(255,215,0,.12);color:#FFD700;display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:12px}
-.sh-title{font-size:16px;font-weight:900;color:#fff;line-height:1.4;margin:0 40px 16px 0;text-wrap:balance}
+.sh-ico{width:44px;height:44px;border-radius:14px;background:rgba(255,215,0,.12);color:#FFD700;display:flex;align-items:center;justify-content:center;font-size:19px;margin:0 auto 12px}
+.sh-title{font-size:16px;font-weight:900;color:#fff;line-height:1.4;margin:0 12px 16px;text-align:center;text-wrap:balance}
 .sh-steps{margin:0 0 14px;padding:0;list-style:none;counter-reset:sh}
 .sh-steps li{counter-increment:sh;display:flex;gap:10px;font-size:13px;color:#ccc;line-height:1.55;margin-bottom:12px}
 .sh-steps li::before{content:counter(sh);flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#FFD700;color:#000;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px}
 .sh-note{display:flex;gap:8px;align-items:center;font-size:12px;color:#aaa;margin:0 0 18px;padding:10px 12px;background:#1a1a1a;border-radius:12px}
 .sh-note i{color:#FFD700}
-.sh-sec{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:12px;border:1.5px solid #FFD70066;background:transparent;color:#FFD700;font-weight:800;font-size:13px;cursor:pointer;margin-top:8px;font-family:inherit}
+.sh-sec{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;box-sizing:border-box;padding:13px;border-radius:12px;border:1.5px solid #FFD70066;background:transparent;color:#FFD700;font-weight:800;font-size:13px;cursor:pointer;margin-top:8px;font-family:inherit;text-decoration:none}
+/* Lien externe dessiné comme le bouton principal (« Vérifier mon compte ») */
+a.sh-a{display:flex!important;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;text-decoration:none!important}
 /* Tri = pastille identique aux filtres (.p-dir-chip : 12 px, 7×14 px, bordure 1,5 px). Le vrai
    <select> est posé par-dessus, invisible : sur téléphone la règle anti-zoom force tout <select>
    à 16 px (input,select,textarea{font-size:max(16px,1em)}) — le menu dessiné directement
@@ -17028,7 +17030,10 @@ function _siretHelpOpen(mode){
     document.body.appendChild(ov);
   }
   var signup = mode === 'signup';
-  var site = '<button type="button" class="'+(signup ? 'sh-sec' : 'ptnr-login-btn')+'" onclick="openInBrowser(\'https://formalites.entreprises.gouv.fr/\')"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Ouvrir le guichet unique</span></button>';
+  // Vrai lien <a target="_blank"> (2026-11-26) : en natif, openInBrowser() renvoie true et laisse le
+  // lien s'ouvrir dans le navigateur du téléphone. Appelée depuis un <button>, elle ne faisait rien.
+  // Page choisie par FA GENESIS : la démarche « créer son entreprise individuelle » de l'INPI.
+  var site = '<a class="'+(signup ? 'sh-sec' : 'ptnr-login-btn sh-a')+'" href="https://www.inpi.fr/realiser-demarches/formalites-dentreprises/creer-son-entreprise-individuelle-ei" target="_blank" rel="noopener noreferrer" onclick="return openInBrowser(this.href)"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Ouvrir le guichet unique</span></a>';
   ov.innerHTML = '<div class="sh-sheet">'
     + '<button type="button" class="sh-x" onclick="_siretHelpClose()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>'
     + '<div class="sh-ico"><i class="fa-solid fa-id-badge"></i></div>'
@@ -17296,7 +17301,7 @@ function _pvDocRow(kind, v, locked){
       + '</div>';
   }
   if(kind === 'registration' && v.legal_profile === 'micro' && !locked){
-    h += '<button type="button" class="ptnr-link-btn" style="padding:8px 0 0;text-align:left;width:auto;" onclick="openInBrowser(\'https://avis-situation-sirene.insee.fr/\')"><i class="fa-solid fa-arrow-up-right-from-square" style="margin-right:5px;"></i><span>Obtenir mon avis de situation SIRENE</span></button>';
+    h += '<a class="ptnr-link-btn" style="display:inline-block;padding:8px 0 0;text-align:left;width:auto;text-decoration:none;" href="https://avis-situation-sirene.insee.fr/" target="_blank" rel="noopener noreferrer" onclick="return openInBrowser(this.href)"><i class="fa-solid fa-arrow-up-right-from-square" style="margin-right:5px;"></i><span>Obtenir mon avis de situation SIRENE</span></a>';
   }
   h += '<div class="pv-doc-actions">'+btn+'<span class="pv-doc-progress" id="pv-prog-'+kind+'"></span></div>';
   if(kind === 'activity'){
