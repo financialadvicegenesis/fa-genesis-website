@@ -270,17 +270,36 @@ a{text-decoration:none;color:inherit;}
 /* ── FOOTER LINK ── */
 .reg-footer{text-align:center;padding:20px;font-size:13px;color:var(--t3);position:relative;z-index:1;}
 .reg-footer a{color:var(--orange);font-weight:600;}
+/* « Je n'ai pas encore de numéro SIRET » (2026-11-26) — même fiche que dans l'app. */
+.sh-link{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:0;color:var(--gold);font-family:var(--font-b);font-size:12.5px;font-weight:700;cursor:pointer;text-align:left}
+.sh-later-note{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;padding:10px 12px;border:1.5px dashed rgba(255,215,0,.45);border-radius:12px;font-size:12.5px;line-height:1.5;color:var(--t1)}
+.sh-later-note>i{color:var(--gold)}
+.sh-later-note button{background:none;border:0;padding:0;color:var(--gold);font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
+#siret-help-ov{position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:16px}
+#siret-help-ov.open{display:flex}
+.sh-sheet{position:relative;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;background:#111;border:1.5px solid rgba(255,215,0,.27);border-radius:20px;padding:24px 20px 22px}
+.sh-x{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:1px solid #333;background:#1a1a1a;color:#aaa;cursor:pointer;font-size:14px}
+.sh-ico{width:44px;height:44px;border-radius:14px;background:rgba(255,215,0,.12);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:12px}
+.sh-title{font-size:16px;font-weight:900;color:#fff;line-height:1.4;margin:0 40px 16px 0;text-wrap:balance}
+.sh-steps{margin:0 0 14px;padding:0;list-style:none;counter-reset:sh}
+.sh-steps li{counter-increment:sh;display:flex;gap:10px;font-size:13px;color:#ccc;line-height:1.55;margin-bottom:12px}
+.sh-steps li::before{content:counter(sh);flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#000;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.sh-note{display:flex;gap:8px;align-items:center;font-size:12px;color:#aaa;margin:0 0 18px;padding:10px 12px;background:#1a1a1a;border-radius:12px}
+.sh-note i{color:var(--gold)}
+.sh-btns{display:flex;flex-direction:column;gap:8px}
+.sh-btns .btn-primary{justify-content:center;width:100%}
+.sh-sec{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:10px;border:1.5px solid rgba(255,215,0,.4);background:transparent;color:var(--gold);font-weight:800;font-size:13px;text-decoration:none;font-family:var(--font-b)}
 </style>
 <script src="app-i18n.js?v=20261018c"></script>
-<script src="app-i18n-en.js?v=20261115e"></script>
-<script src="app-i18n-es.js?v=20261115e"></script>
-<script src="app-i18n-pt.js?v=20261115e"></script>
-<script src="app-i18n-ar.js?v=20261115e"></script>
-<script src="app-i18n-de.js?v=20261115e"></script>
-<script src="app-i18n-zh.js?v=20261115e"></script>
-<script src="app-i18n-it.js?v=20261115e"></script>
-<script src="app-i18n-ja.js?v=20261115e"></script>
-<script src="app-i18n-hi.js?v=20261115e"></script>
+<script src="app-i18n-en.js?v=20261126a"></script>
+<script src="app-i18n-es.js?v=20261126a"></script>
+<script src="app-i18n-pt.js?v=20261126a"></script>
+<script src="app-i18n-ar.js?v=20261126a"></script>
+<script src="app-i18n-de.js?v=20261126a"></script>
+<script src="app-i18n-zh.js?v=20261126a"></script>
+<script src="app-i18n-it.js?v=20261126a"></script>
+<script src="app-i18n-ja.js?v=20261126a"></script>
+<script src="app-i18n-hi.js?v=20261126a"></script>
 <script>if (typeof AppI18n !== 'undefined') AppI18n.initAppLanguage();</script>
 <script src="site-lang-picker.js?v=20261014"></script>
 </head>
@@ -345,7 +364,7 @@ a{text-decoration:none;color:inherit;}
       </div>
       <div class="frm-group">
         <label for="country" class="frm-label">Pays de résidence <span style="color:#f87171;">*</span></label>
-        <select id="country" name="country" class="frm-select">
+        <select id="country" name="country" class="frm-select" onchange="siretUpdate()">
           <option value="">Choisir votre pays…</option>
           <optgroup label="── Europe ──">
             <option value="FR">🇫🇷 France</option><option value="BE">🇧🇪 Belgique</option>
@@ -385,6 +404,18 @@ a{text-decoration:none;color:inherit;}
             <option value="TH">🇹🇭 Thaïlande</option><option value="ID">🇮🇩 Indonésie</option>
           </optgroup>
         </select>
+      </div>
+      <!-- France : pas encore de SIRET ? (2026-11-26, comme dans l'app) -->
+      <div id="siretHelpWrap" class="frm-group" style="display:none;margin-top:-6px;">
+        <button type="button" class="sh-link" id="siretHelpLink" onclick="siretHelpOpen()"><i class="fa-regular fa-circle-question"></i><span>Je n’ai pas encore de numéro SIRET</span></button>
+        <div class="sh-later-note" id="siretLaterNote" style="display:none;"><i class="fa-solid fa-clock"></i><span>SIRET à ajouter plus tard, dans Profil › Vérifier mon compte.</span><button type="button" onclick="siretSetPending(false)">J’ai mon SIRET</button></div>
+      </div>
+      <!-- Ville obligatoire (affichée sur la fiche publique) : le serveur la refuse absente depuis le
+           2026-11-18 ; elle n'était demandée qu'à l'étape 4, APRÈS la création du compte → toute
+           inscription par le site échouait (« Indiquez votre ville »). -->
+      <div class="frm-group">
+        <label for="city" class="frm-label">Ville <span style="color:#f87171;">*</span></label>
+        <input type="text" id="city" name="city" class="frm-input" placeholder="Montpellier" maxlength="80" autocomplete="address-level2">
       </div>
       <div class="frm-group">
         <label for="company" class="frm-label">Entreprise <span style="color:var(--t3);font-weight:400;">(optionnel)</span></label>
@@ -674,8 +705,64 @@ a{text-decoration:none;color:inherit;}
             showWizardError('Merci de sélectionner votre pays de résidence.');
             return;
         }
+        var city = document.getElementById('city').value.trim();
+        if (city.length < 2) {
+            showWizardError('Indiquez votre ville : elle s’affiche sur votre fiche publique.');
+            return;
+        }
+        if (/@|https?:|www\./i.test(city) || city.replace(/\D/g, '').length >= 6) {
+            showWizardError('Indiquez seulement le nom de votre ville (sans e-mail, numéro de téléphone ni lien).');
+            return;
+        }
         showStep(2);
     }
+
+    // ── « Je n'ai pas encore de numéro SIRET » (2026-11-26, variante A) ──
+    // Le site ne demande pas le statut : sans ce choix, il se choisit plus tard dans l'app. Avec ce
+    // choix, le compte est créé comme indépendant « SIRET en cours » (rappels adaptés, admin informé).
+    var siretPending = false;
+    function siretUpdate() {
+        var fr = document.getElementById('country').value === 'FR';
+        if (!fr) siretPending = false;
+        document.getElementById('siretHelpWrap').style.display = fr ? 'block' : 'none';
+        document.getElementById('siretHelpLink').style.display = siretPending ? 'none' : 'inline-flex';
+        document.getElementById('siretLaterNote').style.display = siretPending ? 'flex' : 'none';
+    }
+    function siretHelpOpen() {
+        var ov = document.getElementById('siret-help-ov');
+        if (!ov) {
+            ov = document.createElement('div'); ov.id = 'siret-help-ov';
+            ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+            ov.onclick = function(e) { if (e.target === ov) siretHelpClose(); };
+            ov.innerHTML = '<div class="sh-sheet">'
+                + '<button type="button" class="sh-x" onclick="siretHelpClose()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>'
+                + '<div class="sh-ico"><i class="fa-solid fa-id-badge"></i></div>'
+                + '<div class="sh-title">Obtenir un SIRET, c’est gratuit et ça se fait en ligne.</div>'
+                + '<ol class="sh-steps">'
+                + '<li><span>Créez votre micro-entreprise sur le guichet unique officiel : formalites.entreprises.gouv.fr (service de l’INPI).</span></li>'
+                + '<li><span>Votre numéro SIRET vous est envoyé par l’INSEE, en général sous quelques jours à quelques semaines.</span></li>'
+                + '<li><span>Revenez sur GENESIS avec votre SIRET pour finaliser votre inscription.</span></li>'
+                + '</ol>'
+                + '<div class="sh-note"><i class="fa-solid fa-graduation-cap"></i><span>Étudiant ? Vous pouvez aussi être micro-entrepreneur.</span></div>'
+                + '<div class="sh-btns">'
+                + '<button type="button" class="btn-primary btn-primary-gold" id="sh-later-btn" onclick="siretSetPending(true)">Continuer sans SIRET pour l’instant</button>'
+                + '<a class="sh-sec" href="https://formalites.entreprises.gouv.fr/" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Ouvrir le guichet unique</span></a>'
+                + '</div></div>';
+            document.body.appendChild(ov);
+        }
+        ov.style.display = '';
+        ov.className = 'open';
+    }
+    function siretHelpClose() {
+        var ov = document.getElementById('siret-help-ov');
+        if (ov) ov.className = '';
+    }
+    function siretSetPending(on) {
+        siretPending = !!on;
+        siretHelpClose();
+        siretUpdate();
+    }
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') siretHelpClose(); });
 
     // Autres métiers (2 max, ni « Autre » ni coworking — même règle que le serveur).
     var SECONDARY_TYPE_LABELS = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', animateur_evenementiel:'Animateur / Événementiel', influencer:'Influenceur / Influenceuse'};
@@ -729,8 +816,13 @@ a{text-decoration:none;color:inherit;}
             telephone: document.getElementById('telephone').value.trim(),
             password: document.getElementById('password').value,
             country: document.getElementById('country').value,
+            city: document.getElementById('city').value.trim(),
             referralCode: ((document.getElementById('referralCode') || {}).value || '').trim()
         };
+        if (siretPending && registerData.country === 'FR') {
+            registerData.legal_profile = 'micro';
+            registerData.siret_pending = true;
+        }
 
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:12px;"></i> Création en cours…';
@@ -742,6 +834,9 @@ a{text-decoration:none;color:inherit;}
 
         if (result.success) {
             infoMessage.classList.add('show');
+            // La ville de l'étape 1 pré-remplit celle du profil (étape 4) : sinon elle serait effacée.
+            var _c4 = document.getElementById('step3City');
+            if (_c4 && !_c4.value.trim()) _c4.value = registerData.city;
             showStep(3);
         } else {
             showWizardError(result.message);
